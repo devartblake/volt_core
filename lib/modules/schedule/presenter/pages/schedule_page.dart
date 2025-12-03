@@ -4,12 +4,12 @@ import 'package:flutter_riverpod/legacy.dart';
 import 'package:go_router/go_router.dart';
 import 'package:table_calendar/table_calendar.dart';
 
-import '../inspections/infra/models/inspection.dart';
-import '../inspections/infra/repositories/inspection_repo.dart';
-import '../../../core/presenter/responsive_scaffold.dart';
-import '../inspections/providers/user_profile_provider.dart';
-import '../inspections/providers/app_badges_provider.dart';
-import '../inspections/providers/app_badges_provider.dart';
+import '../../../../shared/widgets/responsive_scaffold.dart';
+import '../../../inspections/infra/models/inspection.dart';
+import '../../../inspections/infra/repositories/inspection_repository.dart';
+import '../../../inspections/providers/user_profile_provider.dart';
+import '../../../inspections/providers/app_badges_provider.dart';
+import '../../../inspections/providers/app_badges_provider.dart';
 
 /// Schedule view mode enum
 enum ScheduleView { list, calendar }

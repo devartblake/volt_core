@@ -2,8 +2,8 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 import '../../infra/models/inspection.dart';
-import '../../infra/datasources/hive_boxes.dart';
-import '../../infra/repositories/inspection_repo.dart';
+import '../../../../core/storage/hive/hive_boxes.dart';
+import '../../infra/repositories/inspection_repository.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:printing/printing.dart';
 

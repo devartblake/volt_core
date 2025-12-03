@@ -3,8 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../infra/models/nameplate_data.dart';
-import '../../infra/models/test_interval_record.dart';
-import '../../infra/datasources/hive_boxes.dart';
+import '../../../load_test/infra/models/test_interval_record.dart';
+import '../../../../core/storage/hive/hive_boxes.dart';
 
 class NameplateIntervalsPage extends ConsumerStatefulWidget {
   final String inspectionId;

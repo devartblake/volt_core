@@ -1,5 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../infra/repositories/inspection_repo.dart';
+import '../infra/repositories/inspection_repository.dart';
 
 /// Model for badge infra across the app
 class AppBadges {

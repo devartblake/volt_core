@@ -7,7 +7,7 @@ import '../../../../storage/export_service.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/inspection.dart';
-import '../datasources/hive_boxes.dart';
+import '../../../../core/storage/hive/hive_boxes.dart';
 
 final inspectionRepoProvider = Provider(
   (ref) => InspectionRepo(

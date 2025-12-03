@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:voltcore/shared/widgets/responsive_scaffold.dart';
 
 import '../../infra/models/test_interval_record.dart';
-import '../../infra/datasources/hive_boxes.dart';
+import '../../../../core/storage/hive/hive_boxes.dart';
 
 class TestIntervalsPage extends StatefulWidget {
   final String inspectionId;

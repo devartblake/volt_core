@@ -5,7 +5,7 @@ import 'package:uuid/uuid.dart';
 
 import '../infra/models/inspection.dart';
 import '../infra/models/load_test_record.dart';
-import '../infra/repositories/inspection_repo.dart';
+import '../infra/repositories/inspection_repository.dart';
 import '../infra/datasources/hive_boxes.dart';
 
 /// Public provider to interact with inspections + load-test rows

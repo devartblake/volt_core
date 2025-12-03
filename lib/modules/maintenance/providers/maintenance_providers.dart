@@ -1,7 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 import '../data/models/maintenance_record.dart';
-import '../data/repositories/maintenance_repo.dart';
+import '../data/repositories/maintenance_repository.dart';
 
 final maintenanceRepoProvider = Provider<MaintenanceRepo>((ref) {
   return MaintenanceRepo();
