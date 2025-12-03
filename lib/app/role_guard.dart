@@ -1,44 +1,50 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import 'package:voltcore/app/route_roles.dart';
+import 'package:voltcore/modules/auth/state/auth_state.dart';
+import 'package:voltcore/modules/auth/domain/user_role.dart';
+import 'package:voltcore/modules/auth/presenter/pages/forbidden_page.dart';
+
+import '../core/ui/forbidden_page.dart';
 import '../modules/auth/auth_state.dart';
-import 'route_roles.dart';
-import '../core/presenter/forbidden_page.dart';
 
-/// Wrap any page in [RoleGuard] if you want widget-level protection.
+/// Simple widget guard for role-based access.
 ///
-/// In your routes:
-///   builder: (_, __) => const RoleGuard(
-///     path: '/inspections',
-///     child: InspectionListPage(),
-///   ),
+/// You can wrap any page in this widget if you want to guard it locally,
+/// for example:
+///
+///   GoRoute(
+///     path: '/admin',
+///     name: 'admin_dashboard',
+///     builder: (_, __) => const RoleGuard(
+///       routeName: 'admin_dashboard',
+///       child: AdminDashboardPage(),
+///     ),
+///   );
+///
 class RoleGuard extends ConsumerWidget {
-  final String path;
-  final Widget child;
-
   const RoleGuard({
     super.key,
-    required this.path,
+    required this.routeName,
     required this.child,
-    required Set<UserRole> allowedRoles,
   });
+
+  final String routeName;
+  final Widget child;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final auth = ref.watch(authStateProvider);
+    final UserRole? role = auth.currentRole;
 
-    if (!auth.isAuthenticated) {
-      // If you want a different behavior you can navigate to /login instead.
-      return const ForbiddenPage(
-        title: 'Not signed in',
-        message: 'Please sign in to access this section.',
-      );
-    }
+    final allowed = RouteRoles.isAllowedByName(
+      name: routeName,
+      role: role,
+    );
 
-    if (!RouteRoles.isAllowed(path: path, role: auth.currentRole)) {
-      return const ForbiddenPage(
-        title: 'Access denied',
-        message: 'You don’t have permission to view this page.',
-      );
+    if (!allowed) {
+      return const ForbiddenPage();
     }
 
     return child;

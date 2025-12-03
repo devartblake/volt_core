@@ -9,13 +9,13 @@ import 'package:share_plus/share_plus.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 
-import '../../features/inspections/infra/models/inspection.dart';
-import '../../features/inspections/infra/models/load_test_record.dart';
-import '../../features/inspections/infra/models/nameplate_data.dart';
-import '../../features/inspections/infra/models/test_interval_record.dart';
-import '../../features/inspections/infra/datasources/hive_boxes.dart';
-import '../../features/maintenance/infra/models/maintenance_record.dart';
-import '../../pdf/pdf_template.dart';
+import '../../features/inspections/data/models/inspection.dart';
+import '../../features/inspections/data/models/load_test_record.dart';
+import '../../features/inspections/data/models/nameplate_data.dart';
+import '../../features/inspections/data/models/test_interval_record.dart';
+import '../../features/inspections/data/sources/hive_boxes.dart';
+import '../../features/maintenance/data/models/maintenance_record.dart';
+import '../../shared/presenter/layout/pdf/pdf_template.dart';
 
 /// User-level preferences for how PDFs should be exported.
 ///

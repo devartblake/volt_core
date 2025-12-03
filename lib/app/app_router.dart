@@ -1,27 +1,27 @@
 import 'package:go_router/go_router.dart';
 
 // Existing imports
-import 'package:voltcore/features/maintenance/presenter/pages/maintenance_form_page.dart';
-import 'package:voltcore/features/maintenance/presenter/pages/maintenance_list_page.dart';
 import 'package:voltcore/features/settings/dashboard_page.dart';
-import '../../features/equipment/presenter/pages/equipment_search_page.dart';
-import '../../features/inspections/presenter/pages/inspection_list_page.dart';
-import '../../features/inspections/presenter/pages/inspection_form_page.dart';
-import '../../features/inspections/presenter/pages/inspection_detail_page.dart';
-import '../../features/inspections/presenter/pages/nameplate_intervals_page.dart';
-import '../../features/inspections/presenter/pages/nameplate_list_page.dart';
-import '../../features/maintenance/presenter/pages/maintenance_archive_page.dart';
-import '../../features/maintenance/presenter/pages/maintenance_detail_page.dart';
 import '../../features/schedule/schedule_page.dart';
 import '../../features/settings/about_page.dart';
 import '../../features/settings/selection_options_page.dart';
 import '../../features/settings/settings_page.dart';
 
 // 🔐 NEW: RBAC helper + admin pages
+import '../features/equipment/ui/pages/equipment_search_page.dart';
+import '../features/inspections/ui/pages/inspection_detail_page.dart';
+import '../features/inspections/ui/pages/inspection_form_page.dart';
+import '../features/inspections/ui/pages/inspection_list_page.dart';
+import '../features/inspections/ui/pages/nameplate_intervals_page.dart';
+import '../features/inspections/ui/pages/nameplate_list_page.dart';
+import '../features/maintenance/ui/pages/maintenance_archive_page.dart';
+import '../features/maintenance/ui/pages/maintenance_detail_page.dart';
+import '../features/maintenance/ui/pages/maintenance_form_page.dart';
+import '../features/maintenance/ui/pages/maintenance_list_page.dart';
+import '../modules/admin/presenter/pages/admin_dashboard_page.dart';
+import '../modules/admin/presenter/pages/admin_settings_page.dart';
 import 'role_guard.dart';
 import '../../modules/auth/auth_state.dart'; // for UserRole enum
-import '../../features/admin/presenter/pages/admin_dashboard_page.dart';
-import '../../features/admin/presenter/pages/admin_settings_page.dart';
 
 /// Global GoRouter instance.
 ///

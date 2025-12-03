@@ -89,18 +89,23 @@ class RouteRoles {
     ],
   };
 
-  static bool isAllowed({
-    required String path,
+  /// Returns true if this [role] is allowed on the given route [name].
+  ///
+  /// If there is no entry for [name], the route is treated as "public"
+  /// from an RBAC perspective (only login / 403 / notFound etc).
+  static bool isAllowedByName({
+    required String? name,
     required UserRole? role,
   }) {
-    final allowed = pathRoles[path];
-    if (allowed == null) {
-      // No restriction defined → treat as open to authenticated users
+    // Public / unnamed route: treated as allowed (login, 403, etc).
+    if (name == null || role == null) return true;
+
+    final allowed = _rolesByRouteName[name];
+    if (allowed == null || allowed.isEmpty) {
+      // If we haven't configured it, treat as allowed for all roles.
       return true;
     }
-    if (role == null) {
-      return false;
-    }
+
     return allowed.contains(role);
   }
 }

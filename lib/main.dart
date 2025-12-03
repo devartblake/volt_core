@@ -1,15 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
-import 'package:voltcore/features/maintenance/infra/models/maintenance_record.dart';
-import '../app/app_router.dart';
-import 'core/theme/app_theme.dart';
-import 'features/inspections/infra/models/load_test_record.dart';
-import 'features/inspections/infra/models/nameplate_data.dart';
-import 'features/inspections/infra/models/test_interval_record.dart';
-import 'features/inspections/infra/datasources/hive_boxes.dart';
-import 'features/inspections/infra/models/inspection.dart';
-import 'features/maintenance/infra/datasources/hive_boxes_maintenance.dart';
+import 'app/app.dart';
+import 'core/data/supabase_client.dart';
+import 'core/storage/hive/hive_boxes.dart';
+import 'features/maintenance/data/sources/hive_boxes_maintenance.dart';
 
 void main() async {
   // Ensure Flutte is initialized
@@ -18,11 +13,11 @@ void main() async {
   // Initialize Hive
   await Hive.initFlutter();
 
-  Hive.registerAdapter(MaintenanceRecordAdapter());
-  Hive.registerAdapter(InspectionAdapter());
-  Hive.registerAdapter(LoadTestRecordAdapter());
-  Hive.registerAdapter(NameplateDataAdapter());
-  Hive.registerAdapter(TestIntervalRecordAdapter());
+  // Hive.registerAdapter(MaintenanceRecordAdapter());
+  // Hive.registerAdapter(InspectionAdapter());
+  // Hive.registerAdapter(LoadTestRecordAdapter());
+  // Hive.registerAdapter(NameplateDataAdapter());
+  // Hive.registerAdapter(TestIntervalRecordAdapter());
 
   // Initialize all boxes
   try {
@@ -39,20 +34,14 @@ void main() async {
 
   await HiveBoxes.init();
 
-  runApp(const ProviderScope(child:App()));
-}
+  await VoltcoreSupabase.init(
+    url: 'https://YOUR_PROJECT_ID.supabase.co',
+    anonKey: 'YOUR_SUPABASE_ANON_KEY',
+  );
 
-class App extends ConsumerWidget {
-  const App({super.key});
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    //final appRouter = ref.watch(goRouterProvider);
-
-    return MaterialApp.router(
-      debugShowCheckedModeBanner: false,
-      title: 'Generator Compliance',
-      theme: buildTheme(),
-      routerConfig: appRouter,
-    );
-  }
+  runApp(
+    const ProviderScope(
+      child: VoltcoreApp()
+    ),
+  );
 }
