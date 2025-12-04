@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../pdf_prefs_service.dart';
+import '../../../core/services/pdf_prefs_service.dart';
 
 /// A simple switch tile that lets the technician opt in/out of
 /// automatically opening the system share/email sheet when PDFs

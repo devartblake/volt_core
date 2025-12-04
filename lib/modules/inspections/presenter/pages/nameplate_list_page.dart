@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../shared/widgets/responsive_scaffold.dart';
 import '../../infra/models/inspection.dart';
 import '../../infra/repositories/inspection_repository.dart';
-import '../../../../core/presenter/responsive_scaffold.dart';
 import '../../providers/user_profile_provider.dart';
 import '../../providers/app_badges_provider.dart';
 

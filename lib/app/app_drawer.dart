@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../modules/auth/auth_state.dart';
+import '../modules/auth/domain/user_role.dart';
+import '../modules/auth/presenter/controllers/auth_controller.dart';
+import '../modules/auth/state/auth_state.dart';
 import 'route_roles.dart';
 
 /// Public breakpoints
@@ -13,15 +15,21 @@ class NavItem {
   final String label;
   final IconData icon;
 
-  /// Route path (e.g. '/inspections', '/maintenance/new')
+  /// Path used with GoRouter (e.g. '/inspections')
   final String route;
 
-  final String? description; // Optional tooltip/description
+  /// Optional named route used for RBAC lookups.
+  /// This should match the `name:` you give to GoRoute in app_router.dart.
+  final String? routeName;
+
+  /// Optional tooltip / description
+  final String? description;
 
   const NavItem(
       this.label,
       this.icon,
       this.route, {
+        this.routeName,
         this.description,
       });
 }
@@ -38,6 +46,9 @@ class NavSection {
 }
 
 /// Main navigation structure with logical grouping
+///
+/// NOTE: `routeName` must match the GoRoute.name in app_router.dart
+/// so that RouteRoles can apply RBAC correctly.
 const List<NavSection> _navSections = [
   // Primary Actions (no header for main items)
   NavSection(
@@ -46,6 +57,7 @@ const List<NavSection> _navSections = [
         'Dashboard',
         Icons.dashboard_outlined,
         '/',
+        routeName: 'dashboard',
         description: 'Overview and quick stats',
       ),
     ],
@@ -59,18 +71,21 @@ const List<NavSection> _navSections = [
         'All Inspections',
         Icons.fact_check_outlined,
         '/inspections',
+        routeName: 'inspections',
         description: 'View inspection history',
       ),
       NavItem(
         'Create Inspection',
         Icons.add_circle_outline,
         '/inspections/new',
+        routeName: 'inspection_new',
         description: 'Start a new inspection',
       ),
       NavItem(
         'Pending Reviews',
         Icons.pending_actions_outlined,
         '/inspections/pending',
+        routeName: 'inspections_pending',
         description: 'Items awaiting review',
       ),
     ],
@@ -84,19 +99,29 @@ const List<NavSection> _navSections = [
         'All Jobs',
         Icons.work_outline,
         '/maintenance',
+        routeName: 'maintenance',
         description: 'View all maintenance jobs',
       ),
       NavItem(
         'Schedule',
         Icons.calendar_month_outlined,
         '/schedule',
+        routeName: 'schedule',
         description: 'Maintenance schedule',
       ),
       NavItem(
         'Create Job',
         Icons.add_task_outlined,
         '/maintenance/new',
+        routeName: 'maintenance_new',
         description: 'Schedule new maintenance',
+      ),
+      NavItem(
+        'Archive',
+        Icons.archive_outlined,
+        '/maintenance/archive',
+        routeName: 'maintenance_archive',
+        description: 'View & export previous maintenance',
       ),
     ],
   ),
@@ -109,12 +134,14 @@ const List<NavSection> _navSections = [
         'Registry',
         Icons.inventory_2_outlined,
         '/nameplate-list',
+        routeName: 'nameplate_list',
         description: 'Equipment database',
       ),
       NavItem(
         'Asset Search',
         Icons.search_outlined,
         '/equipment/search',
+        routeName: 'equipment_search',
         description: 'Find equipment',
       ),
     ],
@@ -128,19 +155,36 @@ const List<NavSection> _navSections = [
         'Configuration',
         Icons.tune_outlined,
         '/selection-management',
+        routeName: 'selection_management',
         description: 'System configuration',
       ),
       NavItem(
         'Settings',
         Icons.settings_outlined,
         '/settings',
+        routeName: 'settings',
         description: 'App settings',
       ),
       NavItem(
         'About',
         Icons.info_outline,
         '/about',
+        routeName: 'about',
         description: 'App information',
+      ),
+      NavItem(
+        'Admin Dashboard',
+        Icons.admin_panel_settings_outlined,
+        '/admin',
+        routeName: 'admin_dashboard',
+        description: 'Admin overview & controls',
+      ),
+      NavItem(
+        'Admin Settings',
+        Icons.security_outlined,
+        '/admin/settings',
+        routeName: 'admin_settings',
+        description: 'Role management & advanced settings',
       ),
     ],
   ),
@@ -148,8 +192,18 @@ const List<NavSection> _navSections = [
 
 /// Quick action items (shown separately in compact mode)
 const List<NavItem> _quickActions = [
-  NavItem('Create Inspection', Icons.add_circle, '/inspections/new'),
-  NavItem('Create Job', Icons.add_task, '/maintenance/new'),
+  NavItem(
+    'Create Inspection',
+    Icons.add_circle,
+    '/inspections/new',
+    routeName: 'inspection_new',
+  ),
+  NavItem(
+    'Create Job',
+    Icons.add_task,
+    '/maintenance/new',
+    routeName: 'maintenance_new',
+  ),
 ];
 
 /// User profile model
@@ -159,7 +213,7 @@ class AppUserProfile {
   final String? avatarUrl;
   final String currentTenant;
   final List<String> tenants;
-  final String? role; // Optional user role label (string)
+  final String? role; // Optional user role label
 
   const AppUserProfile({
     required this.displayName,
@@ -171,7 +225,7 @@ class AppUserProfile {
   });
 }
 
-/// Modern responsive drawer with sections
+/// Modern responsive drawer with sections (role-aware)
 class AppDrawer extends ConsumerWidget {
   const AppDrawer({
     super.key,
@@ -196,31 +250,30 @@ class AppDrawer extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final auth = ref.watch(authStateProvider);
-    final role = auth.currentRole;
-
     final width = MediaQuery.sizeOf(context).width;
     final isCompact = width < kCompactBreakpoint;
     final isExtended = width >= kExpandedBreakpoint;
     final current = _currentLocation(context);
 
-    // Role-filtered sections + actions
-    final visibleSections = _visibleNavSectionsForRole(role);
-    final visibleQuickActions = _visibleQuickActionsForRole(role);
+    final auth = ref.watch(authStateProvider);
+    final UserRole? role = auth.currentRole;
+
+    final sections = _visibleNavSectionsForRole(role);
+    final quickActions = _visibleQuickActionsForRole(role);
 
     if (isCompact) {
       return _buildCompactDrawer(
         context,
         current,
-        visibleSections,
-        visibleQuickActions,
+        sections,
+        quickActions,
       );
     }
     return _buildNavigationRail(
       context,
       current,
       isExtended,
-      visibleSections,
+      sections,
     );
   }
 
@@ -241,7 +294,7 @@ class AppDrawer extends ConsumerWidget {
             ),
 
             // Quick Actions (FAB-style buttons)
-            if (showQuickActions && quickActions.isNotEmpty)
+            if (showQuickActions)
               _QuickActionsBar(
                 actions: quickActions,
                 onTap: (route) {
@@ -284,8 +337,7 @@ class AppDrawer extends ConsumerWidget {
 
   /// Navigation rail for desktop / large layouts
   ///
-  /// Wrapped in a scrollable container to avoid vertical overflow
-  /// when there are many destinations or limited height.
+  /// Wrapped in a scrollable container to avoid vertical overflow.
   Widget _buildNavigationRail(
       BuildContext context,
       String current,
@@ -304,7 +356,6 @@ class AppDrawer extends ConsumerWidget {
               return SingleChildScrollView(
                 child: ConstrainedBox(
                   constraints: BoxConstraints(
-                    // Ensure the rail is at least as tall as the viewport.
                     minHeight: constraints.maxHeight,
                   ),
                   child: IntrinsicHeight(
@@ -318,10 +369,8 @@ class AppDrawer extends ConsumerWidget {
                       onDestinationSelected: (i) =>
                           _goTo(context, allItems[i].route),
                       leading: Padding(
-                        padding: const EdgeInsets.only(
-                          top: 16.0,
-                          bottom: 16.0,
-                        ),
+                        padding:
+                        const EdgeInsets.only(top: 16.0, bottom: 16.0),
                         child: _AppBrand(
                           isExtended: isExtended,
                           companyName: companyName,
@@ -367,54 +416,6 @@ class AppDrawer extends ConsumerWidget {
     );
   }
 }
-
-/// ---------- ROLE FILTERING HELPERS ----------
-
-/// Compute which sections are visible for a given role.
-List<NavSection> _visibleNavSectionsForRole(UserRole? role) {
-  // If no role yet (e.g. before login), just show everything.
-  if (role == null) return _navSections;
-
-  final result = <NavSection>[];
-
-  for (final section in _navSections) {
-    final visibleItems = section.items.where((item) {
-      // Look up allowed roles for this path in RouteRoles.pathRoles.
-      final allowed = RouteRoles.pathRoles[item.route];
-
-      // If no RBAC info, treat it as visible to any authenticated role.
-      if (allowed == null || allowed.isEmpty) return true;
-
-      return allowed.contains(role);
-    }).toList();
-
-    if (visibleItems.isNotEmpty) {
-      result.add(
-        NavSection(
-          title: section.title,
-          items: visibleItems,
-        ),
-      );
-    }
-  }
-
-  return result;
-}
-
-/// Filter quick actions by role as well.
-List<NavItem> _visibleQuickActionsForRole(UserRole? role) {
-  if (role == null) return _quickActions;
-
-  return _quickActions.where((item) {
-    final allowed = RouteRoles.pathRoles[item.route];
-
-    if (allowed == null || allowed.isEmpty) return true;
-
-    return allowed.contains(role);
-  }).toList();
-}
-
-/// ---------- PRESENTATION WIDGETS ----------
 
 /// Section header for grouped navigation
 class _SectionHeader extends StatelessWidget {
@@ -548,7 +549,8 @@ class _ModernDrawerHeader extends StatelessWidget {
                 Text(
                   companySubtitle,
                   style: theme.textTheme.bodyMedium?.copyWith(
-                    color: colorScheme.onPrimaryContainer.withOpacity(0.8),
+                    color:
+                    colorScheme.onPrimaryContainer.withOpacity(0.8),
                   ),
                 ),
               ],
@@ -592,7 +594,8 @@ class _ModernDrawerTile extends StatelessWidget {
       child: ListTile(
         leading: Icon(
           item.icon,
-          color: selected ? colorScheme.primary : colorScheme.onSurfaceVariant,
+          color:
+          selected ? colorScheme.primary : colorScheme.onSurfaceVariant,
         ),
         title: Text(
           item.label,
@@ -666,7 +669,8 @@ class _AppBrand extends StatelessWidget {
 
     if (isExtended) {
       return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        padding:
+        const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         child: Row(
           children: [
             Container(
@@ -811,7 +815,8 @@ class _ProfileFooter extends StatelessWidget {
                       ),
                       if (profile.tenants.length > 1)
                         IconButton(
-                          icon: const Icon(Icons.swap_horiz, size: 20),
+                          icon:
+                          const Icon(Icons.swap_horiz, size: 20),
                           onPressed: () {
                             showModalBottomSheet(
                               context: context,
@@ -860,7 +865,8 @@ class _TenantSwitcher extends StatelessWidget {
         children: [
           Row(
             children: [
-              Icon(Icons.apartment_outlined, color: colorScheme.primary),
+              Icon(Icons.apartment_outlined,
+                  color: colorScheme.primary),
               const SizedBox(width: 12),
               Text(
                 'Switch Tenant',
@@ -990,7 +996,55 @@ class _ProfileMini extends StatelessWidget {
   }
 }
 
-/// ---------- HELPERS ----------
+// ===== Helper functions =====
+
+/// Filter nav sections by role using RouteRoles.
+List<NavSection> _visibleNavSectionsForRole(UserRole? role) {
+  // If no role yet (e.g. before login), just show everything.
+  if (role == null) return _navSections;
+
+  final result = <NavSection>[];
+
+  for (final section in _navSections) {
+    final visibleItems = section.items.where((item) {
+      final name = item.routeName;
+      if (name == null) return true; // no RBAC info -> visible to all
+
+      final allowed = RouteRoles.isAllowedByName(
+        name: name,
+        role: role,
+      );
+      return allowed;
+    }).toList();
+
+    if (visibleItems.isNotEmpty) {
+      result.add(
+        NavSection(
+          title: section.title,
+          items: visibleItems,
+        ),
+      );
+    }
+  }
+
+  return result;
+}
+
+/// Filter quick actions by role as well.
+List<NavItem> _visibleQuickActionsForRole(UserRole? role) {
+  if (role == null) return _quickActions;
+
+  return _quickActions.where((item) {
+    final name = item.routeName;
+    if (name == null) return true;
+
+    final allowed = RouteRoles.isAllowedByName(
+      name: name,
+      role: role,
+    );
+    return allowed;
+  }).toList();
+}
 
 int _indexForRoute(String location, List<NavItem> items) {
   for (var i = 0; i < items.length; i++) {

@@ -3,7 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:voltcore/shared/widgets/responsive_scaffold.dart';
-import 'package:voltcore/modules/auth/auth_state.dart'; // <-- adjust path if needed
+import 'package:voltcore/modules/auth/state/auth_state.dart';
+
+import '../../../auth/domain/user_role.dart'; // <-- adjust path if needed
 
 /// Role-aware dashboard:
 /// - Techs see quick access to inspections & maintenance.

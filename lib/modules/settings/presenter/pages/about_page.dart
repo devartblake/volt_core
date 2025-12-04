@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
-import '../../../../../core/presenter/responsive_scaffold.dart';
+import '../../../../shared/widgets/responsive_scaffold.dart';
 import '../../../inspections/providers/user_profile_provider.dart';
 import '../../../inspections/providers/app_badges_provider.dart';
 

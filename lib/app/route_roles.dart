@@ -1,92 +1,118 @@
-import '../modules/auth/auth_state.dart';
+import '../modules/auth/domain/user_role.dart';
+import '../modules/auth/state/auth_state.dart';
 
-/// Which roles can access which route (by *path* or *name*).
+/// Defines which roles are allowed to access each named route.
 ///
-/// Use *path* keys for the redirect controllers in GoRouter, and use
-/// *routeName* keys if you want additional checks elsewhere.
+/// Keys must match the `name:` values in your GoRouter routes.
 class RouteRoles {
-  /// Map of paths → allowed roles.
-  static const Map<String, List<UserRole>> pathRoles = {
-    // Public
-    '/login': [],
-    '/403': [],
+  static const Map<String, Set<UserRole>> _rolesByRouteName = {
+    // ----- Core shell / dashboards -----
+    'dashboard': {
+      UserRole.tech,
+      UserRole.supervisor,
+      UserRole.dispatcher,
+      UserRole.admin,
+    },
+    'tech_dashboard': {UserRole.tech},
+    'admin_dashboard': {UserRole.admin},
+    'admin_settings': {UserRole.admin},
 
-    // Dashboard: any logged-in user
-    '/': [
+    // ----- Inspections -----
+    'inspections': {
       UserRole.tech,
       UserRole.supervisor,
       UserRole.dispatcher,
       UserRole.admin,
-    ],
+    },
+    'inspection_new': {
+      UserRole.tech,
+      UserRole.supervisor,
+      UserRole.dispatcher,
+      UserRole.admin,
+    },
+    'inspection_detail': {
+      UserRole.tech,
+      UserRole.supervisor,
+      UserRole.dispatcher,
+      UserRole.admin,
+    },
+    'inspections_pending': {
+      UserRole.supervisor,
+      UserRole.dispatcher,
+      UserRole.admin,
+    },
 
-    // Inspections
-    '/inspections': [
+    // ----- Maintenance -----
+    'maintenance': {
       UserRole.tech,
       UserRole.supervisor,
       UserRole.dispatcher,
       UserRole.admin,
-    ],
-    '/inspections/new': [
+    },
+    'maintenance_new': {
       UserRole.tech,
       UserRole.supervisor,
       UserRole.dispatcher,
       UserRole.admin,
-    ],
-    '/inspections/pending': [
+    },
+    'maintenance_detail': {
+      UserRole.tech,
       UserRole.supervisor,
       UserRole.dispatcher,
       UserRole.admin,
-    ],
+    },
+    'maintenance_archive': {
+      UserRole.supervisor,
+      UserRole.dispatcher,
+      UserRole.admin,
+    },
 
-    // Maintenance
-    '/maintenance': [
+    // ----- Schedule -----
+    'schedule': {
       UserRole.tech,
       UserRole.supervisor,
       UserRole.dispatcher,
       UserRole.admin,
-    ],
-    '/maintenance/new': [
-      UserRole.tech,
-      UserRole.supervisor,
-      UserRole.dispatcher,
-      UserRole.admin,
-    ],
-    '/maintenance/archive': [
-      UserRole.supervisor,
-      UserRole.dispatcher,
-      UserRole.admin,
-    ],
+    },
 
-    // Schedule
-    '/schedule': [
-      UserRole.dispatcher,
+    // ----- Equipment / Nameplate -----
+    'nameplate_list': {
+      UserRole.tech,
       UserRole.supervisor,
+      UserRole.dispatcher,
       UserRole.admin,
-    ],
+    },
+    'nameplate_intervals': {
+      UserRole.tech,
+      UserRole.supervisor,
+      UserRole.dispatcher,
+      UserRole.admin,
+    },
+    'equipment_search': {
+      UserRole.tech,
+      UserRole.supervisor,
+      UserRole.dispatcher,
+      UserRole.admin,
+    },
 
-    // Equipment
-    '/nameplate-list': [
+    // ----- Settings / System -----
+    'selection_management': {
+      UserRole.supervisor,
+      UserRole.dispatcher,
+      UserRole.admin,
+    },
+    'settings': {
       UserRole.tech,
       UserRole.supervisor,
       UserRole.dispatcher,
       UserRole.admin,
-    ],
-    '/equipment/search': [
+    },
+    'about': {
       UserRole.tech,
       UserRole.supervisor,
       UserRole.dispatcher,
       UserRole.admin,
-    ],
-
-    // System / Settings – lock down to admin for now
-    '/selection-management': [UserRole.admin],
-    '/settings': [UserRole.admin],
-    '/about': [
-      UserRole.tech,
-      UserRole.supervisor,
-      UserRole.dispatcher,
-      UserRole.admin,
-    ],
+    },
   };
 
   /// Returns true if this [role] is allowed on the given route [name].

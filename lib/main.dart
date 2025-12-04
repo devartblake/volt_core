@@ -4,7 +4,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'app/app.dart';
 import 'core/data/supabase_client.dart';
 import 'core/storage/hive/hive_boxes.dart';
-import 'features/maintenance/data/sources/hive_boxes_maintenance.dart';
+import 'modules/maintenance/infra/datasources/hive_boxes_maintenance.dart';
 
 void main() async {
   // Ensure Flutte is initialized

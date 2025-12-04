@@ -27,14 +27,14 @@ final timeRangeProvider = StateProvider<TimeRange>((ref) => TimeRange.month);
 final selectedDateProvider = StateProvider<DateTime>((ref) => DateTime.now());
 
 /// Inspection Schedule Page with calendar and list views
-class InspectionSchedulePage extends ConsumerStatefulWidget {
-  const InspectionSchedulePage({super.key});
+class SchedulePage extends ConsumerStatefulWidget {
+  const SchedulePage({super.key});
 
   @override
-  ConsumerState<InspectionSchedulePage> createState() => _InspectionSchedulePageState();
+  ConsumerState<SchedulePage> createState() => _SchedulePageState();
 }
 
-class _InspectionSchedulePageState extends ConsumerState<InspectionSchedulePage> {
+class _SchedulePageState extends ConsumerState<SchedulePage> {
   late DateTime _focusedDay;
   late DateTime _selectedDay;
   CalendarFormat _calendarFormat = CalendarFormat.month;

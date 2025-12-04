@@ -8,14 +8,20 @@ import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
-
-import '../../features/inspections/data/models/inspection.dart';
-import '../../features/inspections/data/models/load_test_record.dart';
-import '../../features/inspections/data/models/nameplate_data.dart';
-import '../../features/inspections/data/models/test_interval_record.dart';
-import '../../features/inspections/data/sources/hive_boxes.dart';
-import '../../features/maintenance/data/models/maintenance_record.dart';
+//
+// import '../../features/inspections/data/models/inspection.dart';
+// import '../../features/inspections/data/models/load_test_record.dart';
+// import '../../features/inspections/data/models/nameplate_data.dart';
+// import '../../features/inspections/data/models/test_interval_record.dart';
+// import '../../features/inspections/data/sources/hive_boxes.dart';
+// import '../../features/maintenance/data/models/maintenance_record.dart';
+import '../../modules/inspections/infra/models/inspection.dart';
+import '../../modules/inspections/infra/models/nameplate_data.dart';
+import '../../modules/load_test/infra/models/load_test_record.dart';
+import '../../modules/load_test/infra/models/test_interval_record.dart';
+import '../../modules/maintenance/infra/models/maintenance_record.dart';
 import '../../shared/presenter/layout/pdf/pdf_template.dart';
+import '../storage/hive/hive_boxes.dart';
 
 /// User-level preferences for how PDFs should be exported.
 ///

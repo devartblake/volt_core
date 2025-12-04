@@ -1,13 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
-import 'package:voltcore/app/route_roles.dart';
-import 'package:voltcore/modules/auth/state/auth_state.dart';
 import 'package:voltcore/modules/auth/domain/user_role.dart';
-import 'package:voltcore/modules/auth/presenter/pages/forbidden_page.dart';
-
-import '../core/ui/forbidden_page.dart';
-import '../modules/auth/auth_state.dart';
+import 'package:voltcore/app/route_roles.dart';
+import '../modules/auth/presenter/controllers/auth_controller.dart';
+import '../modules/auth/presenter/pages/forbidden_page.dart';
+import '../modules/auth/state/auth_state.dart';
 
 /// Simple widget guard for role-based access.
 ///

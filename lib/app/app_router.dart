@@ -1,190 +1,272 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-// Existing imports
-import 'package:voltcore/features/settings/dashboard_page.dart';
-import '../../features/schedule/schedule_page.dart';
-import '../../features/settings/about_page.dart';
-import '../../features/settings/selection_options_page.dart';
-import '../../features/settings/settings_page.dart';
+import 'package:voltcore/app/app_shells.dart';
+import 'package:voltcore/app/route_roles.dart';
+import 'package:voltcore/modules/auth/presenter/pages/login_page.dart';
+import 'package:voltcore/modules/auth/presenter/pages/forbidden_page.dart';
 
-// 🔐 NEW: RBAC helper + admin pages
-import '../features/equipment/ui/pages/equipment_search_page.dart';
-import '../features/inspections/ui/pages/inspection_detail_page.dart';
-import '../features/inspections/ui/pages/inspection_form_page.dart';
-import '../features/inspections/ui/pages/inspection_list_page.dart';
-import '../features/inspections/ui/pages/nameplate_intervals_page.dart';
-import '../features/inspections/ui/pages/nameplate_list_page.dart';
-import '../features/maintenance/ui/pages/maintenance_archive_page.dart';
-import '../features/maintenance/ui/pages/maintenance_detail_page.dart';
-import '../features/maintenance/ui/pages/maintenance_form_page.dart';
-import '../features/maintenance/ui/pages/maintenance_list_page.dart';
-import '../modules/admin/presenter/pages/admin_dashboard_page.dart';
-import '../modules/admin/presenter/pages/admin_settings_page.dart';
-import 'role_guard.dart';
-import '../../modules/auth/auth_state.dart'; // for UserRole enum
+import 'package:voltcore/modules/dashboard/presenter/pages/dashboard_page.dart';
 
-/// Global GoRouter instance.
+import 'package:voltcore/modules/admin/presenter/pages/admin_dashboard_page.dart';
+import 'package:voltcore/modules/admin/presenter/pages/admin_settings_page.dart';
+import '../modules/auth/presenter/controllers/auth_controller.dart';
+import '../modules/equipment/presenter/pages/equipment_search_page.dart';
+import '../modules/inspections/presenter/pages/inspection_detail_page.dart';
+import '../modules/inspections/presenter/pages/inspection_form_page.dart';
+import '../modules/inspections/presenter/pages/inspection_list_page.dart';
+import '../modules/inspections/presenter/pages/nameplate_intervals_page.dart';
+import '../modules/inspections/presenter/pages/nameplate_list_page.dart';
+import '../modules/maintenance/presenter/pages/maintenance_archive_page.dart';
+import '../modules/maintenance/presenter/pages/maintenance_detail_page.dart';
+import '../modules/maintenance/presenter/pages/maintenance_form_page.dart';
+import '../modules/maintenance/presenter/pages/maintenance_list_page.dart';
+import '../modules/schedule/presenter/pages/schedule_page.dart';
+import '../modules/settings/presenter/pages/about_page.dart';
+import '../modules/settings/presenter/pages/selection_options_page.dart';
+import '../modules/settings/presenter/pages/settings_page.dart';
+
+/// Exposed router provider used by `app.dart`:
 ///
-/// NOTE:
-/// If you later move to a Riverpod-based router provider, you can
-/// wrap this in a Provider<GoRouter>. For now we keep the simple
-/// top-level instance to avoid breaking your existing setup.
-final appRouter = GoRouter(
-  routes: [
-    // ========================================
-    // DASHBOARD (role-aware inside the page)
-    // ========================================
-    GoRoute(
-      path: '/',
-      name: 'dashboard',
-      builder: (_, __) => const DashboardPage(),
-    ),
+/// ```dart
+/// final router = ref.watch(goRouterProvider);
+/// return MaterialApp.router(routerConfig: router, ...);
+/// ```
+final goRouterProvider = Provider<GoRouter>((ref) {
+  final auth = ref.watch(authStateProvider);
 
-    // ========================================
-    // INSPECTIONS
-    // ========================================
-    GoRoute(
-      path: '/inspections',
-      name: 'inspections',
-      builder: (_, __) => const InspectionListPage(),
-      routes: [
-        // Create new inspection
-        GoRoute(
-          path: 'new',
-          name: 'inspection_new',
-          builder: (_, __) => const InspectionFormPage(),
-        ),
-        // Inspection detail
-        GoRoute(
-          path: '/detail/:id',
-          name: 'inspection_detail',
-          builder: (_, state) => InspectionDetailPage(
-            id: state.pathParameters['id']!,
-          ),
-        ),
-        // Pending inspections (filtered view)
-        GoRoute(
-          path: 'pending',
-          name: 'inspections_pending',
-          builder: (_, __) => const InspectionListPage(
-            // TODO: Add filter parameter to show only pending
-            // filterStatus: InspectionStatus.pending,
-          ),
-        ),
-      ],
-    ),
+  return GoRouter(
+    initialLocation: '/',
+    debugLogDiagnostics: true,
 
-    // ========================================
-    // MAINTENANCE
-    // ========================================
-    GoRoute(
-      path: '/maintenance',
-      name: 'maintenance',
-      builder: (_, __) => const MaintenanceListPage(),
-      routes: [
-        // Create new maintenance job
-        GoRoute(
-          path: 'new',
-          name: 'maintenance_new',
-          builder: (_, state) => MaintenanceFormPage(
-            // id is optional – if present we edit; if null we create.
-            id: state.uri.queryParameters['id'],
-          ),
-        ),
-        // Maintenance detail
-        GoRoute(
-          path: 'detail/:id',
-          name: 'maintenance_detail',
-          builder: (_, state) => MaintenanceDetailPage(
-            id: state.pathParameters['id']!,
-          ),
-        ),
-        // Maintenance archive
-        GoRoute(
-          path: 'archive',
-          name: 'maintenance_archive',
-          builder: (_, __) => const MaintenanceArchivePage(),
-        ),
-      ],
-    ),
+    /// Global redirect:
+    /// - Forces login when not authenticated
+    /// - Sends logged-in users away from /login to /
+    /// - Enforces RBAC with kRouteRoles (by *route name*) → /403
+    redirect: (context, state) {
+      final isLoggedIn = auth.isAuthenticated;
+      final role = auth.currentRole;
+      final path = state.uri.path;
+      final routeName = state.name;
 
-    // ========================================
-    // SCHEDULE
-    // ========================================
-    GoRoute(
-      path: '/schedule',
-      name: 'schedule',
-      builder: (_, __) => const InspectionSchedulePage(),
-    ),
+      const loginPath = '/login';
+      const forbiddenPath = '/403';
 
-    // ========================================
-    // EQUIPMENT / NAMEPLATE
-    // ========================================
-    GoRoute(
-      path: '/nameplate-list',
-      name: 'nameplate_list',
-      builder: (_, __) => const NameplateListPage(),
-    ),
-    GoRoute(
-      path: '/nameplate/:inspectionId',
-      name: 'nameplate_intervals',
-      builder: (_, state) => NameplateIntervalsPage(
-        inspectionId: state.pathParameters['inspectionId']!,
+      final isLogin = path == loginPath;
+      final isForbidden = path == forbiddenPath;
+
+      // 1) Not logged in → force to /login (except when already on /login or /403)
+      if (!isLoggedIn && !isLogin && !isForbidden) {
+        return loginPath;
+      }
+
+      // 2) Logged in but at /login → send home
+      if (isLoggedIn && isLogin) {
+        return '/';
+      }
+
+      // 3) Role-based guard using kRouteRoles (by route name)
+      //
+      // We assume:
+      //   const Map<String, Set<UserRole>> kRouteRoles = {...};
+      // Where keys are the *route names* below (e.g. 'dashboard', 'inspections', etc.)
+      if (isLoggedIn && !isForbidden && routeName != null) {
+        final isAllowed = RouteRoles.isAllowedByName(
+          name: routeName,
+          role: role,
+        );
+
+        if (!isAllowed) {
+          if (path == forbiddenPath) return null;
+          return forbiddenPath;
+        }
+      }
+
+      return null; // no-op redirect
+    },
+
+    routes: [
+      // =====================
+      // PUBLIC / AUTH PAGES
+      // =====================
+      GoRoute(
+        path: '/login',
+        name: 'login',
+        builder: (_, __) => const LoginPage(),
       ),
-    ),
-    GoRoute(
-      path: '/equipment/search',
-      name: 'equipment_search',
-      builder: (_, __) => const EquipmentSearchPage(),
-    ),
+      GoRoute(
+        path: '/403',
+        name: 'forbidden',
+        builder: (_, __) => const ForbiddenPage(),
+      ),
 
-    // ========================================
-    // SETTINGS & CONFIGURATION
-    // ========================================
-    GoRoute(
-      path: '/selection-management',
-      name: 'selection_management',
-      builder: (_, __) => const SelectionOptionsPage(),
-    ),
-    GoRoute(
-      path: '/settings',
-      name: 'settings',
-      builder: (_, __) => const SettingsPage(),
-    ),
+      // =====================
+      // DASHBOARD (role-aware content inside)
+      // =====================
+      GoRoute(
+        path: '/',
+        name: 'dashboard',
+        builder: (_, __) => const DefaultShell(
+          child: DashboardPage(),
+        ),
+      ),
 
-    // ========================================
-    // ADMIN AREA (NEW)
-    // ========================================
-    // Admin dashboard – uses RoleGuard so only admins (or whichever
-    // roles you include) can open it.
-    GoRoute(
-      path: '/admin',
-      name: 'admin_dashboard',
-      builder: (_, __) => const RoleGuard(
-        allowedRoles: {UserRole.admin, UserRole.dispatcher, UserRole.supervisor},
+      // =====================
+      // INSPECTIONS
+      // =====================
+      GoRoute(
+        path: '/inspections',
+        name: 'inspections',
+        builder: (_, __) => const TechShell(
+          child: InspectionListPage(),
+        ),
+        routes: [
+          GoRoute(
+            path: 'new',
+            name: 'inspection_new',
+            builder: (_, __) => const TechShell(
+              child: InspectionFormPage(),
+            ),
+          ),
+          GoRoute(
+            path: 'detail/:id',
+            name: 'inspection_detail',
+            builder: (_, state) => TechShell(
+              child: InspectionDetailPage(
+                id: state.pathParameters['id']!,
+              ),
+            ),
+          ),
+          GoRoute(
+            path: 'pending',
+            name: 'inspections_pending',
+            builder: (_, __) => const TechShell(
+              child: InspectionListPage(
+                // TODO: add filter in page/controller for pending only
+              ),
+            ),
+          ),
+        ],
+      ),
+
+      // =====================
+      // MAINTENANCE
+      // =====================
+      GoRoute(
+        path: '/maintenance',
+        name: 'maintenance',
+        builder: (_, __) => const TechShell(
+          child: MaintenanceListPage(),
+        ),
+        routes: [
+          GoRoute(
+            path: 'new',
+            name: 'maintenance_new',
+            builder: (_, state) => TechShell(
+              child: MaintenanceFormPage(
+                id: state.uri.queryParameters['id'],
+              ),
+            ),
+          ),
+          GoRoute(
+            path: 'detail/:id',
+            name: 'maintenance_detail',
+            builder: (_, state) => TechShell(
+              child: MaintenanceDetailPage(
+                id: state.pathParameters['id']!,
+              ),
+            ),
+          ),
+          GoRoute(
+            path: 'archive',
+            name: 'maintenance_archive',
+            builder: (_, __) => const TechShell(
+              child: MaintenanceArchivePage(),
+            ),
+          ),
+        ],
+      ),
+
+      // =====================
+      // SCHEDULE
+      // =====================
+      GoRoute(
+        path: '/schedule',
+        name: 'schedule',
+        builder: (_, __) => const TechShell(
+          child: SchedulePage(),
+        ),
+      ),
+
+      // =====================
+      // EQUIPMENT / NAMEPLATE
+      // =====================
+      GoRoute(
+        path: '/nameplate-list',
+        name: 'nameplate_list',
+        builder: (_, __) => const TechShell(
+          child: NameplateListPage(),
+        ),
+      ),
+      GoRoute(
+        path: '/nameplate/:inspectionId',
+        name: 'nameplate_intervals',
+        builder: (_, state) => TechShell(
+          child: NameplateIntervalsPage(
+            inspectionId: state.pathParameters['inspectionId']!,
+          ),
+        ),
+      ),
+      GoRoute(
+        path: '/equipment/search',
+        name: 'equipment_search',
+        builder: (_, __) => const TechShell(
+          child: EquipmentSearchPage(),
+        ),
+      ),
+
+      // =====================
+      // SETTINGS & CONFIG
+      // =====================
+      GoRoute(
+        path: '/selection-management',
+        name: 'selection_management',
+        builder: (_, __) => const DefaultShell(
+          child: SelectionOptionsPage(),
+        ),
+      ),
+      GoRoute(
+        path: '/settings',
+        name: 'settings',
+        builder: (_, __) => const DefaultShell(
+          child: SettingsPage(),
+        ),
+      ),
+      GoRoute(
+        path: '/about',
+        name: 'about',
+        builder: (_, __) => const DefaultShell(
+          child: AboutPage(),
+        ),
+      ),
+
+      // =====================
+      // ADMIN AREA
+      // =====================
+      GoRoute(
         path: '/admin',
-        child: AdminDashboardPage(),
+        name: 'admin_dashboard',
+        builder: (_, __) => const AdminShell(
+          child: AdminDashboardPage(),
+        ),
       ),
-    ),
-
-    // Admin settings – also protected
-    GoRoute(
-      path: '/admin/settings',
-      name: 'admin_settings',
-      builder: (_, __) => const RoleGuard(
-        allowedRoles: {UserRole.admin},
+      GoRoute(
         path: '/admin/settings',
-        child: AdminSettingsPage(),
+        name: 'admin_settings',
+        builder: (_, __) => const AdminShell(
+          child: AdminSettingsPage(),
+        ),
       ),
-    ),
-
-    // ========================================
-    // ABOUT
-    // ========================================
-    GoRoute(
-      path: '/about',
-      name: 'about',
-      builder: (_, __) => const AboutPage(),
-    ),
-  ],
-);
+    ],
+  );
+});
