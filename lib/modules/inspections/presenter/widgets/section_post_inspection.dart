@@ -1,22 +1,34 @@
 import 'package:flutter/material.dart';
-import '../../infra/models/inspection.dart';
+import '../../domain/entities/inspection_entity.dart';
 
 class SectionPostInspection extends StatefulWidget {
-  final Inspection model;
-  final ValueChanged<Inspection> onChanged;
-  const SectionPostInspection({super.key, required this.model, required this.onChanged});
+  final InspectionEntity model;
+  final ValueChanged<InspectionEntity> onChanged;
+
+  const SectionPostInspection({
+    super.key,
+    required this.model,
+    required this.onChanged,
+  });
 
   @override
   State<SectionPostInspection> createState() => _SectionPostInspectionState();
 }
 
 class _SectionPostInspectionState extends State<SectionPostInspection> {
-  late Inspection m;
+  late InspectionEntity m;
 
   @override
   void initState() {
     super.initState();
     m = widget.model;
+  }
+
+  void _update(InspectionEntity Function(InspectionEntity) transform) {
+    setState(() {
+      m = transform(m);
+    });
+    widget.onChanged(m);
   }
 
   @override
@@ -119,7 +131,7 @@ class _SectionPostInspectionState extends State<SectionPostInspection> {
               'Generator runs under load',
               Icons.power,
               m.gensetRunsUnderLoad,
-                  (v) => m.gensetRunsUnderLoad = v,
+                  (curr, v) => curr.copyWith(gensetRunsUnderLoad: v),
               theme,
             ),
             const SizedBox(height: 8),
@@ -127,7 +139,7 @@ class _SectionPostInspectionState extends State<SectionPostInspection> {
               'Voltage & frequency acceptable',
               Icons.electrical_services,
               m.voltageFrequencyOk,
-                  (v) => m.voltageFrequencyOk = v,
+                  (curr, v) => curr.copyWith(voltageFrequencyOk: v),
               theme,
             ),
             const SizedBox(height: 8),
@@ -135,7 +147,7 @@ class _SectionPostInspectionState extends State<SectionPostInspection> {
               'Exhaust condition OK',
               Icons.air,
               m.exhaustOk,
-                  (v) => m.exhaustOk = v,
+                  (curr, v) => curr.copyWith(exhaustOk: v),
               theme,
             ),
             const SizedBox(height: 8),
@@ -143,7 +155,7 @@ class _SectionPostInspectionState extends State<SectionPostInspection> {
               'Grounding / Bonding OK',
               Icons.bolt,
               m.groundingBondingOk,
-                  (v) => m.groundingBondingOk = v,
+                  (curr, v) => curr.copyWith(groundingBondingOk: v),
               theme,
             ),
             const SizedBox(height: 8),
@@ -151,7 +163,7 @@ class _SectionPostInspectionState extends State<SectionPostInspection> {
               'Control panel OK',
               Icons.dashboard,
               m.controlPanelOk,
-                  (v) => m.controlPanelOk = v,
+                  (curr, v) => curr.copyWith(controlPanelOk: v),
               theme,
             ),
             const SizedBox(height: 8),
@@ -159,7 +171,7 @@ class _SectionPostInspectionState extends State<SectionPostInspection> {
               'Safety devices operational',
               Icons.security,
               m.safetyDevicesOk,
-                  (v) => m.safetyDevicesOk = v,
+                  (curr, v) => curr.copyWith(safetyDevicesOk: v),
               theme,
             ),
             const SizedBox(height: 8),
@@ -167,7 +179,7 @@ class _SectionPostInspectionState extends State<SectionPostInspection> {
               'Deficiencies documented',
               Icons.description,
               m.deficienciesDocumented,
-                  (v) => m.deficienciesDocumented = v,
+                  (curr, v) => curr.copyWith(deficienciesDocumented: v),
               theme,
             ),
             const SizedBox(height: 8),
@@ -175,7 +187,7 @@ class _SectionPostInspectionState extends State<SectionPostInspection> {
               'Loadbank test completed',
               Icons.science,
               m.loadbankDone,
-                  (v) => m.loadbankDone = v,
+                  (curr, v) => curr.copyWith(loadbankDone: v),
               theme,
             ),
             const SizedBox(height: 8),
@@ -183,7 +195,7 @@ class _SectionPostInspectionState extends State<SectionPostInspection> {
               'ATS verified',
               Icons.swap_horiz,
               m.atsVerified,
-                  (v) => m.atsVerified = v,
+                  (curr, v) => curr.copyWith(atsVerified: v),
               theme,
             ),
             const SizedBox(height: 8),
@@ -191,7 +203,7 @@ class _SectionPostInspectionState extends State<SectionPostInspection> {
               'Fuel stored over 1 year',
               Icons.water_drop,
               m.fuelStoredOver1Yr,
-                  (v) => m.fuelStoredOver1Yr = v,
+                  (curr, v) => curr.copyWith(fuelStoredOver1Yr: v),
               theme,
             ),
           ],
@@ -204,7 +216,7 @@ class _SectionPostInspectionState extends State<SectionPostInspection> {
       String label,
       IconData icon,
       bool val,
-      ValueChanged<bool> on,
+      InspectionEntity Function(InspectionEntity, bool) onSavedBuilder,
       ThemeData theme,
       ) {
     return Container(
@@ -235,16 +247,11 @@ class _SectionPostInspectionState extends State<SectionPostInspection> {
           ],
         ),
         value: val,
-        onChanged: (v) => _update(() => on(v)),
+        onChanged: (v) => _update((curr) => onSavedBuilder(curr, v)),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
         ),
       ),
     );
-  }
-
-  void _update(VoidCallback fn) {
-    setState(fn);
-    widget.onChanged(m);
   }
 }

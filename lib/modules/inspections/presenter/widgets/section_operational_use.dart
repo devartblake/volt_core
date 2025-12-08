@@ -1,22 +1,34 @@
 import 'package:flutter/material.dart';
-import '../../infra/models/inspection.dart';
+import '../../domain/entities/inspection_entity.dart';
 
 class SectionOperationalUse extends StatefulWidget {
-  final Inspection model;
-  final ValueChanged<Inspection> onChanged;
-  const SectionOperationalUse({super.key, required this.model, required this.onChanged});
+  final InspectionEntity model;
+  final ValueChanged<InspectionEntity> onChanged;
+
+  const SectionOperationalUse({
+    super.key,
+    required this.model,
+    required this.onChanged,
+  });
 
   @override
   State<SectionOperationalUse> createState() => _SectionOperationalUseState();
 }
 
 class _SectionOperationalUseState extends State<SectionOperationalUse> {
-  late Inspection m;
+  late InspectionEntity m;
 
   @override
   void initState() {
     super.initState();
     m = widget.model;
+  }
+
+  void _update(InspectionEntity Function(InspectionEntity) transform) {
+    setState(() {
+      m = transform(m);
+    });
+    widget.onChanged(m);
   }
 
   @override
@@ -65,7 +77,8 @@ class _SectionOperationalUseState extends State<SectionOperationalUse> {
               decoration: BoxDecoration(
                 color: m.emergencyOnly
                     ? theme.colorScheme.errorContainer.withOpacity(0.3)
-                    : theme.colorScheme.surfaceContainerHighest.withOpacity(0.3),
+                    : theme.colorScheme.surfaceContainerHighest
+                    .withOpacity(0.3),
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
                   color: m.emergencyOnly
@@ -89,7 +102,8 @@ class _SectionOperationalUseState extends State<SectionOperationalUse> {
                   ],
                 ),
                 value: m.emergencyOnly,
-                onChanged: (v) => _update(() => m.emergencyOnly = v),
+                onChanged: (v) =>
+                    _update((curr) => curr.copyWith(emergencyOnly: v)),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
@@ -109,14 +123,16 @@ class _SectionOperationalUseState extends State<SectionOperationalUse> {
               ),
               initialValue: m.estimatedAnnualRuntimeHours,
               keyboardType: TextInputType.number,
-              onChanged: (v) => _update(() => m.estimatedAnnualRuntimeHours = v),
+              onChanged: (v) => _update(
+                    (curr) => curr.copyWith(estimatedAnnualRuntimeHours: v),
+              ),
             ),
             const SizedBox(height: 16),
             _modernYesNo(
               'Fuel for minimum 6 hours',
               Icons.local_gas_station,
               m.fuelFor6hrs,
-                  (v) => m.fuelFor6hrs = v,
+                  (curr, v) => curr.copyWith(fuelFor6hrs: v),
               theme,
             ),
             const SizedBox(height: 24),
@@ -144,7 +160,8 @@ class _SectionOperationalUseState extends State<SectionOperationalUse> {
               ),
               maxLines: 4,
               initialValue: m.notes,
-              onChanged: (v) => _update(() => m.notes = v),
+              onChanged: (v) =>
+                  _update((curr) => curr.copyWith(notes: v)),
             ),
           ],
         ),
@@ -156,10 +173,11 @@ class _SectionOperationalUseState extends State<SectionOperationalUse> {
       String label,
       IconData icon,
       String current,
-      ValueChanged<String> on,
+      InspectionEntity Function(InspectionEntity, String) onSavedBuilder,
       ThemeData theme,
       ) {
     const opts = ['Yes', 'No', 'N/A'];
+
     return DropdownButtonFormField<String>(
       decoration: InputDecoration(
         labelText: label,
@@ -195,12 +213,10 @@ class _SectionOperationalUseState extends State<SectionOperationalUse> {
           ),
         );
       }).toList(),
-      onChanged: (v) => _update(() => on(v ?? 'N/A')),
+      onChanged: (v) {
+        final value = v ?? 'N/A';
+        _update((curr) => onSavedBuilder(curr, value));
+      },
     );
-  }
-
-  void _update(VoidCallback fn) {
-    setState(fn);
-    widget.onChanged(m);
   }
 }

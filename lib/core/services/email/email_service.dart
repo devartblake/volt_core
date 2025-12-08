@@ -3,7 +3,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:mailer/mailer.dart';
 import 'package:mailer/smtp_server.dart';
 import 'package:url_launcher/url_launcher.dart';
-import '../features/inspections/infra/models/inspection.dart';
+import '../../../modules/inspections/infra/models/inspection.dart';
 
 class EmailService {
   // Configure your destination email address here:

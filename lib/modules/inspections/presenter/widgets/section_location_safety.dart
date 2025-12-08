@@ -1,17 +1,22 @@
 import 'package:flutter/material.dart';
-import '../../infra/models/inspection.dart';
+import '../../domain/entities/inspection_entity.dart';
 
 class SectionLocationSafety extends StatefulWidget {
-  final Inspection model;
-  final ValueChanged<Inspection> onChanged;
-  const SectionLocationSafety({super.key, required this.model, required this.onChanged});
+  final InspectionEntity model;
+  final ValueChanged<InspectionEntity> onChanged;
+
+  const SectionLocationSafety({
+    super.key,
+    required this.model,
+    required this.onChanged,
+  });
 
   @override
   State<SectionLocationSafety> createState() => _SectionLocationSafetyState();
 }
 
 class _SectionLocationSafetyState extends State<SectionLocationSafety> {
-  late Inspection m;
+  late InspectionEntity m;
 
   @override
   void initState() {
@@ -77,28 +82,28 @@ class _SectionLocationSafetyState extends State<SectionLocationSafety> {
                   'Indoors',
                   Icons.home_outlined,
                   m.locIndoors,
-                      (v) => m.locIndoors = v,
+                      (v) => _update((curr) => curr.copyWith(locIndoors: v)),
                   theme,
                 ),
                 _modernChip(
                   'Outdoors',
                   Icons.landscape_outlined,
                   m.locOutdoors,
-                      (v) => m.locOutdoors = v,
+                      (v) => _update((curr) => curr.copyWith(locOutdoors: v)),
                   theme,
                 ),
                 _modernChip(
                   'Roof',
                   Icons.roofing_outlined,
                   m.locRoof,
-                      (v) => m.locRoof = v,
+                      (v) => _update((curr) => curr.copyWith(locRoof: v)),
                   theme,
                 ),
                 _modernChip(
                   'Basement',
                   Icons.stairs_outlined,
                   m.locBasement,
-                      (v) => m.locBasement = v,
+                      (v) => _update((curr) => curr.copyWith(locBasement: v)),
                   theme,
                 ),
               ],
@@ -115,7 +120,8 @@ class _SectionLocationSafetyState extends State<SectionLocationSafety> {
                 hintText: 'Specify if not listed above',
               ),
               initialValue: m.locOther,
-              onChanged: (v) => _update(() => m.locOther = v),
+              onChanged: (v) =>
+                  _update((curr) => curr.copyWith(locOther: v)),
             ),
             const SizedBox(height: 24),
             Divider(color: theme.colorScheme.outlineVariant),
@@ -132,35 +138,39 @@ class _SectionLocationSafetyState extends State<SectionLocationSafety> {
               'Dedicated 2-hour room',
               Icons.meeting_room_outlined,
               m.dedicatedRoom2hr,
-                  (v) => m.dedicatedRoom2hr = v,
+                  (v) =>
+                  _update((curr) => curr.copyWith(dedicatedRoom2hr: v)),
               theme,
             ),
             _modernSwitch(
               'Separate from main service',
               Icons.settings_input_composite_outlined,
               m.separateFromMainService,
-                  (v) => m.separateFromMainService = v,
+                  (v) => _update(
+                      (curr) => curr.copyWith(separateFromMainService: v)),
               theme,
             ),
             _modernSwitch(
               'Area clear of obstructions',
               Icons.check_circle_outline,
               m.areaClear,
-                  (v) => m.areaClear = v,
+                  (v) => _update((curr) => curr.copyWith(areaClear: v)),
               theme,
             ),
             _modernSwitch(
               'Labels & E-Stop visible',
               Icons.visibility_outlined,
               m.labelsAndEStopVisible,
-                  (v) => m.labelsAndEStopVisible = v,
+                  (v) => _update(
+                      (curr) => curr.copyWith(labelsAndEStopVisible: v)),
               theme,
             ),
             _modernSwitch(
               'Fire extinguisher present',
               Icons.fire_extinguisher_outlined,
               m.extinguisherPresent,
-                  (v) => m.extinguisherPresent = v,
+                  (v) =>
+                  _update((curr) => curr.copyWith(extinguisherPresent: v)),
               theme,
             ),
           ],
@@ -186,7 +196,7 @@ class _SectionLocationSafetyState extends State<SectionLocationSafety> {
         ],
       ),
       selected: val,
-      onSelected: (v) => _update(() => on(v)),
+      onSelected: on,
       showCheckmark: true,
       selectedColor: theme.colorScheme.primaryContainer,
       checkmarkColor: theme.colorScheme.onPrimaryContainer,
@@ -238,7 +248,7 @@ class _SectionLocationSafetyState extends State<SectionLocationSafety> {
           ],
         ),
         value: val,
-        onChanged: (v) => _update(() => on(v)),
+        onChanged: on,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
         ),
@@ -246,8 +256,10 @@ class _SectionLocationSafetyState extends State<SectionLocationSafety> {
     );
   }
 
-  void _update(VoidCallback fn) {
-    setState(fn);
+  void _update(InspectionEntity Function(InspectionEntity) transform) {
+    setState(() {
+      m = transform(m);
+    });
     widget.onChanged(m);
   }
 }

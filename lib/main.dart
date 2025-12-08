@@ -3,6 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'app/app.dart';
 import 'core/data/supabase_client.dart';
+import 'core/services/bootstrap.dart';
+import 'core/services/hive/hive_service.dart';
+import 'core/services/supabase/supabase_service.dart';
 import 'core/storage/hive/hive_boxes.dart';
 import 'modules/maintenance/infra/datasources/hive_boxes_maintenance.dart';
 
@@ -12,6 +15,11 @@ void main() async {
 
   // Initialize Hive
   await Hive.initFlutter();
+
+  await initCoreServices();
+  await HiveService.init();
+  await SupabaseService.init();
+  HiveBoxes();
 
   // Hive.registerAdapter(MaintenanceRecordAdapter());
   // Hive.registerAdapter(InspectionAdapter());
@@ -31,8 +39,6 @@ void main() async {
     debugPrint('❌ Error initializing Hive boxes: $e');
     // Handle initialization error - maybe show error screen
   }
-
-  await HiveBoxes.init();
 
   await VoltcoreSupabase.init(
     url: 'https://YOUR_PROJECT_ID.supabase.co',

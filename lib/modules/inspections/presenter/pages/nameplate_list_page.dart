@@ -1,24 +1,32 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-
 import '../../../../shared/widgets/responsive_scaffold.dart';
-import '../../infra/models/inspection.dart';
-import '../../infra/repositories/inspection_repository.dart';
-import '../../providers/user_profile_provider.dart';
-import '../../providers/app_badges_provider.dart';
+import '../../domain/entities/inspection_entity.dart';
+import '../controllers/app_badges_controller.dart';
+import '../controllers/inspection_list_controller.dart';
+import '../controllers/user_profile_controller.dart';
 
-/// Page that lists all inspections with quick access to their nameplate infra
+/// Future provider moved here if you prefer to keep it local.
+/// If you already added it elsewhere, remove this duplicate.
+final nameplateInspectionsProvider =
+FutureProvider<List<InspectionEntity>>((ref) async {
+  final listUsecase = ref.watch(listInspectionsUsecaseProvider);
+  return listUsecase();
+});
+
+/// Page that lists all inspections with quick access to their nameplate data
 class NameplateListPage extends ConsumerWidget {
   const NameplateListPage({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final items = ref.watch(inspectionRepoProvider).listAll();
     final theme = Theme.of(context);
     final badges = ref.watch(appBadgesProvider);
     final userProfile = ref.watch(userProfileProvider);
     final currentTenant = ref.watch(currentTenantProvider);
+
+    final inspectionsAsync = ref.watch(nameplateInspectionsProvider);
 
     return ResponsiveScaffold(
       appBar: AppBar(
@@ -39,7 +47,7 @@ class NameplateListPage extends ConsumerWidget {
                   title: const Text('Nameplate Data'),
                   content: const Text(
                     'View and edit nameplate information and test interval '
-                        'infra for each inspection. Tap any inspection to manage '
+                        'data for each inspection. Tap any inspection to manage '
                         'its nameplate details.',
                   ),
                   actions: [
@@ -54,46 +62,59 @@ class NameplateListPage extends ConsumerWidget {
           ),
         ],
       ),
-      body: items.isEmpty
-          ? Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.badge_outlined,
-              size: 80,
-              color: theme.colorScheme.primary.withOpacity(0.3),
-            ),
-            const SizedBox(height: 24),
-            Text(
-              'No inspections yet',
-              style: theme.textTheme.titleLarge?.copyWith(
-                color: theme.colorScheme.onSurface.withOpacity(0.6),
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Create an inspection to add nameplate infra',
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSurface.withOpacity(0.5),
-              ),
-            ),
-            const SizedBox(height: 24),
-            FilledButton.icon(
-              onPressed: () => context.push('/inspection/new'),
-              icon: const Icon(Icons.add),
-              label: const Text('Create Inspection'),
-            ),
-          ],
+      body: inspectionsAsync.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (error, stack) => Center(
+          child: Text(
+            'Failed to load inspections.\n$error',
+            textAlign: TextAlign.center,
+          ),
         ),
-      )
-          : ListView.builder(
-        padding: const EdgeInsets.all(16),
-        itemCount: items.length,
-        itemBuilder: (_, i) => _NameplateCard(
-          inspection: items[i],
-          theme: theme,
-        ),
+        data: (items) {
+          if (items.isEmpty) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.badge_outlined,
+                    size: 80,
+                    color: theme.colorScheme.primary.withOpacity(0.3),
+                  ),
+                  const SizedBox(height: 24),
+                  Text(
+                    'No inspections yet',
+                    style: theme.textTheme.titleLarge?.copyWith(
+                      color: theme.colorScheme.onSurface.withOpacity(0.6),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Create an inspection to add nameplate data',
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: theme.colorScheme.onSurface.withOpacity(0.5),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  FilledButton.icon(
+                    onPressed: () => context.push('/inspection/new'),
+                    icon: const Icon(Icons.add),
+                    label: const Text('Create Inspection'),
+                  ),
+                ],
+              ),
+            );
+          }
+
+          return ListView.builder(
+            padding: const EdgeInsets.all(16),
+            itemCount: items.length,
+            itemBuilder: (_, i) => _NameplateCard(
+              inspection: items[i],
+              theme: theme,
+            ),
+          );
+        },
       ),
       badges: badges.toRouteMap(),
       userProfile: userProfile,
@@ -108,7 +129,7 @@ class NameplateListPage extends ConsumerWidget {
 }
 
 class _NameplateCard extends StatelessWidget {
-  final Inspection inspection;
+  final InspectionEntity inspection;
   final ThemeData theme;
 
   const _NameplateCard({

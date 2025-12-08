@@ -1,7 +1,6 @@
 import 'dart:io';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:path_provider/path_provider.dart';
-import '../features/inspections/infra/models/inspection.dart';
+import '../../../modules/inspections/infra/models/inspection.dart';
 
 class ExportService {
   Future<void> tryCopyToExternal(Inspection ins) async {

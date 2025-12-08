@@ -1,5 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../infra/repositories/inspection_repository.dart';
+
+import '../../domain/entities/inspection_entity.dart';
+import 'inspection_list_controller.dart';
 
 /// Model for badge infra across the app
 class AppBadges {
@@ -28,30 +30,46 @@ class AppBadges {
   }
 }
 
-/// Provider that calculates badge counts from inspection infra
+/// Provider that calculates badge counts from inspections.
+///
+/// Uses the InspectionListController (which, in turn, uses the
+/// domain repository + usecases).
 final appBadgesProvider = Provider<AppBadges>((ref) {
-  final inspections = ref.watch(inspectionRepoProvider).listAll();
+  final state = ref.watch(inspectionListControllerProvider);
+  final inspections = state.items; // List<InspectionEntity>
 
-  // Calculate various counts
+  // Lazy auto-load if nothing is loaded yet
+  if (!state.isLoading && inspections.isEmpty) {
+    Future.microtask(() {
+      ref
+          .read(inspectionListControllerProvider.notifier)
+          .loadInspections();
+    });
+  }
+
+  final now = DateTime.now();
+
+  int _daysSince(InspectionEntity ins) {
+    final date = ins.serviceDate ?? ins.createdAt ?? now;
+    return now.difference(date).inDays;
+  }
+
   final total = inspections.length;
 
-  // Count pending inspections (you can define your own controllers)
-  // For example, inspections without nameplate infra or recent ones
-  final pending = inspections.where((ins) {
-    // TODO: Define your pending controllers
-    // For now, counting inspections from the last 7 days as "pending review"
-    final daysSince = DateTime.now().difference(ins.serviceDate).inDays;
-    return daysSince <= 7;
-  }).length;
+  // "Pending" definition: last 7 days
+  final pending = inspections
+      .where((ins) => _daysSince(ins) <= 7)
+      .length;
 
-  // Count by grade
-  final redGrade = inspections.where((ins) =>
-  ins.siteGrade.toLowerCase() == 'red'
-  ).length;
+  final redGrade = inspections
+      .where((ins) =>
+  (ins.siteGrade ?? '').toLowerCase() == 'red')
+      .length;
 
-  final amberGrade = inspections.where((ins) =>
-  ins.siteGrade.toLowerCase() == 'amber'
-  ).length;
+  final amberGrade = inspections
+      .where((ins) =>
+  (ins.siteGrade ?? '').toLowerCase() == 'amber')
+      .length;
 
   return AppBadges(
     totalInspections: total,

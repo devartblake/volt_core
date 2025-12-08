@@ -1,10 +1,9 @@
 import 'package:hive/hive.dart';
 import 'package:uuid/uuid.dart';
-
-import '../../../../pdf/pdf_prefs_service.dart';
-import '../../../../core/services/pdf_service.dart';
+import '../../../../core/services/pdf/pdf_prefs_service.dart';
+import '../../../../core/services/pdf/pdf_service.dart';
+import '../datasources/hive_boxes_maintenance.dart';
 import '../models/maintenance_record.dart';
-import '../sources/hive_boxes_maintenance.dart';
 
 class MaintenanceRepo {
   final Box<MaintenanceRecord> _box;

@@ -1,14 +1,21 @@
 import 'dart:io';
 import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:signature/signature.dart';
-import '../../infra/models/inspection.dart';
+
+import '../../domain/entities/inspection_entity.dart';
 
 class SectionSignatures extends StatefulWidget {
-  final Inspection model;
-  final ValueChanged<Inspection> onChanged;
-  const SectionSignatures({super.key, required this.model, required this.onChanged});
+  final InspectionEntity model;
+  final ValueChanged<InspectionEntity> onChanged;
+
+  const SectionSignatures({
+    super.key,
+    required this.model,
+    required this.onChanged,
+  });
 
   @override
   State<SectionSignatures> createState() => _SectionSignaturesState();
@@ -24,7 +31,16 @@ class _SectionSignaturesState extends State<SectionSignatures> {
     penColor: Colors.black,
   );
   final custNameCtl = TextEditingController();
+
   bool _isSaving = false;
+  late InspectionEntity m;
+
+  @override
+  void initState() {
+    super.initState();
+    m = widget.model;
+    custNameCtl.text = m.customerName;
+  }
 
   @override
   void dispose() {
@@ -32,6 +48,13 @@ class _SectionSignaturesState extends State<SectionSignatures> {
     custCtl.dispose();
     custNameCtl.dispose();
     super.dispose();
+  }
+
+  void _update(InspectionEntity Function(InspectionEntity) transform) {
+    setState(() {
+      m = transform(m);
+    });
+    widget.onChanged(m);
   }
 
   Future<String> _savePng(Uint8List bytes, String name) async {
@@ -71,14 +94,38 @@ class _SectionSignaturesState extends State<SectionSignatures> {
       final techBytes = await techCtl.toPngBytes();
       final custBytes = await custCtl.toPngBytes();
 
+      var updated = m;
+
+      // Use a date-only DateTime (midnight) to keep it clean
+      final now = DateTime.now();
+      final today = DateTime(now.year, now.month, now.day);
+
       if (techBytes != null) {
-        widget.model.technicianSignaturePath = await _savePng(techBytes, 'tech-sign');
-      }
-      if (custBytes != null) {
-        widget.model.customerSignaturePath = await _savePng(custBytes, 'cust-sign');
+        final techPath = await _savePng(techBytes, 'tech-sign');
+        updated = updated.copyWith(
+          technicianSignaturePath: techPath,
+          technicianSigDate: today, // <- DateTime, not String
+        );
       }
 
-      widget.onChanged(widget.model);
+      if (custBytes != null) {
+        final custPath = await _savePng(custBytes, 'cust-sign');
+        updated = updated.copyWith(
+          customerSignaturePath: custPath,
+          customerSigDate: today, // <- DateTime, not String
+        );
+      }
+
+      final name = custNameCtl.text.trim();
+      if (name.isNotEmpty) {
+        updated = updated.copyWith(customerName: name);
+      }
+
+      setState(() {
+        m = updated;
+        _isSaving = false;
+      });
+      widget.onChanged(updated);
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -100,6 +147,7 @@ class _SectionSignaturesState extends State<SectionSignatures> {
       }
     } catch (e) {
       if (mounted) {
+        setState(() => _isSaving = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Row(
@@ -116,10 +164,6 @@ class _SectionSignaturesState extends State<SectionSignatures> {
             ),
           ),
         );
-      }
-    } finally {
-      if (mounted) {
-        setState(() => _isSaving = false);
       }
     }
   }
@@ -176,8 +220,9 @@ class _SectionSignaturesState extends State<SectionSignatures> {
                 ),
                 filled: true,
               ),
-              onSaved: (_) {
-                widget.model.customerName = custNameCtl.text.trim();
+              onChanged: (value) {
+                _update((curr) =>
+                    curr.copyWith(customerName: value.trim()));
               },
             ),
             const SizedBox(height: 24),
@@ -229,7 +274,9 @@ class _SectionSignaturesState extends State<SectionSignatures> {
                       ),
                     )
                         : const Icon(Icons.check),
-                    label: Text(_isSaving ? 'Saving...' : 'Save Signatures'),
+                    label: Text(
+                      _isSaving ? 'Saving...' : 'Save Signatures',
+                    ),
                     style: FilledButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       shape: RoundedRectangleBorder(
@@ -272,7 +319,8 @@ class _SectionSignaturesState extends State<SectionSignatures> {
               icon: const Icon(Icons.clear, size: 16),
               label: const Text('Clear'),
               style: TextButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                padding:
+                const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               ),
               onPressed: () => controller.clear(),
             ),
@@ -315,7 +363,8 @@ class _SectionSignaturesState extends State<SectionSignatures> {
                         vertical: 4,
                       ),
                       decoration: BoxDecoration(
-                        color: theme.colorScheme.surfaceContainerHighest,
+                        color: theme
+                            .colorScheme.surfaceContainerHighest,
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Row(
@@ -324,13 +373,16 @@ class _SectionSignaturesState extends State<SectionSignatures> {
                           Icon(
                             Icons.gesture,
                             size: 14,
-                            color: theme.colorScheme.onSurfaceVariant,
+                            color: theme
+                                .colorScheme.onSurfaceVariant,
                           ),
                           const SizedBox(width: 6),
                           Text(
                             'Sign here',
-                            style: theme.textTheme.labelSmall?.copyWith(
-                              color: theme.colorScheme.onSurfaceVariant,
+                            style:
+                            theme.textTheme.labelSmall?.copyWith(
+                              color: theme
+                                  .colorScheme.onSurfaceVariant,
                             ),
                           ),
                         ],

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:voltcore/shared/widgets/responsive_scaffold.dart';
 
-import '../../data/models/maintenance_record.dart';
-import '../../data/datasources/hive_boxes_maintenance.dart';
+import '../../infra/datasources/hive_boxes_maintenance.dart';
+import '../../infra/models/maintenance_record.dart';
 
 class MaintenanceArchivePage extends StatefulWidget {
   /// Optional pre-filtered records – if null we load from the box.

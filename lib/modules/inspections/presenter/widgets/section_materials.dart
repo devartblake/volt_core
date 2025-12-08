@@ -1,17 +1,22 @@
 import 'package:flutter/material.dart';
-import '../../infra/models/inspection.dart';
+import '../../domain/entities/inspection_entity.dart';
 
 class SectionMaterials extends StatefulWidget {
-  final Inspection model;
-  final ValueChanged<Inspection> onChanged;
-  const SectionMaterials({super.key, required this.model, required this.onChanged});
+  final InspectionEntity model;
+  final ValueChanged<InspectionEntity> onChanged;
+
+  const SectionMaterials({
+    super.key,
+    required this.model,
+    required this.onChanged,
+  });
 
   @override
   State<SectionMaterials> createState() => _SectionMaterialsState();
 }
 
 class _SectionMaterialsState extends State<SectionMaterials> {
-  late Inspection m;
+  late InspectionEntity m;
 
   @override
   void initState() {
@@ -19,23 +24,28 @@ class _SectionMaterialsState extends State<SectionMaterials> {
     m = widget.model;
   }
 
-  void _update(VoidCallback fn) {
-    setState(fn);
+  void _update(InspectionEntity Function(InspectionEntity) transform) {
+    setState(() {
+      m = transform(m);
+    });
     widget.onChanged(m);
   }
 
   Future<void> _pickDate(
       BuildContext context,
       String? initial,
-      ValueChanged<String> onSaved,
+      InspectionEntity Function(InspectionEntity, String) onSavedBuilder,
       ) async {
     final now = DateTime.now();
     DateTime? init;
+
     try {
       if (initial != null && initial.isNotEmpty) {
         init = DateTime.tryParse(initial);
       }
-    } catch (_) {}
+    } catch (_) {
+      // ignore parse errors, fall back to now
+    }
 
     final picked = await showDatePicker(
       context: context,
@@ -45,7 +55,8 @@ class _SectionMaterialsState extends State<SectionMaterials> {
     );
 
     if (picked != null) {
-      _update(() => onSaved(picked.toIso8601String().split('T').first));
+      final formatted = picked.toIso8601String().split('T').first;
+      _update((curr) => onSavedBuilder(curr, formatted));
     }
   }
 
@@ -53,7 +64,7 @@ class _SectionMaterialsState extends State<SectionMaterials> {
       String label,
       IconData icon,
       String value,
-      ValueChanged<String> onSaved,
+      InspectionEntity Function(InspectionEntity, String) onSavedBuilder,
       ThemeData theme,
       ) {
     final hasDate = value.isNotEmpty;
@@ -86,14 +97,15 @@ class _SectionMaterialsState extends State<SectionMaterials> {
                 suffixIcon: hasDate
                     ? IconButton(
                   icon: const Icon(Icons.clear, size: 20),
-                  onPressed: () => _update(() => onSaved('')),
+                  onPressed: () =>
+                      _update((curr) => onSavedBuilder(curr, '')),
                   tooltip: 'Clear date',
                 )
                     : null,
               ),
               initialValue: value,
               readOnly: true,
-              onTap: () => _pickDate(context, value, onSaved),
+              onTap: () => _pickDate(context, value, onSavedBuilder),
             ),
           ),
           const SizedBox(width: 8),
@@ -104,7 +116,7 @@ class _SectionMaterialsState extends State<SectionMaterials> {
             ),
             child: IconButton(
               tooltip: 'Pick date',
-              onPressed: () => _pickDate(context, value, onSaved),
+              onPressed: () => _pickDate(context, value, onSavedBuilder),
               icon: Icon(
                 Icons.calendar_today,
                 color: theme.colorScheme.onPrimaryContainer,
@@ -172,7 +184,7 @@ class _SectionMaterialsState extends State<SectionMaterials> {
               'Last Full Service Date',
               Icons.construction,
               m.lastServiceDate,
-                  (v) => m.lastServiceDate = v,
+                  (curr, v) => curr.copyWith(lastServiceDate: v),
               theme,
             ),
             const SizedBox(height: 12),
@@ -188,7 +200,7 @@ class _SectionMaterialsState extends State<SectionMaterials> {
               'Oil Filter Change Date',
               Icons.oil_barrel,
               m.oilFilterChangeDate,
-                  (v) => m.oilFilterChangeDate = v,
+                  (curr, v) => curr.copyWith(oilFilterChangeDate: v),
               theme,
             ),
             const SizedBox(height: 12),
@@ -196,7 +208,7 @@ class _SectionMaterialsState extends State<SectionMaterials> {
               'Fuel Filter Change Date',
               Icons.filter_alt_outlined,
               m.fuelFilterDate,
-                  (v) => m.fuelFilterDate = v,
+                  (curr, v) => curr.copyWith(fuelFilterDate: v),
               theme,
             ),
             const SizedBox(height: 12),
@@ -204,7 +216,7 @@ class _SectionMaterialsState extends State<SectionMaterials> {
               'Air Filter Change Date',
               Icons.air,
               m.airFilterDate,
-                  (v) => m.airFilterDate = v,
+                  (curr, v) => curr.copyWith(airFilterDate: v),
               theme,
             ),
             const SizedBox(height: 16),
@@ -220,7 +232,7 @@ class _SectionMaterialsState extends State<SectionMaterials> {
               'Coolant Flush Date',
               Icons.water_drop_outlined,
               m.coolantFlushDate,
-                  (v) => m.coolantFlushDate = v,
+                  (curr, v) => curr.copyWith(coolantFlushDate: v),
               theme,
             ),
             const SizedBox(height: 12),
@@ -228,7 +240,7 @@ class _SectionMaterialsState extends State<SectionMaterials> {
               'Battery Replacement Date',
               Icons.battery_charging_full,
               m.batteryReplaceDate,
-                  (v) => m.batteryReplaceDate = v,
+                  (curr, v) => curr.copyWith(batteryReplaceDate: v),
               theme,
             ),
           ],

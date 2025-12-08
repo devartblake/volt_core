@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 
 import 'package:voltcore/app/app_shells.dart';
 import 'package:voltcore/app/route_roles.dart';
+import 'package:voltcore/core/constants/route_paths.dart';
 import 'package:voltcore/modules/auth/presenter/pages/login_page.dart';
 import 'package:voltcore/modules/auth/presenter/pages/forbidden_page.dart';
 
@@ -10,7 +11,9 @@ import 'package:voltcore/modules/dashboard/presenter/pages/dashboard_page.dart';
 
 import 'package:voltcore/modules/admin/presenter/pages/admin_dashboard_page.dart';
 import 'package:voltcore/modules/admin/presenter/pages/admin_settings_page.dart';
+import '../modules/admin/presenter/pages/technicians_page.dart';
 import '../modules/auth/presenter/controllers/auth_controller.dart';
+import '../modules/dashboard/presenter/pages/tech_dashboard_page.dart';
 import '../modules/equipment/presenter/pages/equipment_search_page.dart';
 import '../modules/inspections/presenter/pages/inspection_detail_page.dart';
 import '../modules/inspections/presenter/pages/inspection_form_page.dart';
@@ -25,6 +28,7 @@ import '../modules/schedule/presenter/pages/schedule_page.dart';
 import '../modules/settings/presenter/pages/about_page.dart';
 import '../modules/settings/presenter/pages/selection_options_page.dart';
 import '../modules/settings/presenter/pages/settings_page.dart';
+import '../modules/settings/presenter/pages/tenants_settings_page.dart';
 
 /// Exposed router provider used by `app.dart`:
 ///
@@ -36,7 +40,7 @@ final goRouterProvider = Provider<GoRouter>((ref) {
   final auth = ref.watch(authStateProvider);
 
   return GoRouter(
-    initialLocation: '/',
+    initialLocation: RoutePaths.dashboard,
     debugLogDiagnostics: true,
 
     /// Global redirect:
@@ -49,8 +53,8 @@ final goRouterProvider = Provider<GoRouter>((ref) {
       final path = state.uri.path;
       final routeName = state.name;
 
-      const loginPath = '/login';
-      const forbiddenPath = '/403';
+      const loginPath = RoutePaths.login;
+      const forbiddenPath = RoutePaths.forbidden;
 
       final isLogin = path == loginPath;
       final isForbidden = path == forbiddenPath;
@@ -90,47 +94,50 @@ final goRouterProvider = Provider<GoRouter>((ref) {
       // PUBLIC / AUTH PAGES
       // =====================
       GoRoute(
-        path: '/login',
-        name: 'login',
+        path: RoutePaths.login,
+        name: RouteNames.login,
         builder: (_, __) => const LoginPage(),
       ),
       GoRoute(
-        path: '/403',
-        name: 'forbidden',
+        path: RoutePaths.forbidden,
+        name: RouteNames.forbidden,
         builder: (_, __) => const ForbiddenPage(),
       ),
 
-      // =====================
-      // DASHBOARD (role-aware content inside)
-      // =====================
+      // ========== DASHBOARD (role-aware content inside) ==========
       GoRoute(
-        path: '/',
-        name: 'dashboard',
+        path: RoutePaths.dashboard,
+        name: RouteNames.dashboard,
         builder: (_, __) => const DefaultShell(
           child: DashboardPage(),
         ),
       ),
-
-      // =====================
-      // INSPECTIONS
-      // =====================
       GoRoute(
-        path: '/inspections',
-        name: 'inspections',
+        path: '/tech-dashboard',
+        name: 'tech_dashboard',
+        builder: (_, __) => const TechShell(
+          child: TechDashboardPage(),
+        ),
+      ),
+
+      // ========== INSPECTIONS ==========
+      GoRoute(
+        path: RoutePaths.inspections,
+        name: RouteNames.inspections,
         builder: (_, __) => const TechShell(
           child: InspectionListPage(),
         ),
         routes: [
           GoRoute(
             path: 'new',
-            name: 'inspection_new',
+            name: RouteNames.inspectionNew,
             builder: (_, __) => const TechShell(
               child: InspectionFormPage(),
             ),
           ),
           GoRoute(
             path: 'detail/:id',
-            name: 'inspection_detail',
+            name: RouteNames.inspectionDetail,
             builder: (_, state) => TechShell(
               child: InspectionDetailPage(
                 id: state.pathParameters['id']!,
@@ -139,29 +146,27 @@ final goRouterProvider = Provider<GoRouter>((ref) {
           ),
           GoRoute(
             path: 'pending',
-            name: 'inspections_pending',
+            name: RouteNames.inspectionsPending,
             builder: (_, __) => const TechShell(
               child: InspectionListPage(
-                // TODO: add filter in page/controller for pending only
+                // TODO: pending-filter
               ),
             ),
           ),
         ],
       ),
 
-      // =====================
-      // MAINTENANCE
-      // =====================
+      // ========== MAINTENANCE ==========
       GoRoute(
-        path: '/maintenance',
-        name: 'maintenance',
+        path: RoutePaths.maintenance,
+        name: RouteNames.maintenance,
         builder: (_, __) => const TechShell(
           child: MaintenanceListPage(),
         ),
         routes: [
           GoRoute(
             path: 'new',
-            name: 'maintenance_new',
+            name: RouteNames.maintenanceNew,
             builder: (_, state) => TechShell(
               child: MaintenanceFormPage(
                 id: state.uri.queryParameters['id'],
@@ -170,7 +175,7 @@ final goRouterProvider = Provider<GoRouter>((ref) {
           ),
           GoRoute(
             path: 'detail/:id',
-            name: 'maintenance_detail',
+            name: RouteNames.maintenanceDetail,
             builder: (_, state) => TechShell(
               child: MaintenanceDetailPage(
                 id: state.pathParameters['id']!,
@@ -179,7 +184,7 @@ final goRouterProvider = Provider<GoRouter>((ref) {
           ),
           GoRoute(
             path: 'archive',
-            name: 'maintenance_archive',
+            name: RouteNames.maintenanceArchive,
             builder: (_, __) => const TechShell(
               child: MaintenanceArchivePage(),
             ),
@@ -187,30 +192,26 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         ],
       ),
 
-      // =====================
-      // SCHEDULE
-      // =====================
+      // ========== SCHEDULE ==========
       GoRoute(
-        path: '/schedule',
-        name: 'schedule',
+        path: RoutePaths.schedule,
+        name: RouteNames.schedule,
         builder: (_, __) => const TechShell(
           child: SchedulePage(),
         ),
       ),
 
-      // =====================
-      // EQUIPMENT / NAMEPLATE
-      // =====================
+      // ========== EQUIPMENT / NAMEPLATE ==========
       GoRoute(
-        path: '/nameplate-list',
-        name: 'nameplate_list',
+        path: RoutePaths.nameplateList,
+        name: RouteNames.nameplateList,
         builder: (_, __) => const TechShell(
           child: NameplateListPage(),
         ),
       ),
       GoRoute(
-        path: '/nameplate/:inspectionId',
-        name: 'nameplate_intervals',
+        path: RoutePaths.nameplateIntervals,
+        name: RouteNames.nameplateIntervals,
         builder: (_, state) => TechShell(
           child: NameplateIntervalsPage(
             inspectionId: state.pathParameters['inspectionId']!,
@@ -218,53 +219,63 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         ),
       ),
       GoRoute(
-        path: '/equipment/search',
-        name: 'equipment_search',
+        path: RoutePaths.equipmentSearch,
+        name: RouteNames.equipmentSearch,
         builder: (_, __) => const TechShell(
           child: EquipmentSearchPage(),
         ),
       ),
 
-      // =====================
-      // SETTINGS & CONFIG
-      // =====================
+      // ========== SETTINGS & CONFIG ==========
       GoRoute(
-        path: '/selection-management',
-        name: 'selection_management',
+        path: RoutePaths.selectionManagement,
+        name: RouteNames.selectionManagement,
         builder: (_, __) => const DefaultShell(
           child: SelectionOptionsPage(),
         ),
       ),
       GoRoute(
-        path: '/settings',
-        name: 'settings',
+        path: RoutePaths.settings,
+        name: RouteNames.settings,
         builder: (_, __) => const DefaultShell(
           child: SettingsPage(),
         ),
       ),
       GoRoute(
-        path: '/about',
-        name: 'about',
+        path: RoutePaths.about,
+        name: RouteNames.about,
         builder: (_, __) => const DefaultShell(
           child: AboutPage(),
         ),
       ),
-
-      // =====================
-      // ADMIN AREA
-      // =====================
       GoRoute(
-        path: '/admin',
-        name: 'admin_dashboard',
+        path: RoutePaths.tenants,
+        name: RouteNames.tenantsSettings,
+        builder: (_, __) => const DefaultShell(
+          child: TenantsSettingsPage(),
+        ),
+      ),
+
+      // ========== ADMIN ==========
+      GoRoute(
+        path: RoutePaths.adminDashboard,
+        name: RouteNames.adminDashboard,
         builder: (_, __) => const AdminShell(
           child: AdminDashboardPage(),
         ),
       ),
       GoRoute(
-        path: '/admin/settings',
-        name: 'admin_settings',
+        path: RoutePaths.adminSettings,
+        name: RouteNames.adminSettings,
         builder: (_, __) => const AdminShell(
           child: AdminSettingsPage(),
+        ),
+      ),
+      GoRoute(
+        path: RoutePaths.adminTechnicians,
+        name: RouteNames.adminTechnicians,
+        builder: (_, __) => const AdminShell(
+          child: TechniciansPage(),
         ),
       ),
     ],

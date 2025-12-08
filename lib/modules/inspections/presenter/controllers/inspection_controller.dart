@@ -1,30 +1,49 @@
 import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
-import '../infra/models/inspection.dart';
-import '../infra/models/load_test_record.dart';
-import '../infra/repositories/inspection_repository.dart';
-import '../infra/datasources/hive_boxes.dart';
+import '../../../../core/services/hive/hive_boxes.dart';
+import '../../infra/models/inspection.dart';
+import '../../../load_test/infra/models/load_test_record.dart';
+import '../../external/drivers/inspection_export_driver.dart';
 
 /// Public provider to interact with inspections + load-test rows
-final inspectionControllerProvider = Provider<InspectionController>((ref) {
-  final repo = ref.read(inspectionRepoProvider);
-  return InspectionController(ref: ref, repo: repo);
+final inspectionControllerProvider =
+Provider<InspectionController>((ref) {
+  final exportDriver =
+  ref.read(inspectionExportDriverProvider);
+  return InspectionController(
+    ref: ref,
+    exportDriver: exportDriver,
+  );
 });
 
 class InspectionController {
-  InspectionController({required this.ref, required this.repo});
-  final Ref ref;
-  final dynamic repo; // InspectionRepo
+  InspectionController({
+    required this.ref,
+    required this.exportDriver,
+  });
 
-  /// Returns all inspections (sorted desc by createdAt)
-  List<Inspection> listInspections() => ref.read(inspectionRepoProvider).listAll();
+  final Ref ref;
+  final InspectionExportDriver exportDriver;
+
+  /// Returns all inspections (sorted desc by createdAt) from Hive.
+  List<Inspection> listInspections() {
+    final values =
+    HiveBoxes.inspections.values.toList();
+    values.sort(
+          (a, b) => b.createdAt.compareTo(a.createdAt),
+    );
+    return values;
+  }
 
   /// Returns load-test rows for the given inspection, sorted by stepIndex
   List<LoadTestRecord> listLoadTests(String inspectionId) {
-    final all = HiveBoxes.loadTests.values.where((r) => r.inspectionId == inspectionId).toList();
+    final all = HiveBoxes.loadTests.values
+        .where((r) => r.inspectionId == inspectionId)
+        .toList();
     all.sort((a, b) => a.stepIndex.compareTo(b.stepIndex));
     return all;
   }
@@ -35,12 +54,19 @@ class InspectionController {
   }
 
   /// Save & export: persists, generates PDF, exports optional, emails
-  Future<void> saveAndExport(BuildContext context, Inspection model) async {
-    await ref.read(inspectionRepoProvider).saveAndExport(model, context);
+  Future<void> saveAndExport(
+      BuildContext context,
+      Inspection model,
+      ) async {
+    await exportDriver.saveAndExport(model, context);
   }
 
   /// Add a blank load-test row at the end
-  Future<LoadTestRecord> addLoadTestRow(String inspectionId, {int? loadPercent, int? minutes}) async {
+  Future<LoadTestRecord> addLoadTestRow(
+      String inspectionId, {
+        int? loadPercent,
+        int? minutes,
+      }) async {
     final id = const Uuid().v4();
     final nextIndex = listLoadTests(inspectionId).length;
     final rec = LoadTestRecord(
@@ -55,12 +81,16 @@ class InspectionController {
   }
 
   /// Update a load-test row
-  Future<void> updateLoadTestRow(LoadTestRecord rec) async {
+  Future<void> updateLoadTestRow(
+      LoadTestRecord rec) async {
     await rec.save();
   }
 
   /// Delete a single load-test row; optionally re-index the remaining items
-  Future<void> deleteLoadTestRow(String id, {bool reindex = true}) async {
+  Future<void> deleteLoadTestRow(
+      String id, {
+        bool reindex = true,
+      }) async {
     final rec = HiveBoxes.loadTests.get(id);
     if (rec == null) return;
     final inspId = rec.inspectionId;
@@ -78,7 +108,10 @@ class InspectionController {
   }
 
   /// Duplicate an inspection (without copying load-test rows by default)
-  Future<Inspection> duplicateInspection(Inspection src, {bool copyLoadRows = false}) async {
+  Future<Inspection> duplicateInspection(
+      Inspection src, {
+        bool copyLoadRows = false,
+      }) async {
     final dup = Inspection(
       id: const Uuid().v4(),
       createdAt: DateTime.now(),
@@ -100,9 +133,11 @@ class InspectionController {
       locBasement: src.locBasement,
       locOther: src.locOther,
       dedicatedRoom2hr: src.dedicatedRoom2hr,
-      separateFromMainService: src.separateFromMainService,
+      separateFromMainService:
+      src.separateFromMainService,
       areaClear: src.areaClear,
-      labelsAndEStopVisible: src.labelsAndEStopVisible,
+      labelsAndEStopVisible:
+      src.labelsAndEStopVisible,
       extinguisherPresent: src.extinguisherPresent,
       fuelStoredType: src.fuelStoredType,
       fuelQtyGallons: src.fuelQtyGallons,
@@ -111,12 +146,14 @@ class InspectionController {
       gasCutoffValve: src.gasCutoffValve,
       depSizeKw: src.depSizeKw,
       depRegisteredCats: src.depRegisteredCats,
-      depCertificateOperate: src.depCertificateOperate,
+      depCertificateOperate:
+      src.depCertificateOperate,
       tier4Compliant: src.tier4Compliant,
       smokeOrStackTest: src.smokeOrStackTest,
       recordsKept5Years: src.recordsKept5Years,
       emergencyOnly: src.emergencyOnly,
-      estimatedAnnualRuntimeHours: src.estimatedAnnualRuntimeHours,
+      estimatedAnnualRuntimeHours:
+      src.estimatedAnnualRuntimeHours,
       fuelFor6hrs: src.fuelFor6hrs,
       notes: src.notes,
       gensetRunsUnderLoad: src.gensetRunsUnderLoad,
@@ -125,7 +162,8 @@ class InspectionController {
       groundingBondingOk: src.groundingBondingOk,
       controlPanelOk: src.controlPanelOk,
       safetyDevicesOk: src.safetyDevicesOk,
-      deficienciesDocumented: src.deficienciesDocumented,
+      deficienciesDocumented:
+      src.deficienciesDocumented,
       loadbankDone: src.loadbankDone,
       atsVerified: src.atsVerified,
       fuelStoredOver1Yr: src.fuelStoredOver1Yr,
@@ -135,9 +173,11 @@ class InspectionController {
       coolantFlushDate: src.coolantFlushDate,
       batteryReplaceDate: src.batteryReplaceDate,
       airFilterDate: src.airFilterDate,
-      technicianSignaturePath: src.technicianSignaturePath,
+      technicianSignaturePath:
+      src.technicianSignaturePath,
       technicianSigDate: DateTime.now(),
-      customerSignaturePath: src.customerSignaturePath,
+      customerSignaturePath:
+      src.customerSignaturePath,
       customerSigDate: DateTime.now(),
       customerName: src.customerName,
       pdfPath: '',

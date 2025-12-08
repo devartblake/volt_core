@@ -3,8 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../app/app_drawer.dart';
-import '../../data/models/maintenance_record.dart';
-import '../../providers/maintenance_providers.dart';
+import '../../infra/models/maintenance_record.dart';
+import '../controllers/maintenance_providers.dart';
 
 class MaintenanceDetailPage extends ConsumerWidget {
   final String id;

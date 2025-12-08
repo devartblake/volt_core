@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
+import '../../../inspections/presenter/controllers/inspection_controller.dart';
 import '../../infra/models/load_test_record.dart';
-import '../../../inspections/logic/inspection_controller.dart';
 
 class SectionLoadTest extends ConsumerStatefulWidget {
   final String inspectionId;

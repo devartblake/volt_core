@@ -29,11 +29,12 @@ class AdminSettingsPage extends StatelessWidget {
           const SizedBox(height: 24),
           SwitchListTile(
             title: const Text('Enable advanced logging'),
-            subtitle:
-            const Text('Collect more detailed logs for troubleshooting.'),
+            subtitle: const Text(
+              'Collect more detailed logs for troubleshooting.',
+            ),
             value: true,
             onChanged: (v) {
-              // TODO: wire to settings service
+              // TODO: wire to settings service / usecases
             },
           ),
           const Divider(),
@@ -47,8 +48,9 @@ class AdminSettingsPage extends StatelessWidget {
           ),
           ListTile(
             title: const Text('RBAC roles & permissions'),
-            subtitle:
-            const Text('Fine-tune technician, supervisor, and admin roles.'),
+            subtitle: const Text(
+              'Fine-tune technician, supervisor, and admin roles.',
+            ),
             trailing: const Icon(Icons.chevron_right),
             onTap: () {
               // TODO: navigate to RBAC management

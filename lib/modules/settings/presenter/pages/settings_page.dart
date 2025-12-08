@@ -3,8 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../shared/widgets/responsive_scaffold.dart';
-import '../../../inspections/providers/user_profile_provider.dart';
-import '../../../inspections/providers/app_badges_provider.dart';
+import '../../../inspections/presenter/controllers/app_badges_controller.dart';
+import '../../../inspections/presenter/controllers/user_profile_controller.dart';
 
 /// Settings page for app configuration
 class SettingsPage extends ConsumerStatefulWidget {

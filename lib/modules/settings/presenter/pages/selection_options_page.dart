@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../shared/widgets/responsive_scaffold.dart';
-import '../../selection_options_provider.dart';
+import '../controllers/selection_options_provider.dart';
 
 class SelectionOptionsPage extends ConsumerWidget {
   const SelectionOptionsPage({super.key});

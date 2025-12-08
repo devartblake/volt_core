@@ -3,9 +3,8 @@ import 'dart:io' show File, Directory, Platform;
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:path_provider/path_provider.dart';
 import 'package:uuid/uuid.dart';
-import '../features/inspections/infra/models/inspection.dart';
-import '../features/inspections/infra/models/load_test_record.dart';
-import '../features/inspections/infra/datasources/hive_boxes.dart';
+import '../../../modules/inspections/infra/models/inspection.dart';
+import '../../storage/hive/hive_boxes.dart';
 
 /// Offline-first backup/export helpers.
 /// - Export a single inspection (JSON) to app docs or a chosen dir

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../shared/widgets/responsive_scaffold.dart';
-import '../../../inspections/providers/user_profile_provider.dart';
-import '../../../inspections/providers/app_badges_provider.dart';
+import '../../../inspections/presenter/controllers/user_profile_controller.dart';
+import '../../../inspections/presenter/controllers/app_badges_controller.dart';
 
 /// About page showing app information and credits
 class AboutPage extends ConsumerWidget {

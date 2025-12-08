@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-
 import 'package:voltcore/shared/widgets/responsive_scaffold.dart';
-import 'package:voltcore/modules/auth/state/auth_state.dart';
-
-import '../../../auth/domain/user_role.dart'; // <-- adjust path if needed
+import '../../../auth/domain/user_role.dart';
+import '../../../auth/presenter/controllers/auth_controller.dart';
 
 /// Role-aware dashboard:
 /// - Techs see quick access to inspections & maintenance.
@@ -174,6 +172,18 @@ class _DashTile {
 List<_DashTile> _buildAllTiles(UserRole? role) {
   const all = <_DashTile>[
     // --- Core tech workflows ---
+    _DashTile(
+      title: 'My Workload',
+      subtitle: 'Personal inspections & maintenance stats',
+      icon: Icons.dashboard_customize_outlined,
+      routeName: 'tech_dashboard',
+      visibleFor: {
+        UserRole.tech,
+        UserRole.supervisor,
+        UserRole.dispatcher,
+        UserRole.admin,
+      },
+    ),
     _DashTile(
       title: 'New Inspection',
       subtitle: 'Start a generator compliance inspection',

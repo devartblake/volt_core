@@ -1,5 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'selection_options_service.dart';
+import '../../selection_options_service.dart';
 
 final selectionOptionsProvider = Provider<SelectionOptionsService>((ref) {
   final svc = SelectionOptionsService();

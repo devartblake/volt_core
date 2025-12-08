@@ -1,30 +1,54 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../infra/models/inspection.dart' as model;
-import '../../infra/repositories/inspection_repository.dart';
+import '../../domain/entities/inspection_entity.dart';
+import '../controllers/inspection_list_controller.dart';
 import '../../../../shared/widgets/responsive_scaffold.dart';
-import '../../providers/user_profile_provider.dart';
-import '../../providers/app_badges_provider.dart';
+import '../controllers/app_badges_controller.dart';
+import '../controllers/user_profile_controller.dart';
 
-class InspectionListPage extends ConsumerWidget {
+class InspectionListPage extends ConsumerStatefulWidget {
   final String? filterStatus;
   const InspectionListPage({super.key, this.filterStatus});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final allItems = ref.read(inspectionRepoProvider).listAll();
-    final theme = Theme.of(context);
+  ConsumerState<InspectionListPage> createState() =>
+      _InspectionListPageState();
+}
 
-    // apply filter if provided
-    final items = filterStatus != null
-        ? allItems.where((i) => i.siteGrade.toLowerCase() == filterStatus!.toLowerCase()).toList()
-        : allItems;
+class _InspectionListPageState
+    extends ConsumerState<InspectionListPage> {
+  @override
+  void initState() {
+    super.initState();
+    // Load inspections once when the page mounts
+    Future.microtask(() {
+      ref
+          .read(inspectionListControllerProvider.notifier)
+          .loadInspections();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final state = ref.watch(inspectionListControllerProvider);
+    final theme = Theme.of(context);
 
     // Watch providers for reactive updates
     final badges = ref.watch(appBadgesProvider);
     final userProfile = ref.watch(userProfileProvider);
     final currentTenant = ref.watch(currentTenantProvider);
+
+    // Apply filter if provided
+    final allItems = state.items;
+    final items = widget.filterStatus != null
+        ? allItems
+        .where((i) =>
+    (i.siteGrade ?? '')
+        .toLowerCase() ==
+        widget.filterStatus!.toLowerCase())
+        .toList()
+        : allItems;
 
     return ResponsiveScaffold(
       appBar: AppBar(
@@ -33,9 +57,10 @@ class InspectionListPage extends ConsumerWidget {
           IconButton(
             icon: const Icon(Icons.edit_outlined),
             onPressed: () {
-              // TODO: Implement edit mode (multi-select, delete, etc.)
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Edit mode - Coming soon')),
+                const SnackBar(
+                    content:
+                    Text('Edit mode - Coming soon')),
               );
             },
           ),
@@ -43,48 +68,69 @@ class InspectionListPage extends ConsumerWidget {
       ),
       body: Column(
         children: [
-          // Modern stats cards showing badge information
-          if (items.isNotEmpty) _buildStatsSection(context, theme, badges),
+          if (items.isNotEmpty)
+            _buildStatsSection(context, theme, badges),
 
-          // Main content
-          Expanded(
-            child: items.isEmpty
-                ? Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.description_outlined,
-                    size: 80,
-                    color: theme.colorScheme.primary.withOpacity(0.3),
-                  ),
-                  const SizedBox(height: 24),
-                  Text(
-                    'No inspections yet',
-                    style: theme.textTheme.titleLarge?.copyWith(
-                      color: theme.colorScheme.onSurface.withOpacity(0.6),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Tap the + button to create your first inspection',
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: theme.colorScheme.onSurface.withOpacity(0.5),
-                    ),
-                  ),
-                ],
+          if (state.isLoading && items.isEmpty)
+            const Expanded(
+              child: Center(
+                child: CircularProgressIndicator(),
               ),
             )
-                : ListView.builder(
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              itemCount: items.length,
-              itemBuilder: (_, i) => _modernTile(context, theme, items[i]),
+          else if (items.isEmpty)
+            Expanded(
+              child: Center(
+                child: Column(
+                  mainAxisAlignment:
+                  MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.description_outlined,
+                      size: 80,
+                      color: theme.colorScheme.primary
+                          .withOpacity(0.3),
+                    ),
+                    const SizedBox(height: 24),
+                    Text(
+                      'No inspections yet',
+                      style: theme
+                          .textTheme.titleLarge
+                          ?.copyWith(
+                        color: theme
+                            .colorScheme.onSurface
+                            .withOpacity(0.6),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Tap the + button to create your first inspection',
+                      style: theme
+                          .textTheme.bodyMedium
+                          ?.copyWith(
+                        color: theme
+                            .colorScheme.onSurface
+                            .withOpacity(0.5),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            )
+          else
+            Expanded(
+              child: ListView.builder(
+                padding: const EdgeInsets.symmetric(
+                    vertical: 8),
+                itemCount: items.length,
+                itemBuilder: (_, i) =>
+                    _modernTile(context, theme, items[i]),
+              ),
             ),
-          ),
         ],
       ),
       fab: FloatingActionButton.extended(
-        onPressed: () => context.push('/new'),
+        onPressed: () =>
+            context.goNamed('inspection_new'),
         icon: const Icon(Icons.add),
         label: const Text('New Inspection'),
       ),
@@ -99,11 +145,16 @@ class InspectionListPage extends ConsumerWidget {
     );
   }
 
-  Widget _buildStatsSection(BuildContext context, ThemeData theme, AppBadges badges) {
+  Widget _buildStatsSection(
+      BuildContext context,
+      ThemeData theme,
+      AppBadges badges,
+      ) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.3),
+        color: theme.colorScheme.surfaceContainerHighest
+            .withOpacity(0.3),
         border: Border(
           bottom: BorderSide(
             color: theme.colorScheme.outlineVariant,
@@ -157,11 +208,26 @@ class InspectionListPage extends ConsumerWidget {
     );
   }
 
-  Widget _modernTile(BuildContext ctx, ThemeData theme, model.Inspection ins) {
-    final dateStr = ins.serviceDate.toIso8601String().split("T").first;
+  Widget _modernTile(
+      BuildContext ctx,
+      ThemeData theme,
+      InspectionEntity ins,
+      ) {
+    final dateStr = (ins.serviceDate ?? ins.createdAt)
+        ?.toIso8601String()
+        .split('T')
+        .first ??
+        '';
+
+    final grade = ins.siteGrade ?? '';
+    final address = (ins.address ?? '').isEmpty
+        ? '(No address)'
+        : ins.address!;
+    final siteCode = ins.siteCode ?? '';
 
     return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      margin: const EdgeInsets.symmetric(
+          horizontal: 16, vertical: 6),
       elevation: 0,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
@@ -171,7 +237,10 @@ class InspectionListPage extends ConsumerWidget {
         ),
       ),
       child: InkWell(
-        onTap: () => GoRouter.of(ctx).push('/detail/${ins.id}'),
+        onTap: () => GoRouter.of(ctx).goNamed(
+          'inspection_detail',
+          pathParameters: {'id': ins.id},
+        ),
         borderRadius: BorderRadius.circular(12),
         child: Padding(
           padding: const EdgeInsets.all(16),
@@ -181,22 +250,26 @@ class InspectionListPage extends ConsumerWidget {
                 width: 48,
                 height: 48,
                 decoration: BoxDecoration(
-                  color: _getGradeColor(ins.siteGrade, theme).withOpacity(0.1),
+                  color: _getGradeColor(grade, theme)
+                      .withOpacity(0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(
                   Icons.settings_input_antenna,
-                  color: _getGradeColor(ins.siteGrade, theme),
+                  color: _getGradeColor(grade, theme),
                 ),
               ),
               const SizedBox(width: 16),
               Expanded(
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                  crossAxisAlignment:
+                  CrossAxisAlignment.start,
                   children: [
                     Text(
-                      ins.address.isEmpty ? '(No address)' : ins.address,
-                      style: theme.textTheme.titleMedium?.copyWith(
+                      address,
+                      style: theme
+                          .textTheme.titleMedium
+                          ?.copyWith(
                         fontWeight: FontWeight.w600,
                       ),
                       maxLines: 1,
@@ -212,28 +285,38 @@ class InspectionListPage extends ConsumerWidget {
                           label: dateStr,
                           theme: theme,
                         ),
-                        if (ins.siteCode.isNotEmpty)
+                        if (siteCode.isNotEmpty)
                           _InfoChip(
-                            icon: Icons.location_on_outlined,
-                            label: ins.siteCode,
+                            icon: Icons
+                                .location_on_outlined,
+                            label: siteCode,
                             theme: theme,
                           ),
-                        if (ins.siteGrade.isNotEmpty)
+                        if (grade.isNotEmpty)
                           Container(
-                            padding: const EdgeInsets.symmetric(
+                            padding:
+                            const EdgeInsets
+                                .symmetric(
                               horizontal: 8,
                               vertical: 4,
                             ),
                             decoration: BoxDecoration(
-                              color: _getGradeColor(ins.siteGrade, theme)
+                              color: _getGradeColor(
+                                  grade, theme)
                                   .withOpacity(0.15),
-                              borderRadius: BorderRadius.circular(8),
+                              borderRadius:
+                              BorderRadius
+                                  .circular(8),
                             ),
                             child: Text(
-                              ins.siteGrade,
-                              style: theme.textTheme.labelSmall?.copyWith(
-                                color: _getGradeColor(ins.siteGrade, theme),
-                                fontWeight: FontWeight.w600,
+                              grade,
+                              style: theme.textTheme
+                                  .labelSmall
+                                  ?.copyWith(
+                                color: _getGradeColor(
+                                    grade, theme),
+                                fontWeight:
+                                FontWeight.w600,
                               ),
                             ),
                           ),
@@ -244,7 +327,8 @@ class InspectionListPage extends ConsumerWidget {
               ),
               Icon(
                 Icons.chevron_right,
-                color: theme.colorScheme.onSurfaceVariant,
+                color: theme
+                    .colorScheme.onSurfaceVariant,
               ),
             ],
           ),
@@ -292,7 +376,8 @@ class _InfoChip extends StatelessWidget {
         Text(
           label,
           style: theme.textTheme.bodySmall?.copyWith(
-            color: theme.colorScheme.onSurfaceVariant,
+            color:
+            theme.colorScheme.onSurfaceVariant,
           ),
         ),
       ],
@@ -319,7 +404,8 @@ class _StatCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+      padding: const EdgeInsets.symmetric(
+          horizontal: 12, vertical: 16),
       decoration: BoxDecoration(
         color: theme.colorScheme.surface,
         borderRadius: BorderRadius.circular(12),
@@ -362,7 +448,8 @@ class _StatCard extends StatelessWidget {
           Text(
             label,
             style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
+              color: theme
+                  .colorScheme.onSurfaceVariant,
             ),
           ),
         ],

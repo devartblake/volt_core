@@ -1,7 +1,7 @@
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:signature/signature.dart';
-import '../../data/models/maintenance_record.dart';
+import '../../infra/models/maintenance_record.dart';
 
 class SectionMaintSignatures extends StatefulWidget {
   final MaintenanceRecord model;

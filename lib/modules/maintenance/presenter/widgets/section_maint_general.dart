@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../data/models/maintenance_record.dart';
+import '../../infra/models/maintenance_record.dart';
 
 class SectionMaintGeneral extends StatelessWidget {
   final MaintenanceRecord model;

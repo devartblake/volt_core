@@ -3,13 +3,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 import 'package:go_router/go_router.dart';
 import 'package:table_calendar/table_calendar.dart';
-
 import '../../../../shared/widgets/responsive_scaffold.dart';
-import '../../../inspections/infra/models/inspection.dart';
-import '../../../inspections/infra/repositories/inspection_repository.dart';
-import '../../../inspections/providers/user_profile_provider.dart';
-import '../../../inspections/providers/app_badges_provider.dart';
-import '../../../inspections/providers/app_badges_provider.dart';
+import '../../../inspections/presenter/controllers/app_badges_controller.dart';
+import '../../../inspections/presenter/controllers/user_profile_controller.dart';
+import '../../domain/entities/task_schedule_entity.dart';
+import '../controllers/schedule_controller.dart';
+import '../widgets/schedule_calendar.dart';
 
 /// Schedule view mode enum
 enum ScheduleView { list, calendar }
@@ -18,13 +17,16 @@ enum ScheduleView { list, calendar }
 enum TimeRange { week, month, year, all }
 
 /// Provider for current schedule view
-final scheduleViewProvider = StateProvider<ScheduleView>((ref) => ScheduleView.calendar);
+final scheduleViewProvider =
+StateProvider<ScheduleView>((ref) => ScheduleView.calendar);
 
 /// Provider for current time range filter
-final timeRangeProvider = StateProvider<TimeRange>((ref) => TimeRange.month);
+final timeRangeProvider =
+StateProvider<TimeRange>((ref) => TimeRange.month);
 
 /// Provider for selected date in calendar
-final selectedDateProvider = StateProvider<DateTime>((ref) => DateTime.now());
+final selectedDateProvider =
+StateProvider<DateTime>((ref) => DateTime.now());
 
 /// Inspection Schedule Page with calendar and list views
 class SchedulePage extends ConsumerStatefulWidget {
@@ -54,175 +56,167 @@ class _SchedulePageState extends ConsumerState<SchedulePage> {
     final scheduleView = ref.watch(scheduleViewProvider);
     final timeRange = ref.watch(timeRangeProvider);
 
-    final allInspections = ref.watch(inspectionRepoProvider).listAll();
-    final filteredInspections = _filterInspections(allInspections, timeRange, _selectedDay);
+    final scheduleState = ref.watch(scheduleControllerProvider);
 
-    return ResponsiveScaffold(
-      appBar: AppBar(
-        title: const Text('Schedule'),
-        actions: [
-          // View mode toggle
-          IconButton(
-            icon: Icon(
-              scheduleView == ScheduleView.calendar
-                  ? Icons.list
-                  : Icons.calendar_month,
-            ),
-            tooltip: scheduleView == ScheduleView.calendar
-                ? 'List View'
-                : 'Calendar View',
-            onPressed: () {
-              ref.read(scheduleViewProvider.notifier).state =
-              scheduleView == ScheduleView.calendar
-                  ? ScheduleView.list
-                  : ScheduleView.calendar;
-            },
-          ),
-          // Filter menu
-          PopupMenuButton<TimeRange>(
-            icon: const Icon(Icons.filter_list),
-            tooltip: 'Filter by time',
-            onSelected: (range) {
-              ref.read(timeRangeProvider.notifier).state = range;
-            },
-            itemBuilder: (context) => [
-              PopupMenuItem(
-                value: TimeRange.week,
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.view_week,
-                      color: timeRange == TimeRange.week
-                          ? theme.colorScheme.primary
-                          : null,
-                    ),
-                    const SizedBox(width: 12),
-                    Text(
-                      'This Week',
-                      style: TextStyle(
-                        color: timeRange == TimeRange.week
-                            ? theme.colorScheme.primary
-                            : null,
-                        fontWeight: timeRange == TimeRange.week
-                            ? FontWeight.w600
-                            : null,
-                      ),
-                    ),
-                  ],
+    return scheduleState.when(
+      loading: () => Scaffold(
+        appBar: AppBar(title: const Text('Schedule')),
+        body: const Center(child: CircularProgressIndicator()),
+      ),
+      error: (err, st) => Scaffold(
+        appBar: AppBar(title: const Text('Schedule')),
+        body: Center(
+          child: Text('Error loading schedule: $err'),
+        ),
+      ),
+      data: (allItems) {
+        final filteredItems =
+        _filterItems(allItems, timeRange, _selectedDay);
+
+        return ResponsiveScaffold(
+          appBar: AppBar(
+            title: const Text('Schedule'),
+            actions: [
+              // View mode toggle
+              IconButton(
+                icon: Icon(
+                  scheduleView == ScheduleView.calendar
+                      ? Icons.list
+                      : Icons.calendar_month,
                 ),
+                tooltip: scheduleView == ScheduleView.calendar
+                    ? 'List View'
+                    : 'Calendar View',
+                onPressed: () {
+                  ref.read(scheduleViewProvider.notifier).state =
+                  scheduleView == ScheduleView.calendar
+                      ? ScheduleView.list
+                      : ScheduleView.calendar;
+                },
               ),
-              PopupMenuItem(
-                value: TimeRange.month,
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.calendar_today,
-                      color: timeRange == TimeRange.month
-                          ? theme.colorScheme.primary
-                          : null,
-                    ),
-                    const SizedBox(width: 12),
-                    Text(
-                      'This Month',
-                      style: TextStyle(
-                        color: timeRange == TimeRange.month
-                            ? theme.colorScheme.primary
-                            : null,
-                        fontWeight: timeRange == TimeRange.month
-                            ? FontWeight.w600
-                            : null,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              PopupMenuItem(
-                value: TimeRange.year,
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.date_range,
-                      color: timeRange == TimeRange.year
-                          ? theme.colorScheme.primary
-                          : null,
-                    ),
-                    const SizedBox(width: 12),
-                    Text(
-                      'This Year',
-                      style: TextStyle(
-                        color: timeRange == TimeRange.year
-                            ? theme.colorScheme.primary
-                            : null,
-                        fontWeight: timeRange == TimeRange.year
-                            ? FontWeight.w600
-                            : null,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              PopupMenuItem(
-                value: TimeRange.all,
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.all_inclusive,
-                      color: timeRange == TimeRange.all
-                          ? theme.colorScheme.primary
-                          : null,
-                    ),
-                    const SizedBox(width: 12),
-                    Text(
-                      'All Time',
-                      style: TextStyle(
-                        color: timeRange == TimeRange.all
-                            ? theme.colorScheme.primary
-                            : null,
-                        fontWeight: timeRange == TimeRange.all
-                            ? FontWeight.w600
-                            : null,
-                      ),
-                    ),
-                  ],
+              // Filter menu
+              PopupMenuButton<TimeRange>(
+                icon: const Icon(Icons.filter_list),
+                tooltip: 'Filter by time',
+                onSelected: (range) {
+                  ref.read(timeRangeProvider.notifier).state = range;
+                },
+                itemBuilder: (context) => _buildTimeRangeMenu(
+                  context,
+                  theme,
+                  timeRange,
                 ),
               ),
             ],
           ),
-        ],
-      ),
-      body: Column(
-        children: [
-          // Stats summary bar
-          _buildStatsBar(theme, allInspections, filteredInspections, timeRange),
+          body: Column(
+            children: [
+              // Stats summary bar
+              _buildStatsBar(
+                theme,
+                allItems,
+                filteredItems,
+                timeRange,
+              ),
 
-          // Main content based on view mode
-          Expanded(
-            child: scheduleView == ScheduleView.calendar
-                ? _buildCalendarView(theme, allInspections)
-                : _buildListView(theme, filteredInspections),
+              // Main content based on view mode
+              Expanded(
+                child: scheduleView == ScheduleView.calendar
+                    ? _buildCalendarView(theme, allItems)
+                    : _buildListView(theme, filteredItems),
+              ),
+            ],
           ),
-        ],
-      ),
-      fab: FloatingActionButton.extended(
-        onPressed: () => context.push('/inspection/new'),
-        icon: const Icon(Icons.add),
-        label: const Text('Schedule Inspection'),
-      ),
-      badges: badges.toRouteMap(),
-      userProfile: userProfile,
-      onSwitchTenant: (tenant) {
-        ref.read(currentTenantProvider.notifier).switchTenant(tenant);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Switched to $tenant')),
+          fab: FloatingActionButton.extended(
+            onPressed: () => context.push('/inspection/new'),
+            icon: const Icon(Icons.add),
+            label: const Text('Schedule Inspection'),
+          ),
+          badges: badges.toRouteMap(),
+          userProfile: userProfile,
+          onSwitchTenant: (tenant) {
+            ref.read(currentTenantProvider.notifier).switchTenant(tenant);
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Switched to $tenant')),
+            );
+          },
         );
       },
     );
   }
 
+  List<PopupMenuEntry<TimeRange>> _buildTimeRangeMenu(
+      BuildContext context,
+      ThemeData theme,
+      TimeRange timeRange,
+      ) {
+    return [
+      _timeRangeItem(
+        theme: theme,
+        value: TimeRange.week,
+        current: timeRange,
+        icon: Icons.view_week,
+        label: 'This Week',
+      ),
+      _timeRangeItem(
+        theme: theme,
+        value: TimeRange.month,
+        current: timeRange,
+        icon: Icons.calendar_today,
+        label: 'This Month',
+      ),
+      _timeRangeItem(
+        theme: theme,
+        value: TimeRange.year,
+        current: timeRange,
+        icon: Icons.date_range,
+        label: 'This Year',
+      ),
+      _timeRangeItem(
+        theme: theme,
+        value: TimeRange.all,
+        current: timeRange,
+        icon: Icons.all_inclusive,
+        label: 'All Time',
+      ),
+    ];
+  }
+
+  PopupMenuItem<TimeRange> _timeRangeItem({
+    required ThemeData theme,
+    required TimeRange value,
+    required TimeRange current,
+    required IconData icon,
+    required String label,
+  }) {
+    final isActive = current == value;
+    return PopupMenuItem(
+      value: value,
+      child: Row(
+        children: [
+          Icon(
+            icon,
+            color: isActive ? theme.colorScheme.primary : null,
+          ),
+          const SizedBox(width: 12),
+          Text(
+            label,
+            style: TextStyle(
+              color: isActive ? theme.colorScheme.primary : null,
+              fontWeight: isActive ? FontWeight.w600 : null,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ---- UI builders ----
+
   Widget _buildStatsBar(
       ThemeData theme,
-      List<Inspection> allInspections,
-      List<Inspection> filteredInspections,
+      List<TaskScheduleEntity> allItems,
+      List<TaskScheduleEntity> filteredItems,
       TimeRange timeRange,
       ) {
     final timeRangeText = timeRange == TimeRange.week
@@ -250,7 +244,7 @@ class _SchedulePageState extends ConsumerState<SchedulePage> {
             child: _StatsChip(
               icon: Icons.event_available,
               label: timeRangeText,
-              value: '${filteredInspections.length}',
+              value: '${filteredItems.length}',
               color: theme.colorScheme.primary,
               theme: theme,
             ),
@@ -260,7 +254,7 @@ class _SchedulePageState extends ConsumerState<SchedulePage> {
             child: _StatsChip(
               icon: Icons.pending_actions,
               label: 'Upcoming',
-              value: '${_countUpcoming(filteredInspections)}',
+              value: '${_countUpcoming(filteredItems)}',
               color: Colors.blue,
               theme: theme,
             ),
@@ -270,7 +264,7 @@ class _SchedulePageState extends ConsumerState<SchedulePage> {
             child: _StatsChip(
               icon: Icons.check_circle_outline,
               label: 'Completed',
-              value: '${_countPast(filteredInspections)}',
+              value: '${_countPast(filteredItems)}',
               color: Colors.green,
               theme: theme,
             ),
@@ -280,10 +274,12 @@ class _SchedulePageState extends ConsumerState<SchedulePage> {
     );
   }
 
-  Widget _buildCalendarView(ThemeData theme, List<Inspection> inspections) {
+  Widget _buildCalendarView(
+      ThemeData theme,
+      List<TaskScheduleEntity> items,
+      ) {
     return Column(
       children: [
-        // Calendar widget
         Card(
           margin: const EdgeInsets.all(16),
           elevation: 0,
@@ -294,44 +290,11 @@ class _SchedulePageState extends ConsumerState<SchedulePage> {
               width: 1,
             ),
           ),
-          child: TableCalendar<Inspection>(
-            firstDay: DateTime.utc(2020, 1, 1),
-            lastDay: DateTime.utc(2030, 12, 31),
+          child: ScheduleCalendar(
             focusedDay: _focusedDay,
-            selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
+            selectedDay: _selectedDay,
             calendarFormat: _calendarFormat,
-            eventLoader: (day) => _getInspectionsForDay(inspections, day),
-            startingDayOfWeek: StartingDayOfWeek.monday,
-            calendarStyle: CalendarStyle(
-              outsideDaysVisible: true,
-              weekendTextStyle: TextStyle(color: theme.colorScheme.error),
-              holidayTextStyle: TextStyle(color: theme.colorScheme.error),
-              selectedDecoration: BoxDecoration(
-                color: theme.colorScheme.primary,
-                shape: BoxShape.circle,
-              ),
-              todayDecoration: BoxDecoration(
-                color: theme.colorScheme.primary.withOpacity(0.3),
-                shape: BoxShape.circle,
-              ),
-              markerDecoration: BoxDecoration(
-                color: theme.colorScheme.secondary,
-                shape: BoxShape.circle,
-              ),
-              markersMaxCount: 3,
-            ),
-            headerStyle: HeaderStyle(
-              formatButtonVisible: true,
-              titleCentered: true,
-              formatButtonShowsNext: false,
-              formatButtonDecoration: BoxDecoration(
-                color: theme.colorScheme.primaryContainer,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              formatButtonTextStyle: TextStyle(
-                color: theme.colorScheme.onPrimaryContainer,
-              ),
-            ),
+            items: items,
             onDaySelected: (selectedDay, focusedDay) {
               setState(() {
                 _selectedDay = selectedDay;
@@ -349,18 +312,21 @@ class _SchedulePageState extends ConsumerState<SchedulePage> {
           ),
         ),
 
-        // Selected day inspections
+        // Selected day items
         Expanded(
-          child: _buildSelectedDayInspections(theme, inspections),
+          child: _buildSelectedDayItems(theme, items),
         ),
       ],
     );
   }
 
-  Widget _buildSelectedDayInspections(ThemeData theme, List<Inspection> allInspections) {
-    final dayInspections = _getInspectionsForDay(allInspections, _selectedDay);
+  Widget _buildSelectedDayItems(
+      ThemeData theme,
+      List<TaskScheduleEntity> allItems,
+      ) {
+    final dayItems = _itemsForDay(allItems, _selectedDay);
 
-    if (dayInspections.isEmpty) {
+    if (dayItems.isEmpty) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -395,7 +361,7 @@ class _SchedulePageState extends ConsumerState<SchedulePage> {
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
           child: Text(
-            '${_formatSelectedDate(_selectedDay)} • ${dayInspections.length} inspection${dayInspections.length != 1 ? 's' : ''}',
+            '${_formatSelectedDate(_selectedDay)} • ${dayItems.length} inspection${dayItems.length != 1 ? 's' : ''}',
             style: theme.textTheme.titleMedium?.copyWith(
               fontWeight: FontWeight.w600,
             ),
@@ -404,9 +370,9 @@ class _SchedulePageState extends ConsumerState<SchedulePage> {
         Expanded(
           child: ListView.builder(
             padding: const EdgeInsets.symmetric(horizontal: 16),
-            itemCount: dayInspections.length,
+            itemCount: dayItems.length,
             itemBuilder: (context, index) => _ScheduleCard(
-              inspection: dayInspections[index],
+              item: dayItems[index],
               theme: theme,
               showDate: false,
             ),
@@ -416,8 +382,11 @@ class _SchedulePageState extends ConsumerState<SchedulePage> {
     );
   }
 
-  Widget _buildListView(ThemeData theme, List<Inspection> inspections) {
-    if (inspections.isEmpty) {
+  Widget _buildListView(
+      ThemeData theme,
+      List<TaskScheduleEntity> items,
+      ) {
+    if (items.isEmpty) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -446,16 +415,15 @@ class _SchedulePageState extends ConsumerState<SchedulePage> {
       );
     }
 
-    // Group inspections by date
-    final groupedInspections = _groupInspectionsByDate(inspections);
+    final grouped = _groupItemsByDate(items);
 
     return ListView.builder(
       padding: const EdgeInsets.all(16),
-      itemCount: groupedInspections.length,
+      itemCount: grouped.length,
       itemBuilder: (context, index) {
-        final entry = groupedInspections.entries.elementAt(index);
+        final entry = grouped.entries.elementAt(index);
         final date = entry.key;
-        final dayInspections = entry.value;
+        final dayItems = entry.value;
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -488,7 +456,7 @@ class _SchedulePageState extends ConsumerState<SchedulePage> {
                   ),
                   const SizedBox(width: 8),
                   Text(
-                    '${dayInspections.length} inspection${dayInspections.length != 1 ? 's' : ''}',
+                    '${dayItems.length} inspection${dayItems.length != 1 ? 's' : ''}',
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: theme.colorScheme.onSurfaceVariant,
                     ),
@@ -497,12 +465,14 @@ class _SchedulePageState extends ConsumerState<SchedulePage> {
               ),
             ),
 
-            // Inspections for this date
-            ...dayInspections.map((inspection) => _ScheduleCard(
-              inspection: inspection,
-              theme: theme,
-              showDate: false,
-            )),
+            // Items for this date
+            ...dayItems.map(
+                  (item) => _ScheduleCard(
+                item: item,
+                theme: theme,
+                showDate: false,
+              ),
+            ),
 
             const SizedBox(height: 8),
           ],
@@ -511,9 +481,10 @@ class _SchedulePageState extends ConsumerState<SchedulePage> {
     );
   }
 
-  // Helper methods
-  List<Inspection> _filterInspections(
-      List<Inspection> inspections,
+  // ---- Helper methods (now using TaskScheduleEntity) ----
+
+  List<TaskScheduleEntity> _filterItems(
+      List<TaskScheduleEntity> items,
       TimeRange range,
       DateTime selectedDay,
       ) {
@@ -523,59 +494,65 @@ class _SchedulePageState extends ConsumerState<SchedulePage> {
       case TimeRange.week:
         final startOfWeek = now.subtract(Duration(days: now.weekday - 1));
         final endOfWeek = startOfWeek.add(const Duration(days: 6));
-        return inspections.where((i) {
-          return i.serviceDate.isAfter(startOfWeek.subtract(const Duration(days: 1))) &&
-              i.serviceDate.isBefore(endOfWeek.add(const Duration(days: 1)));
+        return items.where((i) {
+          final d = i.scheduledDate;
+          return d.isAfter(startOfWeek.subtract(const Duration(days: 1))) &&
+              d.isBefore(endOfWeek.add(const Duration(days: 1)));
         }).toList();
 
       case TimeRange.month:
-        return inspections.where((i) {
-          return i.serviceDate.year == now.year && i.serviceDate.month == now.month;
-        }).toList();
+        return items
+            .where((i) =>
+        i.scheduledDate.year == now.year &&
+            i.scheduledDate.month == now.month)
+            .toList();
 
       case TimeRange.year:
-        return inspections.where((i) {
-          return i.serviceDate.year == now.year;
-        }).toList();
+        return items
+            .where((i) => i.scheduledDate.year == now.year)
+            .toList();
 
       case TimeRange.all:
-        return inspections;
+        return items;
     }
   }
 
-  List<Inspection> _getInspectionsForDay(List<Inspection> inspections, DateTime day) {
-    return inspections.where((i) => isSameDay(i.serviceDate, day)).toList()
-      ..sort((a, b) => a.serviceDate.compareTo(b.serviceDate));
+  List<TaskScheduleEntity> _itemsForDay(
+      List<TaskScheduleEntity> items,
+      DateTime day,
+      ) {
+    return items
+        .where((i) => isSameDay(i.scheduledDate, day))
+        .toList()
+      ..sort((a, b) => a.scheduledDate.compareTo(b.scheduledDate));
   }
 
-  Map<DateTime, List<Inspection>> _groupInspectionsByDate(List<Inspection> inspections) {
-    final grouped = <DateTime, List<Inspection>>{};
+  Map<DateTime, List<TaskScheduleEntity>> _groupItemsByDate(
+      List<TaskScheduleEntity> items,
+      ) {
+    final grouped = <DateTime, List<TaskScheduleEntity>>{};
 
-    for (final inspection in inspections) {
-      final date = DateTime(
-        inspection.serviceDate.year,
-        inspection.serviceDate.month,
-        inspection.serviceDate.day,
-      );
+    for (final item in items) {
+      final d = item.scheduledDate;
+      final date = DateTime(d.year, d.month, d.day);
 
-      grouped.putIfAbsent(date, () => []).add(inspection);
+      grouped.putIfAbsent(date, () => []).add(item);
     }
 
-    // Sort by date
     final sortedEntries = grouped.entries.toList()
       ..sort((a, b) => a.key.compareTo(b.key));
 
     return Map.fromEntries(sortedEntries);
   }
 
-  int _countUpcoming(List<Inspection> inspections) {
+  int _countUpcoming(List<TaskScheduleEntity> items) {
     final now = DateTime.now();
-    return inspections.where((i) => i.serviceDate.isAfter(now)).length;
+    return items.where((i) => i.scheduledDate.isAfter(now)).length;
   }
 
-  int _countPast(List<Inspection> inspections) {
+  int _countPast(List<TaskScheduleEntity> items) {
     final now = DateTime.now();
-    return inspections.where((i) => i.serviceDate.isBefore(now)).length;
+    return items.where((i) => i.scheduledDate.isBefore(now)).length;
   }
 
   bool _isToday(DateTime date) {
@@ -595,8 +572,18 @@ class _SchedulePageState extends ConsumerState<SchedulePage> {
     if (isSameDay(date, yesterday)) return 'Yesterday';
 
     const months = [
-      'January', 'February', 'March', 'April', 'May', 'June',
-      'July', 'August', 'September', 'October', 'November', 'December'
+      'January',
+      'February',
+      'March',
+      'April',
+      'May',
+      'June',
+      'July',
+      'August',
+      'September',
+      'October',
+      'November',
+      'December'
     ];
 
     return '${months[date.month - 1]} ${date.day}, ${date.year}';
@@ -612,8 +599,18 @@ class _SchedulePageState extends ConsumerState<SchedulePage> {
     if (isSameDay(date, yesterday)) return 'Yesterday';
 
     const months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec'
     ];
     const weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
@@ -683,20 +680,20 @@ class _StatsChip extends StatelessWidget {
 }
 
 class _ScheduleCard extends StatelessWidget {
-  final Inspection inspection;
+  final TaskScheduleEntity item;
   final ThemeData theme;
   final bool showDate;
 
   const _ScheduleCard({
-    required this.inspection,
+    required this.item,
     required this.theme,
     this.showDate = true,
   });
 
   @override
   Widget build(BuildContext context) {
-    final isPast = inspection.serviceDate.isBefore(DateTime.now());
-    final isToday = _isToday(inspection.serviceDate);
+    final isPast = item.scheduledDate.isBefore(DateTime.now());
+    final isToday = _isToday(item.scheduledDate);
 
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
@@ -711,7 +708,12 @@ class _ScheduleCard extends StatelessWidget {
         ),
       ),
       child: InkWell(
-        onTap: () => context.push('/detail/${inspection.id}'),
+        onTap: () {
+          // If linked to an inspection, navigate to its detail page.
+          if (item.inspectionId != null && item.inspectionId!.isNotEmpty) {
+            context.push('/detail/${item.inspectionId}');
+          }
+        },
         borderRadius: BorderRadius.circular(12),
         child: Padding(
           padding: const EdgeInsets.all(16),
@@ -740,9 +742,9 @@ class _ScheduleCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      inspection.address.isEmpty
-                          ? '(No address)'
-                          : inspection.address,
+                      item.address.isEmpty
+                          ? (item.title.isEmpty ? '(No address/title)' : item.title)
+                          : item.address,
                       style: theme.textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.w600,
                       ),
@@ -757,30 +759,30 @@ class _ScheduleCard extends StatelessWidget {
                         if (showDate)
                           _InfoChip(
                             icon: Icons.calendar_today,
-                            label: _formatDate(inspection.serviceDate),
+                            label: _formatDate(item.scheduledDate),
                             theme: theme,
                           ),
-                        if (inspection.siteCode.isNotEmpty)
+                        if (item.siteCode.isNotEmpty)
                           _InfoChip(
                             icon: Icons.location_on_outlined,
-                            label: inspection.siteCode,
+                            label: item.siteCode,
                             theme: theme,
                           ),
-                        if (inspection.siteGrade.isNotEmpty)
+                        if (item.siteGrade.isNotEmpty)
                           Container(
                             padding: const EdgeInsets.symmetric(
                               horizontal: 8,
                               vertical: 4,
                             ),
                             decoration: BoxDecoration(
-                              color: _getGradeColor(inspection.siteGrade)
+                              color: _getGradeColor(item.siteGrade)
                                   .withOpacity(0.15),
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Text(
-                              inspection.siteGrade,
+                              item.siteGrade,
                               style: theme.textTheme.labelSmall?.copyWith(
-                                color: _getGradeColor(inspection.siteGrade),
+                                color: _getGradeColor(item.siteGrade),
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
@@ -812,10 +814,19 @@ class _ScheduleCard extends StatelessWidget {
 
   String _formatDate(DateTime date) {
     const months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec'
     ];
-
     return '${months[date.month - 1]} ${date.day}';
   }
 

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../core/constants/route_paths.dart';
 import '../modules/auth/domain/user_role.dart';
 import '../modules/auth/presenter/controllers/auth_controller.dart';
 import '../modules/auth/state/auth_state.dart';
@@ -56,7 +57,7 @@ const List<NavSection> _navSections = [
       NavItem(
         'Dashboard',
         Icons.dashboard_outlined,
-        '/',
+        RoutePaths.dashboard,
         routeName: 'dashboard',
         description: 'Overview and quick stats',
       ),
@@ -70,21 +71,21 @@ const List<NavSection> _navSections = [
       NavItem(
         'All Inspections',
         Icons.fact_check_outlined,
-        '/inspections',
+        RoutePaths.inspections,
         routeName: 'inspections',
         description: 'View inspection history',
       ),
       NavItem(
         'Create Inspection',
         Icons.add_circle_outline,
-        '/inspections/new',
+        RoutePaths.inspectionNew,
         routeName: 'inspection_new',
         description: 'Start a new inspection',
       ),
       NavItem(
         'Pending Reviews',
         Icons.pending_actions_outlined,
-        '/inspections/pending',
+        RoutePaths.inspectionsPending,
         routeName: 'inspections_pending',
         description: 'Items awaiting review',
       ),
@@ -98,21 +99,21 @@ const List<NavSection> _navSections = [
       NavItem(
         'All Jobs',
         Icons.work_outline,
-        '/maintenance',
+        RoutePaths.maintenance,
         routeName: 'maintenance',
         description: 'View all maintenance jobs',
       ),
       NavItem(
         'Schedule',
         Icons.calendar_month_outlined,
-        '/schedule',
+        RoutePaths.schedule,
         routeName: 'schedule',
         description: 'Maintenance schedule',
       ),
       NavItem(
         'Create Job',
         Icons.add_task_outlined,
-        '/maintenance/new',
+        RoutePaths.maintenanceNew,
         routeName: 'maintenance_new',
         description: 'Schedule new maintenance',
       ),
@@ -133,14 +134,14 @@ const List<NavSection> _navSections = [
       NavItem(
         'Registry',
         Icons.inventory_2_outlined,
-        '/nameplate-list',
+        RoutePaths.nameplateList,
         routeName: 'nameplate_list',
         description: 'Equipment database',
       ),
       NavItem(
         'Asset Search',
         Icons.search_outlined,
-        '/equipment/search',
+        RoutePaths.equipmentSearch,
         routeName: 'equipment_search',
         description: 'Find equipment',
       ),
@@ -154,21 +155,21 @@ const List<NavSection> _navSections = [
       NavItem(
         'Configuration',
         Icons.tune_outlined,
-        '/selection-management',
+        RoutePaths.selectionManagement,
         routeName: 'selection_management',
         description: 'System configuration',
       ),
       NavItem(
         'Settings',
         Icons.settings_outlined,
-        '/settings',
+        RoutePaths.settings,
         routeName: 'settings',
         description: 'App settings',
       ),
       NavItem(
         'About',
         Icons.info_outline,
-        '/about',
+        RoutePaths.about,
         routeName: 'about',
         description: 'App information',
       ),
@@ -195,13 +196,13 @@ const List<NavItem> _quickActions = [
   NavItem(
     'Create Inspection',
     Icons.add_circle,
-    '/inspections/new',
+    RoutePaths.inspectionNew,
     routeName: 'inspection_new',
   ),
   NavItem(
     'Create Job',
     Icons.add_task,
-    '/maintenance/new',
+    RoutePaths.maintenanceNew,
     routeName: 'maintenance_new',
   ),
 ];

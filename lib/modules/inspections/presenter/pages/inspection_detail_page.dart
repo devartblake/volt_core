@@ -1,11 +1,9 @@
 import 'dart:io';
+
 import 'package:flutter/material.dart';
-import 'package:hive/hive.dart';
-import '../../infra/models/inspection.dart';
-import '../../../../core/storage/hive/hive_boxes.dart';
-import '../../infra/repositories/inspection_repository.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:printing/printing.dart';
+import 'package:open_filex/open_filex.dart'; // NEW: open with system viewer
+import 'package:voltcore/core/services/hive/hive_boxes.dart';
 
 class InspectionDetailPage extends ConsumerWidget {
   final String id;
@@ -116,8 +114,8 @@ class InspectionDetailPage extends ConsumerWidget {
                           vertical: 6,
                         ),
                         decoration: BoxDecoration(
-                          color: _getGradeColor(ins.siteGrade)
-                              .withOpacity(0.15),
+                          color:
+                          _getGradeColor(ins.siteGrade).withOpacity(0.15),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Row(
@@ -145,7 +143,8 @@ class InspectionDetailPage extends ConsumerWidget {
               ),
             ),
           ),
-          // PDF Preview
+
+          // PDF area (no more PdfPreview)
           Expanded(
             child: hasPdf
                 ? Container(
@@ -157,9 +156,53 @@ class InspectionDetailPage extends ConsumerWidget {
                   width: 1,
                 ),
               ),
-              clipBehavior: Clip.antiAlias,
-              child: PdfPreview(
-                build: (_) => File(ins.pdfPath).readAsBytes(),
+              child: Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.picture_as_pdf_outlined,
+                      size: 80,
+                      color:
+                      theme.colorScheme.primary.withOpacity(0.4),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'PDF ready',
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        color: theme.colorScheme.onSurface
+                            .withOpacity(0.7),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Tap the button below to open in your system PDF viewer.',
+                      textAlign: TextAlign.center,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: theme.colorScheme.onSurface
+                            .withOpacity(0.6),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    FilledButton.icon(
+                      onPressed: () async {
+                        final result = await OpenFilex.open(ins.pdfPath);
+                        if (result.type != ResultType.done &&
+                            context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                'Could not open PDF: ${result.message}',
+                              ),
+                            ),
+                          );
+                        }
+                      },
+                      icon: const Icon(Icons.open_in_new),
+                      label: const Text('Open PDF'),
+                    ),
+                  ],
+                ),
               ),
             )
                 : Center(
@@ -175,14 +218,16 @@ class InspectionDetailPage extends ConsumerWidget {
                   Text(
                     'No PDF file available',
                     style: theme.textTheme.titleMedium?.copyWith(
-                      color: theme.colorScheme.onSurface.withOpacity(0.6),
+                      color: theme.colorScheme.onSurface
+                          .withOpacity(0.6),
                     ),
                   ),
                   const SizedBox(height: 8),
                   Text(
                     'Generate a PDF to view it here',
                     style: theme.textTheme.bodyMedium?.copyWith(
-                      color: theme.colorScheme.onSurface.withOpacity(0.5),
+                      color: theme.colorScheme.onSurface
+                          .withOpacity(0.5),
                     ),
                   ),
                 ],
@@ -205,13 +250,35 @@ class InspectionDetailPage extends ConsumerWidget {
             ],
           ),
           child: FilledButton.icon(
-            icon: const Icon(Icons.send_outlined),
-            label: const Text('Resend PDF'),
+            icon: const Icon(Icons.print_outlined),
+            label: const Text('Open / Print PDF'),
             style: FilledButton.styleFrom(
               padding: const EdgeInsets.symmetric(vertical: 16),
             ),
-            onPressed: () async {
-              await ref.read(inspectionRepoProvider).saveAndExport(ins, context);
+            onPressed: !hasPdf
+                ? null
+                : () async {
+              final file = File(ins.pdfPath);
+              if (!await file.exists()) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('PDF file not found on device.'),
+                    ),
+                  );
+                }
+                return;
+              }
+
+              final result = await OpenFilex.open(ins.pdfPath);
+              if (result.type != ResultType.done && context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content:
+                    Text('Could not open PDF: ${result.message}'),
+                  ),
+                );
+              }
             },
           ),
         ),

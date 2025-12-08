@@ -1,4 +1,5 @@
 import 'package:hive/hive.dart';
+import '../../domain/entities/nameplate_entity.dart';
 part 'nameplate_data.g.dart';
 
 @HiveType(typeId: 12)
@@ -78,4 +79,82 @@ class NameplateData extends HiveObject {
     this.comments = '',
     this.deficiencies = '',
   });
+}
+
+// ====== DOMAIN MAPPER ======
+
+extension NameplateHiveMapper on NameplateData {
+  NameplateEntity toEntity() {
+    return NameplateEntity(
+      id: id,
+      inspectionId: inspectionId,
+      generatorMfr: generatorMfr,
+      generatorModel: generatorModel,
+      generatorSn: generatorSn,
+      kva: kva,
+      kw: kw,
+      volts: volts,
+      amps: amps,
+      phase: phase,
+      cycles: cycles,
+      rpm: rpm,
+      controlMfr: controlMfr,
+      controlModel: controlModel,
+      controlSn: controlSn,
+      governorMfr: governorMfr,
+      governorModel: governorModel,
+      governorSn: governorSn,
+      regulatorMfr: regulatorMfr,
+      regulatorModel: regulatorModel,
+      regulatorSn: regulatorSn,
+      volumeGal: volumeGal,
+      ullageGal: ullageGal,
+      ullage90Gal: ullage90Gal,
+      tcVolumeGal: tcVolumeGal,
+      heightGal: heightGal,
+      waterGal: waterGal,
+      waterInches: waterInches,
+      tempF: tempF,
+      time: time,
+      comments: comments,
+      deficiencies: deficiencies,
+    );
+  }
+}
+
+NameplateData nameplateFromEntity(NameplateEntity e) {
+  return NameplateData(
+    id: e.id,
+    inspectionId: e.inspectionId,
+    generatorMfr: e.generatorMfr,
+    generatorModel: e.generatorModel,
+    generatorSn: e.generatorSn,
+    kva: e.kva,
+    kw: e.kw,
+    volts: e.volts,
+    amps: e.amps,
+    phase: e.phase,
+    cycles: e.cycles,
+    rpm: e.rpm,
+    controlMfr: e.controlMfr,
+    controlModel: e.controlModel,
+    controlSn: e.controlSn,
+    governorMfr: e.governorMfr,
+    governorModel: e.governorModel,
+    governorSn: e.governorSn,
+    regulatorMfr: e.regulatorMfr,
+    regulatorModel: e.regulatorModel,
+    regulatorSn: e.regulatorSn,
+    volumeGal: e.volumeGal,
+    ullageGal: e.ullageGal,
+    ullage90Gal: e.ullage90Gal,
+    tcVolumeGal: e.tcVolumeGal,
+    heightGal: e.heightGal,
+    waterGal: e.waterGal,
+    waterInches: e.waterInches,
+    tempF: e.tempF,
+    time: e.time,
+    comments: e.comments,
+    deficiencies: e.deficiencies,
+  );
 }

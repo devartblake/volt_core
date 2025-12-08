@@ -4,8 +4,8 @@ import 'package:go_router/go_router.dart';
 
 import 'package:voltcore/shared/widgets/responsive_scaffold.dart';
 import 'package:voltcore/app/app_drawer.dart';
-import '../../data/models/maintenance_record.dart';
-import '../../providers/maintenance_providers.dart';
+import '../../infra/models/maintenance_record.dart';
+import '../controllers/maintenance_providers.dart';
 
 class MaintenanceListPage extends ConsumerWidget {
   const MaintenanceListPage({super.key});

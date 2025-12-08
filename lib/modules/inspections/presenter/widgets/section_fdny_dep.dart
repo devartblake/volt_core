@@ -1,17 +1,22 @@
 import 'package:flutter/material.dart';
-import '../../infra/models/inspection.dart';
+import '../../domain/entities/inspection_entity.dart';
 
 class SectionFdnyDep extends StatefulWidget {
-  final Inspection model;
-  final ValueChanged<Inspection> onChanged;
-  const SectionFdnyDep({super.key, required this.model, required this.onChanged});
+  final InspectionEntity model;
+  final ValueChanged<InspectionEntity> onChanged;
+
+  const SectionFdnyDep({
+    super.key,
+    required this.model,
+    required this.onChanged,
+  });
 
   @override
   State<SectionFdnyDep> createState() => _SectionFdnyDepState();
 }
 
 class _SectionFdnyDepState extends State<SectionFdnyDep> {
-  late Inspection m;
+  late InspectionEntity m;
 
   @override
   void initState() {
@@ -86,7 +91,9 @@ class _SectionFdnyDepState extends State<SectionFdnyDep> {
                 DropdownMenuItem(value: 'Gasoline', child: Text('Gasoline')),
                 DropdownMenuItem(value: 'None', child: Text('None')),
               ],
-              onChanged: (v) => _update(() => m.fuelStoredType = v ?? ''),
+              onChanged: (v) => _update(
+                    (curr) => curr.copyWith(fuelStoredType: v ?? ''),
+              ),
             ),
             const SizedBox(height: 16),
             TextFormField(
@@ -101,14 +108,18 @@ class _SectionFdnyDepState extends State<SectionFdnyDep> {
               ),
               initialValue: m.fuelQtyGallons,
               keyboardType: TextInputType.number,
-              onChanged: (v) => _update(() => m.fuelQtyGallons = v),
+              onChanged: (v) => _update(
+                    (curr) => curr.copyWith(fuelQtyGallons: v),
+              ),
             ),
             const SizedBox(height: 16),
             _modernYesNo(
               'FDNY Permit Available',
               Icons.description_outlined,
               m.fdnyPermit,
-                  (v) => m.fdnyPermit = v,
+                  (v) => _update(
+                    (curr) => curr.copyWith(fdnyPermit: v),
+              ),
               theme,
             ),
             const SizedBox(height: 12),
@@ -116,7 +127,9 @@ class _SectionFdnyDepState extends State<SectionFdnyDep> {
               'C-92 On Site',
               Icons.assignment_outlined,
               m.c92OnSite,
-                  (v) => m.c92OnSite = v,
+                  (v) => _update(
+                    (curr) => curr.copyWith(c92OnSite: v),
+              ),
               theme,
             ),
             const SizedBox(height: 12),
@@ -124,7 +137,9 @@ class _SectionFdnyDepState extends State<SectionFdnyDep> {
               'Gas Cut-off Valve Present',
               Icons.settings_input_component_outlined,
               m.gasCutoffValve,
-                  (v) => m.gasCutoffValve = v,
+                  (v) => _update(
+                    (curr) => curr.copyWith(gasCutoffValve: v),
+              ),
               theme,
             ),
             const SizedBox(height: 24),
@@ -150,14 +165,18 @@ class _SectionFdnyDepState extends State<SectionFdnyDep> {
               ),
               initialValue: m.depSizeKw,
               keyboardType: TextInputType.number,
-              onChanged: (v) => _update(() => m.depSizeKw = v),
+              onChanged: (v) => _update(
+                    (curr) => curr.copyWith(depSizeKw: v),
+              ),
             ),
             const SizedBox(height: 16),
             _modernYesNo(
               'DEP Registered (CATS)',
               Icons.app_registration_outlined,
               m.depRegisteredCats,
-                  (v) => m.depRegisteredCats = v,
+                  (v) => _update(
+                    (curr) => curr.copyWith(depRegisteredCats: v),
+              ),
               theme,
             ),
             const SizedBox(height: 12),
@@ -165,7 +184,9 @@ class _SectionFdnyDepState extends State<SectionFdnyDep> {
               'DEP Certificate to Operate',
               Icons.verified_outlined,
               m.depCertificateOperate,
-                  (v) => m.depCertificateOperate = v,
+                  (v) => _update(
+                    (curr) => curr.copyWith(depCertificateOperate: v),
+              ),
               theme,
             ),
             const SizedBox(height: 12),
@@ -173,7 +194,9 @@ class _SectionFdnyDepState extends State<SectionFdnyDep> {
               'Tier 4 Compliant',
               Icons.eco_outlined,
               m.tier4Compliant,
-                  (v) => m.tier4Compliant = v,
+                  (v) => _update(
+                    (curr) => curr.copyWith(tier4Compliant: v),
+              ),
               theme,
             ),
             const SizedBox(height: 12),
@@ -181,7 +204,9 @@ class _SectionFdnyDepState extends State<SectionFdnyDep> {
               'Smoke / Stack Test',
               Icons.cloud_outlined,
               m.smokeOrStackTest,
-                  (v) => m.smokeOrStackTest = v,
+                  (v) => _update(
+                    (curr) => curr.copyWith(smokeOrStackTest: v),
+              ),
               theme,
             ),
             const SizedBox(height: 16),
@@ -213,7 +238,9 @@ class _SectionFdnyDepState extends State<SectionFdnyDep> {
                   ],
                 ),
                 value: m.recordsKept5Years,
-                onChanged: (v) => _update(() => m.recordsKept5Years = v),
+                onChanged: (v) => _update(
+                      (curr) => curr.copyWith(recordsKept5Years: v),
+                ),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
@@ -233,6 +260,7 @@ class _SectionFdnyDepState extends State<SectionFdnyDep> {
       ThemeData theme,
       ) {
     final opts = ['Yes', 'No', 'Unknown', 'N/A'];
+
     return DropdownButtonFormField<String>(
       decoration: InputDecoration(
         labelText: label,
@@ -271,12 +299,17 @@ class _SectionFdnyDepState extends State<SectionFdnyDep> {
           ),
         );
       }).toList(),
-      onChanged: (v) => _update(() => on(v ?? 'Unknown')),
+      onChanged: (v) {
+        final value = v ?? 'Unknown';
+        on(value);
+      },
     );
   }
 
-  void _update(VoidCallback fn) {
-    setState(fn);
+  void _update(InspectionEntity Function(InspectionEntity) transform) {
+    setState(() {
+      m = transform(m);
+    });
     widget.onChanged(m);
   }
 }
