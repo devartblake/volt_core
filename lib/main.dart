@@ -1,6 +1,9 @@
+// lib/main.dart
+import 'package:flutter/foundation.dart';       // for debugPrint
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+
 import 'app/app.dart';
 import 'core/data/supabase_client.dart';
 import 'core/services/bootstrap.dart';
@@ -9,41 +12,34 @@ import 'core/services/supabase/supabase_service.dart';
 import 'core/storage/hive/hive_boxes.dart';
 import 'modules/maintenance/infra/datasources/hive_boxes_maintenance.dart';
 
-void main() async {
-  // Ensure Flutte is initialized
+Future<void> main() async {
+  // Ensure Flutter is initialized
   WidgetsFlutterBinding.ensureInitialized();
 
   // Initialize Hive
   await Hive.initFlutter();
 
+  // Your other core services
   await initCoreServices();
   await HiveService.init();
   await SupabaseService.init();
-  await MaintenanceBoxes.init();
+
+  // This likely sets up other Hive boxes / adapters
   HiveBoxes();
 
-  // Hive.registerAdapter(MaintenanceRecordAdapter());
-  // Hive.registerAdapter(InspectionAdapter());
-  // Hive.registerAdapter(LoadTestRecordAdapter());
-  // Hive.registerAdapter(NameplateDataAdapter());
-  // Hive.registerAdapter(TestIntervalRecordAdapter());
-
-  // Initialize all boxes
+  // Initialize maintenance box ONCE here
   try {
     await MaintenanceBoxes.init();
-    // Add other box initializations here:
-    // await InspectionBoxes.init();
-    // await OtherBoxes.init();
-
-    debugPrint('✅ All Hive boxes initialized successfully');
-  } catch (e) {
-    debugPrint('❌ Error initializing Hive boxes: $e');
-    // Handle initialization error - maybe show error screen
+    debugPrint('✅ Maintenance box initialized successfully');
+  } catch (e, st) {
+    debugPrint('❌ Error initializing MaintenanceBoxes: $e');
+    debugPrint('$st');
+    // Optional: you could show an error screen instead of running the app
   }
 
   runApp(
     const ProviderScope(
-      child: VoltcoreApp()
+      child: VoltcoreApp(),
     ),
   );
 }
