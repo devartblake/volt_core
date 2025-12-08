@@ -19,6 +19,7 @@ void main() async {
   await initCoreServices();
   await HiveService.init();
   await SupabaseService.init();
+  await MaintenanceBoxes.init();
   HiveBoxes();
 
   // Hive.registerAdapter(MaintenanceRecordAdapter());
@@ -39,11 +40,6 @@ void main() async {
     debugPrint('❌ Error initializing Hive boxes: $e');
     // Handle initialization error - maybe show error screen
   }
-
-  await VoltcoreSupabase.init(
-    url: 'https://YOUR_PROJECT_ID.supabase.co',
-    anonKey: 'YOUR_SUPABASE_ANON_KEY',
-  );
 
   runApp(
     const ProviderScope(
