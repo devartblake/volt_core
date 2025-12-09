@@ -34,18 +34,37 @@ class SupabaseService {
 
     final cfg = EnvConfig.current;
 
-    await Supabase.initialize(
-      url: cfg.supabaseUrl,
-      anonKey: cfg.supabaseAnonKey,
-    );
-
-    _initialized = true;
-
-    if (cfg.enableLogging && kDebugMode) {
-      debugPrint(
-        '[SupabaseService] Initialized → env=${cfg.environment} '
-            'url=${cfg.supabaseUrl}',
+    if (cfg.supabaseUrl.isEmpty || cfg.supabaseAnonKey.isEmpty) {
+      throw StateError(
+        'Supabase configuration is missing.\n'
+            'Check your .env / dart-define for SUPABASE_URL and SUPABASE_ANON_KEY.',
       );
+    }
+
+    try {
+      await Supabase.initialize(
+        url: cfg.supabaseUrl,
+        anonKey: cfg.supabaseAnonKey,
+      );
+
+      _initialized = true;
+
+      if (cfg.enableLogging && kDebugMode) {
+        debugPrint(
+          '[SupabaseService] ✅ Initialized\n'
+              '  env      = ${cfg.environment}\n'
+              '  url      = ${cfg.supabaseUrl}\n'
+              '  restBase = ${cfg.restBaseUrl}\n'
+              '  bundleId = ${cfg.bundleId ?? '(none)'}',
+        );
+      }
+    } catch (e, st) {
+      _initialized = false;
+      if (cfg.enableLogging && kDebugMode) {
+        debugPrint('[SupabaseService] ❌ Failed to initialize Supabase: $e');
+        debugPrint('$st');
+      }
+      rethrow;
     }
   }
 
@@ -62,7 +81,7 @@ class SupabaseService {
   }
 
   // ---------------------------------------------------------------------------
-  // Auth helpers (simple wrappers; you can expand these later)
+  // Auth helpers
   // ---------------------------------------------------------------------------
 
   /// Email/password sign-in.
@@ -92,8 +111,9 @@ class SupabaseService {
   static RealtimeChannel onAuthStateChange(
       void Function(AuthChangeEvent, Session?) handler,
       ) {
-    // Supabase_flutter uses client.auth.onAuthStateChange; we can wrap it
-    final channel = client.channel('public:auth'); // logical name only
+    // The RealtimeChannel return here is mostly a logical handle; the actual
+    // auth stream is from client.auth.onAuthStateChange.
+    final channel = client.channel('public:auth');
     client.auth.onAuthStateChange.listen((data) {
       handler(data.event, data.session);
     });
@@ -154,19 +174,8 @@ final supabaseClientProvider = Provider<SupabaseClient>((ref) {
   return SupabaseService.client;
 });
 
-/// Optional: expose auth session as a stream provider if you want reactive auth.
-///
-/// Example usage in a widget:
-///   final authAsync = ref.watch(supabaseAuthStateProvider);
-///   authAsync.when(
-///     data: (session) => ...,
-///     loading: () => ...,
-///     error: (e, st) => ...,
-///   );
+/// Reactive auth session provider (null = signed out).
 final supabaseAuthStateProvider = StreamProvider<Session?>((ref) {
-  // Supabase Flutter exposes auth state via:
-  //   client.auth.onAuthStateChange
-  // which yields AuthState objects with (event, session).
   final controller = StreamController<Session?>();
 
   final sub = SupabaseService.client.auth.onAuthStateChange.listen((data) {

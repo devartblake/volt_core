@@ -35,19 +35,22 @@ class _InspectionFormPageState extends ConsumerState<InspectionFormPage> {
   void initState() {
     super.initState();
 
-    // Initialize controller state: new draft vs edit existing
-    final controller = ref.read(inspectionFormControllerProvider.notifier);
+    // ✅ FIX: Delay state modification until after the widget tree is built
+    // This prevents "modifying provider during build" error
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final controller = ref.read(inspectionFormControllerProvider.notifier);
 
-    if (widget.inspectionId != null) {
-      // Edit mode: load from repository via ListInspectionsUsecase
-      controller.loadForEdit(widget.inspectionId!);
-    } else {
-      // New inspection: start from a blank draft entity
-      controller.reset();
-      controller.updateDraft(
-        InspectionEntity.newDraft(), // see helper below if you don’t have this
-      );
-    }
+      if (widget.inspectionId != null) {
+        // Edit mode: load from repository via ListInspectionsUsecase
+        controller.loadForEdit(widget.inspectionId!);
+      } else {
+        // New inspection: start from a blank draft entity
+        controller.reset();
+        controller.updateDraft(
+          InspectionEntity.newDraft(),
+        );
+      }
+    });
   }
 
   @override

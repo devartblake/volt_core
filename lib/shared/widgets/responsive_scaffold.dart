@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import '../../app/app_drawer.dart'; // for AppDrawer + kCompactBreakpoint
 
-/// Scaffold that adapts:
-/// - Compact: AppBar + modal Drawer
-/// - Wide:    Persistent NavigationRail at left + content at right
+/// Responsive scaffold that provides consistent page layout.
+///
+/// Navigation is handled by app shells (DefaultShell, TechShell, AdminShell).
+/// This widget only provides the scaffold structure (AppBar, body, FAB, etc.)
 class ResponsiveScaffold extends StatelessWidget {
   const ResponsiveScaffold({
     super.key,
@@ -12,9 +12,10 @@ class ResponsiveScaffold extends StatelessWidget {
     this.fab,
     this.fabLocation,
     this.bottomBar,
-    this.badges,
-    this.userProfile,
-    this.onSwitchTenant,
+    // Deprecated: kept for backwards compatibility but not used
+    @Deprecated('Navigation is handled by shells') this.badges,
+    @Deprecated('Navigation is handled by shells') this.userProfile,
+    @Deprecated('Navigation is handled by shells') this.onSwitchTenant,
   });
 
   final PreferredSizeWidget? appBar;
@@ -23,48 +24,21 @@ class ResponsiveScaffold extends StatelessWidget {
   final FloatingActionButtonLocation? fabLocation;
   final Widget? bottomBar;
 
-  /// Route -> count (passed to AppDrawer)
+  /// Deprecated: shells handle badges
   final Map<String, int>? badges;
 
-  /// Profile (passed to AppDrawer)
-  final AppUserProfile? userProfile;
+  /// Deprecated: shells handle user profile
+  final dynamic userProfile;
 
-  /// Tenant switch callback (passed to AppDrawer)
+  /// Deprecated: shells handle tenant switching
   final ValueChanged<String>? onSwitchTenant;
 
   @override
   Widget build(BuildContext context) {
-    final width = MediaQuery.sizeOf(context).width;
-    final isCompact = width < kCompactBreakpoint;
-
-    if (isCompact) {
-      return Scaffold(
-        appBar: appBar,
-        drawer: AppDrawer(
-          badges: badges,
-          userProfile: userProfile,
-          onSwitchTenant: onSwitchTenant,
-          onTapAny: () {}, // AppDrawer closes itself via Navigator.maybePop
-        ),
-        body: body,
-        floatingActionButton: fab,
-        floatingActionButtonLocation: fabLocation,
-        bottomNavigationBar: bottomBar,
-      );
-    }
-
+    // Simple scaffold - shells handle the navigation drawer
     return Scaffold(
       appBar: appBar,
-      body: Row(
-        children: [
-          AppDrawer(
-            badges: badges,
-            userProfile: userProfile,
-            onSwitchTenant: onSwitchTenant,
-          ),
-          Expanded(child: body),
-        ],
-      ),
+      body: body,
       floatingActionButton: fab,
       floatingActionButtonLocation: fabLocation,
       bottomNavigationBar: bottomBar,

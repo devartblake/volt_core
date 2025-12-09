@@ -10,6 +10,19 @@ android {
     compileSdk = flutter.compileSdkVersion
     ndkVersion = "27.0.12077973"
 
+    productFlavors {
+        dev {
+            applicationIdSuffix ".dev"
+            versionNameSuffix "-dev"
+        }
+        staging {
+            applicationIdSuffix ".staging"
+            versionNameSuffix "-stg"
+        }
+        prod {
+            // no suffix
+        }
+    }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
