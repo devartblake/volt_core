@@ -1,19 +1,13 @@
-// Simple environment helper.
-// You can later hook this into separate flavors or .env files.
-
 import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
-enum AppEnvironment {
-  dev,
-  staging,
-  prod,
-}
+enum AppEnvironment { dev, staging, prod }
 
 class Env {
-  /// Current environment – for now we derive it from build mode.
+  /// Detect current environment
   static AppEnvironment get current {
     if (kReleaseMode) return AppEnvironment.prod;
+
     // You can also switch using --dart-define ENV=staging
     const override = String.fromEnvironment('ENV');
     switch (override) {
@@ -34,11 +28,11 @@ class Env {
   static String get filename {
     switch (current) {
       case AppEnvironment.dev:
-        return "assets/env/.env.dev";
+        return "/assets/env/.env.dev";
       case AppEnvironment.staging:
-        return "assets/env/.env.staging";
+        return "/assets/env/.env.staging";
       case AppEnvironment.prod:
-        return "assets/env/.env.prod";
+        return "/assets/env/.env.prod";
     }
   }
 
