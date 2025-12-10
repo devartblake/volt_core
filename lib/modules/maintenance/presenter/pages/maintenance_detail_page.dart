@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../app/app_drawer.dart';
-import '../../infra/models/maintenance_record.dart';
+import '../../domain/entities/maintenance_job_entity.dart';
 import '../controllers/maintenance_providers.dart';
 
 class MaintenanceDetailPage extends ConsumerWidget {
@@ -18,11 +18,27 @@ class MaintenanceDetailPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final repo = ref.watch(maintenanceRepoProvider);
-    final rec = repo.getById(id);
 
-    if (rec == null) {
-      return Scaffold(
+    final recAsync = ref.watch(maintenanceByIdProvider(id));
+    final repo = ref.watch(maintenanceRepoProvider);
+
+    return recAsync?.when(
+      loading: () => Scaffold(
+        appBar: AppBar(
+          title: const Text('Maintenance Detail'),
+          leading: Navigator.of(context).canPop()
+              ? IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () => context.pop(),
+          )
+              : null,
+        ),
+        body: const Center(
+          child: CircularProgressIndicator(),
+        ),
+        drawer: const AppDrawer(),
+      ),
+      error: (err, st) => Scaffold(
         appBar: AppBar(
           title: const Text('Maintenance Detail'),
           leading: Navigator.of(context).canPop()
@@ -33,134 +49,196 @@ class MaintenanceDetailPage extends ConsumerWidget {
               : null,
         ),
         body: Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                Icons.error_outline,
-                size: 64,
-                color: colorScheme.error,
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'Record not found',
-                style: theme.textTheme.titleLarge,
-              ),
-              const SizedBox(height: 8),
-              FilledButton.icon(
-                onPressed: () => context.go('/maintenance'),
-                icon: const Icon(Icons.arrow_back),
-                label: const Text('Back to Maintenance List'),
-              ),
-            ],
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.error_outline,
+                  size: 64,
+                  color: colorScheme.error,
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Failed to load maintenance record.',
+                  style: theme.textTheme.titleLarge,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  '$err',
+                  textAlign: TextAlign.center,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                FilledButton.icon(
+                  onPressed: () => ref.invalidate(maintenanceByIdProvider(id)),
+                  icon: const Icon(Icons.refresh),
+                  label: const Text('Retry'),
+                ),
+              ],
+            ),
           ),
         ),
-      );
-    }
-
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(rec.siteCode.isEmpty ? 'Maintenance Detail' : rec.siteCode),
-        leading: Navigator.of(context).canPop()
-            ? IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => context.pop(),
-        )
-            : null,
-        actions: [
-          IconButton(
-            tooltip: 'Export PDF',
-            icon: const Icon(Icons.picture_as_pdf_outlined),
-            onPressed: () async {
-              await repo.exportMaintenancePdf(rec);
-              if (context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: const Row(
-                      children: [
-                        Icon(Icons.check_circle_outline, color: Colors.white),
-                        SizedBox(width: 12),
-                        Text('PDF export started'),
-                      ],
-                    ),
-                    behavior: SnackBarBehavior.floating,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
+        drawer: const AppDrawer(),
+      ),
+      data: (rec) {
+        if (rec == null) {
+          return Scaffold(
+            appBar: AppBar(
+              title: const Text('Maintenance Detail'),
+              leading: Navigator.of(context).canPop()
+                  ? IconButton(
+                icon: const Icon(Icons.arrow_back),
+                onPressed: () => context.pop(),
+              )
+                  : null,
+            ),
+            body: Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.error_outline,
+                    size: 64,
+                    color: colorScheme.error,
                   ),
-                );
-              }
-            },
-          ),
-          IconButton(
-            tooltip: 'Edit',
-            icon: const Icon(Icons.edit_outlined),
-            onPressed: () {
-              context.push('/maintenance/new?id=$id');
-            },
-          ),
-          PopupMenuButton(
-            icon: const Icon(Icons.more_vert),
-            itemBuilder: (context) => [
-              PopupMenuItem(
-                child: const Row(
-                  children: [
-                    Icon(Icons.delete_outline),
-                    SizedBox(width: 12),
-                    Text('Delete'),
-                  ],
-                ),
-                onTap: () async {
-                  // Delay to allow menu to close
-                  await Future.delayed(const Duration(milliseconds: 100));
-                  if (!context.mounted) return;
+                  const SizedBox(height: 16),
+                  Text(
+                    'Record not found',
+                    style: theme.textTheme.titleLarge,
+                  ),
+                  const SizedBox(height: 8),
+                  FilledButton.icon(
+                    onPressed: () => context.go('/maintenance'),
+                    icon: const Icon(Icons.arrow_back),
+                    label: const Text('Back to Maintenance List'),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
 
-                  final confirm = await showDialog<bool>(
-                    context: context,
-                    builder: (ctx) => AlertDialog(
-                      title: const Text('Delete maintenance record?'),
-                      content: const Text(
-                        'This action cannot be undone. All infra for this maintenance record will be permanently deleted.',
+        return Scaffold(
+          appBar: AppBar(
+            title: Text(rec.siteCode.isEmpty
+                ? 'Maintenance Detail'
+                : rec.siteCode),
+            leading: Navigator.of(context).canPop()
+                ? IconButton(
+              icon: const Icon(Icons.arrow_back),
+              onPressed: () => context.pop(),
+            )
+                : null,
+            actions: [
+              IconButton(
+                tooltip: 'Export PDF',
+                icon: const Icon(Icons.picture_as_pdf_outlined),
+                onPressed: () async {
+                  await repo.exportMaintenancePdf(rec);
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: const Row(
+                          children: [
+                            Icon(Icons.check_circle_outline,
+                                color: Colors.white),
+                            SizedBox(width: 12),
+                            Text('PDF export started'),
+                          ],
+                        ),
+                        behavior: SnackBarBehavior.floating,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
                       ),
-                      actions: [
-                        TextButton(
-                          onPressed: () => Navigator.of(ctx).pop(false),
-                          child: const Text('Cancel'),
-                        ),
-                        FilledButton(
-                          onPressed: () => Navigator.of(ctx).pop(true),
-                          style: FilledButton.styleFrom(
-                            backgroundColor: colorScheme.error,
-                          ),
-                          child: const Text('Delete'),
-                        ),
-                      ],
-                    ),
-                  );
-
-                  if (confirm == true && context.mounted) {
-                    await repo.delete(id);
-                    if (context.mounted) {
-                      context.go('/maintenance');
-                    }
+                    );
                   }
                 },
               ),
+              IconButton(
+                tooltip: 'Edit',
+                icon: const Icon(Icons.edit_outlined),
+                onPressed: () {
+                  // keep existing route pattern
+                  context.push('/maintenance/new?id=$id');
+                },
+              ),
+              PopupMenuButton(
+                icon: const Icon(Icons.more_vert),
+                itemBuilder: (context) => [
+                  PopupMenuItem(
+                    child: const Row(
+                      children: [
+                        Icon(Icons.delete_outline),
+                        SizedBox(width: 12),
+                        Text('Delete'),
+                      ],
+                    ),
+                    onTap: () async {
+                      // Delay to allow menu to close
+                      await Future.delayed(
+                          const Duration(milliseconds: 100));
+                      if (!context.mounted) return;
+
+                      final confirm = await showDialog<bool>(
+                        context: context,
+                        builder: (ctx) => AlertDialog(
+                          title: const Text('Delete maintenance record?'),
+                          content: const Text(
+                            'This action cannot be undone. All data for this maintenance record will be permanently deleted.',
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () =>
+                                  Navigator.of(ctx).pop(false),
+                              child: const Text('Cancel'),
+                            ),
+                            FilledButton(
+                              onPressed: () =>
+                                  Navigator.of(ctx).pop(true),
+                              style: FilledButton.styleFrom(
+                                backgroundColor: colorScheme.error,
+                              ),
+                              child: const Text('Delete'),
+                            ),
+                          ],
+                        ),
+                      );
+
+                      if (confirm == true && context.mounted) {
+                        await repo.delete(id);
+
+                        // Invalidate providers so list/detail refresh correctly
+                        ref.invalidate(maintenanceListProvider);
+                        ref.invalidate(maintenanceByIdProvider(id));
+
+                        if (context.mounted) {
+                          context.go('/maintenance');
+                        }
+                      }
+                    },
+                  ),
+                ],
+              ),
             ],
           ),
-        ],
-      ),
-      drawer: const AppDrawer(),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: _DetailBody(rec: rec),
-      ),
+          drawer: const AppDrawer(),
+          body: SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
+            child: _DetailBody(rec: rec),
+          ),
+        );
+      },
     );
   }
 }
 
 class _DetailBody extends StatelessWidget {
-  final MaintenanceRecord rec;
+  final MaintenanceJobEntity rec;
 
   const _DetailBody({required this.rec});
 
@@ -204,7 +282,9 @@ class _DetailBody extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            rec.siteCode.isEmpty ? 'Maintenance Record' : rec.siteCode,
+                            rec.siteCode.isEmpty
+                                ? 'Maintenance Record'
+                                : rec.siteCode,
                             style: theme.textTheme.headlineSmall?.copyWith(
                               fontWeight: FontWeight.w600,
                             ),
@@ -222,8 +302,10 @@ class _DetailBody extends StatelessWidget {
                                 Expanded(
                                   child: Text(
                                     rec.address,
-                                    style: theme.textTheme.bodyMedium?.copyWith(
-                                      color: colorScheme.onSurfaceVariant,
+                                    style: theme.textTheme.bodyMedium
+                                        ?.copyWith(
+                                      color:
+                                      colorScheme.onSurfaceVariant,
                                     ),
                                   ),
                                 ),
@@ -299,42 +381,78 @@ class _DetailBody extends StatelessWidget {
             icon: Icons.build_outlined,
             children: [
               if (rec.oilFilterChanged)
-                _ActionChip(label: 'Oil filter changed', notes: rec.oilFilterNotes),
+                _ActionChip(
+                  label: 'Oil filter changed',
+                  notes: rec.oilFilterNotes,
+                ),
               if (rec.fuelFilterReplaced)
-                _ActionChip(label: 'Fuel filter replaced', notes: rec.fuelFilterNotes),
+                _ActionChip(
+                  label: 'Fuel filter replaced',
+                  notes: rec.fuelFilterNotes,
+                ),
               if (rec.coolantFlushed)
-                _ActionChip(label: 'Coolant flushed', notes: rec.coolantNotes),
+                _ActionChip(
+                  label: 'Coolant flushed',
+                  notes: rec.coolantNotes,
+                ),
               if (rec.batteryReplaced)
-                _ActionChip(label: 'Battery replaced', notes: rec.batteryNotes),
+                _ActionChip(
+                  label: 'Battery replaced',
+                  notes: rec.batteryNotes,
+                ),
               if (rec.airFilterReplaced)
-                _ActionChip(label: 'Air filter replaced', notes: rec.airFilterNotes),
+                _ActionChip(
+                  label: 'Air filter replaced',
+                  notes: rec.airFilterNotes,
+                ),
               if (rec.beltsHosesReplaced)
-                _ActionChip(label: 'Belts/hoses replaced', notes: rec.beltsHosesNotes),
+                _ActionChip(
+                  label: 'Belts/hoses replaced',
+                  notes: rec.beltsHosesNotes,
+                ),
               if (rec.blockHeaterTested)
-                _ActionChip(label: 'Block heater tested', notes: rec.blockHeaterNotes),
+                _ActionChip(
+                  label: 'Block heater tested',
+                  notes: rec.blockHeaterNotes,
+                ),
               if (rec.racorServiced)
-                _ActionChip(label: 'Racor serviced', notes: rec.racorNotes),
+                _ActionChip(
+                  label: 'Racor serviced',
+                  notes: rec.racorNotes,
+                ),
               if (rec.atsControllerInspected)
-                _ActionChip(label: 'ATS/controller inspected', notes: rec.atsControllerNotes),
+                _ActionChip(
+                  label: 'ATS/controller inspected',
+                  notes: rec.atsControllerNotes,
+                ),
               if (rec.cdvrProgrammed)
-                _ActionChip(label: 'CDVR programmed', notes: rec.cdvrNotes),
+                _ActionChip(
+                  label: 'CDVR programmed',
+                  notes: rec.cdvrNotes,
+                ),
               if (rec.undervoltageRepaired)
-                _ActionChip(label: 'Under-voltage repaired', notes: rec.undervoltageNotes),
+                _ActionChip(
+                  label: 'Under-voltage repaired',
+                  notes: rec.undervoltageNotes,
+                ),
               if (rec.hazmatRemoved)
-                _ActionChip(label: 'Hazmat removed', notes: rec.hazmatNotes),
+                _ActionChip(
+                  label: 'Hazmat removed',
+                  notes: rec.hazmatNotes,
+                ),
             ],
           ),
           const SizedBox(height: 16),
         ],
 
         // Service Observations
-        if (rec.serviceObservations?.isNotEmpty ?? false) ...[
+        if (rec.serviceObservations.isNotEmpty) ...[
           _SectionCard(
             title: 'Service Observations',
             icon: Icons.notes_outlined,
             children: [
               Text(
-                rec.serviceObservations!,
+                rec.serviceObservations,
                 style: theme.textTheme.bodyMedium,
               ),
             ],
@@ -349,30 +467,37 @@ class _DetailBody extends StatelessWidget {
             icon: Icons.task_alt_outlined,
             children: [
               if (rec.postVerifyRunsUnderLoad)
-                const _ChecklistItem(label: 'Generator runs under load'),
+                const _ChecklistItem(
+                    label: 'Generator runs under load'),
               if (rec.postCheckVoltFreq)
-                const _ChecklistItem(label: 'Voltage & frequency checked'),
+                const _ChecklistItem(
+                    label: 'Voltage & frequency checked'),
               if (rec.postInspectExhaust)
                 const _ChecklistItem(label: 'Exhaust system inspected'),
               if (rec.postVerifyGrounding)
-                const _ChecklistItem(label: 'Grounding & bonding verified'),
+                const _ChecklistItem(
+                    label: 'Grounding & bonding verified'),
               if (rec.postCheckControlPanel)
                 const _ChecklistItem(label: 'Control panel checked'),
               if (rec.postEnsureSafetyDevices)
-                const _ChecklistItem(label: 'Safety devices functional'),
+                const _ChecklistItem(
+                    label: 'Safety devices functional'),
               if (rec.postDocumentDeficiencies)
-                const _ChecklistItem(label: 'Deficiencies documented'),
+                const _ChecklistItem(
+                    label: 'Deficiencies documented'),
               if (rec.postLoadbankTest)
                 const _ChecklistItem(label: 'Load-bank test performed'),
               if (rec.postAtsFunctionality)
-                const _ChecklistItem(label: 'ATS functionality verified'),
+                const _ChecklistItem(
+                    label: 'ATS functionality verified'),
             ],
           ),
           const SizedBox(height: 16),
         ],
 
         // Signatures
-        if (rec.technicianSignatureName.isNotEmpty || rec.customerSignatureName.isNotEmpty) ...[
+        if (rec.technicianSignatureName.isNotEmpty ||
+            rec.customerSignatureName.isNotEmpty) ...[
           _SectionCard(
             title: 'Signatures',
             icon: Icons.draw_outlined,
@@ -385,7 +510,8 @@ class _DetailBody extends StatelessWidget {
                 ),
                 if (rec.technicianSignatureDate != null)
                   Padding(
-                    padding: const EdgeInsets.only(left: 32, top: 4),
+                    padding:
+                    const EdgeInsets.only(left: 32, top: 4),
                     child: Text(
                       'Signed: ${_fmtDate(rec.technicianSignatureDate!)}',
                       style: theme.textTheme.bodySmall?.copyWith(
@@ -403,7 +529,8 @@ class _DetailBody extends StatelessWidget {
                 ),
                 if (rec.customerSignatureDate != null)
                   Padding(
-                    padding: const EdgeInsets.only(left: 32, top: 4),
+                    padding:
+                    const EdgeInsets.only(left: 32, top: 4),
                     child: Text(
                       'Signed: ${_fmtDate(rec.customerSignatureDate!)}',
                       style: theme.textTheme.bodySmall?.copyWith(
@@ -432,7 +559,7 @@ class _DetailBody extends StatelessWidget {
               label: 'Requires Follow-up',
               value: rec.requiresFollowUp ? 'Yes' : 'No',
             ),
-            if (rec.followUpNotes?.isNotEmpty ?? false) ...[
+            if (rec.followUpNotes.isNotEmpty) ...[
               const SizedBox(height: 12),
               Text(
                 'Follow-up Notes:',
@@ -442,7 +569,7 @@ class _DetailBody extends StatelessWidget {
               ),
               const SizedBox(height: 4),
               Text(
-                rec.followUpNotes!,
+                rec.followUpNotes,
                 style: theme.textTheme.bodyMedium,
               ),
             ],
@@ -452,7 +579,7 @@ class _DetailBody extends StatelessWidget {
     );
   }
 
-  bool _hasActionsPerformed(MaintenanceRecord rec) {
+  bool _hasActionsPerformed(MaintenanceJobEntity rec) {
     return rec.oilFilterChanged ||
         rec.fuelFilterReplaced ||
         rec.coolantFlushed ||
@@ -467,7 +594,7 @@ class _DetailBody extends StatelessWidget {
         rec.hazmatRemoved;
   }
 
-  bool _hasPostServiceItems(MaintenanceRecord rec) {
+  bool _hasPostServiceItems(MaintenanceJobEntity rec) {
     return rec.postVerifyRunsUnderLoad ||
         rec.postCheckVoltFreq ||
         rec.postInspectExhaust ||

@@ -1,4 +1,4 @@
-import '../../infra/repositories/maintenance_repository.dart';
+import '../repositories/maintenance_repository.dart';
 
 /// Use case for marking a maintenance job as completed.
 class CompleteMaintenanceUseCase {

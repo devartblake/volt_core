@@ -1,140 +1,94 @@
+import 'package:equatable/equatable.dart';
 
-/// Domain-level representation of a maintenance job.
+/// Pure domain model for a maintenance job.
 ///
-/// This is intentionally independent from Hive, Supabase, or any
-/// persistence details. Infra layers (Hive models, API models) will
-/// map *to/from* this entity.
-class MaintenanceJobEntity {
-  /// Unique job ID (matches your Hive `MaintenanceRecord.id`).
+/// This is a simplified “summary” view of the very detailed MaintenanceRecord.
+/// We only pull what we need for lists/filters/forms.
+class MaintenanceJobEntity extends Equatable {
   final String id;
-
-  /// Optional link back to an inspection.
   final String? inspectionId;
 
-  /// Human-friendly title (e.g. "Monthly PM - RTU-03").
-  final String? title;
-
-  /// Free-form notes / details.
-  final String? notes;
-
-  /// When this job was created (locally or remotely).
   final DateTime createdAt;
-
-  /// Last time the job was updated (any write).
   final DateTime? updatedAt;
 
-  /// When the maintenance work is scheduled to occur.
-  final DateTime? scheduledDate;
-
-  /// When the maintenance work was marked as completed.
+  final bool isCompleted;
   final DateTime? completedAt;
 
-  /// Whether the job is completed.
-  final bool isCompleted;
+  final bool requiresFollowUp;
+  final String? followUpNotes;
 
-  /// Whether the job is archived (e.g., hidden from the active list).
-  final bool isArchived;
+  final String siteCode;
+  final String address;
+  final String technicianName;
 
-  /// Status string for UI badges and remote sync
-  /// (e.g. "pending", "in_progress", "completed", "cancelled").
-  final String status;
+  /// High-level notes or summary (mapped from [MaintenanceRecord.generalNotes]).
+  final String? generalNotes;
 
-  /// Optional tenant identifier (for multi-tenant setups).
-  final String? tenantId;
-
-  /// Optional site code (e.g. "PS123-RTU3").
-  final String? siteCode;
-
-  /// Optional physical address of the job.
-  final String? address;
-
-  /// Optional technician / assignee name or ID.
-  final String? technician;
+  /// Computed “title” (e.g. Site XXX or address) – not persisted as its own field.
+  final String title;
 
   const MaintenanceJobEntity({
     required this.id,
     required this.createdAt,
-    required this.status,
+    required this.siteCode,
+    required this.address,
+    required this.technicianName,
+    required this.title,
     this.inspectionId,
-    this.title,
-    this.notes,
     this.updatedAt,
-    this.scheduledDate,
-    this.completedAt,
     this.isCompleted = false,
-    this.isArchived = false,
-    this.tenantId,
-    this.siteCode,
-    this.address,
-    this.technician,
+    this.completedAt,
+    this.requiresFollowUp = false,
+    this.followUpNotes,
+    this.generalNotes,
   });
-
-  /// Convenience factory for a brand-new job with sane defaults.
-  /// The repository can still decide to override `id` during persistence.
-  factory MaintenanceJobEntity.newJob({
-    required String id,
-    String? inspectionId,
-    String? title,
-    String? notes,
-    DateTime? scheduledDate,
-    String? tenantId,
-    String? siteCode,
-    String? address,
-    String? technician,
-  }) {
-    final now = DateTime.now();
-    return MaintenanceJobEntity(
-      id: id,
-      inspectionId: inspectionId,
-      title: title,
-      notes: notes,
-      createdAt: now,
-      updatedAt: now,
-      scheduledDate: scheduledDate,
-      completedAt: null,
-      isCompleted: false,
-      isArchived: false,
-      status: 'pending',
-      tenantId: tenantId,
-      siteCode: siteCode,
-      address: address,
-      technician: technician,
-    );
-  }
 
   MaintenanceJobEntity copyWith({
     String? id,
     String? inspectionId,
-    String? title,
-    String? notes,
     DateTime? createdAt,
     DateTime? updatedAt,
-    DateTime? scheduledDate,
-    DateTime? completedAt,
     bool? isCompleted,
-    bool? isArchived,
-    String? status,
-    String? tenantId,
+    DateTime? completedAt,
+    bool? requiresFollowUp,
+    String? followUpNotes,
     String? siteCode,
     String? address,
-    String? technician,
+    String? technicianName,
+    String? generalNotes,
+    String? title,
   }) {
     return MaintenanceJobEntity(
       id: id ?? this.id,
       inspectionId: inspectionId ?? this.inspectionId,
-      title: title ?? this.title,
-      notes: notes ?? this.notes,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
-      scheduledDate: scheduledDate ?? this.scheduledDate,
-      completedAt: completedAt ?? this.completedAt,
       isCompleted: isCompleted ?? this.isCompleted,
-      isArchived: isArchived ?? this.isArchived,
-      status: status ?? this.status,
-      tenantId: tenantId ?? this.tenantId,
+      completedAt: completedAt ?? this.completedAt,
+      requiresFollowUp: requiresFollowUp ?? this.requiresFollowUp,
+      followUpNotes: followUpNotes ?? this.followUpNotes,
       siteCode: siteCode ?? this.siteCode,
       address: address ?? this.address,
-      technician: technician ?? this.technician,
+      technicianName: technicianName ?? this.technicianName,
+      generalNotes: generalNotes ?? this.generalNotes,
+      title: title ?? this.title,
     );
   }
+
+  @override
+  List<Object?> get props => [
+    id,
+    inspectionId,
+    createdAt,
+    updatedAt,
+    isCompleted,
+    completedAt,
+    requiresFollowUp,
+    followUpNotes,
+    siteCode,
+    address,
+    technicianName,
+    generalNotes,
+    title,
+  ];
 }

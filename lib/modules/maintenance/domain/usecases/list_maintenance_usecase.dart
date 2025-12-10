@@ -1,17 +1,22 @@
 import '../entities/maintenance_job_entity.dart';
-import '../../infra/repositories/maintenance_repository.dart';
+import '../repositories/maintenance_repository.dart';
 
-/// What kind of list the caller wants.
+/// High-level filter for listing maintenance jobs.
+///
+/// We keep it simple for now:
+/// - all       → everything
+/// - active    → !isCompleted
+/// - archived  → isCompleted
 enum MaintenanceListFilter {
   all,
   active,
   archived,
 }
 
-/// Use case for listing maintenance jobs.
+/// Use case: list maintenance jobs with basic filtering.
 ///
-/// Keeps filtering logic in the domain layer instead of sprinkling it
-/// across multiple widgets.
+/// Infra only needs to implement [MaintenanceRepository.listAll]; we handle
+/// simple filtering here in the domain layer.
 class ListMaintenanceUseCase {
   final MaintenanceRepository _repository;
 
@@ -20,13 +25,17 @@ class ListMaintenanceUseCase {
   Future<List<MaintenanceJobEntity>> call({
     MaintenanceListFilter filter = MaintenanceListFilter.active,
   }) async {
+    final all = await _repository.listAll();
+
     switch (filter) {
       case MaintenanceListFilter.all:
-        return _repository.listAll(includeArchived: true);
+        return all;
+
       case MaintenanceListFilter.active:
-        return _repository.listActive();
+        return all.where((job) => !job.isCompleted).toList();
+
       case MaintenanceListFilter.archived:
-        return _repository.listArchived();
+        return all.where((job) => job.isCompleted).toList();
     }
   }
 }

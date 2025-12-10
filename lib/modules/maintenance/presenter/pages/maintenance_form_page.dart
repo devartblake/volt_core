@@ -3,8 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:voltcore/shared/widgets/responsive_scaffold.dart';
-import '../../infra/models/maintenance_record.dart';
+import '../controllers/maintenance_form_controller.dart';
 import '../controllers/maintenance_providers.dart';
+import '../../infra/models/maintenance_record.dart';
 import '../widgets/section_maint_site_info.dart';
 import '../widgets/section_maint_walkthrough.dart';
 import '../widgets/section_maint_general.dart';
@@ -27,23 +28,10 @@ class MaintenanceFormPage extends ConsumerStatefulWidget {
 }
 
 class _MaintenanceFormPageState extends ConsumerState<MaintenanceFormPage> {
-  late final MaintenanceRecord m;
   final _formKey = GlobalKey<FormState>();
   int _currentStep = 0;
 
-  @override
-  void initState() {
-    super.initState();
-    final repo = ref.read(maintenanceRepoProvider);
-
-    // If id is provided, try to load; otherwise fall back to new record
-    if (widget.id != null) {
-      m = repo.getById(widget.id!) ?? repo.createNew();
-    } else {
-      m = repo.createNew();
-    }
-  }
-
+  /// Small helper to trigger rebuild when sections mutate the model.
   void _update(void Function() fn) {
     setState(fn);
   }
@@ -54,32 +42,48 @@ class _MaintenanceFormPageState extends ConsumerState<MaintenanceFormPage> {
     }
     _formKey.currentState!.save();
 
+    final controller =
+    ref.read(maintenanceFormControllerProvider(widget.id).notifier);
     final repo = ref.read(maintenanceRepoProvider);
-    await repo.save(m);
 
-    // Refresh list provider
-    ref.read(maintenanceListProvider.notifier).state = repo.getAll();
+    try {
+      await controller.save();
 
-    if (!mounted) return;
+      // Refresh the list provider so list updates when navigating back
+      ref.invalidate(maintenanceListProvider);
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const Row(
-          children: [
-            Icon(Icons.check_circle_outline, color: Colors.white),
-            SizedBox(width: 12),
-            Text('Maintenance record saved successfully'),
-          ],
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Row(
+            children: [
+              Icon(Icons.check_circle_outline, color: Colors.white),
+              SizedBox(width: 12),
+              Text('Maintenance record saved successfully'),
+            ],
+          ),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+          ),
         ),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to save record: $e'),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+          ),
         ),
-      ),
-    );
+      );
+    }
   }
 
-  List<_FormSection> get _sections => [
+  List<_FormSection> _buildSections(MaintenanceRecord m) => [
     _FormSection(
       title: 'Site Information',
       icon: Icons.location_on_outlined,
@@ -143,6 +147,22 @@ class _MaintenanceFormPageState extends ConsumerState<MaintenanceFormPage> {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
+    // Watch form state
+    final formState =
+    ref.watch(maintenanceFormControllerProvider(widget.id));
+
+    if (formState == null) {
+      // Initial loading while controller decides existing/new record
+      return const Scaffold(
+        body: Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+
+    final m = formState.record;
+    final sections = _buildSections(m);
+
     return ResponsiveScaffold(
       appBar: AppBar(
         title: Text(
@@ -160,13 +180,14 @@ class _MaintenanceFormPageState extends ConsumerState<MaintenanceFormPage> {
           // Section indicator
           Container(
             margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            padding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             decoration: BoxDecoration(
               color: colorScheme.primaryContainer,
               borderRadius: BorderRadius.circular(20),
             ),
             child: Text(
-              'Step ${_currentStep + 1} of ${_sections.length}',
+              'Step ${_currentStep + 1} of ${sections.length}',
               style: theme.textTheme.labelMedium?.copyWith(
                 color: colorScheme.onPrimaryContainer,
                 fontWeight: FontWeight.w600,
@@ -176,7 +197,7 @@ class _MaintenanceFormPageState extends ConsumerState<MaintenanceFormPage> {
           IconButton(
             icon: const Icon(Icons.save_outlined),
             tooltip: 'Save',
-            onPressed: _save,
+            onPressed: formState.isSaving ? null : _save,
           ),
         ],
       ),
@@ -191,14 +212,14 @@ class _MaintenanceFormPageState extends ConsumerState<MaintenanceFormPage> {
               return Row(
                 children: [
                   _SectionNavigation(
-                    sections: _sections,
+                    sections: sections,
                     currentStep: _currentStep,
                     onStepTapped: (index) {
                       setState(() => _currentStep = index);
                     },
                   ),
                   Expanded(
-                    child: _buildFormContent(constraints),
+                    child: _buildFormContent(constraints, sections),
                   ),
                 ],
               );
@@ -208,18 +229,18 @@ class _MaintenanceFormPageState extends ConsumerState<MaintenanceFormPage> {
             return Column(
               children: [
                 _StepProgress(
-                  sections: _sections,
+                  sections: sections,
                   currentStep: _currentStep,
                 ),
                 Expanded(
-                  child: _buildFormContent(constraints),
+                  child: _buildFormContent(constraints, sections),
                 ),
               ],
             );
           },
         ),
       ),
-      fab: _currentStep < _sections.length - 1
+      fab: _currentStep < sections.length - 1
           ? FloatingActionButton.extended(
         onPressed: () {
           setState(() => _currentStep++);
@@ -228,20 +249,23 @@ class _MaintenanceFormPageState extends ConsumerState<MaintenanceFormPage> {
         label: const Text('Next'),
       )
           : FloatingActionButton.extended(
-        onPressed: _save,
+        onPressed: formState.isSaving ? null : _save,
         icon: const Icon(Icons.save),
         label: const Text('Save'),
       ),
     );
   }
 
-  Widget _buildFormContent(BoxConstraints constraints) {
+  Widget _buildFormContent(
+      BoxConstraints constraints,
+      List<_FormSection> sections,
+      ) {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _sections[_currentStep].widget,
+          sections[_currentStep].widget,
           const SizedBox(height: 16),
           // Navigation buttons
           Row(
@@ -257,7 +281,7 @@ class _MaintenanceFormPageState extends ConsumerState<MaintenanceFormPage> {
                 )
               else
                 const SizedBox(),
-              if (_currentStep < _sections.length - 1)
+              if (_currentStep < sections.length - 1)
                 FilledButton.icon(
                   onPressed: () {
                     setState(() => _currentStep++);
@@ -377,11 +401,13 @@ class _SectionNavigation extends StatelessWidget {
                         const SizedBox(width: 12),
                         Expanded(
                           child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                            crossAxisAlignment:
+                            CrossAxisAlignment.start,
                             children: [
                               Text(
                                 section.title,
-                                style: theme.textTheme.bodyMedium?.copyWith(
+                                style: theme.textTheme.bodyMedium
+                                    ?.copyWith(
                                   fontWeight: isActive
                                       ? FontWeight.w600
                                       : FontWeight.w500,
@@ -393,7 +419,8 @@ class _SectionNavigation extends StatelessWidget {
                               if (isCompleted)
                                 Text(
                                   'Completed',
-                                  style: theme.textTheme.bodySmall?.copyWith(
+                                  style:
+                                  theme.textTheme.bodySmall?.copyWith(
                                     color: colorScheme.primary,
                                   ),
                                 ),
