@@ -5,7 +5,8 @@ import 'package:go_router/go_router.dart';
 import 'package:voltcore/shared/widgets/responsive_scaffold.dart';
 import 'package:voltcore/app/app_drawer.dart';
 
-import '../../domain/entities/maintenance_job_entity.dart';
+import '../../infra/models/maintenance_record.dart';
+import '../controllers/maintenance_list_controller.dart';
 import '../controllers/maintenance_providers.dart';
 
 class MaintenanceListPage extends ConsumerWidget {
@@ -16,24 +17,70 @@ class MaintenanceListPage extends ConsumerWidget {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
-    final listAsync = ref.watch(maintenanceListProvider);
+    // Use the StateNotifier state instead of an AsyncValue
+    final listState = ref.watch(maintenanceListControllerProvider);
 
     return ResponsiveScaffold(
       appBar: AppBar(
         title: const Text('Maintenance Records'),
         elevation: 0,
       ),
-      body: listAsync.when(
-        data: (list) {
+      body: Builder(
+        builder: (context) {
+          // 1) Loading with no data yet
+          if (listState.isLoading && listState.records.isEmpty) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          // 2) Error with no data
+          if (listState.error != null && listState.records.isEmpty) {
+            final err = listState.error;
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24.0),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.error_outline, size: 48),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Failed to load maintenance records.',
+                      style: theme.textTheme.titleMedium,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      '$err',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: colorScheme.onSurfaceVariant,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 16),
+                    FilledButton.icon(
+                      onPressed: () => ref
+                          .read(maintenanceListControllerProvider.notifier)
+                          .refresh(),
+                      icon: const Icon(Icons.refresh),
+                      label: const Text('Retry'),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }
+
+          // 3) No records
+          final list = listState.records;
           if (list.isEmpty) {
             return const _MaintenanceEmpty();
           }
 
+          // 4) Normal list
           return ListView.builder(
             padding: const EdgeInsets.all(16),
             itemCount: list.length,
             itemBuilder: (context, i) {
-              final m = list[i];
+              final m = list[i]; // m is MaintenanceRecord
               return Padding(
                 padding: const EdgeInsets.only(bottom: 12),
                 child: Card(
@@ -43,7 +90,8 @@ class MaintenanceListPage extends ConsumerWidget {
                     side: BorderSide(color: colorScheme.outlineVariant),
                   ),
                   child: InkWell(
-                    onTap: () => context.push('/maintenance/detail/${m.id}'),
+                    onTap: () =>
+                        context.push('/maintenance/detail/${m.id}'),
                     borderRadius: BorderRadius.circular(16),
                     child: Padding(
                       padding: const EdgeInsets.all(16),
@@ -67,13 +115,15 @@ class MaintenanceListPage extends ConsumerWidget {
                               const SizedBox(width: 16),
                               Expanded(
                                 child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  crossAxisAlignment:
+                                  CrossAxisAlignment.start,
                                   children: [
                                     Text(
                                       m.siteCode.isEmpty
                                           ? 'Maintenance ${m.id}'
                                           : m.siteCode,
-                                      style: theme.textTheme.titleMedium?.copyWith(
+                                      style: theme.textTheme.titleMedium
+                                          ?.copyWith(
                                         fontWeight: FontWeight.w600,
                                       ),
                                     ),
@@ -81,10 +131,10 @@ class MaintenanceListPage extends ConsumerWidget {
                                       const SizedBox(height: 4),
                                       Text(
                                         _subtitleFor(m),
-                                        style:
-                                        theme.textTheme.bodyMedium?.copyWith(
-                                          color:
-                                          colorScheme.onSurfaceVariant,
+                                        style: theme.textTheme.bodyMedium
+                                            ?.copyWith(
+                                          color: colorScheme
+                                              .onSurfaceVariant,
                                         ),
                                         maxLines: 2,
                                         overflow: TextOverflow.ellipsis,
@@ -95,7 +145,9 @@ class MaintenanceListPage extends ConsumerWidget {
                               ),
                               // Export PDF button
                               IconButton.filledTonal(
-                                icon: const Icon(Icons.picture_as_pdf_outlined),
+                                icon: const Icon(
+                                  Icons.picture_as_pdf_outlined,
+                                ),
                                 tooltip: 'Export PDF',
                                 onPressed: () async {
                                   final repo =
@@ -103,10 +155,11 @@ class MaintenanceListPage extends ConsumerWidget {
                                   await repo.exportMaintenancePdf(m);
 
                                   if (context.mounted) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
+                                    ScaffoldMessenger.of(context)
+                                        .showSnackBar(
                                       SnackBar(
-                                        content:
-                                        const Text('PDF export started'),
+                                        content: const Text(
+                                            'PDF export started'),
                                         behavior: SnackBarBehavior.floating,
                                         shape: RoundedRectangleBorder(
                                           borderRadius:
@@ -120,13 +173,15 @@ class MaintenanceListPage extends ConsumerWidget {
                               const SizedBox(width: 8),
                               // Delete button
                               IconButton.filledTonal(
-                                icon: const Icon(Icons.delete_outline),
+                                icon:
+                                const Icon(Icons.delete_outline),
                                 tooltip: 'Delete',
                                 style: IconButton.styleFrom(
                                   foregroundColor: colorScheme.error,
                                 ),
                                 onPressed: () async {
-                                  final confirm = await showDialog<bool>(
+                                  final confirm =
+                                  await showDialog<bool>(
                                     context: context,
                                     builder: (ctx) => AlertDialog(
                                       title: const Text(
@@ -139,12 +194,14 @@ class MaintenanceListPage extends ConsumerWidget {
                                       actions: [
                                         TextButton(
                                           onPressed: () =>
-                                              Navigator.of(ctx).pop(false),
+                                              Navigator.of(ctx)
+                                                  .pop(false),
                                           child: const Text('Cancel'),
                                         ),
                                         FilledButton(
                                           onPressed: () =>
-                                              Navigator.of(ctx).pop(true),
+                                              Navigator.of(ctx)
+                                                  .pop(true),
                                           style: FilledButton.styleFrom(
                                             backgroundColor:
                                             colorScheme.error,
@@ -155,13 +212,18 @@ class MaintenanceListPage extends ConsumerWidget {
                                     ),
                                   );
 
-                                  if (confirm == true && context.mounted) {
+                                  if (confirm == true &&
+                                      context.mounted) {
                                     final repo =
                                     ref.read(maintenanceRepoProvider);
                                     await repo.delete(m.id);
 
-                                    // Refresh the list by invalidating the provider
-                                    ref.invalidate(maintenanceListProvider);
+                                    // Reload via controller
+                                    await ref
+                                        .read(
+                                        maintenanceListControllerProvider
+                                            .notifier)
+                                        .refresh();
 
                                     if (context.mounted) {
                                       ScaffoldMessenger.of(context)
@@ -170,7 +232,8 @@ class MaintenanceListPage extends ConsumerWidget {
                                           content: const Row(
                                             children: [
                                               Icon(
-                                                Icons.check_circle_outline,
+                                                Icons
+                                                    .check_circle_outline,
                                                 color: Colors.white,
                                               ),
                                               SizedBox(width: 12),
@@ -178,7 +241,8 @@ class MaintenanceListPage extends ConsumerWidget {
                                                   'Maintenance record deleted'),
                                             ],
                                           ),
-                                          behavior: SnackBarBehavior.floating,
+                                          behavior:
+                                          SnackBarBehavior.floating,
                                           shape: RoundedRectangleBorder(
                                             borderRadius:
                                             BorderRadius.circular(8),
@@ -234,55 +298,21 @@ class MaintenanceListPage extends ConsumerWidget {
             },
           );
         },
-        loading: () => const Center(
-          child: CircularProgressIndicator(),
-        ),
-        error: (err, st) {
-          return Center(
-            child: Padding(
-              padding: const EdgeInsets.all(24.0),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.error_outline, size: 48),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Failed to load maintenance records.',
-                    style: theme.textTheme.titleMedium,
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    '$err',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: colorScheme.onSurfaceVariant,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 16),
-                  FilledButton.icon(
-                    onPressed: () =>
-                        ref.invalidate(maintenanceListProvider),
-                    icon: const Icon(Icons.refresh),
-                    label: const Text('Retry'),
-                  ),
-                ],
-              ),
-            ),
-          );
-        },
       ),
       fab: FloatingActionButton.extended(
         onPressed: () async {
           final repo = ref.read(maintenanceRepoProvider);
-          // Create a draft maintenance job (domain entity)
-          final job = await repo.createDraft();
 
-          // Refresh list
-          ref.invalidate(maintenanceListProvider);
+          // Create a new MaintenanceRecord in Hive
+          final rec = repo.createNew();
 
-          // Navigate to your maintenance form route
-          // If your route expects the id, pass job.id
-          context.push('/maintenance/new/${job.id}');
+          // Reload the list via controller
+          await ref
+              .read(maintenanceListControllerProvider.notifier)
+              .refresh();
+
+          // Navigate to the form route with the new id
+          context.push('/maintenance/new?id=${rec.id}');
         },
         icon: const Icon(Icons.add),
         label: const Text('New Maintenance'),
@@ -296,7 +326,8 @@ class MaintenanceListPage extends ConsumerWidget {
     );
   }
 
-  String _subtitleFor(MaintenanceJobEntity m) {
+  // NOTE: uses MaintenanceRecord, not MaintenanceJobEntity
+  String _subtitleFor(MaintenanceRecord m) {
     final parts = <String>[];
     if (m.technicianName.isNotEmpty) {
       parts.add('Tech: ${m.technicianName}');

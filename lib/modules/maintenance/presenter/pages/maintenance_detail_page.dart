@@ -486,7 +486,7 @@ class _DetailBody extends StatelessWidget {
               label: 'Requires Follow-up',
               value: rec.requiresFollowUp ? 'Yes' : 'No',
             ),
-            if (rec.followUpNotes.isNotEmpty) ...[
+            if (rec.followUpNotes?.isNotEmpty ?? false) ...[
               const SizedBox(height: 12),
               Text(
                 'Follow-up Notes:',
@@ -496,7 +496,7 @@ class _DetailBody extends StatelessWidget {
               ),
               const SizedBox(height: 4),
               Text(
-                rec.followUpNotes,
+                rec.followUpNotes ?? '',
                 style: theme.textTheme.bodyMedium,
               ),
             ],

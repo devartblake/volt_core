@@ -60,6 +60,10 @@ class MaintenanceListController
     }
   }
 
+  Future<void> refresh() {
+    return load();
+  }
+
   void changeTab(MaintenanceListTab tab) {
     final all = _repo.getAll();
     state = state.copyWith(
