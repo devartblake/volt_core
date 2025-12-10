@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../app/app_drawer.dart';
-import '../../domain/entities/maintenance_job_entity.dart';
+import '../../infra/models/maintenance_record.dart';
 import '../controllers/maintenance_providers.dart';
 
 class MaintenanceDetailPage extends ConsumerWidget {
@@ -18,27 +18,11 @@ class MaintenanceDetailPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-
-    final recAsync = ref.watch(maintenanceByIdProvider(id));
     final repo = ref.watch(maintenanceRepoProvider);
+    final rec = repo.getById(id);
 
-    return recAsync?.when(
-      loading: () => Scaffold(
-        appBar: AppBar(
-          title: const Text('Maintenance Detail'),
-          leading: Navigator.of(context).canPop()
-              ? IconButton(
-            icon: const Icon(Icons.arrow_back),
-            onPressed: () => context.pop(),
-          )
-              : null,
-        ),
-        body: const Center(
-          child: CircularProgressIndicator(),
-        ),
-        drawer: const AppDrawer(),
-      ),
-      error: (err, st) => Scaffold(
+    if (rec == null) {
+      return Scaffold(
         appBar: AppBar(
           title: const Text('Maintenance Detail'),
           leading: Navigator.of(context).canPop()
@@ -49,196 +33,139 @@ class MaintenanceDetailPage extends ConsumerWidget {
               : null,
         ),
         body: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(24.0),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  Icons.error_outline,
-                  size: 64,
-                  color: colorScheme.error,
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  'Failed to load maintenance record.',
-                  style: theme.textTheme.titleLarge,
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  '$err',
-                  textAlign: TextAlign.center,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: colorScheme.onSurfaceVariant,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                FilledButton.icon(
-                  onPressed: () => ref.invalidate(maintenanceByIdProvider(id)),
-                  icon: const Icon(Icons.refresh),
-                  label: const Text('Retry'),
-                ),
-              ],
-            ),
-          ),
-        ),
-        drawer: const AppDrawer(),
-      ),
-      data: (rec) {
-        if (rec == null) {
-          return Scaffold(
-            appBar: AppBar(
-              title: const Text('Maintenance Detail'),
-              leading: Navigator.of(context).canPop()
-                  ? IconButton(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.error_outline,
+                size: 64,
+                color: colorScheme.error,
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Record not found',
+                style: theme.textTheme.titleLarge,
+              ),
+              const SizedBox(height: 8),
+              FilledButton.icon(
+                onPressed: () => context.go('/maintenance'),
                 icon: const Icon(Icons.arrow_back),
-                onPressed: () => context.pop(),
-              )
-                  : null,
-            ),
-            body: Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    Icons.error_outline,
-                    size: 64,
-                    color: colorScheme.error,
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Record not found',
-                    style: theme.textTheme.titleLarge,
-                  ),
-                  const SizedBox(height: 8),
-                  FilledButton.icon(
-                    onPressed: () => context.go('/maintenance'),
-                    icon: const Icon(Icons.arrow_back),
-                    label: const Text('Back to Maintenance List'),
-                  ),
-                ],
-              ),
-            ),
-          );
-        }
-
-        return Scaffold(
-          appBar: AppBar(
-            title: Text(rec.siteCode.isEmpty
-                ? 'Maintenance Detail'
-                : rec.siteCode),
-            leading: Navigator.of(context).canPop()
-                ? IconButton(
-              icon: const Icon(Icons.arrow_back),
-              onPressed: () => context.pop(),
-            )
-                : null,
-            actions: [
-              IconButton(
-                tooltip: 'Export PDF',
-                icon: const Icon(Icons.picture_as_pdf_outlined),
-                onPressed: () async {
-                  await repo.exportMaintenancePdf(rec);
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: const Row(
-                          children: [
-                            Icon(Icons.check_circle_outline,
-                                color: Colors.white),
-                            SizedBox(width: 12),
-                            Text('PDF export started'),
-                          ],
-                        ),
-                        behavior: SnackBarBehavior.floating,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                      ),
-                    );
-                  }
-                },
-              ),
-              IconButton(
-                tooltip: 'Edit',
-                icon: const Icon(Icons.edit_outlined),
-                onPressed: () {
-                  // keep existing route pattern
-                  context.push('/maintenance/new?id=$id');
-                },
-              ),
-              PopupMenuButton(
-                icon: const Icon(Icons.more_vert),
-                itemBuilder: (context) => [
-                  PopupMenuItem(
-                    child: const Row(
-                      children: [
-                        Icon(Icons.delete_outline),
-                        SizedBox(width: 12),
-                        Text('Delete'),
-                      ],
-                    ),
-                    onTap: () async {
-                      // Delay to allow menu to close
-                      await Future.delayed(
-                          const Duration(milliseconds: 100));
-                      if (!context.mounted) return;
-
-                      final confirm = await showDialog<bool>(
-                        context: context,
-                        builder: (ctx) => AlertDialog(
-                          title: const Text('Delete maintenance record?'),
-                          content: const Text(
-                            'This action cannot be undone. All data for this maintenance record will be permanently deleted.',
-                          ),
-                          actions: [
-                            TextButton(
-                              onPressed: () =>
-                                  Navigator.of(ctx).pop(false),
-                              child: const Text('Cancel'),
-                            ),
-                            FilledButton(
-                              onPressed: () =>
-                                  Navigator.of(ctx).pop(true),
-                              style: FilledButton.styleFrom(
-                                backgroundColor: colorScheme.error,
-                              ),
-                              child: const Text('Delete'),
-                            ),
-                          ],
-                        ),
-                      );
-
-                      if (confirm == true && context.mounted) {
-                        await repo.delete(id);
-
-                        // Invalidate providers so list/detail refresh correctly
-                        ref.invalidate(maintenanceListProvider);
-                        ref.invalidate(maintenanceByIdProvider(id));
-
-                        if (context.mounted) {
-                          context.go('/maintenance');
-                        }
-                      }
-                    },
-                  ),
-                ],
+                label: const Text('Back to Maintenance List'),
               ),
             ],
           ),
-          drawer: const AppDrawer(),
-          body: SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
-            child: _DetailBody(rec: rec),
+        ),
+      );
+    }
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(rec.siteCode.isEmpty ? 'Maintenance Detail' : rec.siteCode),
+        leading: Navigator.of(context).canPop()
+            ? IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => context.pop(),
+        )
+            : null,
+        actions: [
+          IconButton(
+            tooltip: 'Export PDF',
+            icon: const Icon(Icons.picture_as_pdf_outlined),
+            onPressed: () async {
+              await repo.exportMaintenancePdf(rec);
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: const Row(
+                      children: [
+                        Icon(Icons.check_circle_outline, color: Colors.white),
+                        SizedBox(width: 12),
+                        Text('PDF export started'),
+                      ],
+                    ),
+                    behavior: SnackBarBehavior.floating,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                );
+              }
+            },
           ),
-        );
-      },
+          IconButton(
+            tooltip: 'Edit',
+            icon: const Icon(Icons.edit_outlined),
+            onPressed: () {
+              context.push('/maintenance/new?id=$id');
+            },
+          ),
+          PopupMenuButton(
+            icon: const Icon(Icons.more_vert),
+            itemBuilder: (context) => [
+              PopupMenuItem(
+                child: const Row(
+                  children: [
+                    Icon(Icons.delete_outline),
+                    SizedBox(width: 12),
+                    Text('Delete'),
+                  ],
+                ),
+                onTap: () async {
+                  // Delay to allow menu to close
+                  await Future.delayed(const Duration(milliseconds: 100));
+                  if (!context.mounted) return;
+
+                  final confirm = await showDialog<bool>(
+                    context: context,
+                    builder: (ctx) => AlertDialog(
+                      title: const Text('Delete maintenance record?'),
+                      content: const Text(
+                        'This action cannot be undone. All data for this maintenance record will be permanently deleted.',
+                      ),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.of(ctx).pop(false),
+                          child: const Text('Cancel'),
+                        ),
+                        FilledButton(
+                          onPressed: () => Navigator.of(ctx).pop(true),
+                          style: FilledButton.styleFrom(
+                            backgroundColor: colorScheme.error,
+                          ),
+                          child: const Text('Delete'),
+                        ),
+                      ],
+                    ),
+                  );
+
+                  if (confirm == true && context.mounted) {
+                    await repo.delete(id);
+
+                    // Refresh list provider
+                    ref.read(maintenanceListProvider.notifier).state =
+                        repo.getAll();
+
+                    if (context.mounted) {
+                      context.go('/maintenance');
+                    }
+                  }
+                },
+              ),
+            ],
+          ),
+        ],
+      ),
+      drawer: const AppDrawer(),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: _DetailBody(rec: rec),
+      ),
     );
   }
 }
 
 class _DetailBody extends StatelessWidget {
-  final MaintenanceJobEntity rec;
+  final MaintenanceRecord rec;
 
   const _DetailBody({required this.rec});
 
@@ -579,7 +506,7 @@ class _DetailBody extends StatelessWidget {
     );
   }
 
-  bool _hasActionsPerformed(MaintenanceJobEntity rec) {
+  bool _hasActionsPerformed(MaintenanceRecord rec) {
     return rec.oilFilterChanged ||
         rec.fuelFilterReplaced ||
         rec.coolantFlushed ||
@@ -594,7 +521,7 @@ class _DetailBody extends StatelessWidget {
         rec.hazmatRemoved;
   }
 
-  bool _hasPostServiceItems(MaintenanceJobEntity rec) {
+  bool _hasPostServiceItems(MaintenanceRecord rec) {
     return rec.postVerifyRunsUnderLoad ||
         rec.postCheckVoltFreq ||
         rec.postInspectExhaust ||

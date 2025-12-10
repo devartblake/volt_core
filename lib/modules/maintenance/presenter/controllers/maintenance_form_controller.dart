@@ -1,6 +1,6 @@
 import 'package:flutter_riverpod/legacy.dart';
-import '../../domain/repositories/maintenance_repository.dart' as legacy;
 import '../../infra/models/maintenance_record.dart';
+import '../../infra/repositories/maintenance_entity.dart' as infra;
 import 'maintenance_providers.dart';
 
 class MaintenanceFormState {
@@ -33,7 +33,7 @@ class MaintenanceFormState {
 
 class MaintenanceFormController
     extends StateNotifier<MaintenanceFormState?> {
-  final legacy.MaintenanceRepo _repo;
+  final infra.MaintenanceRepo _repo;
 
   MaintenanceFormController(
       this._repo, {
@@ -97,8 +97,9 @@ class MaintenanceFormController
 }
 
 /// Provider factory with optional maintenance record id.
-final maintenanceFormControllerProvider = StateNotifierProvider.family<
-    MaintenanceFormController, MaintenanceFormState?, String?>(
+final maintenanceFormControllerProvider =
+StateNotifierProvider.family<MaintenanceFormController,
+    MaintenanceFormState?, String?>(
       (ref, id) {
     final repo = ref.watch(maintenanceRepoProvider);
     return MaintenanceFormController(repo, initialId: id);
