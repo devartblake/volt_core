@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -277,6 +278,14 @@ List<_DashTile> _buildAllTiles(UserRole? role) {
         UserRole.admin,
       },
     ),
+    if (kDebugMode)
+      _DashTile(
+        title: 'Hive Debug',
+        subtitle: 'Inspect and manage local data',
+        icon: Icons.bug_report,
+        routeName: 'hive_debug',
+        visibleFor: null, // Visible to all in debug mode
+      ),
   ];
 
   // If no role yet (e.g. not logged in), only show tiles that don't require a role.

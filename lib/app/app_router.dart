@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -14,6 +15,9 @@ import 'package:voltcore/modules/admin/presenter/pages/admin_settings_page.dart'
 import '../modules/admin/presenter/pages/technicians_page.dart';
 import '../modules/auth/presenter/controllers/auth_controller.dart';
 import '../modules/dashboard/presenter/pages/tech_dashboard_page.dart';
+import '../modules/debug/pages/debug_menu_page.dart';
+import '../modules/debug/pages/hive_debug_page.dart';
+import '../modules/debug/pages/network_debug_page.dart';
 import '../modules/equipment/presenter/pages/equipment_search_page.dart';
 import '../modules/inspections/presenter/pages/inspection_detail_page.dart';
 import '../modules/inspections/presenter/pages/inspection_form_page.dart';
@@ -278,6 +282,26 @@ final goRouterProvider = Provider<GoRouter>((ref) {
           child: TechniciansPage(),
         ),
       ),
+
+      // Debug routes (only in debug builds)
+      if (kDebugMode)
+        GoRoute(
+          path: '/debug',
+          name: 'debug_menu',
+          builder: (_, __) => const DebugMenuPage(),
+          routes: [
+            GoRoute(
+              path: 'hive',
+              name: 'hive_debug',
+              builder: (_, __) => const HiveDebugPage(),
+            ),
+            GoRoute(
+              path: 'network',
+              name: 'network_debug',
+              builder: (_, __) => const NetworkDebugPage(),
+            ),
+          ],
+        ),
     ],
   );
 });

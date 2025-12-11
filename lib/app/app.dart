@@ -1,6 +1,8 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../core/services/storage/file_storage_service.dart';
 import 'app_router.dart';
 import '../core/theme/app_theme.dart';
 
@@ -29,5 +31,21 @@ class VoltcoreApp extends ConsumerWidget {
 
       routerConfig: router,
     );
+  }
+}
+
+class StorageCleanupService {
+  static Future<void> performMaintenance() async {
+    // Clean temp files older than 7 days
+    await FileStorageService.instance.cleanTempFiles(
+      maxAge: Duration(days: 7),
+    );
+
+    // Optionally clean cache
+    // await FileStorageService.instance.cleanCache();
+
+    if (kDebugMode) {
+      await FileStorageService.instance.printDebugInfo();
+    }
   }
 }

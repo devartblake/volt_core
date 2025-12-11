@@ -25,19 +25,33 @@ class Env {
   static bool get isProd => current == AppEnvironment.prod;
 
   /// Map environment → .env filename
+  ///
+  /// Files should be in project root or assets/ folder.
+  /// Make sure they're registered in pubspec.yaml under assets:
   static String get filename {
     switch (current) {
       case AppEnvironment.dev:
-        return "/assets/env/.env.dev";
+        return "assets/env/.env.dev";
       case AppEnvironment.staging:
-        return "/assets/env/.env.staging";
+        return "assets/env/.env.staging";
       case AppEnvironment.prod:
-        return "/assets/env/.env.prod";
+        return "assets/env/.env.prod";
     }
   }
 
   /// Call this during app startup
   static Future<void> load() async {
-    await dotenv.load(fileName: filename);
+    try {
+      await dotenv.load(fileName: filename);
+      if (kDebugMode) {
+        debugPrint('[Env] Loaded $filename successfully');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('[Env] Failed to load $filename: $e');
+        debugPrint('[Env] Make sure the file exists and is listed in pubspec.yaml assets');
+      }
+      rethrow;
+    }
   }
 }

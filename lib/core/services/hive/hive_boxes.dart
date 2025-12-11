@@ -19,6 +19,7 @@ class HiveBoxes {
   static const String nameplatesBoxName = 'nameplate_data';
   static const String testIntervalsBoxName = 'test_interval_records';
 
+  static late Box<dynamic> appSettings;
   static late Box<Inspection> inspections;
   static late Box<LoadTestRecord> loadTests;
   static late Box<NameplateData> nameplates;
@@ -32,6 +33,10 @@ class HiveBoxes {
     loadTests = await Hive.openBox<LoadTestRecord>(loadTestsBoxName);
     nameplates = await Hive.openBox<NameplateData>(nameplatesBoxName);
     testIntervals = await Hive.openBox<TestIntervalRecord>(testIntervalsBoxName);
+
+    if (!Hive.isBoxOpen('app_settings')) {
+      appSettings = await Hive.openBox<dynamic>('app_settings');
+    }
   }
 
   /// Optional convenience methods if you want to open lazily later.

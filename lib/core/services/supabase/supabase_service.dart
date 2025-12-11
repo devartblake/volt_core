@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../configs/env_config.dart';
+import '../network/supabase_http_client.dart';
 
 /// Centralized Supabase bootstrap + helpers.
 ///
@@ -45,6 +46,8 @@ class SupabaseService {
       await Supabase.initialize(
         url: cfg.supabaseUrl,
         anonKey: cfg.supabaseAnonKey,
+        // Add HTTP client for network logging (debug only)
+        httpClient: SupabaseHttpClientFactory.create(),
       );
 
       _initialized = true;
@@ -55,7 +58,8 @@ class SupabaseService {
               '  env      = ${cfg.environment}\n'
               '  url      = ${cfg.supabaseUrl}\n'
               '  restBase = ${cfg.restBaseUrl}\n'
-              '  bundleId = ${cfg.bundleId ?? '(none)'}',
+              '  bundleId = ${cfg.bundleId ?? '(none)'}\n'
+              '  logging  = ${kDebugMode ? 'enabled (with network monitoring)' : 'disabled'}',
         );
       }
     } catch (e, st) {

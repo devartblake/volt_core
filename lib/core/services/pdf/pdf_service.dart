@@ -1,4 +1,5 @@
 import 'dart:io' as io;
+import 'dart:io';
 
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
@@ -22,6 +23,7 @@ import '../../../modules/load_test/infra/models/test_interval_record.dart';
 import '../../../modules/maintenance/infra/models/maintenance_record.dart';
 import '../../../shared/presenter/layout/pdf/pdf_template.dart';
 import '../../storage/hive/hive_boxes.dart';
+import '../storage/file_storage_service.dart';
 
 /// User-level preferences for how PDFs should be exported.
 ///
@@ -2082,5 +2084,55 @@ class PdfService {
     //       p.join(folderPath, 'customer_signature_${maintenance.id}.png');
     //   await io.File(customerSigPath).copy(dest);
     // }
+  }
+
+
+// Save inspection signature
+  Future<void> saveSignature(String inspectionId, Uint8List signatureBytes) async {
+    final path = await FileStorageService.instance.saveInspectionSignature(
+      inspectionId: inspectionId,
+      signatureBytes: signatureBytes,
+    );
+
+    debugPrint('Signature saved: $path');
+  }
+
+// Load signature
+  Future<Uint8List?> loadSignature(String inspectionId) async {
+    final file = await FileStorageService.instance.getInspectionSignature(inspectionId);
+
+    if (file != null) {
+      return await file.readAsBytes();
+    }
+
+    return null;
+  }
+
+  // Save inspection PDF
+  Future<String> saveInspectionPdf({
+    required String inspectionId,
+    required Uint8List pdfBytes,
+  }) async {
+    // Use FileStorageService instead of manual path
+    return await FileStorageService.instance.saveInspectionPdf(
+      inspectionId: inspectionId,
+      pdfBytes: pdfBytes,
+    );
+  }
+
+  // Save maintenance PDF
+  Future<String> saveMaintenancePdf({
+    required String jobId,
+    required Uint8List pdfBytes,
+  }) async {
+    return await FileStorageService.instance.saveMaintenancePdf(
+      jobId: jobId,
+      pdfBytes: pdfBytes,
+    );
+  }
+
+  // Get PDF for sharing
+  Future<File?> getInspectionPdf(String inspectionId) async {
+    return await FileStorageService.instance.getInspectionPdf(inspectionId);
   }
 }
