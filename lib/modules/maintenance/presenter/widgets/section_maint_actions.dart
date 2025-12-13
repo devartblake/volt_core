@@ -1,20 +1,18 @@
 import 'package:flutter/material.dart';
+
 import '../../infra/models/maintenance_record.dart';
 
 class SectionMaintActions extends StatelessWidget {
   final MaintenanceRecord model;
   final ValueChanged<MaintenanceRecord> onChanged;
+  final bool readOnly;
 
   const SectionMaintActions({
     super.key,
     required this.model,
     required this.onChanged,
+    this.readOnly = false,
   });
-
-  void _update(void Function() fn) {
-    fn();
-    onChanged(model);
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -28,271 +26,247 @@ class SectionMaintActions extends StatelessWidget {
         side: BorderSide(color: colorScheme.outlineVariant),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: colorScheme.tertiaryContainer,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Icon(
-                    Icons.build_outlined,
-                    color: colorScheme.onTertiaryContainer,
-                    size: 20,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Text(
-                  'Maintenance Actions Performed',
-                  style: theme.textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
+            Text(
+              'Actions Performed',
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 16),
 
-            _actionRow(
-              context: context,
+            _ActionRow(
               label: 'Oil filter changed',
               value: model.oilFilterChanged,
               notes: model.oilFilterNotes,
-              icon: Icons.oil_barrel_outlined,
-              onChanged: (v, notes) => _update(() {
-                model.oilFilterChanged = v;
+              readOnly: readOnly,
+              onChanged: (val, notes) {
+                model.oilFilterChanged = val;
                 model.oilFilterNotes = notes;
-              }),
+                onChanged(model);
+              },
             ),
-            _actionRow(
-              context: context,
+            _ActionRow(
               label: 'Fuel filter replaced',
               value: model.fuelFilterReplaced,
               notes: model.fuelFilterNotes,
-              icon: Icons.filter_alt_outlined,
-              onChanged: (v, notes) => _update(() {
-                model.fuelFilterReplaced = v;
+              readOnly: readOnly,
+              onChanged: (val, notes) {
+                model.fuelFilterReplaced = val;
                 model.fuelFilterNotes = notes;
-              }),
+                onChanged(model);
+              },
             ),
-            _actionRow(
-              context: context,
-              label: 'Coolant flushed / topped off',
+            _ActionRow(
+              label: 'Coolant flushed',
               value: model.coolantFlushed,
               notes: model.coolantNotes,
-              icon: Icons.water_drop_outlined,
-              onChanged: (v, notes) => _update(() {
-                model.coolantFlushed = v;
+              readOnly: readOnly,
+              onChanged: (val, notes) {
+                model.coolantFlushed = val;
                 model.coolantNotes = notes;
-              }),
+                onChanged(model);
+              },
             ),
-            _actionRow(
-              context: context,
-              label: 'Battery replaced / serviced',
+            _ActionRow(
+              label: 'Battery replaced',
               value: model.batteryReplaced,
               notes: model.batteryNotes,
-              icon: Icons.battery_charging_full_outlined,
-              onChanged: (v, notes) => _update(() {
-                model.batteryReplaced = v;
+              readOnly: readOnly,
+              onChanged: (val, notes) {
+                model.batteryReplaced = val;
                 model.batteryNotes = notes;
-              }),
+                onChanged(model);
+              },
             ),
-            _actionRow(
-              context: context,
+            _ActionRow(
               label: 'Air filter replaced',
               value: model.airFilterReplaced,
               notes: model.airFilterNotes,
-              icon: Icons.air_outlined,
-              onChanged: (v, notes) => _update(() {
-                model.airFilterReplaced = v;
+              readOnly: readOnly,
+              onChanged: (val, notes) {
+                model.airFilterReplaced = val;
                 model.airFilterNotes = notes;
-              }),
+                onChanged(model);
+              },
             ),
-            _actionRow(
-              context: context,
+            _ActionRow(
               label: 'Belts / hoses replaced',
               value: model.beltsHosesReplaced,
               notes: model.beltsHosesNotes,
-              icon: Icons.settings_input_component_outlined,
-              onChanged: (v, notes) => _update(() {
-                model.beltsHosesReplaced = v;
+              readOnly: readOnly,
+              onChanged: (val, notes) {
+                model.beltsHosesReplaced = val;
                 model.beltsHosesNotes = notes;
-              }),
+                onChanged(model);
+              },
             ),
-            _actionRow(
-              context: context,
-              label: 'Block heater tested & functional',
+            _ActionRow(
+              label: 'Block heater tested',
               value: model.blockHeaterTested,
               notes: model.blockHeaterNotes,
-              icon: Icons.thermostat_outlined,
-              onChanged: (v, notes) => _update(() {
-                model.blockHeaterTested = v;
+              readOnly: readOnly,
+              onChanged: (val, notes) {
+                model.blockHeaterTested = val;
                 model.blockHeaterNotes = notes;
-              }),
+                onChanged(model);
+              },
             ),
-            _actionRow(
-              context: context,
-              label: 'Racor / fuel-water separator serviced',
+            _ActionRow(
+              label: 'Racor serviced',
               value: model.racorServiced,
               notes: model.racorNotes,
-              icon: Icons.cleaning_services_outlined,
-              onChanged: (v, notes) => _update(() {
-                model.racorServiced = v;
+              readOnly: readOnly,
+              onChanged: (val, notes) {
+                model.racorServiced = val;
                 model.racorNotes = notes;
-              }),
+                onChanged(model);
+              },
             ),
-            _actionRow(
-              context: context,
+            _ActionRow(
               label: 'ATS / controller inspected',
               value: model.atsControllerInspected,
               notes: model.atsControllerNotes,
-              icon: Icons.electrical_services_outlined,
-              onChanged: (v, notes) => _update(() {
-                model.atsControllerInspected = v;
+              readOnly: readOnly,
+              onChanged: (val, notes) {
+                model.atsControllerInspected = val;
                 model.atsControllerNotes = notes;
-              }),
+                onChanged(model);
+              },
             ),
-            _actionRow(
-              context: context,
-              label: 'CDVR programmed / calibrated',
+            _ActionRow(
+              label: 'CDVR programmed',
               value: model.cdvrProgrammed,
               notes: model.cdvrNotes,
-              icon: Icons.settings_outlined,
-              onChanged: (v, notes) => _update(() {
-                model.cdvrProgrammed = v;
+              readOnly: readOnly,
+              onChanged: (val, notes) {
+                model.cdvrProgrammed = val;
                 model.cdvrNotes = notes;
-              }),
+                onChanged(model);
+              },
             ),
-            _actionRow(
-              context: context,
-              label: 'Under-voltage issue repaired',
+            _ActionRow(
+              label: 'Under-voltage repaired',
               value: model.undervoltageRepaired,
               notes: model.undervoltageNotes,
-              icon: Icons.bolt_outlined,
-              onChanged: (v, notes) => _update(() {
-                model.undervoltageRepaired = v;
+              readOnly: readOnly,
+              onChanged: (val, notes) {
+                model.undervoltageRepaired = val;
                 model.undervoltageNotes = notes;
-              }),
+                onChanged(model);
+              },
             ),
-            _actionRow(
-              context: context,
-              label: 'Hazardous material removed / disposed',
+            _ActionRow(
+              label: 'Hazmat removed',
               value: model.hazmatRemoved,
               notes: model.hazmatNotes,
-              icon: Icons.delete_outline,
-              onChanged: (v, notes) => _update(() {
-                model.hazmatRemoved = v;
+              readOnly: readOnly,
+              onChanged: (val, notes) {
+                model.hazmatRemoved = val;
                 model.hazmatNotes = notes;
-              }),
+                onChanged(model);
+              },
             ),
 
-            const SizedBox(height: 24),
+            const SizedBox(height: 16),
             Divider(color: colorScheme.outlineVariant),
-            const SizedBox(height: 24),
+            const SizedBox(height: 16),
 
-            Row(
-              children: [
-                Icon(
-                  Icons.notes_outlined,
-                  size: 20,
-                  color: colorScheme.primary,
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  'Service Observations / Notes',
-                  style: theme.textTheme.labelLarge?.copyWith(
-                    color: colorScheme.primary,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            TextFormField(
-              decoration: InputDecoration(
-                labelText: 'Describe any issues, recommendations, or follow-up work',
-                filled: true,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                alignLabelWithHint: true,
+            Text(
+              'Service Observations',
+              style: theme.textTheme.titleSmall?.copyWith(
+                fontWeight: FontWeight.w600,
               ),
-              maxLines: 5,
+            ),
+            const SizedBox(height: 8),
+            TextFormField(
               initialValue: model.serviceObservations,
-              onChanged: (v) =>
-                  _update(() => model.serviceObservations = v),
+              readOnly: readOnly,
+              maxLines: 5,
+              decoration: const InputDecoration(
+                hintText:
+                'Summarize key observations, issues found, and recommendations...',
+              ),
+              onChanged: (value) {
+                model.serviceObservations = value.trim();
+                onChanged(model);
+              },
             ),
           ],
         ),
       ),
     );
   }
+}
 
-  Widget _actionRow({
-    required BuildContext context,
-    required String label,
-    required bool value,
-    required String notes,
-    required IconData icon,
-    required void Function(bool value, String notes) onChanged,
-  }) {
+class _ActionRow extends StatelessWidget {
+  final String label;
+  final bool value;
+  final String notes;
+  final bool readOnly;
+  final void Function(bool value, String notes) onChanged;
+
+  const _ActionRow({
+    super.key,
+    required this.label,
+    required this.value,
+    required this.notes,
+    required this.onChanged,
+    this.readOnly = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      decoration: BoxDecoration(
-        color: value
-            ? colorScheme.primaryContainer.withOpacity(0.3)
-            : colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: value
-              ? colorScheme.primary.withOpacity(0.3)
-              : colorScheme.outlineVariant,
-        ),
-      ),
+    bool localValue = value;
+    String localNotes = notes;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SwitchListTile(
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 16,
-              vertical: 4,
-            ),
-            title: Row(
-              children: [
-                Icon(icon, size: 18, color: colorScheme.onSurfaceVariant),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    label,
-                    style: theme.textTheme.bodyLarge,
-                  ),
-                ),
-              ],
-            ),
+          CheckboxListTile(
             value: value,
-            onChanged: (v) => onChanged(v, notes),
+            onChanged: readOnly
+                ? null
+                : (val) {
+              localValue = val ?? false;
+              onChanged(localValue, localNotes);
+            },
+            title: Text(
+              label,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            dense: true,
+            contentPadding: EdgeInsets.zero,
+            controlAffinity: ListTileControlAffinity.leading,
           ),
-          if (value) ...[
+          if (!readOnly) ...[
+            TextFormField(
+              initialValue: notes,
+              maxLines: 2,
+              decoration: const InputDecoration(
+                hintText: 'Notes (optional)',
+                isDense: true,
+              ),
+              onChanged: (value) {
+                localNotes = value.trim();
+                onChanged(localValue, localNotes);
+              },
+            ),
+          ] else if (notes.isNotEmpty) ...[
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-              child: TextFormField(
-                decoration: InputDecoration(
-                  labelText: 'Notes',
-                  filled: true,
-                  isDense: true,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
-                initialValue: notes,
-                maxLines: 2,
-                onChanged: (v) => onChanged(value, v),
+              padding: const EdgeInsets.only(left: 40),
+              child: Text(
+                notes,
+                style: theme.textTheme.bodySmall,
               ),
             ),
           ],

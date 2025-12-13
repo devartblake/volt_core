@@ -212,7 +212,7 @@ class FileStorageService {
   }
 
   /// Get maintenance signature file
-  Future<File?> getMaintenanceSignature(String jobId) async {
+  Future<File?> getMaintenanceSignature(String jobId, String technician) async {
     final dir = await getMaintenanceSignaturesDirectory();
     final file = File(path.join(dir.path, '$jobId.png'));
 

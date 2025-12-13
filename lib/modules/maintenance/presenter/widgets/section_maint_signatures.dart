@@ -1,152 +1,27 @@
-import 'dart:typed_data';
 import 'package:flutter/material.dart';
-import 'package:signature/signature.dart';
+
 import '../../infra/models/maintenance_record.dart';
 
-class SectionMaintSignatures extends StatefulWidget {
+/// Signatures + Service Status section for the maintenance form.
+///
+/// Binds directly to [MaintenanceRecord] signature fields and the
+/// completion/follow-up flags.
+class SectionMaintSignatures extends StatelessWidget {
   final MaintenanceRecord model;
   final ValueChanged<MaintenanceRecord> onChanged;
+  final bool readOnly;
 
   const SectionMaintSignatures({
     super.key,
     required this.model,
     required this.onChanged,
+    this.readOnly = false,
   });
-
-  @override
-  State<SectionMaintSignatures> createState() => _SectionMaintSignaturesState();
-}
-
-class _SectionMaintSignaturesState extends State<SectionMaintSignatures> {
-  late final SignatureController _technicianController;
-  late final SignatureController _customerController;
-
-  @override
-  void initState() {
-    super.initState();
-
-    _technicianController = SignatureController(
-      penStrokeWidth: 2,
-      penColor: Colors.black,
-      exportBackgroundColor: Colors.white,
-    );
-
-    _customerController = SignatureController(
-      penStrokeWidth: 2,
-      penColor: Colors.black,
-      exportBackgroundColor: Colors.white,
-    );
-
-    // Load existing signatures if available
-    // Note: You'll need to add signature infra fields to MaintenanceRecord
-    // For now, we'll just track if signatures exist
-  }
-
-  @override
-  void dispose() {
-    _technicianController.dispose();
-    _customerController.dispose();
-    super.dispose();
-  }
-
-  void _update(void Function() fn) {
-    fn();
-    widget.onChanged(widget.model);
-  }
-
-  Future<void> _pickDate(
-      BuildContext context, {
-        required DateTime? initial,
-        required void Function(DateTime?) onSelected,
-      }) async {
-    final now = DateTime.now();
-    final result = await showDatePicker(
-      context: context,
-      initialDate: initial ?? now,
-      firstDate: DateTime(now.year - 5),
-      lastDate: DateTime(now.year + 5),
-    );
-    if (result != null) {
-      onSelected(result);
-    }
-  }
-
-  Future<void> _saveTechnicianSignature() async {
-    if (_technicianController.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please provide a signature first')),
-      );
-      return;
-    }
-
-    final signature = await _technicianController.toPngBytes();
-    if (signature != null) {
-      // Here you would save the signature bytes to your model
-      // For now, we'll just show a success message
-      // You'll need to add a field like: model.technicianSignatureImage = signature;
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Row(
-              children: [
-                Icon(Icons.check_circle_outline, color: Colors.white),
-                SizedBox(width: 12),
-                Text('Technician signature saved'),
-              ],
-            ),
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
-            ),
-          ),
-        );
-      }
-    }
-  }
-
-  Future<void> _saveCustomerSignature() async {
-    if (_customerController.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please provide a signature first')),
-      );
-      return;
-    }
-
-    final signature = await _customerController.toPngBytes();
-    if (signature != null) {
-      // Here you would save the signature bytes to your model
-      // model.customerSignatureImage = signature;
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Row(
-              children: [
-                Icon(Icons.check_circle_outline, color: Colors.white),
-                SizedBox(width: 12),
-                Text('Customer signature saved'),
-              ],
-            ),
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
-            ),
-          ),
-        );
-      }
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final techDate = widget.model.technicianSignatureDate;
-    final custDate = widget.model.customerSignatureDate;
-
-    String _fmtDate(DateTime? d) =>
-        d == null ? '' : '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
 
     return Card(
       elevation: 0,
@@ -155,330 +30,298 @@ class _SectionMaintSignaturesState extends State<SectionMaintSignatures> {
         side: BorderSide(color: colorScheme.outlineVariant),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: colorScheme.primaryContainer,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Icon(
-                    Icons.draw_outlined,
-                    color: colorScheme.onPrimaryContainer,
-                    size: 20,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Text(
-                  'Signatures',
-                  style: theme.textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 24),
-
-            // Technician signature section
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: colorScheme.surfaceContainerHighest,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: colorScheme.primary.withOpacity(0.3)),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.engineering_outlined,
-                        size: 20,
-                        color: colorScheme.primary,
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        'Technician Signature',
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          color: colorScheme.primary,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-
-                  // Name field
-                  TextFormField(
-                    decoration: InputDecoration(
-                      labelText: 'Name',
-                      filled: true,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      prefixIcon: const Icon(Icons.person_outline),
-                    ),
-                    initialValue: widget.model.technicianSignatureName,
-                    onChanged: (v) =>
-                        _update(() => widget.model.technicianSignatureName = v),
-                  ),
-                  const SizedBox(height: 12),
-
-                  // Date field
-                  GestureDetector(
-                    onTap: () => _pickDate(
-                      context,
-                      initial: techDate,
-                      onSelected: (d) => _update(() => widget.model.technicianSignatureDate = d),
-                    ),
-                    child: AbsorbPointer(
-                      child: TextFormField(
-                        decoration: InputDecoration(
-                          labelText: 'Date',
-                          filled: true,
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          suffixIcon: const Icon(Icons.calendar_today_outlined),
-                          prefixIcon: const Icon(Icons.event),
-                        ),
-                        controller: TextEditingController(text: _fmtDate(techDate)),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-
-                  // Signature pad label
-                  Row(
-                    children: [
-                      Text(
-                        'Draw Signature',
-                        style: theme.textTheme.labelLarge?.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const Spacer(),
-                      TextButton.icon(
-                        onPressed: () {
-                          _technicianController.clear();
-                        },
-                        icon: const Icon(Icons.clear, size: 18),
-                        label: const Text('Clear'),
-                        style: TextButton.styleFrom(
-                          visualDensity: VisualDensity.compact,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-
-                  // Signature pad
-                  Container(
-                    height: 200,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(
-                        color: colorScheme.outline,
-                        width: 2,
-                      ),
-                    ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(6),
-                      child: Signature(
-                        controller: _technicianController,
-                        backgroundColor: Colors.white,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-
-                  // Save signature button
-                  SizedBox(
-                    width: double.infinity,
-                    child: FilledButton.icon(
-                      onPressed: _saveTechnicianSignature,
-                      icon: const Icon(Icons.save),
-                      label: const Text('Save Signature'),
-                      style: FilledButton.styleFrom(
-                        backgroundColor: colorScheme.primary,
-                      ),
-                    ),
-                  ),
-                ],
+            // Section header
+            Text(
+              'Signatures & Service Status',
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w600,
               ),
             ),
-
-            const SizedBox(height: 20),
-
-            // Customer signature section
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: colorScheme.surfaceContainerHighest,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: colorScheme.secondary.withOpacity(0.3)),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.business_outlined,
-                        size: 20,
-                        color: colorScheme.secondary,
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        'Customer / Site Representative',
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          color: colorScheme.secondary,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-
-                  // Name field
-                  TextFormField(
-                    decoration: InputDecoration(
-                      labelText: 'Name',
-                      filled: true,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      prefixIcon: const Icon(Icons.person_outline),
-                    ),
-                    initialValue: widget.model.customerSignatureName,
-                    onChanged: (v) =>
-                        _update(() => widget.model.customerSignatureName = v),
-                  ),
-                  const SizedBox(height: 12),
-
-                  // Date field
-                  GestureDetector(
-                    onTap: () => _pickDate(
-                      context,
-                      initial: custDate,
-                      onSelected: (d) => _update(() => widget.model.customerSignatureDate = d),
-                    ),
-                    child: AbsorbPointer(
-                      child: TextFormField(
-                        decoration: InputDecoration(
-                          labelText: 'Date',
-                          filled: true,
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          suffixIcon: const Icon(Icons.calendar_today_outlined),
-                          prefixIcon: const Icon(Icons.event),
-                        ),
-                        controller: TextEditingController(text: _fmtDate(custDate)),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-
-                  // Signature pad label
-                  Row(
-                    children: [
-                      Text(
-                        'Draw Signature',
-                        style: theme.textTheme.labelLarge?.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const Spacer(),
-                      TextButton.icon(
-                        onPressed: () {
-                          _customerController.clear();
-                        },
-                        icon: const Icon(Icons.clear, size: 18),
-                        label: const Text('Clear'),
-                        style: TextButton.styleFrom(
-                          visualDensity: VisualDensity.compact,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-
-                  // Signature pad
-                  Container(
-                    height: 200,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(
-                        color: colorScheme.outline,
-                        width: 2,
-                      ),
-                    ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(6),
-                      child: Signature(
-                        controller: _customerController,
-                        backgroundColor: Colors.white,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-
-                  // Save signature button
-                  SizedBox(
-                    width: double.infinity,
-                    child: FilledButton.icon(
-                      onPressed: _saveCustomerSignature,
-                      icon: const Icon(Icons.save),
-                      label: const Text('Save Signature'),
-                      style: FilledButton.styleFrom(
-                        backgroundColor: colorScheme.secondary,
-                      ),
-                    ),
-                  ),
-                ],
+            const SizedBox(height: 8),
+            Text(
+              'Capture technician and customer acknowledgement, and mark the job '
+                  'as completed or requiring follow-up.',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: colorScheme.onSurfaceVariant,
               ),
             ),
+            const SizedBox(height: 16),
 
-            const SizedBox(height: 20),
+            // Technician signature
+            Text(
+              'Technician Signature',
+              style: theme.textTheme.labelLarge?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 8),
+            _TextFieldRow(
+              label: 'Technician name',
+              initialValue: model.technicianSignatureName,
+              readOnly: readOnly,
+              onChanged: (value) {
+                model.technicianSignatureName = value.trim();
+                onChanged(model);
+              },
+            ),
+            const SizedBox(height: 8),
+            _DatePickerRow(
+              label: 'Technician signed on',
+              current: model.technicianSignatureDate,
+              readOnly: readOnly,
+              onChanged: (date) {
+                model.technicianSignatureDate = date;
+                onChanged(model);
+              },
+            ),
 
-            // Info banner
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: colorScheme.secondaryContainer.withOpacity(0.3),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(
-                  color: colorScheme.secondary.withOpacity(0.2),
+            const SizedBox(height: 16),
+            Divider(color: colorScheme.outlineVariant),
+            const SizedBox(height: 16),
+
+            // Customer signature
+            Text(
+              'Customer / Authorized Representative',
+              style: theme.textTheme.labelLarge?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 8),
+            _TextFieldRow(
+              label: 'Customer name',
+              initialValue: model.customerSignatureName,
+              readOnly: readOnly,
+              onChanged: (value) {
+                model.customerSignatureName = value.trim();
+                onChanged(model);
+              },
+            ),
+            const SizedBox(height: 8),
+            _DatePickerRow(
+              label: 'Customer signed on',
+              current: model.customerSignatureDate,
+              readOnly: readOnly,
+              onChanged: (date) {
+                model.customerSignatureDate = date;
+                onChanged(model);
+              },
+            ),
+
+            const SizedBox(height: 16),
+            Divider(color: colorScheme.outlineVariant),
+            const SizedBox(height: 16),
+
+            // Service status / flags
+            Text(
+              'Service Status',
+              style: theme.textTheme.labelLarge?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 8),
+
+            SwitchListTile(
+              title: const Text('Job completed'),
+              subtitle: const Text(
+                'Mark as completed when all work for this visit has been finished.',
+              ),
+              value: model.completed,
+              onChanged: readOnly
+                  ? null
+                  : (val) {
+                model.completed = val;
+                // If completed and follow-up was previously null, default to false
+                model.requiresFollowUp = model.requiresFollowUp;
+                onChanged(model);
+              },
+            ),
+            const SizedBox(height: 4),
+            SwitchListTile(
+              title: const Text('Requires follow-up'),
+              subtitle: const Text(
+                'Enable if an additional visit or corrective action is needed.',
+              ),
+              value: model.requiresFollowUp,
+              onChanged: readOnly
+                  ? null
+                  : (val) {
+                model.requiresFollowUp = val;
+                onChanged(model);
+              },
+            ),
+
+            if (model.requiresFollowUp) ...[
+              const SizedBox(height: 8),
+              _TextAreaRow(
+                label: 'Follow-up notes',
+                hintText: 'Describe what is required on the follow-up visit',
+                initialValue: model.followUpNotes ?? '',
+                readOnly: readOnly,
+                onChanged: (value) {
+                  final trimmed = value.trim();
+                  model.followUpNotes =
+                  trimmed.isEmpty ? null : trimmed; // keep nullable
+                  onChanged(model);
+                },
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _TextFieldRow extends StatelessWidget {
+  final String label;
+  final String initialValue;
+  final bool readOnly;
+  final ValueChanged<String> onChanged;
+
+  const _TextFieldRow({
+    required this.label,
+    required this.initialValue,
+    required this.onChanged,
+    this.readOnly = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: theme.textTheme.labelMedium),
+        const SizedBox(height: 4),
+        TextFormField(
+          initialValue: initialValue,
+          readOnly: readOnly,
+          decoration: const InputDecoration(
+            hintText: 'Enter name',
+          ),
+          onChanged: onChanged,
+        ),
+      ],
+    );
+  }
+}
+
+class _TextAreaRow extends StatelessWidget {
+  final String label;
+  final String initialValue;
+  final String? hintText;
+  final bool readOnly;
+  final ValueChanged<String> onChanged;
+
+  const _TextAreaRow({
+    required this.label,
+    required this.initialValue,
+    required this.onChanged,
+    this.hintText,
+    this.readOnly = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: theme.textTheme.labelMedium),
+        const SizedBox(height: 4),
+        TextFormField(
+          initialValue: initialValue,
+          readOnly: readOnly,
+          maxLines: 3,
+          decoration: InputDecoration(
+            hintText: hintText,
+          ),
+          onChanged: onChanged,
+        ),
+      ],
+    );
+  }
+}
+
+class _DatePickerRow extends StatelessWidget {
+  final String label;
+  final DateTime? current;
+  final bool readOnly;
+  final ValueChanged<DateTime?> onChanged;
+
+  const _DatePickerRow({
+    required this.label,
+    required this.current,
+    required this.onChanged,
+    this.readOnly = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    final text = current == null
+        ? 'Tap to select date'
+        : '${current!.year.toString().padLeft(4, '0')}-'
+        '${current!.month.toString().padLeft(2, '0')}-'
+        '${current!.day.toString().padLeft(2, '0')}';
+
+    return InkWell(
+      onTap: readOnly
+          ? null
+          : () async {
+        final now = DateTime.now();
+        final initial = current ?? now;
+        final picked = await showDatePicker(
+          context: context,
+          initialDate: initial,
+          firstDate: DateTime(now.year - 5),
+          lastDate: DateTime(now.year + 5),
+        );
+        if (picked != null) {
+          onChanged(picked);
+        }
+      },
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: colorScheme.outlineVariant,
+          ),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              Icons.calendar_today_outlined,
+              size: 18,
+              color: colorScheme.onSurfaceVariant,
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                text,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: current == null
+                      ? colorScheme.onSurfaceVariant
+                      : colorScheme.onSurface,
                 ),
               ),
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.info_outline,
-                    size: 16,
-                    color: colorScheme.onSecondaryContainer,
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      'Signatures are captured digitally and will be included in the PDF export.',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: colorScheme.onSecondaryContainer,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
             ),
+            if (!readOnly)
+              Icon(
+                Icons.edit_calendar_outlined,
+                size: 18,
+                color: colorScheme.primary,
+              ),
           ],
         ),
       ),

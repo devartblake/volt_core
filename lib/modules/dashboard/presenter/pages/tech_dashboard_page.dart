@@ -87,21 +87,20 @@ class TechDashboardPage extends ConsumerStatefulWidget {
 }
 
 class _TechDashboardPageState extends ConsumerState<TechDashboardPage> {
-  bool _loadedOnce = false;
-
   @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    if (!_loadedOnce) {
-      _loadedOnce = true;
+  void initState() {
+    super.initState();
 
+    // Schedule the data load to happen AFTER the widget tree is built
+    // This fixes the "Tried to modify a provider while the widget tree was building" error
+    WidgetsBinding.instance.addPostFrameCallback((_) {
       final auth = ref.read(authStateProvider);
       final userId = auth.userId ?? 'local-tech';
 
       ref
           .read(techDashboardControllerProvider.notifier)
           .loadForUser(userId);
-    }
+    });
   }
 
   @override

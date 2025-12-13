@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 import 'package:hive/hive.dart';
 
 part 'maintenance_record.g.dart';
@@ -282,6 +283,13 @@ class MaintenanceRecord extends HiveObject {
   @HiveField(114)
   String? followUpNotes;
 
+  // Signature file paths (persisted to Hive)
+  @HiveField(115) // Use next available field number
+  String? technicianSignaturePath;
+
+  @HiveField(116)
+  String? customerSignaturePath;
+
   MaintenanceRecord({
     required this.id,
     this.inspectionId,
@@ -396,8 +404,114 @@ class MaintenanceRecord extends HiveObject {
     this.completed = false,
     this.requiresFollowUp = false,
     this.followUpNotes = '',
+    this.technicianSignaturePath = '',
+    this.customerSignaturePath = '',
     DateTime? createdAt,
     DateTime? updatedAt,
   })  : createdAt = createdAt ?? DateTime.now(),
         updatedAt = updatedAt ?? DateTime.now();
+  // Signature bytes (transient, NOT stored in Hive)
+  // These are used for immediate PDF generation
+  Uint8List? technicianSignatureBytes;
+  Uint8List? customerSignatureBytes;
+
+}
+
+/// Extension for MaintenanceRecord to add signature-related fields
+///
+/// Add these fields to your existing MaintenanceRecord model:
+///
+/// ```dart
+/// // Signature paths (file storage references)
+/// String? technicianSignaturePath;
+/// String? customerSignaturePath;
+///
+/// // Signature bytes (transient, for immediate PDF generation)
+/// @HiveField(ignore: true)
+/// Uint8List? technicianSignatureBytes;
+///
+/// @HiveField(ignore: true)
+/// Uint8List? customerSignatureBytes;
+/// ```
+
+// This is a reference implementation showing what fields should be added
+// to your MaintenanceRecord class
+
+class MaintenanceRecordSignatureFields {
+  // File storage paths for signatures
+  final String? technicianSignaturePath;
+  final String? customerSignaturePath;
+
+  // In-memory bytes for immediate PDF generation (not persisted to Hive)
+  final Uint8List? technicianSignatureBytes;
+  final Uint8List? customerSignatureBytes;
+
+  const MaintenanceRecordSignatureFields({
+    this.technicianSignaturePath,
+    this.customerSignaturePath,
+    this.technicianSignatureBytes,
+    this.customerSignatureBytes,
+  });
+}
+
+/// Example of how to update your MaintenanceRecord class:
+///
+/// ```dart
+/// @HiveType(typeId: 3)
+/// class MaintenanceRecord extends HiveObject {
+///   // ... existing fields ...
+///
+///   @HiveField(50)
+///   String? technicianSignaturePath;
+///
+///   @HiveField(51)
+///   String? customerSignaturePath;
+///
+///   // These are NOT stored in Hive, just used for immediate PDF generation
+///   Uint8List? technicianSignatureBytes;
+///   Uint8List? customerSignatureBytes;
+///
+///   MaintenanceRecord({
+///     // ... existing parameters ...
+///     this.technicianSignaturePath,
+///     this.customerSignaturePath,
+///   });
+/// }
+/// ```
+
+/// Helper methods to add to your MaintenanceRecord:
+
+extension MaintenanceRecordSignatureHelpers on dynamic {
+  /// Check if technician signature exists
+  bool get hasTechnicianSignature {
+    final record = this;
+    if (record is! Map && !record.toString().contains('technicianSignaturePath')) {
+      return false;
+    }
+    try {
+      final path = (record as dynamic).technicianSignaturePath;
+      return path != null && path.toString().isNotEmpty;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /// Check if customer signature exists
+  bool get hasCustomerSignature {
+    final record = this;
+    if (record is! Map && !record.toString().contains('customerSignaturePath')) {
+      return false;
+    }
+    try {
+      final path = (record as dynamic).customerSignaturePath;
+      return path != null && path.toString().isNotEmpty;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /// Check if both signatures are present
+  bool get hasAllSignatures {
+    return hasTechnicianSignature && hasCustomerSignature;
+  }
 }
