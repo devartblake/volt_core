@@ -42,7 +42,7 @@ class StorageCleanupService {
     );
 
     // Optionally clean cache
-    // await FileStorageService.instance.cleanCache();
+    await FileStorageService.instance.cleanCache();
 
     if (kDebugMode) {
       await FileStorageService.instance.printDebugInfo();

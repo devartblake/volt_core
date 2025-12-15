@@ -23,6 +23,7 @@ class RoutePaths {
 
   // Schedule
   static const String schedule = '/schedule';
+  static const String scheduleTask = '/task';
 
   // Equipment / Nameplate
   static const String nameplateList = '/nameplate-list';
@@ -60,6 +61,7 @@ class RouteNames {
   static const String maintenanceArchive = 'maintenance_archive';
 
   static const String schedule = 'schedule';
+  static const String scheduleTask = 'schedule_task';
 
   static const String nameplateList = 'nameplate_list';
   static const String nameplateIntervals = 'nameplate_intervals';

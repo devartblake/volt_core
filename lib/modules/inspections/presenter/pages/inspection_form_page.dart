@@ -231,6 +231,7 @@ class _InspectionFormPageState extends ConsumerState<InspectionFormPage> {
     final controller = ref.read(inspectionFormControllerProvider.notifier);
 
     try {
+      // Save and get the saved inspection ID
       await controller.save(current);
 
       if (!mounted) return;
@@ -238,13 +239,13 @@ class _InspectionFormPageState extends ConsumerState<InspectionFormPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Inspection saved & PDF generated'),
+          duration: Duration(seconds: 2),
         ),
       );
 
-      // Optionally pop back to list
-      if (Navigator.of(context).canPop()) {
-        context.pop();
-      }
+      // FIXED: Navigate to detail page instead of just popping
+      // This uses the inspection ID to show the generated PDF
+      context.go('/inspections/detail/${current.id}');
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(

@@ -186,6 +186,7 @@ class FileStorageService {
   Future<String> saveMaintenanceSignature({
     required String jobId,
     required Uint8List signatureBytes,
+    required String signatureType,
   }) async {
     final dir = await getMaintenanceSignaturesDirectory();
     final file = File(path.join(dir.path, '$jobId.png'));

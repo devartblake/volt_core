@@ -2,10 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:table_calendar/table_calendar.dart';
 import '../../domain/entities/task_schedule_entity.dart';
 
-/// Enhanced schedule calendar with split-panel design
-/// Left: Calendar view (60%) | Right: Upcoming tasks panel (40%)
-/// Mobile: Stacked layout (calendar top, tasks bottom)
-class ScheduleCalendarEnhanced extends StatelessWidget {
+/// Daily Agenda View: Calendar (70%) + Selected day detailed schedule (30%)
+class ScheduleCalendarDailyAgenda extends StatelessWidget {
   final DateTime focusedDay;
   final DateTime selectedDay;
   final CalendarFormat calendarFormat;
@@ -16,7 +14,7 @@ class ScheduleCalendarEnhanced extends StatelessWidget {
   final void Function(DateTime focusedDay) onPageChanged;
   final void Function(TaskScheduleEntity task)? onTaskTap;
 
-  const ScheduleCalendarEnhanced({
+  const ScheduleCalendarDailyAgenda({
     super.key,
     required this.focusedDay,
     required this.selectedDay,
@@ -43,16 +41,15 @@ class ScheduleCalendarEnhanced extends StatelessWidget {
     );
   }
 
-  // Desktop layout - split panel
   Widget _buildDesktopLayout(BuildContext context) {
     final theme = Theme.of(context);
 
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Calendar panel (60%)
+        // Calendar panel (70%)
         Expanded(
-          flex: 60,
+          flex: 70,
           child: _buildCalendar(theme),
         ),
 
@@ -63,16 +60,15 @@ class ScheduleCalendarEnhanced extends StatelessWidget {
           color: theme.colorScheme.outlineVariant,
         ),
 
-        // Upcoming tasks panel (40%)
+        // Daily agenda panel (30%)
         Expanded(
-          flex: 40,
-          child: _buildUpcomingPanel(theme),
+          flex: 30,
+          child: _buildDailyAgendaPanel(theme),
         ),
       ],
     );
   }
 
-  // Mobile layout - stacked
   Widget _buildMobileLayout(BuildContext context) {
     final theme = Theme.of(context);
 
@@ -81,22 +77,20 @@ class ScheduleCalendarEnhanced extends StatelessWidget {
         // Calendar on top
         _buildCalendar(theme),
 
-        // Divider
         Divider(
           height: 1,
           thickness: 1,
           color: theme.colorScheme.outlineVariant,
         ),
 
-        // Upcoming tasks below
+        // Daily agenda below
         Expanded(
-          child: _buildUpcomingPanel(theme),
+          child: _buildDailyAgendaPanel(theme),
         ),
       ],
     );
   }
 
-  // Calendar widget
   Widget _buildCalendar(ThemeData theme) {
     return Container(
       padding: const EdgeInsets.all(16),
@@ -145,52 +139,22 @@ class ScheduleCalendarEnhanced extends StatelessWidget {
     );
   }
 
-  // Upcoming tasks panel
-  Widget _buildUpcomingPanel(ThemeData theme) {
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final tomorrow = today.add(const Duration(days: 1));
-    final weekEnd = today.add(const Duration(days: 7));
-
-    // Group tasks
-    final todayTasks = items.where((task) {
-      final taskDate = DateTime(
-        task.scheduledDate.year,
-        task.scheduledDate.month,
-        task.scheduledDate.day,
-      );
-      return taskDate.isAtSameMomentAs(today);
-    }).toList()..sort((a, b) => a.scheduledDate.compareTo(b.scheduledDate));
-
-    final tomorrowTasks = items.where((task) {
-      final taskDate = DateTime(
-        task.scheduledDate.year,
-        task.scheduledDate.month,
-        task.scheduledDate.day,
-      );
-      return taskDate.isAtSameMomentAs(tomorrow);
-    }).toList()..sort((a, b) => a.scheduledDate.compareTo(b.scheduledDate));
-
-    final weekTasks = items.where((task) {
-      final taskDate = DateTime(
-        task.scheduledDate.year,
-        task.scheduledDate.month,
-        task.scheduledDate.day,
-      );
-      return taskDate.isAfter(tomorrow) && taskDate.isBefore(weekEnd);
-    }).toList()..sort((a, b) => a.scheduledDate.compareTo(b.scheduledDate));
-
-    final upcomingCount = todayTasks.length + tomorrowTasks.length + weekTasks.length;
+  Widget _buildDailyAgendaPanel(ThemeData theme) {
+    final tasksForDay = _eventsForDay(selectedDay);
+    final isToday = isSameDay(selectedDay, DateTime.now());
 
     return Container(
       color: theme.colorScheme.surfaceContainerLow,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header
+          // Header with date
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
+              color: isToday
+                  ? theme.colorScheme.primaryContainer.withOpacity(0.5)
+                  : null,
               border: Border(
                 bottom: BorderSide(
                   color: theme.colorScheme.outlineVariant,
@@ -198,56 +162,84 @@ class ScheduleCalendarEnhanced extends StatelessWidget {
                 ),
               ),
             ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'Upcoming Tasks',
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                if (upcomingCount > 0)
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.primaryContainer,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      '$upcomingCount',
-                      style: theme.textTheme.labelSmall?.copyWith(
-                        color: theme.colorScheme.onPrimaryContainer,
-                        fontWeight: FontWeight.w600,
+                Row(
+                  children: [
+                    if (isToday)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.primary,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          'TODAY',
+                          style: theme.textTheme.labelSmall?.copyWith(
+                            color: theme.colorScheme.onPrimary,
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ),
+                    if (isToday) const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        _formatDateHeader(selectedDay),
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '${tasksForDay.length} ${tasksForDay.length == 1 ? 'task' : 'tasks'}',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
                   ),
+                ),
               ],
             ),
           ),
 
-          // Task list
+          // Task list (time-based)
           Expanded(
-            child: upcomingCount == 0
+            child: tasksForDay.isEmpty
                 ? _buildEmptyState(theme)
                 : ListView(
               padding: const EdgeInsets.all(16),
-              children: [
-                if (todayTasks.isNotEmpty) ...[
-                  _buildTaskGroup('TODAY', todayTasks, theme),
-                  const SizedBox(height: 16),
-                ],
-                if (tomorrowTasks.isNotEmpty) ...[
-                  _buildTaskGroup('TOMORROW', tomorrowTasks, theme),
-                  const SizedBox(height: 16),
-                ],
-                if (weekTasks.isNotEmpty) ...[
-                  _buildTaskGroup('THIS WEEK', weekTasks, theme),
-                ],
-              ],
+              children: tasksForDay.map((task) {
+                return _buildAgendaItem(task, theme);
+              }).toList(),
+            ),
+          ),
+
+          // Quick actions footer
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              border: Border(
+                top: BorderSide(
+                  color: theme.colorScheme.outlineVariant,
+                  width: 1,
+                ),
+              ),
+            ),
+            child: SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () {
+                  // TODO: Add new task for selected day
+                },
+                icon: const Icon(Icons.add),
+                label: const Text('Add Task'),
+              ),
             ),
           ),
         ],
@@ -255,62 +247,11 @@ class ScheduleCalendarEnhanced extends StatelessWidget {
     );
   }
 
-  // Task group section
-  Widget _buildTaskGroup(
-      String title,
-      List<TaskScheduleEntity> tasks,
-      ThemeData theme,
-      ) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Section header
-        Padding(
-          padding: const EdgeInsets.only(bottom: 12),
-          child: Row(
-            children: [
-              Text(
-                title,
-                style: theme.textTheme.labelLarge?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: 0.5,
-                ),
-              ),
-              const SizedBox(width: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 6,
-                  vertical: 2,
-                ),
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.surfaceContainerHighest,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  '${tasks.length}',
-                  style: theme.textTheme.labelSmall?.copyWith(
-                    color: theme.colorScheme.onSurface,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-
-        // Tasks
-        ...tasks.map((task) => _buildTaskItem(task, theme)),
-      ],
-    );
-  }
-
-  // Individual task item
-  Widget _buildTaskItem(TaskScheduleEntity task, ThemeData theme) {
+  Widget _buildAgendaItem(TaskScheduleEntity task, ThemeData theme) {
     final isPast = task.scheduledDate.isBefore(DateTime.now());
 
     return Card(
-      margin: const EdgeInsets.only(bottom: 8),
+      margin: const EdgeInsets.only(bottom: 12),
       elevation: 0,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
@@ -325,14 +266,57 @@ class ScheduleCalendarEnhanced extends StatelessWidget {
         child: Padding(
           padding: const EdgeInsets.all(12),
           child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Status indicator bar
+              // Time column
               Container(
-                width: 4,
-                height: 48,
+                width: 70,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _formatTime(task.scheduledDate),
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: isPast
+                            ? theme.colorScheme.onSurfaceVariant
+                            : theme.colorScheme.primary,
+                      ),
+                    ),
+                    if (isPast)
+                      Container(
+                        margin: const EdgeInsets.only(top: 4),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.green.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          'Done',
+                          style: theme.textTheme.labelSmall?.copyWith(
+                            color: Colors.green,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(width: 12),
+
+              // Divider line
+              Container(
+                width: 2,
+                height: 60,
                 decoration: BoxDecoration(
-                  color: _getTaskStatusColor(task, isPast, theme),
-                  borderRadius: BorderRadius.circular(2),
+                  color: isPast
+                      ? Colors.green.withOpacity(0.3)
+                      : theme.colorScheme.primary.withOpacity(0.3),
+                  borderRadius: BorderRadius.circular(1),
                 ),
               ),
 
@@ -343,54 +327,37 @@ class ScheduleCalendarEnhanced extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Address/Title
                     Text(
                       task.address.isEmpty
                           ? (task.title.isEmpty ? '(No address/title)' : task.title)
                           : task.address,
                       style: theme.textTheme.bodyMedium?.copyWith(
                         fontWeight: FontWeight.w600,
+                        decoration: isPast ? TextDecoration.lineThrough : null,
+                        color: isPast
+                            ? theme.colorScheme.onSurfaceVariant
+                            : theme.colorScheme.onSurface,
                       ),
-                      maxLines: 1,
+                      maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
-
                     const SizedBox(height: 6),
-
-                    // Metadata row
                     Wrap(
-                      spacing: 12,
+                      spacing: 8,
                       runSpacing: 4,
                       children: [
-                        // Time
-                        _buildMetaItem(
-                          Icons.access_time,
-                          _formatTime(task.scheduledDate),
-                          theme,
-                        ),
-
-                        // Site code
                         if (task.siteCode.isNotEmpty)
-                          _buildMetaItem(
+                          _buildMetaChip(
                             Icons.location_on_outlined,
                             task.siteCode,
                             theme,
                           ),
-
-                        // Grade badge
                         if (task.siteGrade.isNotEmpty)
                           _buildGradeBadge(task.siteGrade, theme),
                       ],
                     ),
                   ],
                 ),
-              ),
-
-              // Chevron
-              Icon(
-                Icons.chevron_right,
-                size: 20,
-                color: theme.colorScheme.onSurfaceVariant,
               ),
             ],
           ),
@@ -399,16 +366,11 @@ class ScheduleCalendarEnhanced extends StatelessWidget {
     );
   }
 
-  // Metadata item helper
-  Widget _buildMetaItem(IconData icon, String label, ThemeData theme) {
+  Widget _buildMetaChip(IconData icon, String label, ThemeData theme) {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(
-          icon,
-          size: 14,
-          color: theme.colorScheme.onSurfaceVariant,
-        ),
+        Icon(icon, size: 14, color: theme.colorScheme.onSurfaceVariant),
         const SizedBox(width: 4),
         Text(
           label,
@@ -420,10 +382,8 @@ class ScheduleCalendarEnhanced extends StatelessWidget {
     );
   }
 
-  // Grade badge
   Widget _buildGradeBadge(String grade, ThemeData theme) {
     final color = _getGradeColor(grade);
-
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
@@ -440,7 +400,6 @@ class ScheduleCalendarEnhanced extends StatelessWidget {
     );
   }
 
-  // Empty state
   Widget _buildEmptyState(ThemeData theme) {
     return Center(
       child: Padding(
@@ -455,14 +414,14 @@ class ScheduleCalendarEnhanced extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             Text(
-              'No upcoming tasks',
+              'No tasks scheduled',
               style: theme.textTheme.titleMedium?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
               ),
             ),
             const SizedBox(height: 8),
             Text(
-              'Tasks scheduled for today and this week\nwill appear here',
+              _formatDateHeader(selectedDay),
               textAlign: TextAlign.center,
               style: theme.textTheme.bodySmall?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant.withOpacity(0.7),
@@ -474,20 +433,16 @@ class ScheduleCalendarEnhanced extends StatelessWidget {
     );
   }
 
-  // Helper: Get events for a specific day
   List<TaskScheduleEntity> _eventsForDay(DateTime day) {
     return items
-        .where(
-          (e) =>
-      e.scheduledDate.year == day.year &&
-          e.scheduledDate.month == day.month &&
-          e.scheduledDate.day == day.day,
-    )
+        .where((e) =>
+    e.scheduledDate.year == day.year &&
+        e.scheduledDate.month == day.month &&
+        e.scheduledDate.day == day.day)
         .toList()
       ..sort((a, b) => a.scheduledDate.compareTo(b.scheduledDate));
   }
 
-  // Helper: Format time
   String _formatTime(DateTime date) {
     final hour = date.hour > 12 ? date.hour - 12 : (date.hour == 0 ? 12 : date.hour);
     final minute = date.minute.toString().padLeft(2, '0');
@@ -495,28 +450,16 @@ class ScheduleCalendarEnhanced extends StatelessWidget {
     return '$hour:$minute $period';
   }
 
-  // Helper: Get task status color
-  Color _getTaskStatusColor(TaskScheduleEntity task, bool isPast, ThemeData theme) {
-    if (isPast) {
-      return Colors.green; // Completed
-    }
+  String _formatDateHeader(DateTime date) {
+    const months = [
+      'January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December'
+    ];
+    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
-    final now = DateTime.now();
-    final taskDate = DateTime(
-      task.scheduledDate.year,
-      task.scheduledDate.month,
-      task.scheduledDate.day,
-    );
-    final today = DateTime(now.year, now.month, now.day);
-
-    if (taskDate.isAtSameMomentAs(today)) {
-      return Colors.orange; // Today
-    }
-
-    return theme.colorScheme.primary; // Upcoming
+    return '${days[date.weekday - 1]}, ${months[date.month - 1]} ${date.day}, ${date.year}';
   }
 
-  // Helper: Get grade color
   Color _getGradeColor(String grade) {
     switch (grade.toLowerCase()) {
       case 'green':

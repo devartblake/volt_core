@@ -2,10 +2,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../inspections/domain/entities/inspection_entity.dart';
 import '../../../inspections/infra/repositories/inspection_repository.dart';
 import '../../../inspections/infra/repositories/inspection_repository_impl.dart';
-import '../../infra/repositories/schedule_repository_from_inspections.dart';
 import '../../../schedule/domain/entities/task_schedule_entity.dart';
 import '../../../schedule/infra/mappers/inspection_schedule_mapper.dart';
 import '../../../schedule/infra/repositories/schedule_repository.dart';
+import '../../infra/repositories/schedule_repository_impl.dart';
 
 final updateInspectionUseCaseProvider =
 Provider<UpdateInspectionUseCase>((ref) {

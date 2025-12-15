@@ -3,44 +3,43 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../inspections/domain/entities/inspection_entity.dart';
 import '../../../inspections/infra/repositories/inspection_repository.dart';
 import '../../../inspections/infra/repositories/inspection_repository_impl.dart';
-import '../../../schedule/domain/entities/task_schedule_entity.dart';
-import '../../../schedule/infra/mappers/inspection_schedule_mapper.dart';
-import '../../../schedule/infra/repositories/schedule_repository.dart';
-import '../../infra/repositories/schedule_repository_from_inspections.dart';
-
-final createInspectionUseCaseProvider =
-Provider<CreateInspectionUseCase>((ref) {
-  final inspectionRepo = ref.watch(inspectionRepositoryProvider);
-  final scheduleRepo = ref.watch(scheduleRepositoryProvider);
-
-  return CreateInspectionUseCase(
-    inspectionRepository: inspectionRepo,
-    scheduleRepository: scheduleRepo,
-  );
-});
+import '../../infra/repositories/schedule_repository.dart';
+import '../../infra/repositories/schedule_repository_impl.dart';
+import '../entities/task_schedule_entity.dart';
 
 class CreateInspectionUseCase {
-  final InspectionRepository inspectionRepository;
-  final ScheduleRepository scheduleRepository;
+  final InspectionRepository _inspectionRepo;
+  final ScheduleRepository _scheduleRepo;
 
-  CreateInspectionUseCase({
-    required this.inspectionRepository,
-    required this.scheduleRepository,
-  });
+  const CreateInspectionUseCase(this._inspectionRepo, this._scheduleRepo);
 
-  /// Creates a new inspection, triggers PDF generation/email via the
-  /// InspectionRepository, and then creates a corresponding schedule entry.
-  Future<InspectionEntity> call(InspectionEntity entity) async {
-    // 1) Persist + export PDF as before
-    final saved = await inspectionRepository.createAndExport(entity);
+  Future<InspectionEntity> call(InspectionEntity inspection) async {
+    final created = await _inspectionRepo.create(inspection);
 
-    // 2) Derive a schedule entry from the saved inspection
-    final TaskScheduleEntity schedule =
-    InspectionScheduleMapper.fromInspection(saved);
+    // Optional: also upsert a schedule task representing the inspection due date
+    if (created.nextDueAt != null) {
+      final task = TaskScheduleEntity(
+        id: 'insp_${created.id}',
+        tenantId: created.tenantId,
+        title: 'Inspection: ${created.siteCode}',
+        scheduledAt: created.nextDueAt!,
+        status: 'scheduled',
+        sourceType: 'inspection',
+        sourceId: created.id,
+        assignedToUserId: created.assignedTechnicianUserId,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+        scheduledDate: DateTime.now(),
+      );
+      await _scheduleRepo.upsert(task);
+    }
 
-    // 3) Save schedule (currently a no-op until schedule_tasks exists)
-    await scheduleRepository.saveTask(schedule);
-
-    return saved;
+    return created;
   }
 }
+
+final createInspectionUseCaseProvider = Provider<CreateInspectionUseCase>((ref) {
+  final inspectionRepo = ref.watch(inspectionRepositoryProvider);
+  final scheduleRepo = ref.watch(scheduleRepositoryProvider); // from schedule_repository_impl.dart
+  return CreateInspectionUseCase(inspectionRepo, scheduleRepo);
+});

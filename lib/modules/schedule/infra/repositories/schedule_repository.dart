@@ -9,6 +9,10 @@ abstract class ScheduleRepository {
     DateTime? to,
   });
 
+  Future<TaskScheduleEntity?> getById(String id);
+
+  Future<TaskScheduleEntity> create(TaskScheduleEntity entity);
+  Future<TaskScheduleEntity> update(TaskScheduleEntity entity);
   Future<TaskScheduleEntity> saveTask(TaskScheduleEntity task);
 
   Future<void> deleteTask(String id);

@@ -1,5 +1,3 @@
-// lib/core/env/env_config.dart
-
 import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 

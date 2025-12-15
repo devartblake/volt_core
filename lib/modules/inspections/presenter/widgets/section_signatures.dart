@@ -1,10 +1,11 @@
 import 'dart:io';
 import 'dart:typed_data';
-
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:signature/signature.dart';
-
+import '../../../schedule/infra/models/schedule_task.dart';
+import '../../../schedule/presenter/pages/schedule_task_page.dart';
+import '../../../schedule/presenter/widgets/dialogs/schedule_dialog.dart';
 import '../../domain/entities/inspection_entity.dart';
 
 class SectionSignatures extends StatefulWidget {
@@ -104,7 +105,7 @@ class _SectionSignaturesState extends State<SectionSignatures> {
         final techPath = await _savePng(techBytes, 'tech-sign');
         updated = updated.copyWith(
           technicianSignaturePath: techPath,
-          technicianSigDate: today, // <- DateTime, not String
+          technicianSigDate: today,
         );
       }
 
@@ -112,7 +113,7 @@ class _SectionSignaturesState extends State<SectionSignatures> {
         final custPath = await _savePng(custBytes, 'cust-sign');
         updated = updated.copyWith(
           customerSignaturePath: custPath,
-          customerSigDate: today, // <- DateTime, not String
+          customerSigDate: today,
         );
       }
 
@@ -165,6 +166,37 @@ class _SectionSignaturesState extends State<SectionSignatures> {
           ),
         );
       }
+    }
+  }
+
+  // ⭐ NEW: Schedule inspection
+  Future<void> _handleSchedule() async {
+    final scheduled = await showScheduleDialog(
+      context: context,
+      taskType: TaskType.inspection,
+      siteCode: m.siteCode,
+      address: m.address,
+      inspectionId: m.id,
+      siteGrade: m.siteGrade,
+    );
+
+    if (scheduled == true && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Row(
+            children: [
+              Icon(Icons.check_circle, color: Colors.white),
+              SizedBox(width: 12),
+              Text('Inspection scheduled successfully'),
+            ],
+          ),
+          backgroundColor: Colors.green,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+      );
     }
   }
 
@@ -287,6 +319,22 @@ class _SectionSignaturesState extends State<SectionSignatures> {
                   ),
                 ),
               ],
+            ),
+            // ⭐ NEW: Schedule button
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                icon: const Icon(Icons.event_available),
+                label: const Text('Schedule This Inspection'),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                onPressed: _isSaving ? null : _handleSchedule,
+              ),
             ),
           ],
         ),

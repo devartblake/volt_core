@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-
 import '../../infra/models/maintenance_record.dart';
 
+/// Modern site information section with enhanced UI
 class SectionMaintSiteInfo extends StatelessWidget {
   final MaintenanceRecord model;
   final ValueChanged<MaintenanceRecord> onChanged;
@@ -13,6 +13,11 @@ class SectionMaintSiteInfo extends StatelessWidget {
     required this.onChanged,
     this.readOnly = false,
   });
+
+  void _updateModel(void Function() mutation) {
+    mutation();
+    onChanged(model);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -30,181 +35,173 @@ class SectionMaintSiteInfo extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Site & Generator Information',
-              style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w600,
-              ),
+            // Section header
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: colorScheme.primaryContainer,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(
+                    Icons.location_on_outlined,
+                    color: colorScheme.onPrimaryContainer,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Site & Generator Information',
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Basic site and generator identification for this service.',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(height: 16),
-            _TextFieldRow(
+            const SizedBox(height: 20),
+
+            // Site Details Section
+            _SectionLabel(
+              icon: Icons.business_outlined,
+              label: 'Site Details',
+              color: colorScheme.primary,
+            ),
+            const SizedBox(height: 12),
+
+            _ModernTextField(
               label: 'Site Code',
-              hintText: 'e.g. K495-01',
+              hintText: 'e.g. NYC-GEN-014',
+              icon: Icons.qr_code_2_outlined,
               initialValue: model.siteCode,
               readOnly: readOnly,
-              onChanged: (value) {
-                model.siteCode = value.trim();
-                onChanged(model);
-              },
+              onChanged: (v) => _updateModel(() => model.siteCode = v.trim()),
             ),
             const SizedBox(height: 12),
-            _TextFieldRow(
+
+            _ModernTextField(
               label: 'Address',
-              hintText: 'Site address',
+              hintText: 'Street, city, state',
+              icon: Icons.place_outlined,
               initialValue: model.address,
-              maxLines: 2,
               readOnly: readOnly,
-              onChanged: (value) {
-                model.address = value.trim();
-                onChanged(model);
-              },
+              maxLines: 2,
+              onChanged: (v) => _updateModel(() => model.address = v.trim()),
             ),
             const SizedBox(height: 12),
-            _DateFieldRow(
-              label: 'Date of Service',
-              value: model.dateOfService,
-              readOnly: readOnly,
-              onChanged: (value) {
-                model.dateOfService = value;
-                onChanged(model);
-              },
-            ),
-            const SizedBox(height: 16),
-            Divider(color: colorScheme.outlineVariant),
-            const SizedBox(height: 16),
-            _TextFieldRow(
+
+            _ModernTextField(
               label: 'Technician Name',
-              hintText: 'Who performed the service?',
+              hintText: 'Assigned technician',
+              icon: Icons.person_outline,
               initialValue: model.technicianName,
               readOnly: readOnly,
-              onChanged: (value) {
-                model.technicianName = value.trim();
-                onChanged(model);
-              },
+              onChanged: (v) => _updateModel(() => model.technicianName = v.trim()),
+            ),
+
+            const SizedBox(height: 20),
+            Divider(color: colorScheme.outlineVariant),
+            const SizedBox(height: 20),
+
+            // Generator Specifications Section
+            _SectionLabel(
+              icon: Icons.power_outlined,
+              label: 'Generator Specifications',
+              color: colorScheme.secondary,
             ),
             const SizedBox(height: 12),
+
             Row(
               children: [
                 Expanded(
-                  child: _TextFieldRow(
-                    label: 'Generator Make',
-                    hintText: 'e.g. Kohler',
+                  child: _ModernTextField(
+                    label: 'Make',
+                    hintText: 'e.g. Generac',
+                    icon: Icons.factory_outlined,
                     initialValue: model.generatorMake,
                     readOnly: readOnly,
-                    onChanged: (value) {
-                      model.generatorMake = value.trim();
-                      onChanged(model);
-                    },
+                    onChanged: (v) => _updateModel(() => model.generatorMake = v.trim()),
                   ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: _TextFieldRow(
-                    label: 'Generator Model',
-                    hintText: 'e.g. 250REOZJE',
+                  child: _ModernTextField(
+                    label: 'Model',
+                    hintText: 'Model number',
+                    icon: Icons.tag_outlined,
                     initialValue: model.generatorModel,
                     readOnly: readOnly,
-                    onChanged: (value) {
-                      model.generatorModel = value.trim();
-                      onChanged(model);
-                    },
+                    onChanged: (v) => _updateModel(() => model.generatorModel = v.trim()),
                   ),
                 ),
               ],
             ),
             const SizedBox(height: 12),
+
+            _ModernTextField(
+              label: 'Serial Number',
+              hintText: 'Generator serial number',
+              icon: Icons.numbers_outlined,
+              initialValue: model.generatorSerial,
+              readOnly: readOnly,
+              onChanged: (v) => _updateModel(() => model.generatorSerial = v.trim()),
+            ),
+            const SizedBox(height: 12),
+
             Row(
               children: [
                 Expanded(
-                  child: _TextFieldRow(
-                    label: 'Serial Number',
-                    hintText: 'Generator serial',
-                    initialValue: model.generatorSerial,
-                    readOnly: readOnly,
-                    onChanged: (value) {
-                      model.generatorSerial = value.trim();
-                      onChanged(model);
-                    },
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _TextFieldRow(
-                    label: 'kW Rating',
-                    hintText: 'e.g. 250',
+                  child: _ModernTextField(
+                    label: 'Power Rating',
+                    hintText: 'e.g. 150',
+                    icon: Icons.bolt_outlined,
                     initialValue: model.generatorKw,
                     readOnly: readOnly,
-                    keyboardType:
-                    const TextInputType.numberWithOptions(decimal: true),
-                    onChanged: (value) {
-                      model.generatorKw = value.trim();
-                      onChanged(model);
-                    },
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: _TextFieldRow(
-                    label: 'Engine Hours',
-                    hintText: 'e.g. 1234',
-                    initialValue: model.engineHours,
-                    readOnly: readOnly,
-                    keyboardType:
-                    const TextInputType.numberWithOptions(decimal: true),
-                    onChanged: (value) {
-                      model.engineHours = value.trim();
-                      onChanged(model);
-                    },
+                    suffixText: 'kW',
+                    keyboardType: TextInputType.number,
+                    onChanged: (v) => _updateModel(() => model.generatorKw = v.trim()),
                   ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: _TextFieldRow(
-                    label: 'Voltage Rating',
-                    hintText: 'e.g. 120/208V',
+                  child: _ModernTextField(
+                    label: 'Voltage',
+                    hintText: 'e.g. 480',
+                    icon: Icons.electrical_services_outlined,
                     initialValue: model.voltageRating,
                     readOnly: readOnly,
-                    onChanged: (value) {
-                      model.voltageRating = value.trim();
-                      onChanged(model);
-                    },
+                    suffixText: 'V',
+                    keyboardType: TextInputType.number,
+                    onChanged: (v) => _updateModel(() => model.voltageRating = v.trim()),
                   ),
                 ),
               ],
             ),
             const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: _TextFieldRow(
-                    label: 'Fuel Type',
-                    hintText: 'e.g. Diesel',
-                    initialValue: model.fuelType,
-                    readOnly: readOnly,
-                    onChanged: (value) {
-                      model.fuelType = value.trim();
-                      onChanged(model);
-                    },
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _TextFieldRow(
-                    label: 'Last Fuel Delivery',
-                    hintText: 'e.g. 2025-03-01',
-                    initialValue: model.lastFuelDeliveryDate,
-                    readOnly: readOnly,
-                    onChanged: (value) {
-                      model.lastFuelDeliveryDate = value.trim();
-                      onChanged(model);
-                    },
-                  ),
-                ),
-              ],
+
+            _ModernTextField(
+              label: 'Engine Hours',
+              hintText: 'Current engine hours',
+              icon: Icons.timer_outlined,
+              initialValue: model.engineHours,
+              readOnly: readOnly,
+              keyboardType: TextInputType.number,
+              onChanged: (v) => _updateModel(() => model.engineHours = v.trim()),
             ),
           ],
         ),
@@ -213,113 +210,80 @@ class SectionMaintSiteInfo extends StatelessWidget {
   }
 }
 
-class _TextFieldRow extends StatelessWidget {
+/// Modern section label with icon
+class _SectionLabel extends StatelessWidget {
+  final IconData icon;
   final String label;
-  final String? hintText;
-  final String initialValue;
-  final bool readOnly;
-  final int maxLines;
-  final TextInputType? keyboardType;
-  final ValueChanged<String> onChanged;
+  final Color color;
 
-  const _TextFieldRow({
+  const _SectionLabel({
+    required this.icon,
     required this.label,
-    required this.initialValue,
-    required this.onChanged,
-    this.hintText,
-    this.readOnly = false,
-    this.maxLines = 1,
-    this.keyboardType,
+    required this.color,
   });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    return Row(
       children: [
+        Icon(icon, size: 18, color: color),
+        const SizedBox(width: 8),
         Text(
           label,
-          style: theme.textTheme.labelMedium,
-        ),
-        const SizedBox(height: 4),
-        TextFormField(
-          initialValue: initialValue,
-          readOnly: readOnly,
-          maxLines: maxLines,
-          keyboardType: keyboardType,
-          decoration: InputDecoration(
-            hintText: hintText,
+          style: theme.textTheme.labelLarge?.copyWith(
+            color: color,
+            fontWeight: FontWeight.w600,
           ),
-          onChanged: onChanged,
         ),
       ],
     );
   }
 }
 
-class _DateFieldRow extends StatelessWidget {
+/// Modern text field with icon and consistent styling
+class _ModernTextField extends StatelessWidget {
   final String label;
-  final DateTime? value;
+  final String? hintText;
+  final IconData? icon;
+  final String initialValue;
   final bool readOnly;
-  final ValueChanged<DateTime?> onChanged;
+  final int maxLines;
+  final String? suffixText;
+  final TextInputType? keyboardType;
+  final ValueChanged<String> onChanged;
 
-  const _DateFieldRow({
+  const _ModernTextField({
     required this.label,
-    required this.value,
+    required this.initialValue,
     required this.onChanged,
+    this.hintText,
+    this.icon,
     this.readOnly = false,
+    this.maxLines = 1,
+    this.suffixText,
+    this.keyboardType,
   });
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    final text = value == null
-        ? ''
-        : '${value!.year.toString().padLeft(4, '0')}-'
-        '${value!.month.toString().padLeft(2, '0')}-'
-        '${value!.day.toString().padLeft(2, '0')}';
-
-    Future<void> _pick() async {
-      if (readOnly) return;
-
-      final now = DateTime.now();
-      final initial = value ?? now;
-      final picked = await showDatePicker(
-        context: context,
-        initialDate: initial,
-        firstDate: DateTime(now.year - 5),
-        lastDate: DateTime(now.year + 5),
-      );
-      if (picked != null) {
-        onChanged(picked);
-      }
-    }
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: theme.textTheme.labelMedium,
+    return TextFormField(
+      initialValue: initialValue,
+      readOnly: readOnly,
+      maxLines: maxLines,
+      keyboardType: keyboardType,
+      decoration: InputDecoration(
+        labelText: label,
+        hintText: hintText,
+        prefixIcon: icon != null ? Icon(icon, size: 20) : null,
+        suffixText: suffixText,
+        filled: true,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
         ),
-        const SizedBox(height: 4),
-        InkWell(
-          onTap: _pick,
-          child: IgnorePointer(
-            child: TextFormField(
-              initialValue: text,
-              readOnly: true,
-              decoration: const InputDecoration(
-                suffixIcon: Icon(Icons.calendar_today_outlined),
-                hintText: 'Select date',
-              ),
-            ),
-          ),
-        ),
-      ],
+      ),
+      onChanged: onChanged,
     );
   }
 }

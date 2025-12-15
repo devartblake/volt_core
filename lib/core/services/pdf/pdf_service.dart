@@ -2070,20 +2070,20 @@ class PdfService {
     if (maintenance == null) return;
 
     // Example field names – update to your actual model fields if needed.
-    // final techSigPath = maintenance.technicianSignaturePath;
-    // final customerSigPath = maintenance.customerSignaturePath;
-    //
-    // if (techSigPath != null && io.File(techSigPath).existsSync()) {
-    //   final dest =
-    //       p.join(folderPath, 'tech_signature_${maintenance.id}.png');
-    //   await io.File(techSigPath).copy(dest);
-    // }
-    //
-    // if (customerSigPath != null && io.File(customerSigPath).existsSync()) {
-    //   final dest =
-    //       p.join(folderPath, 'customer_signature_${maintenance.id}.png');
-    //   await io.File(customerSigPath).copy(dest);
-    // }
+    final techSigPath = maintenance.technicianSignaturePath;
+    final customerSigPath = maintenance.customerSignaturePath;
+
+    if (techSigPath != null && io.File(techSigPath).existsSync()) {
+      final dest =
+          p.join(folderPath, 'tech_signature_${maintenance.id}.png');
+      await io.File(techSigPath).copy(dest);
+    }
+
+    if (customerSigPath != null && io.File(customerSigPath).existsSync()) {
+      final dest =
+          p.join(folderPath, 'customer_signature_${maintenance.id}.png');
+      await io.File(customerSigPath).copy(dest);
+    }
   }
 
 

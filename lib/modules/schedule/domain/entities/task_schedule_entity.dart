@@ -1,4 +1,4 @@
-import 'package:equatable/equatable.dart';
+ import 'package:equatable/equatable.dart';
 
 /// Domain entity representing a scheduled task (typically an inspection).
 ///

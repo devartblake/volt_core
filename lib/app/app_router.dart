@@ -29,6 +29,7 @@ import '../modules/maintenance/presenter/pages/maintenance_detail_page.dart';
 import '../modules/maintenance/presenter/pages/maintenance_form_page.dart';
 import '../modules/maintenance/presenter/pages/maintenance_list_page.dart';
 import '../modules/schedule/presenter/pages/schedule_page.dart';
+import '../modules/schedule/presenter/pages/schedule_task_page.dart';
 import '../modules/settings/presenter/pages/about_page.dart';
 import '../modules/settings/presenter/pages/selection_options_page.dart';
 import '../modules/settings/presenter/pages/settings_page.dart';
@@ -203,6 +204,16 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         builder: (_, __) => const TechShell(
           child: SchedulePage(),
         ),
+        routes: [
+          // NEW: Schedule task creation page
+          GoRoute(
+            path: RoutePaths.scheduleTask,
+            name: RouteNames.scheduleTask,
+            builder: (_, __) => const TechShell(
+              child: ScheduleTaskPage(),
+            ),
+          ),
+        ],
       ),
 
       // ========== EQUIPMENT / NAMEPLATE ==========

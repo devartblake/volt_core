@@ -5,6 +5,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:open_filex/open_filex.dart'; // NEW: open with system viewer
 import 'package:voltcore/core/services/hive/hive_boxes.dart';
 
+import '../../../schedule/infra/models/schedule_task.dart';
+import '../../../schedule/presenter/pages/schedule_task_page.dart';
+import '../../../schedule/presenter/widgets/dialogs/schedule_dialog.dart';
+
 class InspectionDetailPage extends ConsumerWidget {
   final String id;
   const InspectionDetailPage({super.key, required this.id});
@@ -45,6 +49,39 @@ class InspectionDetailPage extends ConsumerWidget {
       appBar: AppBar(
         title: const Text('Inspection Detail'),
         elevation: 0,
+        actions: [
+          // ⭐ NEW: Schedule button in app bar
+          IconButton(
+            icon: const Icon(Icons.calendar_today),
+            tooltip: 'Schedule',
+            onPressed: () async {
+              final scheduled = await showScheduleDialog(
+                context: context,
+                taskType: TaskType.inspection,
+                siteCode: ins.siteCode,
+                address: ins.address,
+                inspectionId: ins.id,
+                siteGrade: ins.siteGrade,
+              );
+
+              if (scheduled == true && context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Row(
+                      children: [
+                        Icon(Icons.check_circle, color: Colors.white),
+                        SizedBox(width: 12),
+                        Text('Inspection scheduled successfully'),
+                      ],
+                    ),
+                    backgroundColor: Colors.green,
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+              }
+            },
+          ),
+        ],
       ),
       body: Column(
         children: [
@@ -138,6 +175,48 @@ class InspectionDetailPage extends ConsumerWidget {
                         ),
                       ),
                     ],
+                    // ⭐ NEW: Schedule button in card
+                    const SizedBox(height: 16),
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        icon: const Icon(Icons.event_available),
+                        label: const Text('Schedule This Inspection'),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        onPressed: () async {
+                          final scheduled = await showScheduleDialog(
+                            context: context,
+                            taskType: TaskType.inspection,
+                            siteCode: ins.siteCode,
+                            address: ins.address,
+                            inspectionId: ins.id,
+                            siteGrade: ins.siteGrade,
+                          );
+
+                          if (scheduled == true && context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Row(
+                                  children: [
+                                    Icon(Icons.check_circle,
+                                        color: Colors.white),
+                                    SizedBox(width: 12),
+                                    Text('Added to schedule'),
+                                  ],
+                                ),
+                                backgroundColor: Colors.green,
+                                behavior: SnackBarBehavior.floating,
+                              ),
+                            );
+                          }
+                        },
+                      ),
+                    ),
                   ],
                 ),
               ),

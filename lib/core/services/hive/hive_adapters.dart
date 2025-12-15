@@ -7,7 +7,8 @@ import '../../../modules/inspections/infra/models/inspection.dart';
 import '../../../modules/inspections/infra/models/nameplate_data.dart';
 import '../../../modules/load_test/infra/models/load_test_record.dart';
 import '../../../modules/load_test/infra/models/test_interval_record.dart';
-import '../../../modules/maintenance/infra/models/maintenance_record.dart';  // ← ADDED
+import '../../../modules/maintenance/infra/models/maintenance_record.dart';
+import '../../../modules/schedule/infra/models/schedule_task.dart';  // ← ADDED
 
 /// Central place to register **all** Hive adapters used by the app.
 ///
@@ -25,7 +26,13 @@ class HiveAdapters {
     _safeRegister<NameplateData>(NameplateDataAdapter());
     _safeRegister<LoadTestRecord>(LoadTestRecordAdapter());
     _safeRegister<TestIntervalRecord>(TestIntervalRecordAdapter());
-    _safeRegister<MaintenanceRecord>(MaintenanceRecordAdapter());  // ← ADDED
+    _safeRegister<MaintenanceRecord>(MaintenanceRecordAdapter());
+
+    // ⭐ Register scheduled task adapters
+    // _safeRegister<ScheduledTask>(ScheduledTaskAdapter());
+    // _safeRegister<TaskType>(TaskTypeAdapter());
+    // _safeRegister<TaskStatus>(TaskStatusAdapter());
+    // _safeRegister<RecurrencePattern>(RecurrencePatternAdapter()); // ← ADDED
 
     _registered = true;
 

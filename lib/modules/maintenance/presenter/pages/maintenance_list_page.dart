@@ -5,6 +5,9 @@ import 'package:go_router/go_router.dart';
 import 'package:voltcore/shared/widgets/responsive_scaffold.dart';
 import 'package:voltcore/app/app_drawer.dart';
 
+import '../../../schedule/infra/models/schedule_task.dart';
+import '../../../schedule/presenter/pages/schedule_task_page.dart';
+import '../../../schedule/presenter/widgets/dialogs/schedule_dialog.dart';
 import '../../infra/models/maintenance_record.dart';
 import '../controllers/maintenance_list_controller.dart';
 import '../controllers/maintenance_providers.dart';
@@ -164,6 +167,40 @@ class MaintenanceListPage extends ConsumerWidget {
                                         shape: RoundedRectangleBorder(
                                           borderRadius:
                                           BorderRadius.circular(8),
+                                        ),
+                                      ),
+                                    );
+                                  }
+                                },
+                              ),
+                              const SizedBox(width: 8),
+                              // ⭐ NEW: Schedule button
+                              IconButton.filledTonal(
+                                icon: const Icon(Icons.calendar_today),
+                                tooltip: 'Schedule',
+                                onPressed: () async {
+                                  final scheduled = await showScheduleDialog(
+                                    context: context,
+                                    taskType: TaskType.maintenance,
+                                    siteCode: m.siteCode,
+                                    address: m.address,
+                                    maintenanceId: m.id,
+                                  );
+
+                                  if (scheduled == true && context.mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: const Row(
+                                          children: [
+                                            Icon(Icons.check_circle, color: Colors.white),
+                                            SizedBox(width: 12),
+                                            Text('Maintenance scheduled'),
+                                          ],
+                                        ),
+                                        backgroundColor: Colors.green,
+                                        behavior: SnackBarBehavior.floating,
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(8),
                                         ),
                                       ),
                                     );

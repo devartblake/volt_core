@@ -9,6 +9,9 @@ import '../../../inspections/presenter/controllers/user_profile_controller.dart'
 import '../../domain/entities/task_schedule_entity.dart';
 import '../controllers/schedule_controller.dart';
 import '../widgets/schedule_calendar.dart';
+import '../widgets/calendar_view_mode.dart';
+import '../widgets/schedule_calendar_daily_agenda.dart';
+import '../widgets/schedule_calendar_timeline.dart';
 
 /// Schedule view mode enum
 enum ScheduleView { list, calendar }
@@ -77,7 +80,60 @@ class _SchedulePageState extends ConsumerState<SchedulePage> {
           appBar: AppBar(
             title: const Text('Schedule'),
             actions: [
-              // View mode toggle
+              // Calendar view mode selector
+              PopupMenuButton<CalendarViewMode>(
+                icon: Icon(ref.watch(calendarViewModeProvider).icon),
+                tooltip: 'Calendar View',
+                onSelected: (mode) {
+                  ref.read(calendarViewModeProvider.notifier).state = mode;
+                },
+                itemBuilder: (context) => CalendarViewMode.values.map((mode) {
+                  final isActive = ref.watch(calendarViewModeProvider) == mode;
+                  return PopupMenuItem(
+                    value: mode,
+                    child: Row(
+                      children: [
+                        Icon(
+                          mode.icon,
+                          color: isActive ? theme.colorScheme.primary : null,
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                mode.label,
+                                style: TextStyle(
+                                  color: isActive ? theme.colorScheme.primary : null,
+                                  fontWeight: isActive ? FontWeight.w600 : null,
+                                ),
+                              ),
+                              Text(
+                                mode.description,
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: isActive
+                                      ? theme.colorScheme.primary.withOpacity(0.7)
+                                      : theme.colorScheme.onSurfaceVariant,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        if (isActive)
+                          Icon(
+                            Icons.check,
+                            color: theme.colorScheme.primary,
+                            size: 20,
+                          ),
+                      ],
+                    ),
+                  );
+                }).toList(),
+              ),
+
+              // View mode toggle (list/calendar)
               IconButton(
                 icon: Icon(
                   scheduleView == ScheduleView.calendar
@@ -94,6 +150,7 @@ class _SchedulePageState extends ConsumerState<SchedulePage> {
                       : ScheduleView.calendar;
                 },
               ),
+
               // Filter menu
               PopupMenuButton<TimeRange>(
                 icon: const Icon(Icons.filter_list),
@@ -127,10 +184,12 @@ class _SchedulePageState extends ConsumerState<SchedulePage> {
               ),
             ],
           ),
+          // FAB to create new scheduled task
           fab: FloatingActionButton.extended(
-            onPressed: () => context.push('/inspection/new'),
+            onPressed: () => context.goNamed('schedule_task'),
             icon: const Icon(Icons.add),
-            label: const Text('Schedule Inspection'),
+            label: const Text('Schedule Task'),
+            tooltip: 'Schedule new inspection or maintenance',
           ),
           badges: badges.toRouteMap(),
           userProfile: userProfile,
@@ -213,12 +272,7 @@ class _SchedulePageState extends ConsumerState<SchedulePage> {
 
   // ---- UI builders ----
 
-  Widget _buildStatsBar(
-      ThemeData theme,
-      List<TaskScheduleEntity> allItems,
-      List<TaskScheduleEntity> filteredItems,
-      TimeRange timeRange,
-      ) {
+  Widget _buildStatsBar(ThemeData theme, List<TaskScheduleEntity> allItems, List<TaskScheduleEntity> filteredItems, TimeRange timeRange) {
     final timeRangeText = timeRange == TimeRange.week
         ? 'This Week'
         : timeRange == TimeRange.month
@@ -274,56 +328,129 @@ class _SchedulePageState extends ConsumerState<SchedulePage> {
     );
   }
 
-  Widget _buildCalendarView(
-      ThemeData theme,
-      List<TaskScheduleEntity> items,
-      ) {
-    return Column(
-      children: [
-        Card(
-          margin: const EdgeInsets.all(16),
-          elevation: 0,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-            side: BorderSide(
-              color: theme.colorScheme.outlineVariant,
-              width: 1,
-            ),
-          ),
-          child: ScheduleCalendar(
-            focusedDay: _focusedDay,
-            selectedDay: _selectedDay,
-            calendarFormat: _calendarFormat,
-            items: items,
-            onDaySelected: (selectedDay, focusedDay) {
-              setState(() {
-                _selectedDay = selectedDay;
-                _focusedDay = focusedDay;
-              });
-            },
-            onFormatChanged: (format) {
-              setState(() {
-                _calendarFormat = format;
-              });
-            },
-            onPageChanged: (focusedDay) {
-              _focusedDay = focusedDay;
-            },
-          ),
-        ),
+  Widget _buildCalendarView(ThemeData theme, List<TaskScheduleEntity> allItems) {
+    final viewMode = ref.watch(calendarViewModeProvider);
 
-        // Selected day items
-        Expanded(
-          child: _buildSelectedDayItems(theme, items),
-        ),
-      ],
-    );
+    // Common properties for all calendar views
+    final commonProps = {
+      'focusedDay': _focusedDay,
+      'selectedDay': _selectedDay,
+      'calendarFormat': _calendarFormat,
+      'items': allItems,
+      'onDaySelected': (DateTime selectedDay, DateTime focusedDay) {
+        setState(() {
+          _selectedDay = selectedDay;
+          _focusedDay = focusedDay;
+        });
+      },
+      'onFormatChanged': (CalendarFormat format) {
+        setState(() {
+          _calendarFormat = format;
+        });
+      },
+      'onPageChanged': (DateTime focusedDay) {
+        setState(() {
+          _focusedDay = focusedDay;
+        });
+      },
+      'onTaskTap': (TaskScheduleEntity task) {
+        if (task.inspectionId != null && task.inspectionId!.isNotEmpty) {
+          context.push('/detail/${task.inspectionId}');
+        }
+      },
+    };
+
+    switch (viewMode) {
+      case CalendarViewMode.splitPanel:
+        return ScheduleCalendarEnhanced(
+          focusedDay: _focusedDay,
+          selectedDay: _selectedDay,
+          calendarFormat: _calendarFormat,
+          items: allItems,
+          onDaySelected: (selectedDay, focusedDay) {
+            setState(() {
+              _selectedDay = selectedDay;
+              _focusedDay = focusedDay;
+            });
+          },
+          onFormatChanged: (format) {
+            setState(() {
+              _calendarFormat = format;
+            });
+          },
+          onPageChanged: (focusedDay) {
+            setState(() {
+              _focusedDay = focusedDay;
+            });
+          },
+          onTaskTap: (task) {
+            if (task.inspectionId != null && task.inspectionId!.isNotEmpty) {
+              context.push('/detail/${task.inspectionId}');
+            }
+          },
+        );
+
+      case CalendarViewMode.dailyAgenda:
+        return ScheduleCalendarDailyAgenda(
+          focusedDay: _focusedDay,
+          selectedDay: _selectedDay,
+          calendarFormat: _calendarFormat,
+          items: allItems,
+          onDaySelected: (selectedDay, focusedDay) {
+            setState(() {
+              _selectedDay = selectedDay;
+              _focusedDay = focusedDay;
+            });
+          },
+          onFormatChanged: (format) {
+            setState(() {
+              _calendarFormat = format;
+            });
+          },
+          onPageChanged: (focusedDay) {
+            setState(() {
+              _focusedDay = focusedDay;
+            });
+          },
+          onTaskTap: (task) {
+            if (task.inspectionId != null && task.inspectionId!.isNotEmpty) {
+              context.push('/detail/${task.inspectionId}');
+            }
+          },
+        );
+
+      case CalendarViewMode.timeline:
+        return ScheduleCalendarTimeline(
+          focusedDay: _focusedDay,
+          selectedDay: _selectedDay,
+          calendarFormat: _calendarFormat,
+          items: allItems,
+          onDaySelected: (selectedDay, focusedDay) {
+            setState(() {
+              _selectedDay = selectedDay;
+              _focusedDay = focusedDay;
+            });
+          },
+          onFormatChanged: (format) {
+            setState(() {
+              _calendarFormat = format;
+            });
+          },
+          onPageChanged: (focusedDay) {
+            setState(() {
+              _focusedDay = focusedDay;
+            });
+          },
+          onTaskTap: (task) {
+            if (task.inspectionId != null && task.inspectionId!.isNotEmpty) {
+              context.push('/detail/${task.inspectionId}');
+            }
+          },
+        );
+    }
   }
 
-  Widget _buildSelectedDayItems(
-      ThemeData theme,
-      List<TaskScheduleEntity> allItems,
-      ) {
+  Widget _buildSelectedDayItems(ThemeData theme, List<TaskScheduleEntity> allItems) {
     final dayItems = _itemsForDay(allItems, _selectedDay);
 
     if (dayItems.isEmpty) {

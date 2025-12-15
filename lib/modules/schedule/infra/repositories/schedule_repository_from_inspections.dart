@@ -1,70 +1,67 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../inspections/domain/entities/inspection_entity.dart';
-import '../../../inspections/infra/repositories/inspection_repository.dart';
+import 'package:voltcore/modules/schedule/infra/repositories/schedule_repository.dart';
+
 import '../../../inspections/infra/repositories/inspection_repository_impl.dart';
 import '../../domain/entities/task_schedule_entity.dart';
-import '../../infra/mappers/inspection_schedule_mapper.dart';
-import 'schedule_repository.dart';
+import '../mappers/inspection_schedule_mapper.dart';
 
-/// ScheduleRepository implementation backed purely by inspections.
-///
-/// No schedule_tasks table is required:
-/// - loadSchedule(): derived from InspectionEntity list
-/// - saveTask()/deleteTask(): currently no-op, but kept for future compatibility.
+/// A schedule repository that derives schedule items from inspections.
+/// Useful as a fallback or for auto-populating a calendar from inspection due dates.
 class ScheduleRepositoryFromInspections implements ScheduleRepository {
-  final InspectionRepository inspectionRepository;
+  final InspectionRepositoryImpl _inspectionRepo;
 
-  ScheduleRepositoryFromInspections({
-    required this.inspectionRepository,
-  });
+  ScheduleRepositoryFromInspections(this._inspectionRepo);
 
   @override
-  Future<List<TaskScheduleEntity>> loadSchedule({
-    DateTime? from,
-    DateTime? to,
+  Future<List<TaskScheduleEntity>> listTasks({
+    DateTime? start,
+    DateTime? end,
+    String? tenantId,
+    String? assignedToUserId,
   }) async {
-    // 1) Load all inspections from your clean inspection repo
-    final List<InspectionEntity> inspections =
-    await inspectionRepository.listInspections();
+    final inspections = await _inspectionRepo.listAll(); // must exist on inspection repo
 
-    // 2) Convert them to TaskScheduleEntity list
-    final all = InspectionScheduleMapper.fromList(inspections);
+    final mapped = inspections
+        .map((i) => InspectionScheduleMapper.fromInspection(i))
+        .toList();
 
-    // 3) Apply optional date filter
-    if (from == null && to == null) return all;
-
-    return all.where((task) {
-      final d = task.scheduledDate;
-      if (from != null && d.isBefore(from)) return false;
-      if (to != null && d.isAfter(to)) return false;
+    // Optional filtering if caller provided start/end
+    final filtered = mapped.where((t) {
+      final due = t.scheduledAt;
+      if (start != null && due.isBefore(start)) return false;
+      if (end != null && due.isAfter(end)) return false;
       return true;
     }).toList();
+
+    filtered.sort((a, b) => a.scheduledAt.compareTo(b.scheduledAt));
+    return filtered;
   }
 
   @override
-  Future<TaskScheduleEntity> saveTask(TaskScheduleEntity task) async {
-    // For now we don't persist schedule separately.
-    // This is a no-op so it's safe to call from use cases.
-    //
-    // Later, when you add a real schedule_tasks table, your ScheduleRepository
-    // implementation can upsert a row there.
+  Future<TaskScheduleEntity?> getById(String id) async {
+    final all = await listTasks();
+    try {
+      return all.firstWhere((t) => t.id == id);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  @override
+  Future<TaskScheduleEntity> upsert(TaskScheduleEntity task) async {
+    // Derived repo can’t persist (by design). Return as-is.
     return task;
   }
 
   @override
-  Future<void> deleteTask(String id) async {
-    // No-op for now (we're not storing tasks separately yet).
-    //
-    // In the future, you can delete the schedule row here without impacting
-    // the InspectionEntity itself.
-    return;
+  Future<void> delete(String id) async {
+    // Derived repo can’t delete (by design).
   }
 }
 
-/// Wire ScheduleRepository to the from-inspections implementation.
-final scheduleRepositoryProvider = Provider<ScheduleRepository>((ref) {
+/// IMPORTANT: renamed to avoid collision with the real repo provider
+final scheduleRepositoryFromInspectionsProvider =
+Provider<ScheduleRepository>((ref) {
   final inspectionRepo = ref.watch(inspectionRepositoryProvider);
-  return ScheduleRepositoryFromInspections(
-    inspectionRepository: inspectionRepo,
-  );
+  return ScheduleRepositoryFromInspections(inspectionRepo);
 });
