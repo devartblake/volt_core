@@ -18,7 +18,9 @@ class InspectionScheduleMapper {
     return TaskScheduleEntity(
       id: 'sched_${ins.id}', // derived ID (no real schedule row yet)
       createdAt: ins.createdAt,
+      updatedAt: ins.updatedAt,
       scheduledDate: ins.serviceDate,
+      scheduledAt: ins.scheduledAt,
       title: ins.address.isNotEmpty
           ? ins.address
           : (ins.siteCode.isNotEmpty ? 'Site ${ins.siteCode}' : 'Inspection'),
@@ -29,6 +31,7 @@ class InspectionScheduleMapper {
       address: ins.address,
       status: status,
       tenantId: '',
+      sourceType: '',
     );
   }
 

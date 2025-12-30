@@ -10,6 +10,9 @@ class TaskScheduleEntity extends Equatable {
   /// When this task was created.
   final DateTime createdAt;
 
+  /// When this task was updated.
+  final DateTime updatedAt;
+
   /// The date/time the inspection is scheduled to occur.
   final DateTime scheduledDate;
 
@@ -31,17 +34,40 @@ class TaskScheduleEntity extends Equatable {
   /// Address for display in the schedule cards.
   final String address;
 
-  /// Status: 'pending', 'completed', 'cancelled', etc.
+  /// When the task is scheduled to occur.
+  final DateTime scheduledAt;
+
+  /// Current workflow status.
+  /// Keep as string for easy Supabase storage and forward compatibility:
+  /// scheduled | in_progress | completed | cancelled
   final String status;
+
+  /// Source linkage.
+  /// inspection | maintenance | manual | other
+  final String sourceType;
+
+  /// ID of the source record (inspection id, maintenance id, etc.), when applicable.
+  final String? sourceId;
+
+  /// Assigned user (Supabase auth user id), when applicable.
+  final String? assignedToUserId;
 
   /// Multi-tenant support (optional).
   final String tenantId;
 
+  /// Notes
+  final String? notes;
+
   const TaskScheduleEntity({
     required this.id,
+    required this.scheduledAt,
+    required this.updatedAt,
     required this.createdAt,
     required this.scheduledDate,
     required this.title,
+    required this.sourceType,
+    this.assignedToUserId,
+    this.sourceId = '',
     this.description = '',
     this.inspectionId,
     this.siteCode = '',
@@ -49,13 +75,19 @@ class TaskScheduleEntity extends Equatable {
     this.address = '',
     this.status = 'pending',
     this.tenantId = '',
+    this.notes,
   });
 
   TaskScheduleEntity copyWith({
     String? id,
+    DateTime? scheduledAt,
+    DateTime? updatedAt,
     DateTime? createdAt,
     DateTime? scheduledDate,
     String? title,
+    String? sourceType,
+    String? assignToUserId,
+    String? sourceId,
     String? description,
     String? inspectionId,
     String? siteCode,
@@ -63,34 +95,47 @@ class TaskScheduleEntity extends Equatable {
     String? address,
     String? status,
     String? tenantId,
+    String? notes,
   }) {
     return TaskScheduleEntity(
       id: id ?? this.id,
+      scheduledAt: scheduledAt ?? this.scheduledAt,
       createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
       scheduledDate: scheduledDate ?? this.scheduledDate,
       title: title ?? this.title,
       description: description ?? this.description,
       inspectionId: inspectionId ?? this.inspectionId,
+      sourceType: sourceType ?? this.sourceType,
+      sourceId: sourceId ?? this.sourceId,
+      assignedToUserId: assignToUserId ?? assignedToUserId,
       siteCode: siteCode ?? this.siteCode,
       siteGrade: siteGrade ?? this.siteGrade,
       address: address ?? this.address,
       status: status ?? this.status,
       tenantId: tenantId ?? this.tenantId,
+      notes: notes ?? this.notes,
     );
   }
 
   @override
   List<Object?> get props => [
     id,
+    scheduledAt,
+    updatedAt,
     createdAt,
     scheduledDate,
     title,
     description,
     inspectionId,
+    sourceType,
+    sourceId,
+    assignedToUserId,
     siteCode,
     siteGrade,
     address,
     status,
     tenantId,
+    notes,
   ];
 }

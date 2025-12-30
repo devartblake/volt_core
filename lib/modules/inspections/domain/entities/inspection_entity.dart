@@ -7,6 +7,7 @@ import 'package:uuid/uuid.dart';
 class InspectionEntity {
   final String id;
   final DateTime createdAt;
+  final DateTime updatedAt;
   final String siteCode;
   final String siteGrade; // "Green" | "Amber" | "Red"
   final String address;
@@ -82,6 +83,7 @@ class InspectionEntity {
   const InspectionEntity({
     required this.id,
     required this.createdAt,
+    required this.updatedAt,
     this.siteCode = '',
     this.siteGrade = '',
     this.address = '',
@@ -146,6 +148,7 @@ class InspectionEntity {
   InspectionEntity copyWith({
     String? id,
     DateTime? createdAt,
+    DateTime? updatedAt,
     String? siteCode,
     String? siteGrade,
     String? address,
@@ -209,6 +212,7 @@ class InspectionEntity {
     return InspectionEntity(
       id: id ?? this.id,
       createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
       siteCode: siteCode ?? this.siteCode,
       siteGrade: siteGrade ?? this.siteGrade,
       address: address ?? this.address,
@@ -284,6 +288,7 @@ class InspectionEntity {
     return InspectionEntity(
       id: const Uuid().v4(),
       createdAt: now,
+      updatedAt: now,
       siteCode: '',
       siteGrade: '',
       address: '',

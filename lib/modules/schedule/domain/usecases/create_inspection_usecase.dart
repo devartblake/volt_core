@@ -14,10 +14,11 @@ class CreateInspectionUseCase {
   const CreateInspectionUseCase(this._inspectionRepo, this._scheduleRepo);
 
   Future<InspectionEntity> call(InspectionEntity inspection) async {
-    final created = await _inspectionRepo.create(inspection);
+    final created = await _inspectionRepo.createAndExport(inspection);
 
     // Optional: also upsert a schedule task representing the inspection due date
     if (created.nextDueAt != null) {
+      final now = DateTime.now();
       final task = TaskScheduleEntity(
         id: 'insp_${created.id}',
         tenantId: created.tenantId,
@@ -26,10 +27,12 @@ class CreateInspectionUseCase {
         status: 'scheduled',
         sourceType: 'inspection',
         sourceId: created.id,
-        assignedToUserId: created.assignedTechnicianUserId,
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now(),
-        scheduledDate: DateTime.now(),
+        assignedToUserId: created.assignedToUserId,
+        siteCode: created.siteCode,
+        address: created.address,
+        createdAt: now,
+        updateAt: created.serviceDate,
+        scheduledDate: now,
       );
       await _scheduleRepo.upsert(task);
     }

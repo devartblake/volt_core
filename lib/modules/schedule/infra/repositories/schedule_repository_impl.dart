@@ -1,43 +1,97 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hive/hive.dart';
+import 'package:voltcore/modules/schedule/infra/repositories/schedule_repository.dart';
 
 import '../../domain/entities/task_schedule_entity.dart';
-import '../../external/datasources/schedule_remote_datasource.dart';
-import 'schedule_repository.dart';
-
-final scheduleRepositoryProvider = Provider<ScheduleRepository>((ref) {
-  final remote = ref.watch(scheduleRemoteDatasourceProvider);
-  return ScheduleRepositoryImpl(remote: remote);
-});
+import '../../domain/repositories/schedule_repository.dart';
+import '../datasources/scheduled_tasks_box.dart';
+import '../models/schedule_model.dart';
 
 class ScheduleRepositoryImpl implements ScheduleRepository {
-  final ScheduleRemoteDatasource remote;
+  final Box<ScheduleTaskModel> _box;
 
-  ScheduleRepositoryImpl({required this.remote});
+  ScheduleRepositoryImpl({Box<ScheduleTaskModel>? box})
+      : _box = box ?? ScheduledTasksBox.box;
+
+  // ---------------------------
+  // Mapping
+  // ---------------------------
+
+  TaskScheduleEntity _toEntity(ScheduleTaskModel m) {
+    return TaskScheduleEntity(
+      id: m.id,
+      tenantId: m.tenantId,
+      title: m.title,
+      scheduledDate: m.scheduledDate,
+      status: m.status,
+      sourceType: m.sourceType,
+      sourceId: m.sourceId,
+      assignedToUserId: m.assignedToUserId,
+      siteCode: m.siteCode,
+      address: m.address,
+      notes: m.notes,
+      createdAt: m.createdAt,
+      updateAt: m.updatedAt,
+    );
+  }
+
+  ScheduleTaskModel _toModel(TaskScheduleEntity e) {
+    return ScheduleTaskModel(
+      id: e.id,
+      tenantId: e.tenantId,
+      title: e.title,
+      scheduledAt: e.scheduledAt,
+      status: e.status,
+      sourceType: e.sourceType,
+      sourceId: e.sourceId,
+      assignedToUserId: e.assignedToUserId,
+      siteCode: e.siteCode,
+      address: e.address,
+      notes: e.notes,
+      createdAt: e.createdAt,
+      updatedAt: e.updatedAt,
+    );
+  }
+
+  // ---------------------------
+  // Repository
+  // ---------------------------
 
   @override
   Future<List<TaskScheduleEntity>> loadSchedule({
-    DateTime? from,
-    DateTime? to,
+    required DateTime from,
+    required DateTime to,
   }) async {
-    final all = await remote.fetchSchedule();
+    final items = _box.values
+        .where((m) =>
+    !m.scheduledAt.isBefore(from) && !m.scheduledAt.isAfter(to))
+        .toList()
+      ..sort((a, b) => a.scheduledAt.compareTo(b.scheduledAt));
 
-    if (from == null && to == null) return all;
-
-    return all.where((task) {
-      final d = task.scheduledDate;
-      if (from != null && d.isBefore(from)) return false;
-      if (to != null && d.isAfter(to)) return false;
-      return true;
-    }).toList();
+    return items.map(_toEntity).toList(growable: false);
   }
 
   @override
-  Future<TaskScheduleEntity> saveTask(TaskScheduleEntity task) {
-    return remote.upsertTask(task);
+  Future<TaskScheduleEntity> saveTask(TaskScheduleEntity task) async {
+    final updated = task.copyWith(updatedAt: DateTime.now());
+    await _box.put(updated.id, _toModel(updated));
+    return updated;
   }
 
   @override
-  Future<void> deleteTask(String id) {
-    return remote.deleteTask(id);
+  Future<void> deleteTask(String id) async {
+    await _box.delete(id);
+  }
+
+  @override
+  Future<TaskScheduleEntity?> getById(String id) async {
+    final m = _box.get(id);
+    if (m == null) return null;
+    return _toEntity(m);
   }
 }
+
+/// Provider used by your controller/use-cases.
+final scheduleRepositoryProvider = Provider<ScheduleRepository>((ref) {
+  return ScheduleRepositoryImpl();
+});

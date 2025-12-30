@@ -19,7 +19,7 @@ class ScheduleRepositoryFromInspections implements ScheduleRepository {
     String? tenantId,
     String? assignedToUserId,
   }) async {
-    final inspections = await _inspectionRepo.listAll(); // must exist on inspection repo
+    final inspections = await _inspectionRepo.listInspections(); // must exist on inspection repo
 
     final mapped = inspections
         .map((i) => InspectionScheduleMapper.fromInspection(i))
@@ -57,11 +57,35 @@ class ScheduleRepositoryFromInspections implements ScheduleRepository {
   Future<void> delete(String id) async {
     // Derived repo can’t delete (by design).
   }
+
+  @override
+  Future<TaskScheduleEntity> create(TaskScheduleEntity task) {
+    // TODO: implement create
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<void> deleteTask(String id) {
+    // TODO: implement deleteTask
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<List<TaskScheduleEntity>> loadSchedule({required DateTime? from, required DateTime? to}) {
+    // TODO: implement loadSchedule
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<TaskScheduleEntity> saveTask(TaskScheduleEntity task) {
+    // TODO: implement saveTask
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<TaskScheduleEntity> update(TaskScheduleEntity task) {
+    // TODO: implement update
+    throw UnimplementedError();
+  }
 }
 
-/// IMPORTANT: renamed to avoid collision with the real repo provider
-final scheduleRepositoryFromInspectionsProvider =
-Provider<ScheduleRepository>((ref) {
-  final inspectionRepo = ref.watch(inspectionRepositoryProvider);
-  return ScheduleRepositoryFromInspections(inspectionRepo);
-});
