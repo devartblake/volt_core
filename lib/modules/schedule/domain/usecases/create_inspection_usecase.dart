@@ -31,7 +31,7 @@ class CreateInspectionUseCase {
         siteCode: created.siteCode,
         address: created.address,
         createdAt: now,
-        updateAt: created.serviceDate,
+        updatedAt: created.serviceDate,
         scheduledDate: now,
       );
       await _scheduleRepo.upsert(task);
