@@ -31,19 +31,19 @@ class ScheduleRemoteDatasource {
     final list = (response as List).cast<Map<String, dynamic>>();
 
     return list
-        .map((json) => ScheduleModel.fromJson(json).toEntity())
+        .map((json) => ScheduleTaskModel.fromJson(json).toEntity())
         .toList();
   }
 
   /// Upsert a schedule task (create or update).
   Future<TaskScheduleEntity> upsertTask(TaskScheduleEntity entity) async {
-    final model = ScheduleModel.fromEntity(entity);
+    final model = ScheduleTaskModel.fromEntity(entity);
     final payload = model.toJson();
 
     final response =
     await _client.from(scheduleTable).upsert(payload).select().single();
 
-    return ScheduleModel.fromJson(
+    return ScheduleTaskModel.fromJson(
       (response as Map<String, dynamic>),
     ).toEntity();
   }

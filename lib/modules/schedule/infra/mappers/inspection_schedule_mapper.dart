@@ -30,8 +30,10 @@ class InspectionScheduleMapper {
       siteGrade: ins.siteGrade,
       address: ins.address,
       status: status,
-      tenantId: '',
-      sourceType: '',
+      tenantId: ins.tenantId,
+      sourceType: 'inspection',
+      sourceId: ins.id,
+      assignedToUserId: ins.assignedToUserId,
     );
   }
 

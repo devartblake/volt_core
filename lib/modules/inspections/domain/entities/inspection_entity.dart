@@ -80,7 +80,19 @@ class InspectionEntity {
   final String customerName;
   final String pdfPath;
 
-  const InspectionEntity({
+  /// When the inspection is scheduled to occur (defaults to [serviceDate]).
+  final DateTime scheduledAt;
+
+  /// The next due date for this inspection, if known.
+  final DateTime? nextDueAt;
+
+  /// Multi-tenant identifier (optional).
+  final String tenantId;
+
+  /// User assigned to perform this inspection (Supabase auth user id), if any.
+  final String? assignedToUserId;
+
+  InspectionEntity({
     required this.id,
     required this.createdAt,
     required this.updatedAt,
@@ -143,7 +155,11 @@ class InspectionEntity {
     required this.customerSigDate,
     this.customerName = '',
     this.pdfPath = '',
-  });
+    DateTime? scheduledAt,
+    this.nextDueAt,
+    this.tenantId = '',
+    this.assignedToUserId,
+  }) : scheduledAt = scheduledAt ?? serviceDate;
 
   InspectionEntity copyWith({
     String? id,
@@ -208,6 +224,10 @@ class InspectionEntity {
     DateTime? customerSigDate,
     String? customerName,
     String? pdfPath,
+    DateTime? scheduledAt,
+    DateTime? nextDueAt,
+    String? tenantId,
+    String? assignedToUserId,
   }) {
     return InspectionEntity(
       id: id ?? this.id,
@@ -279,6 +299,10 @@ class InspectionEntity {
       customerSigDate: customerSigDate ?? this.customerSigDate,
       customerName: customerName ?? this.customerName,
       pdfPath: pdfPath ?? this.pdfPath,
+      scheduledAt: scheduledAt ?? this.scheduledAt,
+      nextDueAt: nextDueAt ?? this.nextDueAt,
+      tenantId: tenantId ?? this.tenantId,
+      assignedToUserId: assignedToUserId ?? this.assignedToUserId,
     );
   }
 

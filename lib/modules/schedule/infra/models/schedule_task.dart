@@ -39,11 +39,30 @@ class ScheduledTask {
   @HiveField(10)
   final String? sourceId; // inspectionId / maintenanceJobId
 
+  @HiveField(11)
+  final DateTime scheduledDate;
+
+  @HiveField(12)
+  final String description;
+
+  @HiveField(13)
+  final String? inspectionId;
+
+  @HiveField(14)
+  final String siteCode;
+
+  @HiveField(15)
+  final String siteGrade;
+
+  @HiveField(16)
+  final String address;
+
   const ScheduledTask({
     required this.id,
     required this.tenantId,
     required this.title,
     required this.scheduledAt,
+    required this.scheduledDate,
     required this.status,
     required this.sourceType,
     required this.createdAt,
@@ -51,6 +70,11 @@ class ScheduledTask {
     this.notes,
     this.assignedToUserId,
     this.sourceId,
+    this.description = '',
+    this.inspectionId,
+    this.siteCode = '',
+    this.siteGrade = '',
+    this.address = '',
   });
 
   ScheduledTask copyWith({
@@ -59,12 +83,18 @@ class ScheduledTask {
     String? title,
     String? notes,
     DateTime? scheduledAt,
+    DateTime? scheduledDate,
     String? status,
     String? assignedToUserId,
     DateTime? createdAt,
     DateTime? updatedAt,
     String? sourceType,
     String? sourceId,
+    String? description,
+    String? inspectionId,
+    String? siteCode,
+    String? siteGrade,
+    String? address,
   }) {
     return ScheduledTask(
       id: id ?? this.id,
@@ -72,12 +102,18 @@ class ScheduledTask {
       title: title ?? this.title,
       notes: notes ?? this.notes,
       scheduledAt: scheduledAt ?? this.scheduledAt,
+      scheduledDate: scheduledDate ?? this.scheduledDate,
       status: status ?? this.status,
       assignedToUserId: assignedToUserId ?? this.assignedToUserId,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       sourceType: sourceType ?? this.sourceType,
       sourceId: sourceId ?? this.sourceId,
+      description: description ?? this.description,
+      inspectionId: inspectionId ?? this.inspectionId,
+      siteCode: siteCode ?? this.siteCode,
+      siteGrade: siteGrade ?? this.siteGrade,
+      address: address ?? this.address,
     );
   }
 }
@@ -108,13 +144,20 @@ class ScheduledTaskAdapter extends TypeAdapter<ScheduledTask> {
       updatedAt: fields[8] as DateTime,
       sourceType: fields[9] as String,
       sourceId: fields[10] as String?,
+      scheduledDate: fields[11] as DateTime? ??
+          fields[4] as DateTime, // fall back to scheduledAt for records written before field 11 was added
+      description: fields[12] as String? ?? '',
+      inspectionId: fields[13] as String?,
+      siteCode: fields[14] as String? ?? '',
+      siteGrade: fields[15] as String? ?? '',
+      address: fields[16] as String? ?? '',
     );
   }
 
   @override
   void write(BinaryWriter writer, ScheduledTask obj) {
     writer
-      ..writeByte(11)
+      ..writeByte(17)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -136,6 +179,18 @@ class ScheduledTaskAdapter extends TypeAdapter<ScheduledTask> {
       ..writeByte(9)
       ..write(obj.sourceType)
       ..writeByte(10)
-      ..write(obj.sourceId);
+      ..write(obj.sourceId)
+      ..writeByte(11)
+      ..write(obj.scheduledDate)
+      ..writeByte(12)
+      ..write(obj.description)
+      ..writeByte(13)
+      ..write(obj.inspectionId)
+      ..writeByte(14)
+      ..write(obj.siteCode)
+      ..writeByte(15)
+      ..write(obj.siteGrade)
+      ..writeByte(16)
+      ..write(obj.address);
   }
 }

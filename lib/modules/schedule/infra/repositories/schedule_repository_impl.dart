@@ -1,52 +1,59 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive/hive.dart';
-import 'package:voltcore/modules/schedule/infra/repositories/schedule_repository.dart';
 
 import '../../domain/entities/task_schedule_entity.dart';
-import '../../domain/repositories/schedule_repository.dart';
 import '../datasources/scheduled_tasks_box.dart';
-import '../models/schedule_model.dart';
+import '../models/schedule_task.dart';
+import 'schedule_repository.dart';
 
 class ScheduleRepositoryImpl implements ScheduleRepository {
-  final Box<ScheduleTaskModel> _box;
+  final Box<ScheduledTask> _box;
 
-  ScheduleRepositoryImpl({Box<ScheduleTaskModel>? box})
+  ScheduleRepositoryImpl({Box<ScheduledTask>? box})
       : _box = box ?? ScheduledTasksBox.box;
 
   // ---------------------------
   // Mapping
   // ---------------------------
 
-  TaskScheduleEntity _toEntity(ScheduleTaskModel m) {
+  TaskScheduleEntity _toEntity(ScheduledTask m) {
     return TaskScheduleEntity(
       id: m.id,
       tenantId: m.tenantId,
       title: m.title,
       scheduledDate: m.scheduledDate,
+      scheduledAt: m.scheduledAt,
       status: m.status,
       sourceType: m.sourceType,
       sourceId: m.sourceId,
       assignedToUserId: m.assignedToUserId,
       siteCode: m.siteCode,
+      siteGrade: m.siteGrade,
       address: m.address,
+      description: m.description,
+      inspectionId: m.inspectionId,
       notes: m.notes,
       createdAt: m.createdAt,
-      updateAt: m.updatedAt,
+      updatedAt: m.updatedAt,
     );
   }
 
-  ScheduleTaskModel _toModel(TaskScheduleEntity e) {
-    return ScheduleTaskModel(
+  ScheduledTask _toModel(TaskScheduleEntity e) {
+    return ScheduledTask(
       id: e.id,
       tenantId: e.tenantId,
       title: e.title,
       scheduledAt: e.scheduledAt,
+      scheduledDate: e.scheduledDate,
       status: e.status,
       sourceType: e.sourceType,
       sourceId: e.sourceId,
       assignedToUserId: e.assignedToUserId,
       siteCode: e.siteCode,
+      siteGrade: e.siteGrade,
       address: e.address,
+      description: e.description,
+      inspectionId: e.inspectionId,
       notes: e.notes,
       createdAt: e.createdAt,
       updatedAt: e.updatedAt,
@@ -59,13 +66,14 @@ class ScheduleRepositoryImpl implements ScheduleRepository {
 
   @override
   Future<List<TaskScheduleEntity>> loadSchedule({
-    required DateTime from,
-    required DateTime to,
+    required DateTime? from,
+    required DateTime? to,
   }) async {
-    final items = _box.values
-        .where((m) =>
-    !m.scheduledAt.isBefore(from) && !m.scheduledAt.isAfter(to))
-        .toList()
+    final items = _box.values.where((m) {
+      if (from != null && m.scheduledAt.isBefore(from)) return false;
+      if (to != null && m.scheduledAt.isAfter(to)) return false;
+      return true;
+    }).toList()
       ..sort((a, b) => a.scheduledAt.compareTo(b.scheduledAt));
 
     return items.map(_toEntity).toList(growable: false);

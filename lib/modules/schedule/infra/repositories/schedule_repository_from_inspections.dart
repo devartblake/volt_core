@@ -1,4 +1,3 @@
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:voltcore/modules/schedule/infra/repositories/schedule_repository.dart';
 
 import '../../../inspections/infra/repositories/inspection_repository_impl.dart';
@@ -12,20 +11,16 @@ class ScheduleRepositoryFromInspections implements ScheduleRepository {
 
   ScheduleRepositoryFromInspections(this._inspectionRepo);
 
-  @override
-  Future<List<TaskScheduleEntity>> listTasks({
+  Future<List<TaskScheduleEntity>> _loadAll({
     DateTime? start,
     DateTime? end,
-    String? tenantId,
-    String? assignedToUserId,
   }) async {
-    final inspections = await _inspectionRepo.listInspections(); // must exist on inspection repo
+    final inspections = await _inspectionRepo.listInspections();
 
     final mapped = inspections
         .map((i) => InspectionScheduleMapper.fromInspection(i))
         .toList();
 
-    // Optional filtering if caller provided start/end
     final filtered = mapped.where((t) {
       final due = t.scheduledAt;
       if (start != null && due.isBefore(start)) return false;
@@ -38,8 +33,16 @@ class ScheduleRepositoryFromInspections implements ScheduleRepository {
   }
 
   @override
+  Future<List<TaskScheduleEntity>> loadSchedule({
+    required DateTime? from,
+    required DateTime? to,
+  }) {
+    return _loadAll(start: from, end: to);
+  }
+
+  @override
   Future<TaskScheduleEntity?> getById(String id) async {
-    final all = await listTasks();
+    final all = await _loadAll();
     try {
       return all.firstWhere((t) => t.id == id);
     } catch (_) {
@@ -48,44 +51,22 @@ class ScheduleRepositoryFromInspections implements ScheduleRepository {
   }
 
   @override
-  Future<TaskScheduleEntity> upsert(TaskScheduleEntity task) async {
-    // Derived repo can’t persist (by design). Return as-is.
+  Future<TaskScheduleEntity> saveTask(TaskScheduleEntity task) async {
+    // Derived repo can't persist (by design). Return as-is.
     return task;
   }
 
   @override
-  Future<void> delete(String id) async {
-    // Derived repo can’t delete (by design).
+  Future<void> deleteTask(String id) async {
+    // Derived repo can't delete (by design).
   }
 
   @override
-  Future<TaskScheduleEntity> create(TaskScheduleEntity task) {
-    // TODO: implement create
-    throw UnimplementedError();
-  }
+  Future<TaskScheduleEntity> create(TaskScheduleEntity task) => saveTask(task);
 
   @override
-  Future<void> deleteTask(String id) {
-    // TODO: implement deleteTask
-    throw UnimplementedError();
-  }
+  Future<TaskScheduleEntity> update(TaskScheduleEntity task) => saveTask(task);
 
   @override
-  Future<List<TaskScheduleEntity>> loadSchedule({required DateTime? from, required DateTime? to}) {
-    // TODO: implement loadSchedule
-    throw UnimplementedError();
-  }
-
-  @override
-  Future<TaskScheduleEntity> saveTask(TaskScheduleEntity task) {
-    // TODO: implement saveTask
-    throw UnimplementedError();
-  }
-
-  @override
-  Future<TaskScheduleEntity> update(TaskScheduleEntity task) {
-    // TODO: implement update
-    throw UnimplementedError();
-  }
+  Future<TaskScheduleEntity> upsert(TaskScheduleEntity task) => saveTask(task);
 }
-
