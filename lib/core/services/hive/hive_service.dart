@@ -29,19 +29,15 @@ class HiveService {
       debugPrint('[HiveService] Initializing...');
     }
 
-    // Use organized Hive directory
-    final hiveDir = await FileStorageService.instance.getHiveDirectory();
-    await Hive.initFlutter(hiveDir.path);
-
-    // Or if using Hive.initFlutter():
-    // It will use default location, which is fine
-    // But you can verify the location:
-    if (kDebugMode) {
-      final actualDir = await FileStorageService.instance.getHiveDirectory();
-      debugPrint('[HiveService] Hive directory: ${actualDir.path}');
+    if (kIsWeb) {
+      await Hive.initFlutter();
+    } else {
+      final hiveDir = await FileStorageService.instance.getHiveDirectory();
+      await Hive.initFlutter(hiveDir.path);
+      if (kDebugMode) {
+        debugPrint('[HiveService] Hive directory: ${hiveDir.path}');
+      }
     }
-
-    await Hive.initFlutter();
 
     HiveAdapters.registerAll();
 
