@@ -62,13 +62,12 @@ class FileStorageService {
   ///
   /// This is where persistent data is stored that should survive app updates.
   Future<Directory> getAppDataDirectory() async {
-    // On Windows, use ApplicationSupport which maps to AppData\Roaming
-    // This avoids the "My Music", "My Pictures" protected folder issues
-    if (Platform.isWindows || Platform.isMacOS || Platform.isLinux) {
+    if (!kIsWeb &&
+        (defaultTargetPlatform == TargetPlatform.windows ||
+            defaultTargetPlatform == TargetPlatform.macOS ||
+            defaultTargetPlatform == TargetPlatform.linux)) {
       return await getApplicationSupportDirectory();
     }
-
-    // On mobile, use documents directory
     return await getApplicationDocumentsDirectory();
   }
 
@@ -382,22 +381,23 @@ class FileStorageService {
   ///
   /// This is where you should save PDFs that users want to share
   Future<Directory?> getExternalDownloadsDirectory() async {
-    if (Platform.isWindows || Platform.isMacOS || Platform.isLinux) {
-      // On desktop, use system Downloads folder
-      final home = Platform.environment['USERPROFILE'] ?? // Windows
-          Platform.environment['HOME'];          // Mac/Linux
+    if (!kIsWeb &&
+        (defaultTargetPlatform == TargetPlatform.windows ||
+            defaultTargetPlatform == TargetPlatform.macOS ||
+            defaultTargetPlatform == TargetPlatform.linux)) {
+      final home = Platform.environment['USERPROFILE'] ??
+          Platform.environment['HOME'];
       if (home != null) {
         final downloads = Directory(path.join(home, 'Downloads'));
         if (await downloads.exists()) {
           return downloads;
         }
       }
-    } else if (Platform.isAndroid || Platform.isIOS) {
-      // On mobile, use Downloads directory
+    } else if (!kIsWeb &&
+        (defaultTargetPlatform == TargetPlatform.android ||
+            defaultTargetPlatform == TargetPlatform.iOS)) {
       return await getDownloadsDirectory();
     }
-
-    // Fallback
     return await getDownloadsDirectory();
   }
 
