@@ -97,6 +97,15 @@ class ScheduleRepositoryImpl implements ScheduleRepository {
     if (m == null) return null;
     return _toEntity(m);
   }
+
+  @override
+  Future<TaskScheduleEntity> create(TaskScheduleEntity task) => saveTask(task);
+
+  @override
+  Future<TaskScheduleEntity> update(TaskScheduleEntity task) => saveTask(task);
+
+  @override
+  Future<TaskScheduleEntity> upsert(TaskScheduleEntity task) => saveTask(task);
 }
 
 /// Provider used by your controller/use-cases.

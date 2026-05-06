@@ -46,7 +46,6 @@ class FileStorageService {
   static const String _dirSignatures = 'signatures';
   static const String _dirPdfs = 'pdfs';
   static const String _dirTemp = 'temp';
-  static const String _dirImages = 'images';
   static const String _dirDownloads = 'downloads';
 
   static const String _dirInspections = 'inspections';

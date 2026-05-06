@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/constants/route_paths.dart';
 import '../modules/auth/domain/user_role.dart';
 import '../modules/auth/presenter/controllers/auth_controller.dart';
-import '../modules/auth/state/auth_state.dart';
 import 'route_roles.dart';
 
 /// Public breakpoints
