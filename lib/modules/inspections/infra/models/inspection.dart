@@ -155,6 +155,7 @@ extension InspectionHiveMapper on Inspection {
     return InspectionEntity(
       id: id,
       createdAt: createdAt,
+      updatedAt: DateTime.now(), // Hive model has no updatedAt field; use current time as fallback
       siteCode: siteCode,
       siteGrade: siteGrade,
       address: address,
