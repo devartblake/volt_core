@@ -1,5 +1,4 @@
 import '../modules/auth/domain/user_role.dart';
-import '../modules/auth/state/auth_state.dart';
 
 /// Defines which roles are allowed to access each named route.
 ///

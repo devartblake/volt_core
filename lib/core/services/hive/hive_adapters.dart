@@ -8,7 +8,6 @@ import '../../../modules/inspections/infra/models/nameplate_data.dart';
 import '../../../modules/load_test/infra/models/load_test_record.dart';
 import '../../../modules/load_test/infra/models/test_interval_record.dart';
 import '../../../modules/maintenance/infra/models/maintenance_record.dart';
-import '../../../modules/schedule/infra/models/schedule_task.dart';  // ← ADDED
 
 /// Central place to register **all** Hive adapters used by the app.
 ///

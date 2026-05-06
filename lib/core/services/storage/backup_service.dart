@@ -1,5 +1,5 @@
 import 'dart:convert';
-import 'dart:io' show File, Directory, Platform;
+import 'dart:io' show File, Directory;
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:path_provider/path_provider.dart';
 import 'package:uuid/uuid.dart';

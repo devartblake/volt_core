@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:voltcore/app/app_drawer.dart';
-import 'package:voltcore/modules/auth/domain/user_role.dart';
 
 import '../modules/auth/presenter/controllers/auth_controller.dart';
 import '../modules/auth/state/auth_state.dart';
