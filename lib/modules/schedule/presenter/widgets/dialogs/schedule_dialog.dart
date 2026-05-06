@@ -120,27 +120,40 @@ class _ScheduleTaskDialogState extends State<ScheduleTaskDialog> {
     setState(() => _isSaving = true);
 
     try {
+      final now = DateTime.now();
+      final scheduledAt = DateTime(
+        _selectedDate.year,
+        _selectedDate.month,
+        _selectedDate.day,
+        _selectedTime.hour,
+        _selectedTime.minute,
+      );
       final task = ScheduledTask(
         id: const Uuid().v4(),
-        taskType: widget.taskType,
-        inspectionId: widget.inspectionId,
-        maintenanceId: widget.maintenanceId,
+        tenantId: '',
+        title: widget.siteCode.isNotEmpty ? widget.siteCode : widget.address,
+        scheduledAt: scheduledAt,
         scheduledDate: _selectedDate,
-        scheduledTime: '${_selectedTime.hour.toString().padLeft(2, '0')}:'
-            '${_selectedTime.minute.toString().padLeft(2, '0')}',
+        status: 'scheduled',
+        sourceType: widget.taskType == TaskType.inspection
+            ? 'inspection'
+            : 'maintenance',
+        sourceId: widget.inspectionId ?? widget.maintenanceId,
+        inspectionId: widget.inspectionId,
         siteCode: widget.siteCode,
         address: widget.address,
-        siteGrade: widget.siteGrade,
+        siteGrade: widget.siteGrade ?? '',
         notes: _notesController.text.trim().isEmpty
             ? null
             : _notesController.text.trim(),
-        assignedTechnician: _technicianController.text.trim().isEmpty
+        assignedToUserId: _technicianController.text.trim().isEmpty
             ? null
             : _technicianController.text.trim(),
-        status: TaskStatus.scheduled,
+        createdAt: now,
+        updatedAt: now,
       );
 
-      await ScheduledTasksBox.add(task);
+      await ScheduledTasksBox.box.put(task.id, task);
 
       if (!mounted) return;
 

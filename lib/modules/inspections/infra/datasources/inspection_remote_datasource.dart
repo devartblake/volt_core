@@ -79,6 +79,8 @@ class InspectionRemoteDatasource {
       id: json['id'].toString(),
       createdAt: DateTime.tryParse(json['created_at'] ?? '') ??
           DateTime.now(),
+      updatedAt: DateTime.tryParse(json['updated_at'] ?? '') ??
+          DateTime.now(),
       siteCode: json['site_code'] ?? '',
       siteGrade: json['site_grade'] ?? '',
       address: json['address'] ?? '',
