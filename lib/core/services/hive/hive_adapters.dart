@@ -27,12 +27,6 @@ class HiveAdapters {
     _safeRegister<TestIntervalRecord>(TestIntervalRecordAdapter());
     _safeRegister<MaintenanceRecord>(MaintenanceRecordAdapter());
 
-    // ⭐ Register scheduled task adapters
-    // _safeRegister<ScheduledTask>(ScheduledTaskAdapter());
-    // _safeRegister<TaskType>(TaskTypeAdapter());
-    // _safeRegister<TaskStatus>(TaskStatusAdapter());
-    // _safeRegister<RecurrencePattern>(RecurrencePatternAdapter()); // ← ADDED
-
     _registered = true;
 
     if (kDebugMode) {

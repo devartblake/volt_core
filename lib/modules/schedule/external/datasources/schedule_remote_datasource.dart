@@ -6,19 +6,19 @@ import '../../infra/models/schedule_model.dart';
 
 /// Riverpod provider for the remote datasource
 final scheduleRemoteDatasourceProvider =
-Provider<ScheduleRemoteDatasource>((ref) {
-  return ScheduleRemoteDatasource();
+    Provider<ScheduleRemoteDatasourceImpl>((ref) {
+  return ScheduleRemoteDatasourceImpl();
 });
 
-/// Remote datasource for schedule tasks over Supabase.
+/// Concrete Supabase implementation of the schedule remote datasource.
 ///
 /// Adjust table name / column names to match your schema.
-class ScheduleRemoteDatasource {
+class ScheduleRemoteDatasourceImpl {
   static const String scheduleTable = 'schedule_tasks';
 
   final SupabaseClient _client;
 
-  ScheduleRemoteDatasource({SupabaseClient? client})
+  ScheduleRemoteDatasourceImpl({SupabaseClient? client})
       : _client = client ?? Supabase.instance.client;
 
   /// Fetch all schedule tasks (you can later add filters for tenant/user/date).
@@ -41,7 +41,7 @@ class ScheduleRemoteDatasource {
     final payload = model.toJson();
 
     final response =
-    await _client.from(scheduleTable).upsert(payload).select().single();
+        await _client.from(scheduleTable).upsert(payload).select().single();
 
     return ScheduleTaskModel.fromJson(
       (response as Map<String, dynamic>),

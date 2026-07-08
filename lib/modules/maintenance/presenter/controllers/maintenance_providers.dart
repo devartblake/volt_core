@@ -2,7 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 
 import '../../infra/models/maintenance_record.dart';
-import '../../infra/repositories/maintenance_entity.dart' as infra;
+import '../../infra/repositories/maintenance_hive_repository.dart' as infra;
 import '../../domain/repositories/maintenance_repository.dart';
 import '../../infra/repositories/maintenance_repository_impl.dart';
 import '../../domain/usecases/create_maintenance_usecase.dart';
