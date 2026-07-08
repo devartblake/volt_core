@@ -36,6 +36,17 @@ class EmailService {
     }
 
     // Mobile/desktop: try SMTP
+    final missingSmtpConfig = <String>[
+      if (_smtpHost.trim().isEmpty) 'SMTP_HOST',
+      if (_smtpUser.trim().isEmpty) 'SMTP_USER',
+      if (_smtpPass.trim().isEmpty) 'SMTP_PASS',
+    ];
+    if (missingSmtpConfig.isNotEmpty) {
+      throw StateError(
+        'SMTP is not configured. Missing environment values: ${missingSmtpConfig.join(", ")}.',
+      );
+    }
+
     final server = SmtpServer(
       _smtpHost,
       port: _smtpPort,
