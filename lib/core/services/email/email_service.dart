@@ -11,6 +11,8 @@ class EmailService {
   static String get _to =>
       dotenv.env['SMTP_TO'] ?? 'office@aselectricnyc.com';
 
+  // Backwards-compatible alias used by the web (mailto) branch below.
+  static String get kTo => _to;
   // SMTP credentials loaded from flutter_dotenv at runtime.
   String get _smtpHost => dotenv.env['SMTP_HOST'] ?? '';
   int get _smtpPort =>
