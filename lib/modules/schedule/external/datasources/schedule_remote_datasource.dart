@@ -2,18 +2,19 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../domain/entities/task_schedule_entity.dart';
+import '../../infra/datasources/schedule_remote_datasource.dart';
 import '../../infra/models/schedule_model.dart';
 
 /// Riverpod provider for the remote datasource
 final scheduleRemoteDatasourceProvider =
-    Provider<ScheduleRemoteDatasourceImpl>((ref) {
+    Provider<ScheduleRemoteDatasource>((ref) {
   return ScheduleRemoteDatasourceImpl();
 });
 
 /// Concrete Supabase implementation of the schedule remote datasource.
 ///
 /// Adjust table name / column names to match your schema.
-class ScheduleRemoteDatasourceImpl {
+class ScheduleRemoteDatasourceImpl implements ScheduleRemoteDatasource {
   static const String scheduleTable = 'schedule_tasks';
 
   final SupabaseClient _client;
@@ -21,12 +22,19 @@ class ScheduleRemoteDatasourceImpl {
   ScheduleRemoteDatasourceImpl({SupabaseClient? client})
       : _client = client ?? Supabase.instance.client;
 
-  /// Fetch all schedule tasks (you can later add filters for tenant/user/date).
-  Future<List<TaskScheduleEntity>> fetchSchedule() async {
-    final response = await _client
-        .from(scheduleTable)
-        .select()
-        .order('scheduled_date', ascending: true);
+  @override
+  Future<List<TaskScheduleEntity>> list({DateTime? from, DateTime? to}) async {
+    var query = _client.from(scheduleTable).select();
+
+    if (from != null) {
+      query = query.gte('scheduled_date', from.toIso8601String());
+    }
+
+    if (to != null) {
+      query = query.lte('scheduled_date', to.toIso8601String());
+    }
+
+    final response = await query.order('scheduled_date', ascending: true);
 
     final list = (response as List).cast<Map<String, dynamic>>();
 
@@ -35,8 +43,20 @@ class ScheduleRemoteDatasourceImpl {
         .toList();
   }
 
-  /// Upsert a schedule task (create or update).
-  Future<TaskScheduleEntity> upsertTask(TaskScheduleEntity entity) async {
+  @override
+  Future<TaskScheduleEntity?> getById(String id) async {
+    final response =
+        await _client.from(scheduleTable).select().eq('id', id).maybeSingle();
+
+    if (response == null) return null;
+
+    return ScheduleTaskModel.fromJson(
+      (response as Map<String, dynamic>),
+    ).toEntity();
+  }
+
+  @override
+  Future<TaskScheduleEntity> upsert(TaskScheduleEntity entity) async {
     final model = ScheduleTaskModel.fromEntity(entity);
     final payload = model.toJson();
 
@@ -48,8 +68,8 @@ class ScheduleRemoteDatasourceImpl {
     ).toEntity();
   }
 
-  /// Delete a schedule task by id (optional helper).
-  Future<void> deleteTask(String id) async {
+  @override
+  Future<void> delete(String id) async {
     await _client.from(scheduleTable).delete().eq('id', id);
   }
 }
