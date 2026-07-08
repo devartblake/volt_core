@@ -1,6 +1,6 @@
 import 'package:flutter_riverpod/legacy.dart';
 import '../../infra/models/maintenance_record.dart';
-import '../../infra/repositories/maintenance_entity.dart' as infra;
+import '../../infra/repositories/maintenance_hive_repository.dart' as infra;
 import 'maintenance_providers.dart';
 
 class MaintenanceFormState {

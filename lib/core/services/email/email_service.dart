@@ -1,19 +1,24 @@
 import 'dart:io';
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:mailer/mailer.dart';
 import 'package:mailer/smtp_server.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../modules/inspections/infra/models/inspection.dart';
 
 class EmailService {
-  // Configure your destination email address here:
-  static const String kTo = 'office@aselectricnyc.com';
+  // Destination address – read from env, fall back to known default.
+  static String get _to =>
+      dotenv.env['SMTP_TO'] ?? 'office@aselectricnyc.com';
 
-  // For production: store SMTP creds securely, not hard-coded.
-  final String smtpHost = 'smtp.yourdomain.com';
-  final int smtpPort = 587;
-  final String smtpUser = 'no-reply@yourdomain.com';
-  final String smtpPass = '***app-password***';
+  // Backwards-compatible alias used by the web (mailto) branch below.
+  static String get kTo => _to;
+  // SMTP credentials loaded from flutter_dotenv at runtime.
+  String get _smtpHost => dotenv.env['SMTP_HOST'] ?? '';
+  int get _smtpPort =>
+      int.tryParse(dotenv.env['SMTP_PORT'] ?? '587') ?? 587;
+  String get _smtpUser => dotenv.env['SMTP_USER'] ?? '';
+  String get _smtpPass => dotenv.env['SMTP_PASS'] ?? '';
 
   Future<void> sendInspectionPdf(Inspection ins, String pdfPath) async {
     final subject = 'Generator Compliance Checklist • ${ins.siteCode} • ${ins.serviceDate.toIso8601String().split("T").first}';
@@ -31,13 +36,29 @@ class EmailService {
     }
 
     // Mobile/desktop: try SMTP
-    final server = SmtpServer(smtpHost, port: smtpPort, username: smtpUser, password: smtpPass);
+    final missingSmtpConfig = <String>[
+      if (_smtpHost.trim().isEmpty) 'SMTP_HOST',
+      if (_smtpUser.trim().isEmpty) 'SMTP_USER',
+      if (_smtpPass.trim().isEmpty) 'SMTP_PASS',
+    ];
+    if (missingSmtpConfig.isNotEmpty) {
+      throw StateError(
+        'SMTP is not configured. Missing environment values: ${missingSmtpConfig.join(", ")}.',
+      );
+    }
+
+    final server = SmtpServer(
+      _smtpHost,
+      port: _smtpPort,
+      username: _smtpUser,
+      password: _smtpPass,
+    );
     final message = Message()
-      ..from = Address(smtpUser, 'A&S Electric')
-      ..recipients.add(kTo)
+      ..from = Address(_smtpUser, 'A&S Electric')
+      ..recipients.add(_to)
       ..subject = subject
       ..text = body
-      ..attachments = [ FileAttachment(File(pdfPath)) ];
+      ..attachments = [FileAttachment(File(pdfPath))];
 
     await send(message, server);
   }

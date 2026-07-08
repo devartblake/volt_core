@@ -42,17 +42,22 @@ class _InspectionListPageState
     // Apply filter if provided
     final allItems = state.items;
     final items = widget.filterStatus != null
-        ? allItems
-        .where((i) =>
-    (i.siteGrade ?? '')
-        .toLowerCase() ==
-        widget.filterStatus!.toLowerCase())
-        .toList()
+        ? allItems.where((i) {
+            final status = widget.filterStatus!.toLowerCase();
+            // 'pending' = inspections that need attention (Amber/Red grade)
+            if (status == 'pending') {
+              final grade = (i.siteGrade ?? '').toLowerCase();
+              return grade == 'amber' || grade == 'red';
+            }
+            return (i.siteGrade ?? '').toLowerCase() == status;
+          }).toList()
         : allItems;
 
     return ResponsiveScaffold(
       appBar: AppBar(
-        title: const Text('Inspections'),
+        title: Text(widget.filterStatus == 'pending'
+            ? 'Pending Inspections'
+            : 'Inspections'),
         actions: [
           IconButton(
             icon: const Icon(Icons.edit_outlined),

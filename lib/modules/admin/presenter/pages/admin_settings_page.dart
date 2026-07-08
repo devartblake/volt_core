@@ -3,6 +3,15 @@ import 'package:flutter/material.dart';
 class AdminSettingsPage extends StatelessWidget {
   const AdminSettingsPage({super.key});
 
+  void _showComingSoon(BuildContext context, String feature) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('$feature — coming soon'),
+        duration: const Duration(seconds: 2),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
@@ -34,7 +43,7 @@ class AdminSettingsPage extends StatelessWidget {
             ),
             value: true,
             onChanged: (v) {
-              // TODO: wire to settings service / usecases
+              _showComingSoon(context, 'Advanced logging toggle');
             },
           ),
           const Divider(),
@@ -43,7 +52,7 @@ class AdminSettingsPage extends StatelessWidget {
             subtitle: const Text('Configure how long archives are kept.'),
             trailing: const Icon(Icons.chevron_right),
             onTap: () {
-              // TODO: navigate to detailed setting page
+              _showComingSoon(context, 'Data retention settings');
             },
           ),
           ListTile(
@@ -53,7 +62,7 @@ class AdminSettingsPage extends StatelessWidget {
             ),
             trailing: const Icon(Icons.chevron_right),
             onTap: () {
-              // TODO: navigate to RBAC management
+              _showComingSoon(context, 'RBAC management');
             },
           ),
         ],

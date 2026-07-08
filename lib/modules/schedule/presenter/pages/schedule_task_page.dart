@@ -489,8 +489,8 @@ class _ScheduleTaskPageState extends ConsumerState<ScheduleTaskPage> {
   }
 
   void _scheduleExistingInspection(Inspection inspection) {
-    // TODO: In next iteration, add date picker and create schedule entry
-    // For now, just navigate to the inspection form for editing
+    // Date picker and schedule entry creation will be added in a future iteration.
+    // For now, show a dialog informing the user and allowing navigation to the form.
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -523,7 +523,7 @@ class _ScheduleTaskPageState extends ConsumerState<ScheduleTaskPage> {
   }
 
   void _scheduleExistingMaintenance(MaintenanceRecord job) {
-    // TODO: In next iteration, add date picker and create schedule entry
+    // Date picker and schedule entry creation will be added in a future iteration.
     showDialog(
       context: context,
       builder: (context) => AlertDialog(

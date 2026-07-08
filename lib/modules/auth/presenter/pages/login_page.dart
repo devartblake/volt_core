@@ -17,9 +17,9 @@ class LoginPage extends ConsumerStatefulWidget {
 class _LoginPageState extends ConsumerState<LoginPage> {
   final _formKey = GlobalKey<FormState>();
 
-  final _emailCtrl = TextEditingController(text: 'admin@gmail.com');
-  final _nameCtrl = TextEditingController(text: 'Admin');
-  final _passwordCtrl = TextEditingController(text: 'password123');
+  final _emailCtrl = TextEditingController();
+  final _nameCtrl = TextEditingController();
+  final _passwordCtrl = TextEditingController();
 
   UserRole _selectedRole = UserRole.admin;
   bool _isLoading = false;

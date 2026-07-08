@@ -2,12 +2,17 @@
 // AppDrawer, and anywhere else you navigate.
 
 class RoutePaths {
+  RoutePaths._();
+
   // Auth
   static const String login = '/login';
   static const String forbidden = '/403';
 
   // Dashboard / home
   static const String dashboard = '/';
+
+  // Tech dashboard
+  static const String techDashboard = '/tech-dashboard';
 
   // Inspections
   static const String inspections = '/inspections';
@@ -45,10 +50,13 @@ class RoutePaths {
 /// Optional: route name constants if you want them too.
 /// These should match the `name:` properties in app_router.dart.
 class RouteNames {
+  RouteNames._();
+
   static const String login = 'login';
   static const String forbidden = 'forbidden';
 
   static const String dashboard = 'dashboard';
+  static const String techDashboard = 'tech_dashboard';
 
   static const String inspections = 'inspections';
   static const String inspectionNew = 'inspection_new';

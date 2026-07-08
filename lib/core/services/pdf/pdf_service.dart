@@ -22,7 +22,7 @@ import '../../../modules/load_test/infra/models/load_test_record.dart';
 import '../../../modules/load_test/infra/models/test_interval_record.dart';
 import '../../../modules/maintenance/infra/models/maintenance_record.dart';
 import '../../../shared/presenter/layout/pdf/pdf_template.dart';
-import '../../storage/hive/hive_boxes.dart';
+import '../../services/hive/hive_boxes.dart';
 import '../storage/file_storage_service.dart';
 
 /// User-level preferences for how PDFs should be exported.

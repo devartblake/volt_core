@@ -50,9 +50,9 @@ class DashboardPage extends ConsumerWidget {
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (err, st) {
           if (kDebugMode) {
-            print('=== DASHBOARD ERROR ===');
-            print('Error: $err');
-            print('======================');
+            debugPrint('=== DASHBOARD ERROR ===');
+            debugPrint('Error: $err');
+            debugPrint('======================');
           }
           return _buildDashboardContent(
             context,
@@ -66,25 +66,25 @@ class DashboardPage extends ConsumerWidget {
         data: (tasks) {
           // DEBUG: Print task info
           if (kDebugMode) {
-            print('=== DASHBOARD DEBUG ===');
-            print('Total tasks: ${tasks.length}');
-            print('Is authenticated: $isAuthed');
+            debugPrint('=== DASHBOARD DEBUG ===');
+            debugPrint('Total tasks: ${tasks.length}');
+            debugPrint('Is authenticated: $isAuthed');
 
             final now = DateTime.now();
             final pastTasks = tasks.where((t) => t.scheduledDate.isBefore(now)).length;
             final futureTasks = tasks.where((t) => t.scheduledDate.isAfter(now)).length;
 
-            print('Past tasks: $pastTasks');
-            print('Future tasks: $futureTasks');
+            debugPrint('Past tasks: $pastTasks');
+            debugPrint('Future tasks: $futureTasks');
 
             if (tasks.isNotEmpty) {
-              print('Sample task dates:');
+              debugPrint('Sample task dates:');
               for (var i = 0; i < tasks.length && i < 5; i++) {
                 final isPast = tasks[i].scheduledDate.isBefore(now);
-                print('  Task $i: ${tasks[i].scheduledDate} - ${isPast ? "PAST ✓" : "FUTURE →"}');
+                debugPrint('  Task $i: ${tasks[i].scheduledDate} - ${isPast ? "PAST ✓" : "FUTURE →"}');
               }
             }
-            print('======================');
+            debugPrint('======================');
           }
 
           return _buildDashboardContent(
@@ -456,11 +456,11 @@ class DashboardPage extends ConsumerWidget {
     }
 
     if (kDebugMode) {
-      print('--- Recent Activity Debug ---');
-      print('Past tasks available: ${pastTasks.length}');
-      print('Upcoming tasks available: ${upcomingTasks.length}');
-      print('Displaying: ${displayTasks.length}');
-      print('---------------------------');
+      debugPrint('--- Recent Activity Debug ---');
+      debugPrint('Past tasks available: ${pastTasks.length}');
+      debugPrint('Upcoming tasks available: ${upcomingTasks.length}');
+      debugPrint('Displaying: ${displayTasks.length}');
+      debugPrint('---------------------------');
     }
 
     return Column(

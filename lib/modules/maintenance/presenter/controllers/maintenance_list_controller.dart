@@ -1,7 +1,7 @@
 import 'package:flutter_riverpod/legacy.dart';
 import '../../infra/models/maintenance_record.dart';
 import 'maintenance_providers.dart';
-import '../../infra/repositories/maintenance_entity.dart' as legacy;
+import '../../infra/repositories/maintenance_hive_repository.dart' as legacy;
 
 enum MaintenanceListTab {
   active,

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show Uint8List;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:open_filex/open_filex.dart';
 
 import 'package:voltcore/shared/widgets/responsive_scaffold.dart';
 import '../../../../core/services/pdf/pdf_prefs_service.dart';
@@ -35,6 +36,7 @@ class _MaintenanceFormPageState extends ConsumerState<MaintenanceFormPage> {
   int _currentStep = 0;
   bool _isSaving = false;
   bool _isGeneratingPdf = false;
+  String? _savedPdfPath;
 
   /// Small helper to trigger rebuild when sections mutate the model.
   void _update(void Function() fn) {
@@ -88,7 +90,7 @@ class _MaintenanceFormPageState extends ConsumerState<MaintenanceFormPage> {
       // Step 2: Generate and save PDF
       setState(() => _isGeneratingPdf = true);
 
-      await _generateAndSavePdf(savedRecord);
+      _savedPdfPath = await _generateAndSavePdf(savedRecord);
 
       // Step 3: Refresh the list provider so list updates when navigating back
       ref.invalidate(maintenanceListProvider);
@@ -135,7 +137,10 @@ class _MaintenanceFormPageState extends ConsumerState<MaintenanceFormPage> {
             label: 'View',
             textColor: Colors.white,
             onPressed: () {
-              // TODO: Navigate to PDF viewer or share
+              final path = _savedPdfPath;
+              if (path != null) {
+                OpenFilex.open(path);
+              }
             },
           ),
         ),
@@ -190,8 +195,9 @@ class _MaintenanceFormPageState extends ConsumerState<MaintenanceFormPage> {
     }
   }
 
-  /// Generate PDF with signatures and save to storage
-  Future<void> _generateAndSavePdf(MaintenanceRecord record) async {
+  /// Generate PDF with signatures and save to storage.
+  /// Returns the saved file path.
+  /// Throws if generation fails.
     try {
       debugPrint('Generating PDF for maintenance record: ${record.id}');
 
@@ -212,11 +218,10 @@ class _MaintenanceFormPageState extends ConsumerState<MaintenanceFormPage> {
       // Optionally, you can also trigger email/share if preferences allow
       final prefs = await _getPdfPreferences();
       if (prefs.emailAllowed) {
-        // The PdfService can handle sharing automatically
-        // Or you can trigger it manually here
         debugPrint('Email sharing is enabled');
       }
 
+      return pdfPath;
     } catch (e) {
       debugPrint('Error generating/saving PDF: $e');
       rethrow; // Let the caller handle the error

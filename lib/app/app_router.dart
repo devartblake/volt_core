@@ -118,8 +118,8 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         ),
       ),
       GoRoute(
-        path: '/tech-dashboard',
-        name: 'tech_dashboard',
+        path: RoutePaths.techDashboard,
+        name: RouteNames.techDashboard,
         builder: (_, __) => const TechShell(
           child: TechDashboardPage(),
         ),
@@ -154,7 +154,7 @@ final goRouterProvider = Provider<GoRouter>((ref) {
             name: RouteNames.inspectionsPending,
             builder: (_, __) => const TechShell(
               child: InspectionListPage(
-                // TODO: pending-filter
+                filterStatus: 'pending',
               ),
             ),
           ),
