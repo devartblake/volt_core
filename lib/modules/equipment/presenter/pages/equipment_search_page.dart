@@ -1,83 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-
-/// Equipment/Nameplate model (adjust based on your actual model)
-class Equipment {
-  final String id;
-  final String name;
-  final String make;
-  final String model;
-  final String serialNumber;
-  final String voltage;
-  final String location;
-  final DateTime? lastInspection;
-  final EquipmentStatus status;
-
-  const Equipment({
-    required this.id,
-    required this.name,
-    required this.make,
-    required this.model,
-    required this.serialNumber,
-    required this.voltage,
-    required this.location,
-    this.lastInspection,
-    this.status = EquipmentStatus.active,
-  });
-}
-
-enum EquipmentStatus {
-  active,
-  inactive,
-  maintenance,
-  retired,
-}
-
-/// Search filters model
-class EquipmentSearchFilters {
-  final String? make;
-  final String? voltage;
-  final EquipmentStatus? status;
-  final String? location;
-
-  const EquipmentSearchFilters({
-    this.make,
-    this.voltage,
-    this.status,
-    this.location,
-  });
-
-  EquipmentSearchFilters copyWith({
-    String? make,
-    String? voltage,
-    EquipmentStatus? status,
-    String? location,
-    bool clearMake = false,
-    bool clearVoltage = false,
-    bool clearStatus = false,
-    bool clearLocation = false,
-  }) {
-    return EquipmentSearchFilters(
-      make: clearMake ? null : (make ?? this.make),
-      voltage: clearVoltage ? null : (voltage ?? this.voltage),
-      status: clearStatus ? null : (status ?? this.status),
-      location: clearLocation ? null : (location ?? this.location),
-    );
-  }
-
-  bool get hasFilters =>
-      make != null || voltage != null || status != null || location != null;
-
-  int get activeFilterCount {
-    int count = 0;
-    if (make != null) count++;
-    if (voltage != null) count++;
-    if (status != null) count++;
-    if (location != null) count++;
-    return count;
-  }
-}
+import '../../../../providers/equipment_providers.dart';
 
 /// Equipment search page
 class EquipmentSearchPage extends ConsumerStatefulWidget {
@@ -92,7 +16,6 @@ class _EquipmentSearchPageState extends ConsumerState<EquipmentSearchPage> {
   final FocusNode _searchFocus = FocusNode();
   EquipmentSearchFilters _filters = const EquipmentSearchFilters();
   String _searchQuery = '';
-  bool _isSearching = false;
 
   @override
   void initState() {
@@ -125,11 +48,7 @@ class _EquipmentSearchPageState extends ConsumerState<EquipmentSearchPage> {
     });
   }
 
-  List<Equipment> _getFilteredEquipment() {
-    // TODO: Replace with actual infra from your provider
-    // Example: ref.watch(equipmentProvider)
-    final allEquipment = _getDummyEquipment();
-
+  List<Equipment> _getFilteredEquipment(List<Equipment> allEquipment) {
     return allEquipment.where((equipment) {
       // Text search
       if (_searchQuery.isNotEmpty) {
@@ -159,7 +78,8 @@ class _EquipmentSearchPageState extends ConsumerState<EquipmentSearchPage> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final filteredEquipment = _getFilteredEquipment();
+    
+    final equipmentAsync = ref.watch(equipmentListProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -172,152 +92,159 @@ class _EquipmentSearchPageState extends ConsumerState<EquipmentSearchPage> {
         )
             : null,
       ),
-      body: Column(
-        children: [
-          // Search bar
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: colorScheme.surface,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
-                  blurRadius: 4,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: Column(
-              children: [
-                // Search input
-                TextField(
-                  controller: _searchController,
-                  focusNode: _searchFocus,
-                  decoration: InputDecoration(
-                    hintText: 'Search by name, make, model, serial, or location',
-                    prefixIcon: const Icon(Icons.search),
-                    suffixIcon: _searchQuery.isNotEmpty
-                        ? IconButton(
-                      icon: const Icon(Icons.clear),
-                      onPressed: () {
-                        _searchController.clear();
-                        _searchFocus.requestFocus();
-                      },
-                    )
-                        : null,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
+      body: equipmentAsync.when(
+        data: (allEquipment) {
+          final filteredEquipment = _getFilteredEquipment(allEquipment);
+          return Column(
+            children: [
+              // Search bar
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: colorScheme.surface,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.05),
+                      blurRadius: 4,
+                      offset: const Offset(0, 2),
                     ),
-                    filled: true,
-                    fillColor: colorScheme.surfaceContainerHighest.withOpacity(0.5),
-                  ),
-                  textInputAction: TextInputAction.search,
+                  ],
                 ),
-                const SizedBox(height: 12),
-
-                // Filter chips
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
-                    children: [
-                      // Filter button
-                      FilterChip(
-                        label: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(Icons.filter_list, size: 18),
-                            const SizedBox(width: 4),
-                            Text('Filters'),
-                            if (_filters.activeFilterCount > 0) ...[
-                              const SizedBox(width: 4),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                decoration: BoxDecoration(
-                                  color: colorScheme.primary,
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                child: Text(
-                                  '${_filters.activeFilterCount}',
-                                  style: TextStyle(
-                                    color: colorScheme.onPrimary,
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ],
+                child: Column(
+                  children: [
+                    // Search input
+                    TextField(
+                      controller: _searchController,
+                      focusNode: _searchFocus,
+                      decoration: InputDecoration(
+                        hintText: 'Search by name, make, model, serial, or location',
+                        prefixIcon: const Icon(Icons.search),
+                        suffixIcon: _searchQuery.isNotEmpty
+                            ? IconButton(
+                          icon: const Icon(Icons.clear),
+                          onPressed: () {
+                            _searchController.clear();
+                            _searchFocus.requestFocus();
+                          },
+                        )
+                            : null,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
                         ),
-                        selected: _filters.hasFilters,
-                        onSelected: (_) => _showFiltersBottomSheet(),
+                        filled: true,
+                        fillColor: colorScheme.surfaceContainerHighest.withOpacity(0.5),
                       ),
-                      const SizedBox(width: 8),
+                      textInputAction: TextInputAction.search,
+                    ),
+                    const SizedBox(height: 12),
 
-                      // Active filter chips
-                      if (_filters.make != null) ...[
-                        Chip(
-                          avatar: const Icon(Icons.build_outlined, size: 18),
-                          label: Text(_filters.make!),
-                          onDeleted: () => _updateFilter(
-                            _filters.copyWith(clearMake: true),
+                    // Filter chips
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        children: [
+                          // Filter button
+                          FilterChip(
+                            label: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.filter_list, size: 18),
+                                const SizedBox(width: 4),
+                                const Text('Filters'),
+                                if (_filters.activeFilterCount > 0) ...[
+                                  const SizedBox(width: 4),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: colorScheme.primary,
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    child: Text(
+                                      '${_filters.activeFilterCount}',
+                                      style: TextStyle(
+                                        color: colorScheme.onPrimary,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                            selected: _filters.hasFilters,
+                            onSelected: (_) => _showFiltersBottomSheet(),
                           ),
-                          deleteIcon: const Icon(Icons.close, size: 18),
-                        ),
-                        const SizedBox(width: 8),
-                      ],
-                      if (_filters.voltage != null) ...[
-                        Chip(
-                          avatar: const Icon(Icons.electrical_services_outlined, size: 18),
-                          label: Text(_filters.voltage!),
-                          onDeleted: () => _updateFilter(
-                            _filters.copyWith(clearVoltage: true),
-                          ),
-                          deleteIcon: const Icon(Icons.close, size: 18),
-                        ),
-                        const SizedBox(width: 8),
-                      ],
-                      if (_filters.status != null) ...[
-                        Chip(
-                          avatar: Icon(_getStatusIcon(_filters.status!), size: 18),
-                          label: Text(_getStatusLabel(_filters.status!)),
-                          onDeleted: () => _updateFilter(
-                            _filters.copyWith(clearStatus: true),
-                          ),
-                          deleteIcon: const Icon(Icons.close, size: 18),
-                        ),
-                        const SizedBox(width: 8),
-                      ],
-                      if (_filters.location != null) ...[
-                        Chip(
-                          avatar: const Icon(Icons.location_on_outlined, size: 18),
-                          label: Text(_filters.location!),
-                          onDeleted: () => _updateFilter(
-                            _filters.copyWith(clearLocation: true),
-                          ),
-                          deleteIcon: const Icon(Icons.close, size: 18),
-                        ),
-                        const SizedBox(width: 8),
-                      ],
+                          const SizedBox(width: 8),
 
-                      // Clear all
-                      if (_filters.hasFilters)
-                        TextButton.icon(
-                          onPressed: _clearFilters,
-                          icon: const Icon(Icons.clear_all, size: 18),
-                          label: const Text('Clear All'),
-                        ),
-                    ],
-                  ),
+                          // Active filter chips
+                          if (_filters.make != null) ...[
+                            Chip(
+                              avatar: const Icon(Icons.build_outlined, size: 18),
+                              label: Text(_filters.make!),
+                              onDeleted: () => _updateFilter(
+                                _filters.copyWith(clearMake: true),
+                              ),
+                              deleteIcon: const Icon(Icons.close, size: 18),
+                            ),
+                            const SizedBox(width: 8),
+                          ],
+                          if (_filters.voltage != null) ...[
+                            Chip(
+                              avatar: const Icon(Icons.electrical_services_outlined, size: 18),
+                              label: Text(_filters.voltage!),
+                              onDeleted: () => _updateFilter(
+                                _filters.copyWith(clearVoltage: true),
+                              ),
+                              deleteIcon: const Icon(Icons.close, size: 18),
+                            ),
+                            const SizedBox(width: 8),
+                          ],
+                          if (_filters.status != null) ...[
+                            Chip(
+                              avatar: Icon(_getStatusIcon(_filters.status!), size: 18),
+                              label: Text(_getStatusLabel(_filters.status!)),
+                              onDeleted: () => _updateFilter(
+                                _filters.copyWith(clearStatus: true),
+                              ),
+                              deleteIcon: const Icon(Icons.close, size: 18),
+                            ),
+                            const SizedBox(width: 8),
+                          ],
+                          if (_filters.location != null) ...[
+                            Chip(
+                              avatar: const Icon(Icons.location_on_outlined, size: 18),
+                              label: Text(_filters.location!),
+                              onDeleted: () => _updateFilter(
+                                _filters.copyWith(clearLocation: true),
+                              ),
+                              deleteIcon: const Icon(Icons.close, size: 18),
+                            ),
+                            const SizedBox(width: 8),
+                          ],
+
+                          // Clear all
+                          if (_filters.hasFilters)
+                            TextButton.icon(
+                              onPressed: _clearFilters,
+                              icon: const Icon(Icons.clear_all, size: 18),
+                              label: const Text('Clear All'),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-          ),
+              ),
 
-          // Results
-          Expanded(
-            child: _buildResults(filteredEquipment, colorScheme, theme),
-          ),
-        ],
+              // Results
+              Expanded(
+                child: _buildResults(filteredEquipment, colorScheme, theme),
+              ),
+            ],
+          );
+        },
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (error, stack) => Center(child: Text('Error: $error')),
       ),
     );
   }
@@ -463,45 +390,6 @@ class _EquipmentSearchPageState extends ConsumerState<EquipmentSearchPage> {
         return 'Retired';
     }
   }
-
-  // TODO: Replace with actual infra source
-  List<Equipment> _getDummyEquipment() {
-    return [
-      Equipment(
-        id: '1',
-        name: 'Generator Unit A1',
-        make: 'Caterpillar',
-        model: 'C32',
-        serialNumber: 'CAT-2024-001',
-        voltage: '480V',
-        location: 'Building A - Basement',
-        lastInspection: DateTime.now().subtract(const Duration(days: 30)),
-        status: EquipmentStatus.active,
-      ),
-      Equipment(
-        id: '2',
-        name: 'Backup Generator B2',
-        make: 'Cummins',
-        model: 'QSX15',
-        serialNumber: 'CUM-2024-002',
-        voltage: '208V',
-        location: 'Building B - Roof',
-        lastInspection: DateTime.now().subtract(const Duration(days: 15)),
-        status: EquipmentStatus.active,
-      ),
-      Equipment(
-        id: '3',
-        name: 'Emergency Generator C3',
-        make: 'Generac',
-        model: 'MD200',
-        serialNumber: 'GEN-2024-003',
-        voltage: '480V',
-        location: 'Building C - Generator Room',
-        lastInspection: DateTime.now().subtract(const Duration(days: 60)),
-        status: EquipmentStatus.maintenance,
-      ),
-    ];
-  }
 }
 
 /// Equipment card widget
@@ -532,7 +420,6 @@ class _EquipmentCard extends StatelessWidget {
       child: InkWell(
         onTap: () {
           // Navigate to equipment detail
-          // TODO: Update with your actual navigation
           context.push('/nameplate/${equipment.id}');
         },
         borderRadius: BorderRadius.circular(16),
@@ -801,7 +688,6 @@ class _FiltersBottomSheetState extends State<_FiltersBottomSheet> {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
-    // TODO: Replace with actual infra from your providers
     final makes = ['Caterpillar', 'Cummins', 'Generac', 'Kohler'];
     final voltages = ['120V', '208V', '240V', '480V'];
     final locations = ['Building A - Basement', 'Building B - Roof', 'Building C - Generator Room'];
@@ -942,7 +828,6 @@ class _FiltersBottomSheetState extends State<_FiltersBottomSheet> {
                       icon: Icons.location_on_outlined,
                       child: Column(
                         children: locations.map((location) {
-                          final selected = _filters.location == location;
                           return RadioListTile<String>(
                             title: Text(location),
                             value: location,

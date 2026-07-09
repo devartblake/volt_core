@@ -2,94 +2,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 import 'equipment_providers.dart';
 
-/// Search Filters Model
-class EquipmentSearchFilters {
-  final String? make;
-  final String? voltage;
-  final EquipmentStatus? status;
-  final String? location;
-
-  const EquipmentSearchFilters({
-    this.make,
-    this.voltage,
-    this.status,
-    this.location,
-  });
-
-  EquipmentSearchFilters copyWith({
-    String? make,
-    String? voltage,
-    EquipmentStatus? status,
-    String? location,
-    bool clearMake = false,
-    bool clearVoltage = false,
-    bool clearStatus = false,
-    bool clearLocation = false,
-  }) {
-    return EquipmentSearchFilters(
-      make: clearMake ? null : (make ?? this.make),
-      voltage: clearVoltage ? null : (voltage ?? this.voltage),
-      status: clearStatus ? null : (status ?? this.status),
-      location: clearLocation ? null : (location ?? this.location),
-    );
-  }
-
-  bool get hasFilters =>
-      make != null || voltage != null || status != null || location != null;
-
-  int get activeFilterCount {
-    int count = 0;
-    if (make != null) count++;
-    if (voltage != null) count++;
-    if (status != null) count++;
-    if (location != null) count++;
-    return count;
-  }
-
-  Map<String, dynamic> toJson() {
-    return {
-      'make': make,
-      'voltage': voltage,
-      'status': status?.name,
-      'location': location,
-    };
-  }
-
-  factory EquipmentSearchFilters.fromJson(Map<String, dynamic> json) {
-    return EquipmentSearchFilters(
-      make: json['make'] as String?,
-      voltage: json['voltage'] as String?,
-      status: json['status'] != null
-          ? EquipmentStatus.values.firstWhere((e) => e.name == json['status'])
-          : null,
-      location: json['location'] as String?,
-    );
-  }
-
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-          other is EquipmentSearchFilters &&
-              runtimeType == other.runtimeType &&
-              make == other.make &&
-              voltage == other.voltage &&
-              status == other.status &&
-              location == other.location;
-
-  @override
-  int get hashCode =>
-      make.hashCode ^
-      voltage.hashCode ^
-      status.hashCode ^
-      location.hashCode;
-}
-
 /// Search query provider
 final equipmentSearchQueryProvider = StateProvider<String>((ref) => '');
 
 /// Search filters provider
 final equipmentSearchFiltersProvider =
-StateProvider<EquipmentSearchFilters>((ref) {
+    StateProvider<EquipmentSearchFilters>((ref) {
   return const EquipmentSearchFilters();
 });
 
@@ -110,9 +28,9 @@ final filteredEquipmentProvider = Provider<List<Equipment>>((ref) {
           final matchesMake = equipment.make.toLowerCase().contains(query);
           final matchesModel = equipment.model.toLowerCase().contains(query);
           final matchesSerial =
-          equipment.serialNumber.toLowerCase().contains(query);
+              equipment.serialNumber.toLowerCase().contains(query);
           final matchesLocation =
-          equipment.location.toLowerCase().contains(query);
+              equipment.location.toLowerCase().contains(query);
 
           if (!matchesName &&
               !matchesMake &&
@@ -190,7 +108,7 @@ class SearchHistoryNotifier extends StateNotifier<List<String>> {
 }
 
 final searchHistoryProvider =
-StateNotifierProvider<SearchHistoryNotifier, List<String>>((ref) {
+    StateNotifierProvider<SearchHistoryNotifier, List<String>>((ref) {
   return SearchHistoryNotifier();
 });
 
@@ -260,7 +178,7 @@ class SavedFiltersNotifier extends StateNotifier<List<FilterPreset>> {
 }
 
 final savedFiltersProvider =
-StateNotifierProvider<SavedFiltersNotifier, List<FilterPreset>>((ref) {
+    StateNotifierProvider<SavedFiltersNotifier, List<FilterPreset>>((ref) {
   return SavedFiltersNotifier();
 });
 
@@ -269,14 +187,16 @@ final activeEquipmentProvider = Provider<List<Equipment>>((ref) {
   final allEquipment = ref.watch(equipmentListProvider);
   return allEquipment.whenData((list) {
     return list.where((e) => e.status == EquipmentStatus.active).toList();
-  }).value ?? [];
+  }).value ??
+  [];
 });
 
 final maintenanceEquipmentProvider = Provider<List<Equipment>>((ref) {
   final allEquipment = ref.watch(equipmentListProvider);
   return allEquipment.whenData((list) {
     return list.where((e) => e.status == EquipmentStatus.maintenance).toList();
-  }).value ?? [];
+  }).value ??
+  [];
 });
 
 final recentlyInspectedProvider = Provider<List<Equipment>>((ref) {
@@ -287,7 +207,8 @@ final recentlyInspectedProvider = Provider<List<Equipment>>((ref) {
       return e.lastInspection != null &&
           e.lastInspection!.isAfter(sevenDaysAgo);
     }).toList();
-  }).value ?? [];
+  }).value ??
+  [];
 });
 
 /// Search suggestions provider
