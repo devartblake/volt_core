@@ -198,6 +198,7 @@ class _MaintenanceFormPageState extends ConsumerState<MaintenanceFormPage> {
   /// Generate PDF with signatures and save to storage.
   /// Returns the saved file path.
   /// Throws if generation fails.
+  Future<String> _generateAndSavePdf(MaintenanceRecord record) async {
     try {
       debugPrint('Generating PDF for maintenance record: ${record.id}');
 
