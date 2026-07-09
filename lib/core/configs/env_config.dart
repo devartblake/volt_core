@@ -32,13 +32,8 @@ class EnvConfig {
   });
 
   /// Helper to pull a value from:
-  /// 1) --dart-define
-  /// 2) .env
+  /// 1) .env
   static String _get(String key, {String defaultValue = ''}) {
-    const prefix = ''; // you can add "APP_" if you want to namespace
-    final define = String.fromEnvironment('$prefix$key');
-    if (define.isNotEmpty) return define;
-
     return dotenv.env[key] ?? defaultValue;
   }
 

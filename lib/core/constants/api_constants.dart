@@ -4,7 +4,7 @@
 
 class ApiConstants {
   /// Base URL for your Supabase project (e.g. https://xyz.supabase.co)
-  static const String supabaseUrl = String.fromEnvironment(
+  static const String supabaseUrl = const String.fromEnvironment(
     'SUPABASE_URL',
     defaultValue: 'https://your-supabase-project.supabase.co',
   );
@@ -13,13 +13,13 @@ class ApiConstants {
   /// In a real app make sure to:
   ///  - keep service role keys on backend only
   ///  - scope RLS correctly in Supabase
-  static const String supabaseAnonKey = String.fromEnvironment(
+  static const String supabaseAnonKey = const String.fromEnvironment(
     'SUPABASE_ANON_KEY',
     defaultValue: 'SUPABASE_ANON_KEY_HERE',
   );
 
   /// Optional REST API base (if you still talk to a backend).
-  static const String restBaseUrl = String.fromEnvironment(
+  static const String restBaseUrl = const String.fromEnvironment(
     'REST_BASE_URL',
     defaultValue: 'https://api.your-backend.com',
   );
