@@ -1,13 +1,13 @@
 import 'dart:convert';
 import 'dart:io' show File, Directory;
 import 'package:flutter/foundation.dart' show kIsWeb;
-import 'package:path_provider/path_provider.dart';
 import 'package:uuid/uuid.dart';
 import '../../../modules/inspections/infra/models/inspection.dart';
 import '../../services/hive/hive_boxes.dart';
+import 'file_storage_service.dart';
 
 /// Offline-first backup/export helpers.
-/// - Export a single inspection (JSON) to app docs or a chosen dir
+/// - Export a single inspection (JSON) to the app's exports/ dir or a chosen dir
 /// - Export all inspections + load-test rows into a single JSON file
 /// - Copy PDFs alongside JSON (Android/desktop; web returns bytes you can upload)
 class BackupService {
@@ -15,7 +15,7 @@ class BackupService {
   /// Returns the file path (mobile/desktop) or throws on web (use [exportAllAsJsonBytes] on web).
   Future<String> exportInspectionAsJsonFile(Inspection ins, {Directory? targetDir}) async {
     final payload = await _buildInspectionPayload(ins.id);
-    final dir = targetDir ?? await getApplicationDocumentsDirectory();
+    final dir = targetDir ?? await FileStorageService.instance.getExportsDirectory();
     final f = File('${dir.path}/inspection-${ins.id}.json');
     await f.writeAsBytes(utf8.encode(const JsonEncoder.withIndent('  ').convert(payload)), flush: true);
     return f.path;
@@ -32,7 +32,7 @@ class BackupService {
       'exportedAt': DateTime.now().toIso8601String(),
       'inspections': list,
     };
-    final dir = targetDir ?? await getApplicationDocumentsDirectory();
+    final dir = targetDir ?? await FileStorageService.instance.getExportsDirectory();
     final f = File('${dir.path}/inspections-export-${DateTime.now().millisecondsSinceEpoch}.json');
     await f.writeAsBytes(utf8.encode(const JsonEncoder.withIndent('  ').convert(root)), flush: true);
     return f.path;

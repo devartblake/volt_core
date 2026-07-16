@@ -121,3 +121,6 @@ app.*.symbols
 /.idea/caches
 /.idea/libraries
 /.idea
+
+# Voltcore local development data (Hive DB, PDFs, signatures, exports)
+/dev_data/

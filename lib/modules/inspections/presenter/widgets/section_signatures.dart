@@ -1,8 +1,8 @@
 import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:signature/signature.dart';
+import '../../../../core/services/storage/file_storage_service.dart';
 import '../../../schedule/infra/models/schedule_task.dart';
 import '../../../schedule/presenter/pages/schedule_task_page.dart';
 import '../../../schedule/presenter/widgets/dialogs/schedule_dialog.dart';
@@ -59,7 +59,8 @@ class _SectionSignaturesState extends State<SectionSignatures> {
   }
 
   Future<String> _savePng(Uint8List bytes, String name) async {
-    final dir = await getApplicationDocumentsDirectory();
+    final dir = await FileStorageService.instance
+        .getInspectionSignaturesDirectory();
     final f = File(
       '${dir.path}/$name-${DateTime.now().millisecondsSinceEpoch}.png',
     );

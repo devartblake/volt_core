@@ -4,21 +4,32 @@ import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
 
+import '../../configs/env.dart';
+
 /// Central file storage service that manages all file locations in the app.
 ///
 /// Provides organized, platform-aware storage for:
 /// - Hive database files
 /// - Digital signatures
 /// - Generated PDF reports
+/// - JSON exports / backups
 /// - Temporary files
 /// - Cached data
 ///
 /// **Windows-safe:** Uses AppData\Roaming instead of Documents to avoid
 /// protected folder access issues.
 ///
-/// Directory structure:
+/// **Environment-aware root:**
+/// - Local development (dev/staging env, desktop): `<project>/dev_data/`
+///   so every file the app produces is hosted in one visible folder
+///   next to the code while you develop.
+/// - Production (release builds) and mobile devices: the platform's
+///   app data directory, so data is saved on the device itself.
+///
+/// Directory structure (same tree under either root):
 /// ```
-/// Windows: C:\Users\[User]\AppData\Roaming\com.theoreticalmindstech.voltcore\
+/// Dev (desktop): <project working dir>/dev_data/
+/// Windows prod: C:\Users\[User]\AppData\Roaming\com.theoreticalmindstech.voltcore\
 /// Android/iOS: [App Documents]/
 ///
 /// ├── hive/                    # Hive database (managed by Hive)
@@ -28,6 +39,7 @@ import 'package:path_provider/path_provider.dart';
 /// ├── pdfs/                    # Generated PDF reports
 /// │   ├── inspections/         # Inspection reports
 /// │   └── maintenance/         # Maintenance reports
+/// ├── exports/                 # JSON backups / data exports
 /// └── temp/                    # Temporary files
 ///
 /// [App Cache]/
@@ -45,23 +57,78 @@ class FileStorageService {
   static const String _dirHive = 'hive';
   static const String _dirSignatures = 'signatures';
   static const String _dirPdfs = 'pdfs';
+  static const String _dirExports = 'exports';
   static const String _dirTemp = 'temp';
   static const String _dirDownloads = 'downloads';
 
   static const String _dirInspections = 'inspections';
   static const String _dirMaintenance = 'maintenance';
 
+  /// Folder created inside the project during local development so all
+  /// app-produced data is hosted in one place (git-ignored).
+  static const String devDataFolderName = 'dev_data';
+
+  /// Cached base directory so we only resolve it once per run.
+  Directory? _appDataDir;
+
   // ============================================
   // Base Directories (Platform-Aware)
   // ============================================
 
+  /// Whether we should host data in a local project folder instead of the
+  /// device/OS app-data location.
+  ///
+  /// True only for non-production builds running on desktop, where
+  /// `Directory.current` is the project folder during `flutter run`.
+  /// Mobile devices always use on-device storage, even in dev.
+  bool get _useLocalDevDirectory =>
+      !kIsWeb &&
+      !Env.isProd &&
+      (defaultTargetPlatform == TargetPlatform.windows ||
+          defaultTargetPlatform == TargetPlatform.macOS ||
+          defaultTargetPlatform == TargetPlatform.linux);
+
   /// Get the app's persistent data directory
   ///
-  /// **Windows:** AppData\Roaming (avoids Documents protected folders)
-  /// **Mobile:** Application Documents Directory
+  /// **Local development (desktop):** `<project>/dev_data/`
+  /// **Windows (production):** AppData\Roaming (avoids Documents protected folders)
+  /// **Mobile:** Application Documents Directory (on-device)
   ///
   /// This is where persistent data is stored that should survive app updates.
   Future<Directory> getAppDataDirectory() async {
+    final cached = _appDataDir;
+    if (cached != null) return cached;
+
+    Directory dir;
+
+    if (_useLocalDevDirectory) {
+      dir = Directory(path.join(Directory.current.path, devDataFolderName));
+      try {
+        if (!await dir.exists()) {
+          await dir.create(recursive: true);
+        }
+        if (kDebugMode) {
+          debugPrint('[FileStorage] DEV mode — data hosted at: ${dir.path}');
+        }
+      } catch (e) {
+        if (kDebugMode) {
+          debugPrint(
+            '[FileStorage] Could not create dev_data folder ($e), '
+            'falling back to platform app-data directory',
+          );
+        }
+        dir = await _platformAppDataDirectory();
+      }
+    } else {
+      dir = await _platformAppDataDirectory();
+    }
+
+    _appDataDir = dir;
+    return dir;
+  }
+
+  /// The platform's own app-data location (used in production and on mobile).
+  Future<Directory> _platformAppDataDirectory() async {
     if (!kIsWeb &&
         (defaultTargetPlatform == TargetPlatform.windows ||
             defaultTargetPlatform == TargetPlatform.macOS ||
@@ -69,6 +136,29 @@ class FileStorageService {
       return await getApplicationSupportDirectory();
     }
     return await getApplicationDocumentsDirectory();
+  }
+
+  /// Create the full directory tree up front.
+  ///
+  /// Call once during app startup (before Hive init) so every kind of data
+  /// the app produces already has its folder:
+  /// hive/, signatures/{inspections,maintenance}/, pdfs/{inspections,maintenance}/,
+  /// exports/ and temp/.
+  Future<void> ensureDirectories() async {
+    if (kIsWeb) return;
+
+    await getHiveDirectory();
+    await getInspectionSignaturesDirectory();
+    await getMaintenanceSignaturesDirectory();
+    await getInspectionPdfsDirectory();
+    await getMaintenancePdfsDirectory();
+    await getExportsDirectory();
+    await getTempDirectory();
+
+    if (kDebugMode) {
+      final root = await getAppDataDirectory();
+      debugPrint('[FileStorage] Directory tree ready under: ${root.path}');
+    }
   }
 
   /// Get the app's cache directory
@@ -181,13 +271,16 @@ class FileStorageService {
   }
 
   /// Save a maintenance signature
+  ///
+  /// [signatureType] (e.g. 'technician', 'customer') is part of the filename
+  /// so multiple signatures for the same job don't overwrite each other.
   Future<String> saveMaintenanceSignature({
     required String jobId,
     required Uint8List signatureBytes,
     required String signatureType,
   }) async {
     final dir = await getMaintenanceSignaturesDirectory();
-    final file = File(path.join(dir.path, '$jobId.png'));
+    final file = File(path.join(dir.path, '${jobId}_$signatureType.png'));
 
     await file.writeAsBytes(signatureBytes);
 
@@ -210,13 +303,25 @@ class FileStorageService {
     return null;
   }
 
-  /// Get maintenance signature file
-  Future<File?> getMaintenanceSignature(String jobId, String technician) async {
+  /// Get maintenance signature file for the given [signatureType]
+  /// (e.g. 'technician', 'customer').
+  ///
+  /// Falls back to the legacy `<jobId>.png` filename for signatures saved
+  /// before signature types were included in the name.
+  Future<File?> getMaintenanceSignature(
+    String jobId,
+    String signatureType,
+  ) async {
     final dir = await getMaintenanceSignaturesDirectory();
-    final file = File(path.join(dir.path, '$jobId.png'));
+    final file = File(path.join(dir.path, '${jobId}_$signatureType.png'));
 
     if (await file.exists()) {
       return file;
+    }
+
+    final legacyFile = File(path.join(dir.path, '$jobId.png'));
+    if (await legacyFile.exists()) {
+      return legacyFile;
     }
 
     return null;
@@ -336,6 +441,24 @@ class FileStorageService {
     }
 
     return null;
+  }
+
+  // ============================================
+  // Exports / Backups
+  // ============================================
+
+  /// Get the directory for JSON exports and backups
+  ///
+  /// Returns: [AppData]/exports/
+  Future<Directory> getExportsDirectory() async {
+    final appData = await getAppDataDirectory();
+    final dir = Directory(path.join(appData.path, _dirExports));
+
+    if (!await dir.exists()) {
+      await dir.create(recursive: true);
+    }
+
+    return dir;
   }
 
   // ============================================
@@ -572,6 +695,7 @@ class FileStorageService {
       debugPrint('  Hive: ${(await getHiveDirectory()).path}');
       debugPrint('  Signatures: ${(await getSignaturesDirectory()).path}');
       debugPrint('  PDFs: ${(await getPdfsDirectory()).path}');
+      debugPrint('  Exports: ${(await getExportsDirectory()).path}');
       debugPrint('  Temp: ${(await getTempDirectory()).path}');
     } catch (e) {
       debugPrint('Error getting storage info: $e');
