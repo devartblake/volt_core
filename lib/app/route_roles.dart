@@ -13,6 +13,12 @@ class RouteRoles {
       UserRole.admin,
     },
     'tech_dashboard': {UserRole.tech},
+    'analytics': {
+      UserRole.tech,
+      UserRole.supervisor,
+      UserRole.dispatcher,
+      UserRole.admin,
+    },
     'admin_dashboard': {UserRole.admin},
     'admin_settings': {UserRole.admin},
 

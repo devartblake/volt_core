@@ -14,6 +14,9 @@ class RoutePaths {
   // Tech dashboard
   static const String techDashboard = '/tech-dashboard';
 
+  // Analytics
+  static const String analytics = '/analytics';
+
   // Inspections
   static const String inspections = '/inspections';
   static const String inspectionNew = '/inspections/new';
@@ -28,7 +31,10 @@ class RoutePaths {
 
   // Schedule
   static const String schedule = '/schedule';
-  static const String scheduleTask = '/task';
+
+  /// Relative sub-route path under [schedule] (full path: `/schedule/task`).
+  /// GoRouter sub-route paths must NOT start with '/'.
+  static const String scheduleTask = 'task';
 
   // Equipment / Nameplate
   static const String nameplateList = '/nameplate-list';
@@ -60,6 +66,7 @@ class RouteNames {
 
   static const String dashboard = 'dashboard';
   static const String techDashboard = 'tech_dashboard';
+  static const String analytics = 'analytics';
 
   static const String inspections = 'inspections';
   static const String inspectionNew = 'inspection_new';

@@ -60,6 +60,13 @@ const List<NavSection> _navSections = [
         routeName: 'dashboard',
         description: 'Overview and quick stats',
       ),
+      NavItem(
+        'Analytics',
+        Icons.insights_outlined,
+        RoutePaths.analytics,
+        routeName: 'analytics',
+        description: 'Inspection, maintenance & schedule metrics',
+      ),
     ],
   ),
 
@@ -151,6 +158,13 @@ const List<NavSection> _navSections = [
   NavSection(
     title: 'System',
     items: [
+      NavItem(
+        'Documents',
+        Icons.folder_open_outlined,
+        RoutePaths.documents,
+        routeName: 'documents',
+        description: 'Generated PDF reports',
+      ),
       NavItem(
         'Configuration',
         Icons.tune_outlined,

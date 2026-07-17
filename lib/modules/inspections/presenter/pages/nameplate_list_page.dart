@@ -97,7 +97,7 @@ class NameplateListPage extends ConsumerWidget {
                   ),
                   const SizedBox(height: 24),
                   FilledButton.icon(
-                    onPressed: () => context.push('/inspection/new'),
+                    onPressed: () => context.push('/inspections/new'),
                     icon: const Icon(Icons.add),
                     label: const Text('Create Inspection'),
                   ),
