@@ -643,7 +643,6 @@ class _CannisterRow extends StatelessWidget {
   onChanged;
 
   const _CannisterRow({
-    super.key,
     required this.label,
     required this.selected,
     required this.partNumber,

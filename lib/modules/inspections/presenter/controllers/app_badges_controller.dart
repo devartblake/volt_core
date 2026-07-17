@@ -50,7 +50,7 @@ final appBadgesProvider = Provider<AppBadges>((ref) {
   final now = DateTime.now();
 
   int _daysSince(InspectionEntity ins) {
-    final date = ins.serviceDate ?? ins.createdAt ?? now;
+    final date = ins.serviceDate;
     return now.difference(date).inDays;
   }
 
@@ -63,12 +63,12 @@ final appBadgesProvider = Provider<AppBadges>((ref) {
 
   final redGrade = inspections
       .where((ins) =>
-  (ins.siteGrade ?? '').toLowerCase() == 'red')
+  ins.siteGrade.toLowerCase() == 'red')
       .length;
 
   final amberGrade = inspections
       .where((ins) =>
-  (ins.siteGrade ?? '').toLowerCase() == 'amber')
+  ins.siteGrade.toLowerCase() == 'amber')
       .length;
 
   return AppBadges(

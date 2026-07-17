@@ -5,7 +5,6 @@ import 'package:path/path.dart' as p;
 import 'package:signature/signature.dart';
 import '../../../../core/services/storage/file_storage_service.dart';
 import '../../../../core/services/sync/sync_service.dart';
-import '../../../schedule/infra/models/schedule_task.dart';
 import '../../../schedule/presenter/pages/schedule_task_page.dart';
 import '../../../schedule/presenter/widgets/dialogs/schedule_dialog.dart';
 import '../../domain/entities/inspection_entity.dart';

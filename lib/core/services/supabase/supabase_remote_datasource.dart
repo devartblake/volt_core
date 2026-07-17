@@ -103,7 +103,7 @@ class SupabaseRemoteDataSource {
           .maybeSingle(); // returns null if not found
 
       if (result == null) return null;
-      return result as JsonMap;
+      return result;
     } on PostgrestException catch (e, st) {
       _logError('fetchById', table, e, st);
       rethrow;
@@ -120,7 +120,7 @@ class SupabaseRemoteDataSource {
   }) async {
     try {
       final result = await client.from(table).insert(data).select().single();
-      return result as JsonMap;
+      return result;
     } on PostgrestException catch (e, st) {
       _logError('insertOne', table, e, st);
       rethrow;
@@ -144,7 +144,7 @@ class SupabaseRemoteDataSource {
           .eq(idColumn, id)
           .select()
           .single();
-      return result as JsonMap;
+      return result;
     } on PostgrestException catch (e, st) {
       _logError('updateById', table, e, st);
       rethrow;

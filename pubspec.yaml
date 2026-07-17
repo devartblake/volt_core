@@ -59,6 +59,8 @@ dependencies:
   flutter_local_notifications: ^18.0.1
   timezone: ^0.9.4
 
+  meta: any
+  http: any
 dev_dependencies:
   flutter_test:
     sdk: flutter

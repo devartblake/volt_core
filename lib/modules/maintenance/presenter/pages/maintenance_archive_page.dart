@@ -5,7 +5,6 @@ import 'package:go_router/go_router.dart';
 import '../../../../app/app_drawer.dart';
 import '../../infra/models/maintenance_record.dart';
 import '../controllers/maintenance_list_controller.dart';
-import '../controllers/maintenance_providers.dart';
 
 class MaintenanceArchivePage extends ConsumerWidget {
   const MaintenanceArchivePage({super.key});
