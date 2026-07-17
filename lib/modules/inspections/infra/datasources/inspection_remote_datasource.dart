@@ -156,7 +156,12 @@ class InspectionRemoteDatasource {
     );
   }
 
-  Map<String, dynamic> _inspectionToJson(InspectionEntity e) {
+  Map<String, dynamic> _inspectionToJson(InspectionEntity e) =>
+      toSupabaseJson(e);
+
+  /// Public Supabase row serializer, reused by the offline sync queue so the
+  /// table schema stays defined in one place.
+  static Map<String, dynamic> toSupabaseJson(InspectionEntity e) {
     return {
       'id': e.id,
       'created_at': e.createdAt.toIso8601String(),

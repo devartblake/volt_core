@@ -5,6 +5,7 @@ import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
 
 import '../../configs/env.dart';
+import '../sync/sync_service.dart';
 
 /// Central file storage service that manages all file locations in the app.
 ///
@@ -267,6 +268,7 @@ class FileStorageService {
       debugPrint('[FileStorage] Saved inspection signature: ${file.path}');
     }
 
+    _queueSignatureBackup(file.path, 'signatures/inspections/$inspectionId.png');
     return file.path;
   }
 
@@ -288,7 +290,27 @@ class FileStorageService {
       debugPrint('[FileStorage] Saved maintenance signature: ${file.path}');
     }
 
+    _queueSignatureBackup(
+      file.path,
+      'signatures/maintenance/${jobId}_$signatureType.png',
+    );
     return file.path;
+  }
+
+  /// Queue a signature image for cloud backup. Best-effort — a backup hiccup
+  /// must never break the local signature save.
+  void _queueSignatureBackup(String localPath, String remotePath) {
+    try {
+      SyncService.instance.enqueueFileUpload(
+        localPath: localPath,
+        remotePath: remotePath,
+        contentType: 'image/png',
+      );
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('[FileStorage] Could not queue signature backup: $e');
+      }
+    }
   }
 
   /// Get inspection signature file

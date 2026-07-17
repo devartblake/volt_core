@@ -3,8 +3,10 @@ import 'package:uuid/uuid.dart';
 
 import '../../../../core/services/pdf/pdf_prefs_service.dart';
 import '../../../../core/services/pdf/pdf_service.dart';
+import '../../../../core/services/sync/sync_service.dart';
 import '../../domain/entities/maintenance_job_entity.dart';
 import '../datasources/hive_boxes_maintenance.dart';
+import '../mappers/maintenance_supabase_mapper.dart';
 import '../models/maintenance_record.dart';
 import '../../domain/repositories/maintenance_repository.dart';
 
@@ -68,6 +70,16 @@ class MaintenanceRepositoryImpl implements MaintenanceRepository {
     // title is computed from siteCode/address; no dedicated field in Hive.
   }
 
+  /// Queue a cloud upsert of the full record (offline-first). The Hive write is
+  /// the source of truth; [SyncService] pushes to Supabase when online.
+  Future<void> _queueUpsert(MaintenanceRecord rec) {
+    return SyncService.instance.enqueueUpsert(
+      table: kMaintenanceRecordsTable,
+      id: rec.id,
+      payload: maintenanceRecordToSupabaseJson(rec),
+    );
+  }
+
   // ---------------------------------------------------------------------------
   // Repository methods
   // ---------------------------------------------------------------------------
@@ -100,6 +112,7 @@ class MaintenanceRepositoryImpl implements MaintenanceRepository {
       ..updatedAt = now;
 
     await _box.put(id, rec);
+    await _queueUpsert(rec);
     return _toEntity(rec);
   }
 
@@ -122,15 +135,19 @@ class MaintenanceRepositoryImpl implements MaintenanceRepository {
       );
 
       await _box.put(job.id, rec);
+      await _queueUpsert(rec);
     } else {
       _applyEntityToRecord(job, existing);
       await existing.save();
+      await _queueUpsert(existing);
     }
   }
 
   @override
   Future<void> delete(String id) async {
     await _box.delete(id);
+    await SyncService.instance
+        .enqueueDelete(table: kMaintenanceRecordsTable, id: id);
   }
 
   @override
@@ -164,5 +181,6 @@ class MaintenanceRepositoryImpl implements MaintenanceRepository {
     rec.completed = true;
     rec.updatedAt = completedAt ?? DateTime.now();
     await rec.save();
+    await _queueUpsert(rec);
   }
 }

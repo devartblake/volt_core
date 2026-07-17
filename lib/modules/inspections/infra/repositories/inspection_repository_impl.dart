@@ -1,8 +1,10 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:path/path.dart' as p;
 import '../../../../core/services/email/email_service.dart';
 import '../../../../core/services/pdf/pdf_prefs_service.dart';
 import '../../../../core/services/pdf/pdf_service.dart';
 import '../../../../core/services/storage/export_service.dart';
+import '../../../../core/services/sync/sync_service.dart';
 import '../../domain/entities/inspection_entity.dart';
 import '../../domain/entities/nameplate_entity.dart';
 import '../../external/drivers/inspection_pdf_driver.dart';
@@ -40,6 +42,19 @@ class InspectionRepositoryImpl implements InspectionRepository {
     required this.pdfDriver,
   });
 
+  static const String _table = InspectionRemoteDatasource.inspectionsTable;
+
+  /// Queue a cloud upsert for [entity]. Offline-first: the local save has
+  /// already happened, so this only records intent — [SyncService] pushes it to
+  /// Supabase when connectivity allows and never blocks the caller.
+  Future<void> _queueUpsert(InspectionEntity entity) {
+    return SyncService.instance.enqueueUpsert(
+      table: _table,
+      id: entity.id,
+      payload: InspectionRemoteDatasource.toSupabaseJson(entity),
+    );
+  }
+
   @override
   Future<List<InspectionEntity>> listInspections() async {
     // Offline-first: local
@@ -57,12 +72,9 @@ class InspectionRepositoryImpl implements InspectionRepository {
   @override
   Future<InspectionEntity> createInspection(
       InspectionEntity inspection) async {
-    // Local save
+    // Local save first (source of truth), then queue the cloud upsert.
     final savedLocal = await localDatasource.saveInspection(inspection);
-
-    // Remote upsert (fire & forget if you like)
-    await remoteDatasource.upsertInspection(savedLocal);
-
+    await _queueUpsert(savedLocal);
     return savedLocal;
   }
 
@@ -70,14 +82,14 @@ class InspectionRepositoryImpl implements InspectionRepository {
   Future<InspectionEntity> updateInspection(
       InspectionEntity inspection) async {
     final savedLocal = await localDatasource.saveInspection(inspection);
-    await remoteDatasource.upsertInspection(savedLocal);
+    await _queueUpsert(savedLocal);
     return savedLocal;
   }
 
   @override
   Future<void> deleteInspection(String id) async {
     await localDatasource.deleteInspection(id);
-    // TODO: also delete remotely if desired.
+    await SyncService.instance.enqueueDelete(table: _table, id: id);
   }
 
   @override
@@ -95,16 +107,16 @@ class InspectionRepositoryImpl implements InspectionRepository {
   Future<InspectionEntity> createAndExport(
       InspectionEntity inspection,
       ) async {
-    // 1) Save locally + remote WITHOUT pdfPath
+    // 1) Save locally + queue cloud upsert WITHOUT pdfPath
     await localDatasource.saveInspection(inspection);
-    await remoteDatasource.saveInspection(inspection);
+    await _queueUpsert(inspection);
 
-    // 2) Generate PDF + email/export
+    // 2) Generate PDF + email/export (PdfService queues the PDF file backup)
     final withPdf = await pdfDriver.generateAndExport(inspection);
 
-    // 3) Save updated (with pdfPath)
+    // 3) Save updated (with pdfPath) + queue the refreshed cloud upsert
     await localDatasource.saveInspection(withPdf);
-    await remoteDatasource.saveInspection(withPdf);
+    await _queueUpsert(withPdf);
 
     return withPdf;
   }
@@ -115,12 +127,12 @@ class InspectionRepositoryImpl implements InspectionRepository {
       ) async {
     // Treat update the same as create for now (upsert semantics)
     await localDatasource.saveInspection(inspection);
-    await remoteDatasource.saveInspection(inspection);
+    await _queueUpsert(inspection);
 
     final withPdf = await pdfDriver.generateAndExport(inspection);
 
     await localDatasource.saveInspection(withPdf);
-    await remoteDatasource.saveInspection(withPdf);
+    await _queueUpsert(withPdf);
 
     return withPdf;
   }

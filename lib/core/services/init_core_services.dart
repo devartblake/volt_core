@@ -4,6 +4,7 @@ import 'package:flutter/widgets.dart';
 import 'hive/hive_service.dart';
 import 'storage/file_storage_service.dart';
 import 'supabase/supabase_service.dart';
+import 'sync/sync_service.dart';
 
 // Initialize all core services *before* running the app.
 ///
@@ -11,6 +12,7 @@ import 'supabase/supabase_service.dart';
 /// 1. Creates the app's data directory tree (hive/, pdfs/, signatures/, exports/, temp/)
 /// 2. Initializes Hive and registers ALL adapters
 /// 3. Initializes Supabase client
+/// 4. Starts the offline-first sync engine (drains queued changes to the cloud)
 ///
 /// Call this from `main()`:
 /// ```dart
@@ -40,6 +42,11 @@ Future<void> initCoreServices() async {
 
   // Initialize Supabase
   await SupabaseService.init();
+
+  // Start the offline-first sync engine. This opens the durable outbox and
+  // begins draining queued record/file changes to Supabase whenever the device
+  // is online. It never throws, so it can't block startup.
+  await SyncService.instance.init();
 
   if (kDebugMode) {
     debugPrint('[CoreServices] Initialization completed');

@@ -23,6 +23,7 @@ import '../../../modules/maintenance/infra/models/maintenance_record.dart';
 import '../../../shared/presenter/layout/pdf/pdf_template.dart';
 import '../../services/hive/hive_boxes.dart';
 import '../storage/file_storage_service.dart';
+import '../sync/sync_service.dart';
 
 /// User-level preferences for how PDFs should be exported.
 ///
@@ -2031,6 +2032,20 @@ class PdfService {
     savePath = file.path;
 
     debugPrint('PDF saved to: $savePath');
+
+    // Queue the generated PDF for cloud backup. [fileName] is relative to the
+    // PDFs root (e.g. "inspections/<site>/inspection_x.pdf"), so mirror it under
+    // a "pdfs/" prefix in storage. Never let a backup hiccup break PDF export.
+    try {
+      final remotePath = 'pdfs/${fileName.replaceAll(r'\', '/')}';
+      await SyncService.instance.enqueueFileUpload(
+        localPath: savePath,
+        remotePath: remotePath,
+        contentType: 'application/pdf',
+      );
+    } catch (e) {
+      debugPrint('[PdfService] Could not queue PDF backup: $e');
+    }
 
     // Only attempt email/share if the user has given permission
     if (!prefs.emailAllowed) {
