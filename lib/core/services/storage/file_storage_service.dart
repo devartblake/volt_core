@@ -58,6 +58,7 @@ class FileStorageService {
   static const String _dirHive = 'hive';
   static const String _dirSignatures = 'signatures';
   static const String _dirPdfs = 'pdfs';
+  static const String _dirPhotos = 'photos';
   static const String _dirExports = 'exports';
   static const String _dirTemp = 'temp';
   static const String _dirDownloads = 'downloads';
@@ -153,6 +154,7 @@ class FileStorageService {
     await getMaintenanceSignaturesDirectory();
     await getInspectionPdfsDirectory();
     await getMaintenancePdfsDirectory();
+    await getPhotosDirectory();
     await getExportsDirectory();
     await getTempDirectory();
 
@@ -463,6 +465,34 @@ class FileStorageService {
     }
 
     return null;
+  }
+
+  // ============================================
+  // Photo Attachments
+  // ============================================
+
+  /// Base directory for photo attachments: [AppData]/photos/
+  Future<Directory> getPhotosDirectory() async {
+    final appData = await getAppDataDirectory();
+    final dir = Directory(path.join(appData.path, _dirPhotos));
+    if (!await dir.exists()) {
+      await dir.create(recursive: true);
+    }
+    return dir;
+  }
+
+  /// Per-owner photo directory: [AppData]/photos/<ownerType>/<ownerId>/
+  Future<Directory> getOwnerPhotosDirectory(
+    String ownerType,
+    String ownerId,
+  ) async {
+    final photos = await getPhotosDirectory();
+    final safeOwner = ownerId.isEmpty ? 'unassigned' : ownerId;
+    final dir = Directory(path.join(photos.path, ownerType, safeOwner));
+    if (!await dir.exists()) {
+      await dir.create(recursive: true);
+    }
+    return dir;
   }
 
   // ============================================

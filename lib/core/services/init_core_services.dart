@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 
 import 'hive/hive_service.dart';
+import 'photos/photo_repository.dart';
 import 'storage/file_storage_service.dart';
 import 'supabase/supabase_service.dart';
 import 'sync/sync_service.dart';
@@ -39,6 +40,9 @@ Future<void> initCoreServices() async {
   // Initialize Hive and register adapters
   // CRITICAL: This must run BEFORE any boxes are opened
   await HiveService.init();
+
+  // Open the adapter-free photo-attachments box.
+  await PhotoRepository.instance.init();
 
   // Initialize Supabase
   await SupabaseService.init();

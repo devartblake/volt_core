@@ -7,6 +7,8 @@ import 'package:open_filex/open_filex.dart';
 import 'package:voltcore/shared/widgets/responsive_scaffold.dart';
 import '../../../../core/services/pdf/pdf_prefs_service.dart';
 import '../../../../core/services/pdf/pdf_service.dart';
+import '../../../../core/services/photos/photo_attachment.dart';
+import '../../../../shared/presenter/widgets/photo_attachments_section.dart';
 import '../controllers/maintenance_form_controller.dart';
 import '../controllers/maintenance_providers.dart';
 import '../../infra/models/maintenance_record.dart';
@@ -295,6 +297,14 @@ class _MaintenanceFormPageState extends ConsumerState<MaintenanceFormPage> {
       widget: SectionMaintParts(
         model: m,
         onChanged: (_) => _update(() {}),
+      ),
+    ),
+    _FormSection(
+      title: 'Photos',
+      icon: Icons.photo_camera_outlined,
+      widget: PhotoAttachmentsSection(
+        ownerType: PhotoAttachment.ownerMaintenance,
+        ownerId: m.id,
       ),
     ),
     _FormSection(

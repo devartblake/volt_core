@@ -14,6 +14,8 @@ import '../widgets/section_post_inspection.dart';
 import '../widgets/section_materials.dart';
 import '../widgets/section_signatures.dart';
 import '../../../load_test/presenter/widgets/section_load_test.dart';
+import '../../../../core/services/photos/photo_attachment.dart';
+import '../../../../shared/presenter/widgets/photo_attachments_section.dart';
 
 class InspectionFormPage extends ConsumerStatefulWidget {
   /// Optional: when non-null, page will load an existing inspection for edit.
@@ -117,6 +119,11 @@ class _InspectionFormPageState extends ConsumerState<InspectionFormPage> {
       ),
       // Load test section still works off inspection.id (Hive records)
       SectionLoadTest(inspectionId: inspection.id),
+      // Photos are self-managed by owner id (Hive-backed, like load tests)
+      PhotoAttachmentsSection(
+        ownerType: PhotoAttachment.ownerInspection,
+        ownerId: inspection.id,
+      ),
       const SizedBox(height: 120),
     ];
 
