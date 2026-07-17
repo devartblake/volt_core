@@ -355,7 +355,7 @@ class _SchedulePageState extends ConsumerState<SchedulePage> {
       },
       'onTaskTap': (TaskScheduleEntity task) {
         if (task.inspectionId != null && task.inspectionId!.isNotEmpty) {
-          context.push('/detail/${task.inspectionId}');
+          context.push('/inspections/detail/${task.inspectionId}');
         }
       },
     };
@@ -385,7 +385,7 @@ class _SchedulePageState extends ConsumerState<SchedulePage> {
           },
           onTaskTap: (task) {
             if (task.inspectionId != null && task.inspectionId!.isNotEmpty) {
-              context.push('/detail/${task.inspectionId}');
+              context.push('/inspections/detail/${task.inspectionId}');
             }
           },
         );
@@ -414,7 +414,7 @@ class _SchedulePageState extends ConsumerState<SchedulePage> {
           },
           onTaskTap: (task) {
             if (task.inspectionId != null && task.inspectionId!.isNotEmpty) {
-              context.push('/detail/${task.inspectionId}');
+              context.push('/inspections/detail/${task.inspectionId}');
             }
           },
         );
@@ -443,7 +443,7 @@ class _SchedulePageState extends ConsumerState<SchedulePage> {
           },
           onTaskTap: (task) {
             if (task.inspectionId != null && task.inspectionId!.isNotEmpty) {
-              context.push('/detail/${task.inspectionId}');
+              context.push('/inspections/detail/${task.inspectionId}');
             }
           },
         );
@@ -838,7 +838,7 @@ class _ScheduleCard extends StatelessWidget {
         onTap: () {
           // If linked to an inspection, navigate to its detail page.
           if (item.inspectionId != null && item.inspectionId!.isNotEmpty) {
-            context.push('/detail/${item.inspectionId}');
+            context.push('/inspections/detail/${item.inspectionId}');
           }
         },
         borderRadius: BorderRadius.circular(12),

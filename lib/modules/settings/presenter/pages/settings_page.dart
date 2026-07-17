@@ -173,7 +173,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                 subtitle: const Text('Manage technicians, makes, and voltages'),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () {
-                  context.push('/options');
+                  context.push('/selection-management');
                 },
               ),
               const Divider(height: 1),

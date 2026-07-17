@@ -22,8 +22,8 @@ class AppBadges {
     return {
       '/': totalInspections,
       '/inspections': totalInspections,
-      '/inspection/new': 0, // No badge for new inspection route
-      '/options': 0,
+      '/inspections/new': 0, // No badge for new inspection route
+      '/selection-management': 0,
       '/nameplate-list': 0,
       '/settings': 0,
     };

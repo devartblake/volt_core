@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../../../core/services/sync/sync_context.dart';
 import '../../domain/entities/inspection_entity.dart';
 import '../../domain/entities/nameplate_entity.dart';
 
@@ -74,102 +75,111 @@ class InspectionRemoteDatasource {
   // ---- Mapping helpers ----
 
   InspectionEntity _mapInspectionFromJson(Map<String, dynamic> json) {
-    // Adjust keys as needed to match DB
+    // Rows store identity columns at the top level and detail fields under the
+    // `payload` jsonb column. Merge payload over the top level so we can read by
+    // key regardless of shape (also tolerates legacy flat rows).
+    final payload = (json['payload'] as Map?)?.cast<String, dynamic>() ??
+        const <String, dynamic>{};
+    final m = <String, dynamic>{...json, ...payload};
+
     return InspectionEntity(
-      id: json['id'].toString(),
-      createdAt: DateTime.tryParse(json['created_at'] ?? '') ??
+      id: m['id'].toString(),
+      createdAt: DateTime.tryParse(m['created_at'] ?? '') ?? DateTime.now(),
+      updatedAt: DateTime.tryParse(
+              m['client_updated_at'] ?? m['updated_at'] ?? '') ??
           DateTime.now(),
-      updatedAt: DateTime.tryParse(json['updated_at'] ?? '') ??
-          DateTime.now(),
-      siteCode: json['site_code'] ?? '',
-      siteGrade: json['site_grade'] ?? '',
-      address: json['address'] ?? '',
-      serviceDate: DateTime.tryParse(json['service_date'] ?? '') ??
-          DateTime.now(),
-      technicianName: json['technician_name'] ?? '',
-      generatorMake: json['generator_make'] ?? '',
-      generatorModel: json['generator_model'] ?? '',
-      generatorSerial: json['generator_serial'] ?? '',
-      generatorKw: json['generator_kw'] ?? '',
-      engineHours: json['engine_hours'] ?? '',
-      fuelType: json['fuel_type'] ?? '',
-      voltageRating: json['voltage_rating'] ?? '',
-      locIndoors: json['loc_indoors'] ?? false,
-      locOutdoors: json['loc_outdoors'] ?? false,
-      locRoof: json['loc_roof'] ?? false,
-      locBasement: json['loc_basement'] ?? false,
-      locOther: json['loc_other'] ?? '',
-      dedicatedRoom2hr: json['dedicated_room_2hr'] ?? false,
-      separateFromMainService:
-      json['separate_from_main_service'] ?? false,
-      areaClear: json['area_clear'] ?? false,
-      labelsAndEStopVisible:
-      json['labels_estop_visible'] ?? false,
-      extinguisherPresent: json['extinguisher_present'] ?? false,
-      fuelStoredType: json['fuel_stored_type'] ?? '',
-      fuelQtyGallons: json['fuel_qty_gallons'] ?? '',
-      fdnyPermit: json['fdny_permit'] ?? 'Unknown',
-      c92OnSite: json['c92_on_site'] ?? 'Unknown',
-      gasCutoffValve: json['gas_cutoff_valve'] ?? 'N/A',
-      depSizeKw: json['dep_size_kw'] ?? '',
-      depRegisteredCats: json['dep_registered_cats'] ?? 'Unknown',
-      depCertificateOperate:
-      json['dep_certificate_operate'] ?? 'Unknown',
-      tier4Compliant: json['tier4_compliant'] ?? 'Unknown',
-      smokeOrStackTest: json['smoke_or_stack_test'] ?? 'Unknown',
-      recordsKept5Years: json['records_kept_5_years'] ?? false,
-      emergencyOnly: json['emergency_only'] ?? true,
-      estimatedAnnualRuntimeHours:
-      json['estimated_annual_runtime_hours'] ?? '',
-      fuelFor6hrs: json['fuel_for_6hrs'] ?? 'N/A',
-      notes: json['notes'] ?? '',
-      gensetRunsUnderLoad: json['genset_runs_under_load'] ?? false,
-      voltageFrequencyOk: json['voltage_frequency_ok'] ?? false,
-      exhaustOk: json['exhaust_ok'] ?? false,
-      groundingBondingOk:
-      json['grounding_bonding_ok'] ?? false,
-      controlPanelOk: json['control_panel_ok'] ?? false,
-      safetyDevicesOk: json['safety_devices_ok'] ?? false,
-      deficienciesDocumented:
-      json['deficiencies_documented'] ?? false,
-      loadbankDone: json['loadbank_done'] ?? false,
-      atsVerified: json['ats_verified'] ?? false,
-      fuelStoredOver1Yr: json['fuel_stored_over_1yr'] ?? false,
-      lastServiceDate: json['last_service_date'] ?? '',
-      oilFilterChangeDate: json['oil_filter_change_date'] ?? '',
-      fuelFilterDate: json['fuel_filter_date'] ?? '',
-      coolantFlushDate: json['coolant_flush_date'] ?? '',
-      batteryReplaceDate: json['battery_replace_date'] ?? '',
-      airFilterDate: json['air_filter_date'] ?? '',
-      technicianSignaturePath:
-      json['technician_signature_path'] ?? '',
+      siteCode: m['site_code'] ?? '',
+      siteGrade: m['site_grade'] ?? '',
+      address: m['address'] ?? '',
+      serviceDate: DateTime.tryParse(m['service_date'] ?? '') ?? DateTime.now(),
+      technicianName: m['technician_name'] ?? '',
+      generatorMake: m['generator_make'] ?? '',
+      generatorModel: m['generator_model'] ?? '',
+      generatorSerial: m['generator_serial'] ?? '',
+      generatorKw: m['generator_kw'] ?? '',
+      engineHours: m['engine_hours'] ?? '',
+      fuelType: m['fuel_type'] ?? '',
+      voltageRating: m['voltage_rating'] ?? '',
+      locIndoors: m['loc_indoors'] ?? false,
+      locOutdoors: m['loc_outdoors'] ?? false,
+      locRoof: m['loc_roof'] ?? false,
+      locBasement: m['loc_basement'] ?? false,
+      locOther: m['loc_other'] ?? '',
+      dedicatedRoom2hr: m['dedicated_room_2hr'] ?? false,
+      separateFromMainService: m['separate_from_main_service'] ?? false,
+      areaClear: m['area_clear'] ?? false,
+      labelsAndEStopVisible: m['labels_estop_visible'] ?? false,
+      extinguisherPresent: m['extinguisher_present'] ?? false,
+      fuelStoredType: m['fuel_stored_type'] ?? '',
+      fuelQtyGallons: m['fuel_qty_gallons'] ?? '',
+      fdnyPermit: m['fdny_permit'] ?? 'Unknown',
+      c92OnSite: m['c92_on_site'] ?? 'Unknown',
+      gasCutoffValve: m['gas_cutoff_valve'] ?? 'N/A',
+      depSizeKw: m['dep_size_kw'] ?? '',
+      depRegisteredCats: m['dep_registered_cats'] ?? 'Unknown',
+      depCertificateOperate: m['dep_certificate_operate'] ?? 'Unknown',
+      tier4Compliant: m['tier4_compliant'] ?? 'Unknown',
+      smokeOrStackTest: m['smoke_or_stack_test'] ?? 'Unknown',
+      recordsKept5Years: m['records_kept_5_years'] ?? false,
+      emergencyOnly: m['emergency_only'] ?? true,
+      estimatedAnnualRuntimeHours: m['estimated_annual_runtime_hours'] ?? '',
+      fuelFor6hrs: m['fuel_for_6hrs'] ?? 'N/A',
+      notes: m['notes'] ?? '',
+      gensetRunsUnderLoad: m['genset_runs_under_load'] ?? false,
+      voltageFrequencyOk: m['voltage_frequency_ok'] ?? false,
+      exhaustOk: m['exhaust_ok'] ?? false,
+      groundingBondingOk: m['grounding_bonding_ok'] ?? false,
+      controlPanelOk: m['control_panel_ok'] ?? false,
+      safetyDevicesOk: m['safety_devices_ok'] ?? false,
+      deficienciesDocumented: m['deficiencies_documented'] ?? false,
+      loadbankDone: m['loadbank_done'] ?? false,
+      atsVerified: m['ats_verified'] ?? false,
+      fuelStoredOver1Yr: m['fuel_stored_over_1yr'] ?? false,
+      lastServiceDate: m['last_service_date'] ?? '',
+      oilFilterChangeDate: m['oil_filter_change_date'] ?? '',
+      fuelFilterDate: m['fuel_filter_date'] ?? '',
+      coolantFlushDate: m['coolant_flush_date'] ?? '',
+      batteryReplaceDate: m['battery_replace_date'] ?? '',
+      airFilterDate: m['air_filter_date'] ?? '',
+      technicianSignaturePath: m['technician_signature_path'] ?? '',
       technicianSigDate:
-      DateTime.tryParse(json['technician_sig_date'] ?? '') ??
-          DateTime.now(),
-      customerSignaturePath:
-      json['customer_signature_path'] ?? '',
+          DateTime.tryParse(m['technician_sig_date'] ?? '') ?? DateTime.now(),
+      customerSignaturePath: m['customer_signature_path'] ?? '',
       customerSigDate:
-      DateTime.tryParse(json['customer_sig_date'] ?? '') ??
-          DateTime.now(),
-      customerName: json['customer_name'] ?? '',
-      pdfPath: json['pdf_path'] ?? '',
+          DateTime.tryParse(m['customer_sig_date'] ?? '') ?? DateTime.now(),
+      customerName: m['customer_name'] ?? '',
+      pdfPath: m['pdf_path'] ?? '',
     );
   }
 
   Map<String, dynamic> _inspectionToJson(InspectionEntity e) =>
       toSupabaseJson(e);
 
-  /// Public Supabase row serializer, reused by the offline sync queue so the
-  /// table schema stays defined in one place.
+  /// Serialize to a schema-compliant `public.inspections` row: identity columns
+  /// at the top level, all detail fields under the `payload` jsonb column.
+  /// Reused by the offline sync queue so the shape stays defined in one place.
   static Map<String, dynamic> toSupabaseJson(InspectionEntity e) {
     return {
       'id': e.id,
-      'created_at': e.createdAt.toIso8601String(),
+      if (SyncContext.tenantId != null) 'tenant_id': SyncContext.tenantId,
       'site_code': e.siteCode,
       'site_grade': e.siteGrade,
       'address': e.address,
       'service_date': e.serviceDate.toIso8601String(),
       'technician_name': e.technicianName,
+      'notes': e.notes,
+      'pdf_path': e.pdfPath,
+      'created_at': e.createdAt.toIso8601String(),
+      'updated_at': e.updatedAt.toIso8601String(),
+      'client_updated_at': e.updatedAt.toIso8601String(),
+      if (SyncContext.userId != null) 'updated_by': SyncContext.userId,
+      'payload': inspectionPayload(e),
+    };
+  }
+
+  /// The non-identity detail fields, stored in the `payload` jsonb column.
+  static Map<String, dynamic> inspectionPayload(InspectionEntity e) {
+    return {
       'generator_make': e.generatorMake,
       'generator_model': e.generatorModel,
       'generator_serial': e.generatorSerial,
@@ -199,10 +209,8 @@ class InspectionRemoteDatasource {
       'smoke_or_stack_test': e.smokeOrStackTest,
       'records_kept_5_years': e.recordsKept5Years,
       'emergency_only': e.emergencyOnly,
-      'estimated_annual_runtime_hours':
-      e.estimatedAnnualRuntimeHours,
+      'estimated_annual_runtime_hours': e.estimatedAnnualRuntimeHours,
       'fuel_for_6hrs': e.fuelFor6hrs,
-      'notes': e.notes,
       'genset_runs_under_load': e.gensetRunsUnderLoad,
       'voltage_frequency_ok': e.voltageFrequencyOk,
       'exhaust_ok': e.exhaustOk,
@@ -220,13 +228,10 @@ class InspectionRemoteDatasource {
       'battery_replace_date': e.batteryReplaceDate,
       'air_filter_date': e.airFilterDate,
       'technician_signature_path': e.technicianSignaturePath,
-      'technician_sig_date':
-      e.technicianSigDate.toIso8601String(),
+      'technician_sig_date': e.technicianSigDate.toIso8601String(),
       'customer_signature_path': e.customerSignaturePath,
-      'customer_sig_date':
-      e.customerSigDate.toIso8601String(),
+      'customer_sig_date': e.customerSigDate.toIso8601String(),
       'customer_name': e.customerName,
-      'pdf_path': e.pdfPath,
     };
   }
 

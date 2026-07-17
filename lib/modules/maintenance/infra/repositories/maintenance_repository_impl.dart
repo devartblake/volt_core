@@ -3,7 +3,6 @@ import 'package:uuid/uuid.dart';
 
 import '../../../../core/services/pdf/pdf_prefs_service.dart';
 import '../../../../core/services/pdf/pdf_service.dart';
-import '../../../../core/services/sync/sync_service.dart';
 import '../../domain/entities/maintenance_job_entity.dart';
 import '../datasources/hive_boxes_maintenance.dart';
 import '../mappers/maintenance_supabase_mapper.dart';
@@ -70,15 +69,10 @@ class MaintenanceRepositoryImpl implements MaintenanceRepository {
     // title is computed from siteCode/address; no dedicated field in Hive.
   }
 
-  /// Queue a cloud upsert of the full record (offline-first). The Hive write is
-  /// the source of truth; [SyncService] pushes to Supabase when online.
-  Future<void> _queueUpsert(MaintenanceRecord rec) {
-    return SyncService.instance.enqueueUpsert(
-      table: kMaintenanceRecordsTable,
-      id: rec.id,
-      payload: maintenanceRecordToSupabaseJson(rec),
-    );
-  }
+  /// Queue the cloud sync of the record (offline-first). The Hive write is the
+  /// source of truth; this pushes the job + detail rows to Supabase when online.
+  Future<void> _queueUpsert(MaintenanceRecord rec) =>
+      enqueueMaintenanceSync(rec);
 
   // ---------------------------------------------------------------------------
   // Repository methods
@@ -146,8 +140,7 @@ class MaintenanceRepositoryImpl implements MaintenanceRepository {
   @override
   Future<void> delete(String id) async {
     await _box.delete(id);
-    await SyncService.instance
-        .enqueueDelete(table: kMaintenanceRecordsTable, id: id);
+    await enqueueMaintenanceDelete(id);
   }
 
   @override

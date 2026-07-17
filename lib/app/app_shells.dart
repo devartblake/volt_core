@@ -5,6 +5,7 @@ import 'package:voltcore/app/app_drawer.dart';
 
 import '../modules/auth/presenter/controllers/auth_controller.dart';
 import '../modules/auth/state/auth_state.dart';
+import '../shared/presenter/widgets/sync_status_indicator.dart';
 
 /// Generic shell that wraps a page with AppDrawer + responsive layout.
 ///
@@ -36,6 +37,7 @@ class DefaultShell extends ConsumerWidget {
       return Scaffold(
         appBar: AppBar(
           title: Text(title ?? 'Voltcore'),
+          actions: const [SyncStatusIndicator(), SizedBox(width: 4)],
         ),
         drawer: AppDrawer(
           userProfile: profile,
@@ -48,6 +50,7 @@ class DefaultShell extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(
         title: Text(title ?? 'Voltcore'),
+        actions: const [SyncStatusIndicator(), SizedBox(width: 8)],
       ),
       body: Row(
         children: [

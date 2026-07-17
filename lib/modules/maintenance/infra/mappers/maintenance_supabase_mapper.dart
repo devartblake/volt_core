@@ -1,15 +1,63 @@
+import '../../../../core/services/sync/sync_context.dart';
+import '../../../../core/services/sync/sync_service.dart';
 import '../models/maintenance_record.dart';
 
-/// Supabase table that mirrors [MaintenanceRecord] for cloud backup/sync.
+/// Supabase tables that mirror a [MaintenanceRecord].
+///
+/// The schema splits maintenance into an identity row (`maintenance_jobs`) and a
+/// detail row (`maintenance_records.data` jsonb) linked by `job_id`. The app has
+/// a single flat record, so each save writes both rows keyed by the record id
+/// (job.id == record.id == records.job_id).
+const String kMaintenanceJobsTable = 'maintenance_jobs';
 const String kMaintenanceRecordsTable = 'maintenance_records';
 
-/// Serialize a [MaintenanceRecord] to a snake_case Supabase row.
+/// Identity row for `public.maintenance_jobs`.
+///
+/// `inspection_id` is intentionally kept only in the detail jsonb (not on the
+/// job) to avoid a foreign-key failure when the referenced inspection hasn't
+/// been pushed to the cloud yet.
+Map<String, dynamic> maintenanceJobRow(MaintenanceRecord r) {
+  return {
+    'id': r.id,
+    if (SyncContext.tenantId != null) 'tenant_id': SyncContext.tenantId,
+    'title': r.siteCode.isNotEmpty ? 'Site ${r.siteCode}' : 'Maintenance Job',
+    'site_code': r.siteCode,
+    'address': r.address,
+    'technician_name': r.technicianName,
+    if (r.dateOfService != null)
+      'date_of_service': r.dateOfService!.toIso8601String(),
+    'status': r.completed ? 'completed' : 'draft',
+    'is_completed': r.completed,
+    if (r.completed) 'completed_at': r.updatedAt.toIso8601String(),
+    'requires_follow_up': r.requiresFollowUp,
+    if (r.followUpNotes != null) 'follow_up_notes': r.followUpNotes,
+    if (r.generalNotes != null) 'general_notes': r.generalNotes,
+    'created_at': r.createdAt.toIso8601String(),
+    'updated_at': r.updatedAt.toIso8601String(),
+    'client_updated_at': r.updatedAt.toIso8601String(),
+    if (SyncContext.userId != null) 'updated_by': SyncContext.userId,
+  };
+}
+
+/// Detail row for `public.maintenance_records` (all fields under `data` jsonb).
+Map<String, dynamic> maintenanceRecordRow(MaintenanceRecord r) {
+  return {
+    'id': r.id,
+    if (SyncContext.tenantId != null) 'tenant_id': SyncContext.tenantId,
+    'job_id': r.id,
+    'data': maintenanceRecordData(r),
+    'created_at': r.createdAt.toIso8601String(),
+    'updated_at': r.updatedAt.toIso8601String(),
+    'client_updated_at': r.updatedAt.toIso8601String(),
+  };
+}
+
+/// The full maintenance detail, stored in `maintenance_records.data` (jsonb).
 ///
 /// Transient fields (signature bytes) are intentionally omitted — the images
 /// themselves are backed up to Supabase Storage via the file backup queue.
-Map<String, dynamic> maintenanceRecordToSupabaseJson(MaintenanceRecord r) {
+Map<String, dynamic> maintenanceRecordData(MaintenanceRecord r) {
   return {
-    'id': r.id,
     'inspection_id': r.inspectionId,
     'site_code': r.siteCode,
     'address': r.address,
@@ -124,7 +172,26 @@ Map<String, dynamic> maintenanceRecordToSupabaseJson(MaintenanceRecord r) {
     'follow_up_notes': r.followUpNotes,
     'technician_signature_path': r.technicianSignaturePath,
     'customer_signature_path': r.customerSignaturePath,
-    'created_at': r.createdAt.toIso8601String(),
-    'updated_at': r.updatedAt.toIso8601String(),
   };
+}
+
+/// Queue the two upserts (job identity + detail) for cloud sync. The job row is
+/// enqueued first so it exists before the FK-linked detail row is pushed.
+Future<void> enqueueMaintenanceSync(MaintenanceRecord r) async {
+  await SyncService.instance.enqueueUpsert(
+    table: kMaintenanceJobsTable,
+    id: r.id,
+    payload: maintenanceJobRow(r),
+  );
+  await SyncService.instance.enqueueUpsert(
+    table: kMaintenanceRecordsTable,
+    id: r.id,
+    payload: maintenanceRecordRow(r),
+  );
+}
+
+/// Queue a delete. Removing the job cascades to `maintenance_records` (and
+/// parts / attachments) via the schema's ON DELETE CASCADE.
+Future<void> enqueueMaintenanceDelete(String id) {
+  return SyncService.instance.enqueueDelete(table: kMaintenanceJobsTable, id: id);
 }
