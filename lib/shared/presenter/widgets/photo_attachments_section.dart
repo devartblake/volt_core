@@ -6,6 +6,7 @@ import 'package:path/path.dart' as p;
 
 import '../../../core/services/photos/photo_attachment.dart';
 import '../../../core/services/photos/photo_service.dart';
+import '../../../core/services/storage/path_resolver.dart';
 
 /// Reusable "Photos" section for inspection and maintenance forms.
 ///
@@ -189,7 +190,7 @@ class _Thumbnail extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final file = File(photo.localPath);
+    final file = File(PathResolver.resolveSync(photo.localPath));
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(8),
@@ -303,7 +304,7 @@ class _PhotoDetailPageState extends State<_PhotoDetailPage> {
 
   @override
   Widget build(BuildContext context) {
-    final file = File(widget.photo.localPath);
+    final file = File(PathResolver.resolveSync(widget.photo.localPath));
     return Scaffold(
       appBar: AppBar(
         title: const Text('Photo'),

@@ -2,6 +2,8 @@ import 'dart:io';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 
+import '../../../../core/services/storage/path_resolver.dart';
+
 /// Reusable PDF template components matching the A&S Electric template
 class PdfTemplate {
   // Color scheme matching the template
@@ -307,10 +309,11 @@ class PdfTemplate {
     pw.Widget signatureImage;
 
     try {
-      if (signaturePath != null &&
-          signaturePath.isNotEmpty &&
-          File(signaturePath).existsSync()) {
-        final bytes = File(signaturePath).readAsBytesSync();
+      final resolvedPath = (signaturePath != null && signaturePath.isNotEmpty)
+          ? PathResolver.resolveSync(signaturePath)
+          : null;
+      if (resolvedPath != null && File(resolvedPath).existsSync()) {
+        final bytes = File(resolvedPath).readAsBytesSync();
         signatureImage = pw.Container(
           height: 60,
           child: pw.Image(

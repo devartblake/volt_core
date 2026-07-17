@@ -7,6 +7,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../modules/inspections/infra/models/inspection.dart';
+import '../storage/path_resolver.dart';
 
 /// Sends report emails **server-side** via a Supabase Edge Function.
 ///
@@ -66,7 +67,7 @@ class EmailService {
     String? pdfBase64;
     var attachmentName = fileName ?? 'report.pdf';
     if (pdfPath != null && pdfPath.isNotEmpty) {
-      final file = File(pdfPath);
+      final file = File(await PathResolver.resolve(pdfPath));
       if (await file.exists()) {
         pdfBase64 = base64Encode(await file.readAsBytes());
         if (fileName == null) {

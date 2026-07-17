@@ -73,6 +73,13 @@ class FileStorageService {
   /// Cached base directory so we only resolve it once per run.
   Directory? _appDataDir;
 
+  /// The app-data root path if already resolved this run, else null.
+  ///
+  /// Populated the first time [getAppDataDirectory] runs (during startup
+  /// `ensureDirectories`). Used by [PathResolver.resolveSync] to re-anchor
+  /// stale absolute paths without an async call.
+  String? get cachedAppDataPath => _appDataDir?.path;
+
   // ============================================
   // Base Directories (Platform-Aware)
   // ============================================
