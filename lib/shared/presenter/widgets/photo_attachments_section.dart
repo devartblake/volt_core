@@ -257,7 +257,6 @@ class _PhotoDetailPage extends StatefulWidget {
 class _PhotoDetailPageState extends State<_PhotoDetailPage> {
   late final TextEditingController _caption =
       TextEditingController(text: widget.photo.caption);
-  bool _dirty = false;
 
   @override
   void dispose() {
@@ -267,7 +266,6 @@ class _PhotoDetailPageState extends State<_PhotoDetailPage> {
 
   Future<void> _saveCaption() async {
     await PhotoService.instance.updateCaption(widget.photo.id, _caption.text);
-    _dirty = true;
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Caption saved')),
