@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive/hive.dart';
 
+import '../../../../core/services/notifications/notification_service.dart';
 import '../../domain/entities/task_schedule_entity.dart';
 import '../datasources/scheduled_tasks_box.dart';
 import '../models/schedule_task.dart';
@@ -83,12 +84,30 @@ class ScheduleRepositoryImpl implements ScheduleRepository {
   Future<TaskScheduleEntity> saveTask(TaskScheduleEntity task) async {
     final updated = task.copyWith(updatedAt: DateTime.now());
     await _box.put(updated.id, _toModel(updated));
+
+    // Keep the local reminder in sync with the task's state.
+    final isActive = updated.status == 'scheduled' || updated.status == 'overdue';
+    if (isActive) {
+      await NotificationService.instance.scheduleTaskReminder(
+        taskId: updated.id,
+        title: 'Upcoming: ${updated.title}',
+        body: updated.address.isNotEmpty
+            ? '${updated.sourceType} at ${updated.address}'
+            : 'Scheduled ${updated.sourceType}',
+        scheduledAt: updated.scheduledAt,
+      );
+    } else {
+      // completed / cancelled → drop the reminder
+      await NotificationService.instance.cancelTaskReminder(updated.id);
+    }
+
     return updated;
   }
 
   @override
   Future<void> deleteTask(String id) async {
     await _box.delete(id);
+    await NotificationService.instance.cancelTaskReminder(id);
   }
 
   @override

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
+import '../../../../../core/services/notifications/notification_service.dart';
 import '../../../infra/datasources/scheduled_tasks_box.dart';
 import '../../../infra/models/schedule_task.dart';
 import '../../pages/schedule_task_page.dart';
@@ -154,6 +155,16 @@ class _ScheduleTaskDialogState extends State<ScheduleTaskDialog> {
       );
 
       await ScheduledTasksBox.box.put(task.id, task);
+
+      // Schedule a local reminder for the appointment time.
+      await NotificationService.instance.scheduleTaskReminder(
+        taskId: task.id,
+        title: 'Upcoming: ${task.title}',
+        body: task.address.isNotEmpty
+            ? '${task.sourceType} at ${task.address}'
+            : 'Scheduled ${task.sourceType}',
+        scheduledAt: scheduledAt,
+      );
 
       if (!mounted) return;
 

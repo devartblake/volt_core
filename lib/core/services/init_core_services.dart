@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 
 import 'hive/hive_service.dart';
+import 'notifications/notification_service.dart';
 import 'photos/photo_repository.dart';
 import 'storage/file_storage_service.dart';
 import 'supabase/supabase_service.dart';
@@ -51,6 +52,10 @@ Future<void> initCoreServices() async {
   // begins draining queued record/file changes to Supabase whenever the device
   // is online. It never throws, so it can't block startup.
   await SyncService.instance.init();
+
+  // Initialize local notifications (schedule reminders). Permission is
+  // requested later, in context, when the first reminder is scheduled.
+  await NotificationService.instance.init();
 
   if (kDebugMode) {
     debugPrint('[CoreServices] Initialization completed');
