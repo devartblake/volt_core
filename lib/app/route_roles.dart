@@ -94,6 +94,14 @@ class RouteRoles {
       UserRole.admin,
     },
 
+    // ----- Documents -----
+    'documents': {
+      UserRole.tech,
+      UserRole.supervisor,
+      UserRole.dispatcher,
+      UserRole.admin,
+    },
+
     // ----- Settings / System -----
     'selection_management': {
       UserRole.supervisor,

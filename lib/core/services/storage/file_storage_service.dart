@@ -5,6 +5,7 @@ import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
 
 import '../../configs/env.dart';
+import '../sync/sync_service.dart';
 
 /// Central file storage service that manages all file locations in the app.
 ///
@@ -57,6 +58,7 @@ class FileStorageService {
   static const String _dirHive = 'hive';
   static const String _dirSignatures = 'signatures';
   static const String _dirPdfs = 'pdfs';
+  static const String _dirPhotos = 'photos';
   static const String _dirExports = 'exports';
   static const String _dirTemp = 'temp';
   static const String _dirDownloads = 'downloads';
@@ -70,6 +72,13 @@ class FileStorageService {
 
   /// Cached base directory so we only resolve it once per run.
   Directory? _appDataDir;
+
+  /// The app-data root path if already resolved this run, else null.
+  ///
+  /// Populated the first time [getAppDataDirectory] runs (during startup
+  /// `ensureDirectories`). Used by [PathResolver.resolveSync] to re-anchor
+  /// stale absolute paths without an async call.
+  String? get cachedAppDataPath => _appDataDir?.path;
 
   // ============================================
   // Base Directories (Platform-Aware)
@@ -152,6 +161,7 @@ class FileStorageService {
     await getMaintenanceSignaturesDirectory();
     await getInspectionPdfsDirectory();
     await getMaintenancePdfsDirectory();
+    await getPhotosDirectory();
     await getExportsDirectory();
     await getTempDirectory();
 
@@ -267,6 +277,7 @@ class FileStorageService {
       debugPrint('[FileStorage] Saved inspection signature: ${file.path}');
     }
 
+    _queueSignatureBackup(file.path, 'signatures/inspections/$inspectionId.png');
     return file.path;
   }
 
@@ -288,7 +299,27 @@ class FileStorageService {
       debugPrint('[FileStorage] Saved maintenance signature: ${file.path}');
     }
 
+    _queueSignatureBackup(
+      file.path,
+      'signatures/maintenance/${jobId}_$signatureType.png',
+    );
     return file.path;
+  }
+
+  /// Queue a signature image for cloud backup. Best-effort — a backup hiccup
+  /// must never break the local signature save.
+  void _queueSignatureBackup(String localPath, String remotePath) {
+    try {
+      SyncService.instance.enqueueFileUpload(
+        localPath: localPath,
+        remotePath: remotePath,
+        contentType: 'image/png',
+      );
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('[FileStorage] Could not queue signature backup: $e');
+      }
+    }
   }
 
   /// Get inspection signature file
@@ -441,6 +472,34 @@ class FileStorageService {
     }
 
     return null;
+  }
+
+  // ============================================
+  // Photo Attachments
+  // ============================================
+
+  /// Base directory for photo attachments: [AppData]/photos/
+  Future<Directory> getPhotosDirectory() async {
+    final appData = await getAppDataDirectory();
+    final dir = Directory(path.join(appData.path, _dirPhotos));
+    if (!await dir.exists()) {
+      await dir.create(recursive: true);
+    }
+    return dir;
+  }
+
+  /// Per-owner photo directory: [AppData]/photos/<ownerType>/<ownerId>/
+  Future<Directory> getOwnerPhotosDirectory(
+    String ownerType,
+    String ownerId,
+  ) async {
+    final photos = await getPhotosDirectory();
+    final safeOwner = ownerId.isEmpty ? 'unassigned' : ownerId;
+    final dir = Directory(path.join(photos.path, ownerType, safeOwner));
+    if (!await dir.exists()) {
+      await dir.create(recursive: true);
+    }
+    return dir;
   }
 
   // ============================================

@@ -3,7 +3,9 @@ import 'package:uuid/uuid.dart';
 
 import '../../../../core/services/pdf/pdf_prefs_service.dart';
 import '../../../../core/services/pdf/pdf_service.dart';
+import '../../../../core/services/sync/sync_service.dart';
 import '../datasources/hive_boxes_maintenance.dart';
+import '../mappers/maintenance_supabase_mapper.dart';
 import '../models/maintenance_record.dart';
 
 class MaintenanceRepo {
@@ -27,6 +29,7 @@ class MaintenanceRepo {
     final id = _uuid.v4();
     final m = MaintenanceRecord(id: id, inspectionId: inspectionId);
     _box.put(id, m);
+    _queueUpsert(m);
     return m;
   }
 
@@ -35,9 +38,24 @@ class MaintenanceRepo {
   Future<void> save(MaintenanceRecord rec) async {
     rec.updatedAt = DateTime.now();
     await rec.save();
+    await _queueUpsert(rec);
   }
 
-  Future<void> delete(String id) => _box.delete(id);
+  Future<void> delete(String id) async {
+    await _box.delete(id);
+    await SyncService.instance
+        .enqueueDelete(table: kMaintenanceRecordsTable, id: id);
+  }
+
+  /// Queue a cloud upsert of the record (offline-first). Best-effort so a
+  /// backup hiccup never breaks the local Hive write.
+  Future<void> _queueUpsert(MaintenanceRecord rec) {
+    return SyncService.instance.enqueueUpsert(
+      table: kMaintenanceRecordsTable,
+      id: rec.id,
+      payload: maintenanceRecordToSupabaseJson(rec),
+    );
+  }
 
   Future<void> exportMaintenancePdf(MaintenanceRecord record) async {
     final prefsService = PdfPrefsService.instance;

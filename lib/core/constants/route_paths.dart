@@ -35,6 +35,9 @@ class RoutePaths {
   static const String nameplateIntervals = '/nameplate/:inspectionId';
   static const String equipmentSearch = '/equipment/search';
 
+  // Documents
+  static const String documents = '/documents';
+
   // Settings & config
   static const String selectionManagement = '/selection-management';
   static const String settings = '/settings';
@@ -74,6 +77,8 @@ class RouteNames {
   static const String nameplateList = 'nameplate_list';
   static const String nameplateIntervals = 'nameplate_intervals';
   static const String equipmentSearch = 'equipment_search';
+
+  static const String documents = 'documents';
 
   static const String selectionManagement = 'selection_management';
   static const String settings = 'settings';

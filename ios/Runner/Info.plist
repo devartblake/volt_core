@@ -52,7 +52,10 @@
     <string>Allow saving signed generator reports.</string>
 
     <key>NSPhotoLibraryUsageDescription</key>
-    <string>Used to export PDFs or signature images if needed.</string>
+    <string>Used to export PDFs or signature images, and to attach photos to inspection and maintenance reports.</string>
+
+    <key>NSCameraUsageDescription</key>
+    <string>Used to capture photos for inspection and maintenance reports.</string>
 
     <key>LSSupportsOpeningDocumentsInPlace</key>
     <true/>

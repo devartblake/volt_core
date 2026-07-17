@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:open_filex/open_filex.dart'; // NEW: open with system viewer
 import 'package:voltcore/core/services/hive/hive_boxes.dart';
+import 'package:voltcore/core/services/storage/path_resolver.dart';
 
 import '../../../schedule/infra/models/schedule_task.dart';
 import '../../../schedule/presenter/pages/schedule_task_page.dart';
@@ -43,7 +44,11 @@ class InspectionDetailPage extends ConsumerWidget {
       );
     }
 
-    final hasPdf = ins.pdfPath.isNotEmpty && File(ins.pdfPath).existsSync();
+    // Re-anchor the stored path to the current app-data root (iOS containers
+    // change across updates), then check existence.
+    final resolvedPdfPath = PathResolver.resolveSync(ins.pdfPath);
+    final hasPdf =
+        ins.pdfPath.isNotEmpty && File(resolvedPdfPath).existsSync();
 
     return Scaffold(
       appBar: AppBar(
@@ -265,7 +270,7 @@ class InspectionDetailPage extends ConsumerWidget {
                     const SizedBox(height: 16),
                     FilledButton.icon(
                       onPressed: () async {
-                        final result = await OpenFilex.open(ins.pdfPath);
+                        final result = await OpenFilex.open(resolvedPdfPath);
                         if (result.type != ResultType.done &&
                             context.mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
@@ -337,7 +342,7 @@ class InspectionDetailPage extends ConsumerWidget {
             onPressed: !hasPdf
                 ? null
                 : () async {
-              final file = File(ins.pdfPath);
+              final file = File(resolvedPdfPath);
               if (!await file.exists()) {
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
@@ -349,7 +354,7 @@ class InspectionDetailPage extends ConsumerWidget {
                 return;
               }
 
-              final result = await OpenFilex.open(ins.pdfPath);
+              final result = await OpenFilex.open(resolvedPdfPath);
               if (result.type != ResultType.done && context.mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(

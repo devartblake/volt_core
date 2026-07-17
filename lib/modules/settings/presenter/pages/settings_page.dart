@@ -125,6 +125,16 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               ),
               const Divider(height: 1),
               ListTile(
+                leading: const Icon(Icons.folder_open_outlined),
+                title: const Text('Documents'),
+                subtitle: const Text('View, share and email generated reports'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () {
+                  context.push('/documents');
+                },
+              ),
+              const Divider(height: 1),
+              ListTile(
                 title: const Text('Clear Cache'),
                 subtitle: const Text('Free up storage space'),
                 trailing: const Icon(Icons.chevron_right),

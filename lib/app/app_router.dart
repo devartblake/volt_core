@@ -15,6 +15,7 @@ import 'package:voltcore/modules/admin/presenter/pages/admin_settings_page.dart'
 import '../modules/admin/presenter/pages/technicians_page.dart';
 import '../modules/auth/presenter/controllers/auth_controller.dart';
 import '../modules/dashboard/presenter/pages/tech_dashboard_page.dart';
+import '../modules/documents/presenter/pages/document_library_page.dart';
 import '../modules/debug/pages/debug_menu_page.dart';
 import '../modules/debug/pages/hive_debug_page.dart';
 import '../modules/debug/pages/network_debug_page.dart';
@@ -238,6 +239,15 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         name: RouteNames.equipmentSearch,
         builder: (_, __) => const TechShell(
           child: EquipmentSearchPage(),
+        ),
+      ),
+
+      // ========== DOCUMENTS ==========
+      GoRoute(
+        path: RoutePaths.documents,
+        name: RouteNames.documents,
+        builder: (_, __) => const TechShell(
+          child: DocumentLibraryPage(),
         ),
       ),
 

@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:permission_handler/permission_handler.dart';
 import '../../../modules/inspections/infra/models/inspection.dart';
+import 'path_resolver.dart';
 
 class ExportService {
   Future<void> tryCopyToExternal(Inspection ins) async {
@@ -12,7 +13,7 @@ class ExportService {
     final ext = Directory('/storage/emulated/0/Download');
     if (!ext.existsSync()) return;
 
-    final src = File(ins.pdfPath);
+    final src = File(await PathResolver.resolve(ins.pdfPath));
     if (!src.existsSync()) return;
 
     final out = File('${ext.path}/inspection-${ins.id}.pdf');

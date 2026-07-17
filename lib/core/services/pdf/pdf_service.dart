@@ -22,7 +22,10 @@ import '../../../modules/load_test/infra/models/test_interval_record.dart';
 import '../../../modules/maintenance/infra/models/maintenance_record.dart';
 import '../../../shared/presenter/layout/pdf/pdf_template.dart';
 import '../../services/hive/hive_boxes.dart';
+import '../photos/photo_attachment.dart';
+import '../photos/photo_service.dart';
 import '../storage/file_storage_service.dart';
+import '../sync/sync_service.dart';
 
 /// User-level preferences for how PDFs should be exported.
 ///
@@ -232,7 +235,85 @@ class PdfService {
       );
     }
 
+    // PHOTO APPENDIX (attached inspection photos, if any)
+    await _addPhotosAppendix(pdf, PhotoAttachment.ownerInspection, ins.id);
+
     return pdf.save();
+  }
+
+  /// Append a "Photos" page listing any photos attached to the record.
+  ///
+  /// No-op when there are no readable photos. Failures are swallowed so photo
+  /// issues never prevent report generation.
+  Future<void> _addPhotosAppendix(
+    pw.Document pdf,
+    String ownerType,
+    String ownerId,
+  ) async {
+    if (ownerId.isEmpty) return;
+
+    List<PhotoAttachment> photos;
+    try {
+      photos = await PhotoService.instance.listForOwner(ownerType, ownerId);
+    } catch (_) {
+      return;
+    }
+    if (photos.isEmpty) return;
+
+    final items = <_PdfPhoto>[];
+    for (final photo in photos) {
+      try {
+        final file = io.File(photo.localPath);
+        if (!file.existsSync()) continue;
+        items.add(_PdfPhoto(pw.MemoryImage(await file.readAsBytes()),
+            photo.caption));
+      } catch (_) {
+        // Skip unreadable images.
+      }
+    }
+    if (items.isEmpty) return;
+
+    pdf.addPage(
+      pw.MultiPage(
+        pageFormat: PdfPageFormat.letter,
+        margin: const pw.EdgeInsets.all(24),
+        build: (ctx) => [
+          pw.Text(
+            'Photos',
+            style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold),
+          ),
+          pw.SizedBox(height: 8),
+          pw.Wrap(
+            spacing: 12,
+            runSpacing: 12,
+            children: [
+              for (final item in items)
+                pw.Container(
+                  width: 240,
+                  child: pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                    children: [
+                      pw.Image(
+                        item.image,
+                        width: 240,
+                        height: 180,
+                        fit: pw.BoxFit.cover,
+                      ),
+                      if (item.caption.isNotEmpty) ...[
+                        pw.SizedBox(height: 4),
+                        pw.Text(
+                          item.caption,
+                          style: const pw.TextStyle(fontSize: 9),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
   }
 
   /// Build the maintenance PDF and return bytes (for saving/emailing/etc.)
@@ -262,6 +343,9 @@ class PdfService {
         ],
       ),
     );
+
+    // PHOTO APPENDIX (attached maintenance photos, if any)
+    await _addPhotosAppendix(pdf, PhotoAttachment.ownerMaintenance, m.id);
 
     return pdf.save();
   }
@@ -2032,6 +2116,20 @@ class PdfService {
 
     debugPrint('PDF saved to: $savePath');
 
+    // Queue the generated PDF for cloud backup. [fileName] is relative to the
+    // PDFs root (e.g. "inspections/<site>/inspection_x.pdf"), so mirror it under
+    // a "pdfs/" prefix in storage. Never let a backup hiccup break PDF export.
+    try {
+      final remotePath = 'pdfs/${fileName.replaceAll(r'\', '/')}';
+      await SyncService.instance.enqueueFileUpload(
+        localPath: savePath,
+        remotePath: remotePath,
+        contentType: 'application/pdf',
+      );
+    } catch (e) {
+      debugPrint('[PdfService] Could not queue PDF backup: $e');
+    }
+
     // Only attempt email/share if the user has given permission
     if (!prefs.emailAllowed) {
       return PdfExportResult(filePath: savePath, emailed: false);
@@ -2130,4 +2228,12 @@ class PdfService {
   Future<File?> getInspectionPdf(String inspectionId) async {
     return await FileStorageService.instance.getInspectionPdf(inspectionId);
   }
+}
+
+/// A decoded photo ready to render in the PDF photo appendix.
+class _PdfPhoto {
+  _PdfPhoto(this.image, this.caption);
+
+  final pw.MemoryImage image;
+  final String caption;
 }
