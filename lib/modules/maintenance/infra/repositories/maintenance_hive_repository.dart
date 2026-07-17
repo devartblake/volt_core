@@ -3,7 +3,6 @@ import 'package:uuid/uuid.dart';
 
 import '../../../../core/services/pdf/pdf_prefs_service.dart';
 import '../../../../core/services/pdf/pdf_service.dart';
-import '../../../../core/services/sync/sync_service.dart';
 import '../datasources/hive_boxes_maintenance.dart';
 import '../mappers/maintenance_supabase_mapper.dart';
 import '../models/maintenance_record.dart';
@@ -43,19 +42,13 @@ class MaintenanceRepo {
 
   Future<void> delete(String id) async {
     await _box.delete(id);
-    await SyncService.instance
-        .enqueueDelete(table: kMaintenanceRecordsTable, id: id);
+    await enqueueMaintenanceDelete(id);
   }
 
-  /// Queue a cloud upsert of the record (offline-first). Best-effort so a
+  /// Queue the cloud sync of the record (offline-first). Best-effort so a
   /// backup hiccup never breaks the local Hive write.
-  Future<void> _queueUpsert(MaintenanceRecord rec) {
-    return SyncService.instance.enqueueUpsert(
-      table: kMaintenanceRecordsTable,
-      id: rec.id,
-      payload: maintenanceRecordToSupabaseJson(rec),
-    );
-  }
+  Future<void> _queueUpsert(MaintenanceRecord rec) =>
+      enqueueMaintenanceSync(rec);
 
   Future<void> exportMaintenancePdf(MaintenanceRecord record) async {
     final prefsService = PdfPrefsService.instance;
