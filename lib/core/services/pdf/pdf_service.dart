@@ -5,7 +5,6 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show Uint8List, rootBundle;
 import 'package:path/path.dart' as p;
-import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
@@ -2009,13 +2008,9 @@ class PdfService {
         baseDir.createSync(recursive: true);
       }
     } else {
-      // Use an app-safe directory
-      if (io.Platform.isAndroid || io.Platform.isIOS) {
-        baseDir = await getApplicationSupportDirectory();
-      } else {
-        // Windows, macOS, Linux etc.
-        baseDir = await getApplicationDocumentsDirectory();
-      }
+      // Use the app's managed PDF directory:
+      // dev (desktop): <project>/dev_data/pdfs/, production: on-device app data.
+      baseDir = await FileStorageService.instance.getPdfsDirectory();
     }
 
     final appDir = io.Directory(

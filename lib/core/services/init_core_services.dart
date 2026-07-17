@@ -2,13 +2,15 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 
 import 'hive/hive_service.dart';
+import 'storage/file_storage_service.dart';
 import 'supabase/supabase_service.dart';
 
 // Initialize all core services *before* running the app.
 ///
 /// This function:
-/// 1. Initializes Hive and registers ALL adapters
-/// 2. Initializes Supabase client
+/// 1. Creates the app's data directory tree (hive/, pdfs/, signatures/, exports/, temp/)
+/// 2. Initializes Hive and registers ALL adapters
+/// 3. Initializes Supabase client
 ///
 /// Call this from `main()`:
 /// ```dart
@@ -26,6 +28,11 @@ Future<void> initCoreServices() async {
   if (kDebugMode) {
     debugPrint('[CoreServices] Starting initialization...');
   }
+
+  // Create the full storage directory tree so every kind of data the app
+  // produces (Hive DB, PDFs, signatures, exports, temp) has its folder:
+  // dev (desktop) -> <project>/dev_data/, production -> on-device app data.
+  await FileStorageService.instance.ensureDirectories();
 
   // Initialize Hive and register adapters
   // CRITICAL: This must run BEFORE any boxes are opened
