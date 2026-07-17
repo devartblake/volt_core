@@ -1,7 +1,5 @@
-import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:signature/signature.dart';
-import '../../../schedule/infra/models/schedule_task.dart';
 import '../../../schedule/presenter/pages/schedule_task_page.dart';
 import '../../../schedule/presenter/widgets/dialogs/schedule_dialog.dart';
 import '../../presenter/widgets/utils/form_fields.dart';
@@ -119,7 +117,6 @@ class _SectionMaintSignaturesState extends State<SectionMaintSignatures> {
         .getMaintenanceSignature(recordId, signatureType);
 
     if (file != null && await file.exists()) {
-      final bytes = await file.readAsBytes();
       // Note: We can't reimport the signature drawing, but we can show it was saved
       onSuccess();
     }

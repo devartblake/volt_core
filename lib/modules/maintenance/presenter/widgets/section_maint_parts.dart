@@ -203,46 +203,6 @@ class SectionMaintParts extends StatelessWidget {
   }
 }
 
-class _TextFieldRow extends StatelessWidget {
-  final String label;
-  final String initialValue;
-  final String? hintText;
-  final bool readOnly;
-  final TextInputType? keyboardType;
-  final ValueChanged<String> onChanged;
-
-  const _TextFieldRow({
-    required this.label,
-    required this.initialValue,
-    required this.onChanged,
-    this.hintText,
-    this.readOnly = false,
-    this.keyboardType,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label, style: theme.textTheme.labelMedium),
-        const SizedBox(height: 4),
-        TextFormField(
-          initialValue: initialValue,
-          readOnly: readOnly,
-          keyboardType: keyboardType,
-          decoration: InputDecoration(
-            hintText: hintText,
-          ),
-          onChanged: onChanged,
-        ),
-      ],
-    );
-  }
-}
-
 class _StatusChip extends StatelessWidget {
   final String label;
   final IconData icon;
@@ -285,43 +245,4 @@ class _StatusChip extends StatelessWidget {
   }
 }
 
-class _CompletionChip extends StatelessWidget {
-  final bool isComplete;
-
-  const _CompletionChip({required this.isComplete});
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: isComplete
-            ? cs.primaryContainer
-            : cs.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: cs.outlineVariant),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            isComplete ? Icons.check_circle_outline : Icons.circle_outlined,
-            size: 16,
-            color: isComplete ? cs.primary : cs.onSurfaceVariant,
-          ),
-          const SizedBox(width: 6),
-          Text(
-            isComplete ? 'Complete' : 'In progress',
-            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-              color: isComplete ? cs.onPrimaryContainer : cs.onSurfaceVariant,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
 

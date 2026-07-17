@@ -71,7 +71,7 @@ class AdminRemoteDatasource {
         .select()
         .single();
 
-    return response as Map<String, dynamic>;
+    return response;
   }
 
   Future<Map<String, dynamic>> insertRoleAssignment({
@@ -95,7 +95,7 @@ class AdminRemoteDatasource {
         .select()
         .single();
 
-    return response as Map<String, dynamic>;
+    return response;
   }
 
   /// NEW: Fetch aggregate stats used by the AdminDashboardPage.

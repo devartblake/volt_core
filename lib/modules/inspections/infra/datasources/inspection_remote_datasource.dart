@@ -57,7 +57,7 @@ class InspectionRemoteDatasource {
         .single();
 
     return _mapInspectionFromJson(
-      (response as Map<String, dynamic>),
+      response,
     );
   }
 

@@ -24,7 +24,7 @@ class NameplateListPage extends ConsumerWidget {
     final theme = Theme.of(context);
     final badges = ref.watch(appBadgesProvider);
     final userProfile = ref.watch(userProfileProvider);
-    final currentTenant = ref.watch(currentTenantProvider);
+    ref.watch(currentTenantProvider);
 
     final inspectionsAsync = ref.watch(nameplateInspectionsProvider);
 

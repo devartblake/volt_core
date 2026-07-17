@@ -6,7 +6,6 @@ import 'package:open_filex/open_filex.dart'; // NEW: open with system viewer
 import 'package:voltcore/core/services/hive/hive_boxes.dart';
 import 'package:voltcore/core/services/storage/path_resolver.dart';
 
-import '../../../schedule/infra/models/schedule_task.dart';
 import '../../../schedule/presenter/pages/schedule_task_page.dart';
 import '../../../schedule/presenter/widgets/dialogs/schedule_dialog.dart';
 

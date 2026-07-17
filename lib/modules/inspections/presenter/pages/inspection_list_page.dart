@@ -37,7 +37,7 @@ class _InspectionListPageState
     // Watch providers for reactive updates
     final badges = ref.watch(appBadgesProvider);
     final userProfile = ref.watch(userProfileProvider);
-    final currentTenant = ref.watch(currentTenantProvider);
+    ref.watch(currentTenantProvider);
 
     // Apply filter if provided
     final allItems = state.items;
@@ -46,10 +46,10 @@ class _InspectionListPageState
             final status = widget.filterStatus!.toLowerCase();
             // 'pending' = inspections that need attention (Amber/Red grade)
             if (status == 'pending') {
-              final grade = (i.siteGrade ?? '').toLowerCase();
+              final grade = i.siteGrade.toLowerCase();
               return grade == 'amber' || grade == 'red';
             }
-            return (i.siteGrade ?? '').toLowerCase() == status;
+            return i.siteGrade.toLowerCase() == status;
           }).toList()
         : allItems;
 
@@ -218,17 +218,16 @@ class _InspectionListPageState
       ThemeData theme,
       InspectionEntity ins,
       ) {
-    final dateStr = (ins.serviceDate ?? ins.createdAt)
-        ?.toIso8601String()
+    final dateStr = ins.serviceDate
+        .toIso8601String()
         .split('T')
-        .first ??
-        '';
+        .first;
 
-    final grade = ins.siteGrade ?? '';
-    final address = (ins.address ?? '').isEmpty
+    final grade = ins.siteGrade;
+    final address = ins.address.isEmpty
         ? '(No address)'
-        : ins.address!;
-    final siteCode = ins.siteCode ?? '';
+        : ins.address;
+    final siteCode = ins.siteCode;
 
     return Card(
       margin: const EdgeInsets.symmetric(
