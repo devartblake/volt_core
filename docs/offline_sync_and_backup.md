@@ -57,6 +57,12 @@ columns:
 
 ## Required Supabase setup
 
+**One-file option:** run `supabase/schema/voltcore_complete_schema.sql` — a
+single, idempotent, app-aligned superset of the v2 schema that already includes
+the `voltcore-files` bucket, the missing `maintenance_records`/detail-table RLS
+policies, storage policies, and a bootstrap/seed template. Running it is
+equivalent to steps 1–2 below plus the policy gaps.
+
 The client is tolerant: if a table/bucket is missing, the operation stays queued
 and retries — the app keeps working offline. To receive data:
 
