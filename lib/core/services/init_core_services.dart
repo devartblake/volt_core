@@ -5,6 +5,7 @@ import 'hive/hive_service.dart';
 import 'notifications/notification_service.dart';
 import 'photos/photo_repository.dart';
 import 'storage/file_storage_service.dart';
+import 'storage/web_file_store.dart';
 import 'supabase/supabase_service.dart';
 import 'sync/sync_service.dart';
 
@@ -44,6 +45,13 @@ Future<void> initCoreServices() async {
 
   // Open the adapter-free photo-attachments box.
   await PhotoRepository.instance.init();
+
+  // On web there is no filesystem: signature/photo bytes live in the
+  // WebFileStore (IndexedDB-backed Hive box). Open it so synchronous reads
+  // (thumbnails, PDF embedding) work.
+  if (kIsWeb) {
+    await WebFileStore.instance.init();
+  }
 
   // Initialize Supabase
   await SupabaseService.init();

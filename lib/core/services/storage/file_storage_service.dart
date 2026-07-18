@@ -6,6 +6,7 @@ import 'package:path_provider/path_provider.dart';
 
 import '../../configs/env.dart';
 import '../sync/sync_service.dart';
+import 'web_file_store.dart';
 
 /// Central file storage service that manages all file locations in the app.
 ///
@@ -262,14 +263,29 @@ class FileStorageService {
   ///
   /// [inspectionId]: Unique inspection ID
   /// [signatureBytes]: PNG image bytes
+  /// [fileName]: optional custom name (defaults to `<inspectionId>.png`)
   ///
-  /// Returns: Path to saved signature file
+  /// On web (no filesystem) the bytes go to [WebFileStore] under the logical
+  /// path, which is also what gets returned/persisted.
+  ///
+  /// Returns: path of the saved signature (native file path, or logical path
+  /// on web)
   Future<String> saveInspectionSignature({
     required String inspectionId,
     required Uint8List signatureBytes,
+    String? fileName,
   }) async {
+    final name = fileName ?? '$inspectionId.png';
+    final logicalPath = 'signatures/inspections/$name';
+
+    if (kIsWeb) {
+      await WebFileStore.instance.put(logicalPath, signatureBytes);
+      _queueSignatureBackup(logicalPath, logicalPath, web: true);
+      return logicalPath;
+    }
+
     final dir = await getInspectionSignaturesDirectory();
-    final file = File(path.join(dir.path, '$inspectionId.png'));
+    final file = File(path.join(dir.path, name));
 
     await file.writeAsBytes(signatureBytes);
 
@@ -277,7 +293,7 @@ class FileStorageService {
       debugPrint('[FileStorage] Saved inspection signature: ${file.path}');
     }
 
-    _queueSignatureBackup(file.path, 'signatures/inspections/$inspectionId.png');
+    _queueSignatureBackup(file.path, logicalPath);
     return file.path;
   }
 
@@ -285,13 +301,23 @@ class FileStorageService {
   ///
   /// [signatureType] (e.g. 'technician', 'customer') is part of the filename
   /// so multiple signatures for the same job don't overwrite each other.
+  /// On web the bytes go to [WebFileStore] under the logical path.
   Future<String> saveMaintenanceSignature({
     required String jobId,
     required Uint8List signatureBytes,
     required String signatureType,
   }) async {
+    final name = '${jobId}_$signatureType.png';
+    final logicalPath = 'signatures/maintenance/$name';
+
+    if (kIsWeb) {
+      await WebFileStore.instance.put(logicalPath, signatureBytes);
+      _queueSignatureBackup(logicalPath, logicalPath, web: true);
+      return logicalPath;
+    }
+
     final dir = await getMaintenanceSignaturesDirectory();
-    final file = File(path.join(dir.path, '${jobId}_$signatureType.png'));
+    final file = File(path.join(dir.path, name));
 
     await file.writeAsBytes(signatureBytes);
 
@@ -299,22 +325,28 @@ class FileStorageService {
       debugPrint('[FileStorage] Saved maintenance signature: ${file.path}');
     }
 
-    _queueSignatureBackup(
-      file.path,
-      'signatures/maintenance/${jobId}_$signatureType.png',
-    );
+    _queueSignatureBackup(file.path, logicalPath);
     return file.path;
   }
 
   /// Queue a signature image for cloud backup. Best-effort — a backup hiccup
   /// must never break the local signature save.
-  void _queueSignatureBackup(String localPath, String remotePath) {
+  void _queueSignatureBackup(String localPath, String remotePath,
+      {bool web = false}) {
     try {
-      SyncService.instance.enqueueFileUpload(
-        localPath: localPath,
-        remotePath: remotePath,
-        contentType: 'image/png',
-      );
+      if (web) {
+        SyncService.instance.enqueueBytesUpload(
+          storePath: localPath,
+          remotePath: remotePath,
+          contentType: 'image/png',
+        );
+      } else {
+        SyncService.instance.enqueueFileUpload(
+          localPath: localPath,
+          remotePath: remotePath,
+          contentType: 'image/png',
+        );
+      }
     } catch (e) {
       if (kDebugMode) {
         debugPrint('[FileStorage] Could not queue signature backup: $e');
@@ -322,8 +354,27 @@ class FileStorageService {
     }
   }
 
-  /// Get inspection signature file
+  /// Read signature bytes saved by either platform path: [WebFileStore] on
+  /// web (logical path), the filesystem on native (with [PathResolver]-style
+  /// fallback handled by callers if needed). Returns null when unavailable.
+  static Uint8List? readSignatureBytesSync(String savedPath) {
+    if (savedPath.isEmpty) return null;
+    final fromStore = WebFileStore.instance.getSync(savedPath);
+    if (fromStore != null) return fromStore;
+    if (kIsWeb) return null;
+    try {
+      final f = File(savedPath);
+      if (f.existsSync()) return f.readAsBytesSync();
+    } catch (_) {
+      // fall through
+    }
+    return null;
+  }
+
+  /// Get inspection signature file (always null on web — use
+  /// [readSignatureBytesSync] with the stored logical path there).
   Future<File?> getInspectionSignature(String inspectionId) async {
+    if (kIsWeb) return null;
     final dir = await getInspectionSignaturesDirectory();
     final file = File(path.join(dir.path, '$inspectionId.png'));
 
@@ -338,11 +389,13 @@ class FileStorageService {
   /// (e.g. 'technician', 'customer').
   ///
   /// Falls back to the legacy `<jobId>.png` filename for signatures saved
-  /// before signature types were included in the name.
+  /// before signature types were included in the name. Always null on web —
+  /// use [maintenanceSignatureExists]/[readSignatureBytesSync] there.
   Future<File?> getMaintenanceSignature(
     String jobId,
     String signatureType,
   ) async {
+    if (kIsWeb) return null;
     final dir = await getMaintenanceSignaturesDirectory();
     final file = File(path.join(dir.path, '${jobId}_$signatureType.png'));
 
@@ -356,6 +409,18 @@ class FileStorageService {
     }
 
     return null;
+  }
+
+  /// Whether a maintenance signature exists, on any platform.
+  Future<bool> maintenanceSignatureExists(
+    String jobId,
+    String signatureType,
+  ) async {
+    if (kIsWeb) {
+      return WebFileStore.instance
+          .existsSync('signatures/maintenance/${jobId}_$signatureType.png');
+    }
+    return (await getMaintenanceSignature(jobId, signatureType)) != null;
   }
 
   // ============================================

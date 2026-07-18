@@ -263,10 +263,10 @@ class PdfService {
     final items = <_PdfPhoto>[];
     for (final photo in photos) {
       try {
-        final file = io.File(photo.localPath);
-        if (!file.existsSync()) continue;
-        items.add(_PdfPhoto(pw.MemoryImage(await file.readAsBytes()),
-            photo.caption));
+        // Cross-platform read: WebFileStore on web, filesystem on native.
+        final bytes = await PhotoService.instance.loadBytes(photo);
+        if (bytes == null) continue;
+        items.add(_PdfPhoto(pw.MemoryImage(bytes), photo.caption));
       } catch (_) {
         // Skip unreadable images.
       }

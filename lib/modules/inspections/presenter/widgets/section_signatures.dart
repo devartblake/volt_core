@@ -1,10 +1,7 @@
-import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
-import 'package:path/path.dart' as p;
 import 'package:signature/signature.dart';
 import '../../../../core/services/storage/file_storage_service.dart';
-import '../../../../core/services/sync/sync_service.dart';
 import '../../../schedule/presenter/pages/schedule_task_page.dart';
 import '../../../schedule/presenter/widgets/dialogs/schedule_dialog.dart';
 import '../../domain/entities/inspection_entity.dart';
@@ -59,25 +56,13 @@ class _SectionSignaturesState extends State<SectionSignatures> {
     widget.onChanged(m);
   }
 
-  Future<String> _savePng(Uint8List bytes, String name) async {
-    final dir = await FileStorageService.instance
-        .getInspectionSignaturesDirectory();
-    final f = File(
-      '${dir.path}/$name-${DateTime.now().millisecondsSinceEpoch}.png',
+  Future<String> _savePng(Uint8List bytes, String name) {
+    // Web-aware storage + cloud backup live in FileStorageService.
+    return FileStorageService.instance.saveInspectionSignature(
+      inspectionId: m.id,
+      signatureBytes: bytes,
+      fileName: '$name-${DateTime.now().millisecondsSinceEpoch}.png',
     );
-    await f.writeAsBytes(bytes, flush: true);
-
-    // Best-effort cloud backup of the signature image.
-    try {
-      await SyncService.instance.enqueueFileUpload(
-        localPath: f.path,
-        remotePath: 'signatures/inspections/${p.basename(f.path)}',
-        contentType: 'image/png',
-      );
-    } catch (_) {
-      // Local save already succeeded; backup will be retried on next sync.
-    }
-    return f.path;
   }
 
   Future<void> _handleSave() async {

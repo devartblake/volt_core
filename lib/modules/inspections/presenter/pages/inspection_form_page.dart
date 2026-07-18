@@ -243,9 +243,22 @@ class _InspectionFormPageState extends ConsumerState<InspectionFormPage> {
 
       if (!mounted) return;
 
+      // The controller catches failures into state.error rather than throwing —
+      // check it so a failed save doesn't show success and navigate away.
+      final saveError = ref.read(inspectionFormControllerProvider).error;
+      if (saveError != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error saving inspection: $saveError'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Inspection saved & PDF generated'),
+          content: Text('Inspection saved'),
           duration: Duration(seconds: 2),
         ),
       );

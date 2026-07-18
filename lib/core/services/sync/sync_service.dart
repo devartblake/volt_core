@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
 
 import '../connectivity/connectivity_service.dart';
+import '../storage/web_file_store.dart';
 import 'file_backup_service.dart';
 import 'sync_operation.dart';
 import 'sync_queue.dart';
@@ -169,6 +170,26 @@ class SyncService {
     await _afterEnqueue();
   }
 
+  /// Queue an upload of bytes stored in [WebFileStore] (web platforms, where
+  /// there is no local filesystem). [storePath] is the WebFileStore key.
+  Future<void> enqueueBytesUpload({
+    required String storePath,
+    required String remotePath,
+    String contentType = 'application/octet-stream',
+  }) async {
+    await _queue.enqueue(SyncOperation(
+      id: _uuid.v4(),
+      type: SyncOpType.bytesUpload,
+      entityId: remotePath,
+      payload: {
+        'storePath': storePath,
+        'remotePath': remotePath,
+        'contentType': contentType,
+      },
+    ));
+    await _afterEnqueue();
+  }
+
   Future<void> _afterEnqueue() async {
     await _refreshCounts();
     unawaited(sync());
@@ -296,6 +317,20 @@ class SyncService {
       case SyncOpType.fileUpload:
         await FileBackupService.instance.uploadFile(
           localPath: op.payload['localPath'] as String,
+          remotePath: op.payload['remotePath'] as String,
+          contentType:
+              op.payload['contentType'] as String? ?? 'application/octet-stream',
+        );
+        break;
+      case SyncOpType.bytesUpload:
+        final bytes =
+            WebFileStore.instance.getSync(op.payload['storePath'] as String);
+        if (bytes == null) {
+          // Stored bytes are gone (cleared storage) — drop, don't retry.
+          throw const FileBackupSkip('stored bytes missing');
+        }
+        await FileBackupService.instance.uploadBytes(
+          bytes: bytes,
           remotePath: op.payload['remotePath'] as String,
           contentType:
               op.payload['contentType'] as String? ?? 'application/octet-stream',

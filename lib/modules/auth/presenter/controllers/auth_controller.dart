@@ -128,9 +128,21 @@ StateNotifierProvider<AuthController, AuthState>((ref) {
   final loginUseCase = ref.watch(loginUseCaseProvider);
   final logoutUseCase = ref.watch(logoutUseCaseProvider);
 
-  return AuthController(
+  final controller = AuthController(
     ref,
     loginUseCase,
     logoutUseCase,
   );
+
+  // Rehydrate AuthState from a persisted Supabase session on cold start, so a
+  // still-valid token doesn't force the user through the login form again.
+  // Best-effort: failures leave the state unauthenticated (login page shows).
+  ref.read(authRepositoryProvider).restoreSession().then(
+    controller.restoreSession,
+    onError: (Object e) {
+      debugPrint('authStateProvider.restoreSession failed: $e');
+    },
+  );
+
+  return controller;
 });

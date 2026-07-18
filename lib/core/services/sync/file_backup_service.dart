@@ -48,7 +48,20 @@ class FileBackupService {
       throw const FileBackupSkip('local file missing');
     }
 
-    final bytes = await file.readAsBytes();
+    return uploadBytes(
+      bytes: await file.readAsBytes(),
+      remotePath: remotePath,
+      contentType: contentType,
+    );
+  }
+
+  /// Upload in-memory [bytes] to [remotePath] within [bucket]. Used directly
+  /// on web, where there is no local filesystem.
+  Future<String> uploadBytes({
+    required Uint8List bytes,
+    required String remotePath,
+    String contentType = 'application/octet-stream',
+  }) async {
     await _client.storage.from(bucket).uploadBinary(
           remotePath,
           bytes,
