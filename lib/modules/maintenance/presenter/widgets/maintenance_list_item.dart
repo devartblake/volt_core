@@ -231,7 +231,7 @@ class _CompletedBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: colorScheme.primaryContainer.withOpacity(0.6),
+        color: colorScheme.primaryContainer.withValues(alpha: 0.6),
         borderRadius: BorderRadius.circular(999),
       ),
       child: Text(
@@ -262,7 +262,7 @@ class _InfoChip extends StatelessWidget {
     final colorScheme = theme.colorScheme;
 
     final bg = emphasized
-        ? colorScheme.primaryContainer.withOpacity(0.5)
+        ? colorScheme.primaryContainer.withValues(alpha: 0.5)
         : colorScheme.surfaceContainerHighest;
 
     return Container(

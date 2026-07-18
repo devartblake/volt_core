@@ -245,7 +245,7 @@ class _ScheduleTaskDialogState extends State<ScheduleTaskDialog> {
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: taskColor.withOpacity(0.1),
+                    color: taskColor.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Icon(

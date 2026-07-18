@@ -152,7 +152,7 @@ class SelectionOptionsPage extends ConsumerWidget {
                           borderRadius: BorderRadius.circular(12),
                         ),
                         filled: true,
-                        fillColor: colorScheme.surfaceContainerHighest.withOpacity(0.3),
+                        fillColor: colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
                       ),
                       validator: (value) {
                         if (value == null || value.trim().isEmpty) {
@@ -207,7 +207,7 @@ class SelectionOptionsPage extends ConsumerWidget {
                       Icon(
                         Icons.inbox_outlined,
                         size: 48,
-                        color: colorScheme.onSurfaceVariant.withOpacity(0.5),
+                        color: colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
                       ),
                       const SizedBox(height: 12),
                       Text(

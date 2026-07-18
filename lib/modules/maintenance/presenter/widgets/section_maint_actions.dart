@@ -437,8 +437,8 @@ class _ActionTile extends StatelessWidget {
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           color: value
-              ? colorScheme.primaryContainer.withOpacity(0.25)
-              : colorScheme.surfaceContainerHighest.withOpacity(0.35),
+              ? colorScheme.primaryContainer.withValues(alpha: 0.25)
+              : colorScheme.surfaceContainerHighest.withValues(alpha: 0.35),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(color: colorScheme.outlineVariant),
         ),

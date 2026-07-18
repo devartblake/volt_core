@@ -76,13 +76,13 @@ class _SectionOperationalUseState extends State<SectionOperationalUse> {
             Container(
               decoration: BoxDecoration(
                 color: m.emergencyOnly
-                    ? theme.colorScheme.errorContainer.withOpacity(0.3)
+                    ? theme.colorScheme.errorContainer.withValues(alpha: 0.3)
                     : theme.colorScheme.surfaceContainerHighest
-                    .withOpacity(0.3),
+                    .withValues(alpha: 0.3),
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
                   color: m.emergencyOnly
-                      ? theme.colorScheme.error.withOpacity(0.5)
+                      ? theme.colorScheme.error.withValues(alpha: 0.5)
                       : theme.colorScheme.outlineVariant,
                   width: 1,
                 ),

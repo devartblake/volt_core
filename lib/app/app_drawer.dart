@@ -520,7 +520,7 @@ class _ModernDrawerHeader extends StatelessWidget {
           end: Alignment.bottomRight,
           colors: [
             colorScheme.primaryContainer,
-            colorScheme.primaryContainer.withOpacity(0.7),
+            colorScheme.primaryContainer.withValues(alpha: 0.7),
           ],
         ),
       ),
@@ -534,7 +534,7 @@ class _ModernDrawerHeader extends StatelessWidget {
               borderRadius: BorderRadius.circular(16),
               boxShadow: [
                 BoxShadow(
-                  color: colorScheme.primary.withOpacity(0.3),
+                  color: colorScheme.primary.withValues(alpha: 0.3),
                   blurRadius: 8,
                   offset: const Offset(0, 2),
                 ),
@@ -564,7 +564,7 @@ class _ModernDrawerHeader extends StatelessWidget {
                   companySubtitle,
                   style: theme.textTheme.bodyMedium?.copyWith(
                     color:
-                    colorScheme.onPrimaryContainer.withOpacity(0.8),
+                    colorScheme.onPrimaryContainer.withValues(alpha: 0.8),
                   ),
                 ),
               ],
@@ -740,7 +740,7 @@ class _ProfileFooter extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        color: colorScheme.surfaceContainerHighest.withOpacity(0.5),
+        color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
         border: Border(
           top: BorderSide(
             color: colorScheme.outlineVariant,
@@ -756,7 +756,7 @@ class _ProfileFooter extends StatelessWidget {
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 border: Border.all(
-                  color: colorScheme.primary.withOpacity(0.3),
+                  color: colorScheme.primary.withValues(alpha: 0.3),
                   width: 2,
                 ),
               ),
@@ -944,7 +944,7 @@ class _ProfileMini extends StatelessWidget {
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             border: Border.all(
-              color: colorScheme.primary.withOpacity(0.3),
+              color: colorScheme.primary.withValues(alpha: 0.3),
               width: 2,
             ),
           ),

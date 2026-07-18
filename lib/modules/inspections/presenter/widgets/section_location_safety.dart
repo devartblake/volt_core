@@ -223,12 +223,12 @@ class _SectionLocationSafetyState extends State<SectionLocationSafety> {
       margin: const EdgeInsets.only(bottom: 8),
       decoration: BoxDecoration(
         color: val
-            ? theme.colorScheme.primaryContainer.withOpacity(0.3)
-            : theme.colorScheme.surfaceContainerHighest.withOpacity(0.3),
+            ? theme.colorScheme.primaryContainer.withValues(alpha: 0.3)
+            : theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: val
-              ? theme.colorScheme.primary.withOpacity(0.5)
+              ? theme.colorScheme.primary.withValues(alpha: 0.5)
               : theme.colorScheme.outlineVariant,
           width: 1,
         ),

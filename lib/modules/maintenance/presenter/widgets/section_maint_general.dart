@@ -538,7 +538,7 @@ class _StatusChip extends StatelessWidget {
       decoration: BoxDecoration(
         color: background,
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: background.withOpacity(0.6)),
+        border: Border.all(color: background.withValues(alpha: 0.6)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,

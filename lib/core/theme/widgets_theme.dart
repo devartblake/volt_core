@@ -7,7 +7,7 @@ class WidgetsTheme {
   static InputDecorationTheme inputDecoration(ColorScheme colors) {
     return InputDecorationTheme(
       filled: true,
-      fillColor: colors.surfaceVariant.withOpacity(0.4),
+      fillColor: colors.surfaceVariant.withValues(alpha: 0.4),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
         borderSide: BorderSide(color: colors.outlineVariant),
@@ -23,7 +23,7 @@ class WidgetsTheme {
       contentPadding:
       const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       labelStyle: TextStyle(color: colors.onSurfaceVariant),
-      hintStyle: TextStyle(color: colors.onSurfaceVariant.withOpacity(0.7)),
+      hintStyle: TextStyle(color: colors.onSurfaceVariant.withValues(alpha: 0.7)),
     );
   }
 
