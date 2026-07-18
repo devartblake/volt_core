@@ -168,9 +168,9 @@ class _LoginPageState extends ConsumerState<LoginPage> {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            colorScheme.primary.withOpacity(0.8),
-            colorScheme.secondary.withOpacity(0.6),
-            colorScheme.tertiary.withOpacity(0.4),
+            colorScheme.primary.withValues(alpha: 0.8),
+            colorScheme.secondary.withValues(alpha: 0.6),
+            colorScheme.tertiary.withValues(alpha: 0.4),
           ],
         ),
       ),
@@ -180,7 +180,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
           Positioned.fill(
             child: CustomPaint(
               painter: _GridPainter(
-                color: Colors.white.withOpacity(0.05),
+                color: Colors.white.withValues(alpha: 0.05),
               ),
             ),
           ),
@@ -195,7 +195,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                   Icon(
                     Icons.bolt,
                     size: 120,
-                    color: Colors.white.withOpacity(0.9),
+                    color: Colors.white.withValues(alpha: 0.9),
                   ),
                   const SizedBox(height: 32),
                   Text(
@@ -203,7 +203,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                     style: TextStyle(
                       fontSize: 56,
                       fontWeight: FontWeight.bold,
-                      color: Colors.white.withOpacity(0.95),
+                      color: Colors.white.withValues(alpha: 0.95),
                       letterSpacing: 2,
                     ),
                   ),
@@ -212,7 +212,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                     'Inspection Management System',
                     style: TextStyle(
                       fontSize: 20,
-                      color: Colors.white.withOpacity(0.8),
+                      color: Colors.white.withValues(alpha: 0.8),
                       letterSpacing: 1,
                     ),
                   ),
@@ -235,10 +235,10 @@ class _LoginPageState extends ConsumerState<LoginPage> {
         vertical: 16,
       ),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.1),
+        color: Colors.white.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: Colors.white.withOpacity(0.2),
+          color: Colors.white.withValues(alpha: 0.2),
         ),
       ),
       child: Column(
@@ -258,12 +258,12 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, color: Colors.white.withOpacity(0.9), size: 20),
+        Icon(icon, color: Colors.white.withValues(alpha: 0.9), size: 20),
         const SizedBox(width: 12),
         Text(
           text,
           style: TextStyle(
-            color: Colors.white.withOpacity(0.9),
+            color: Colors.white.withValues(alpha: 0.9),
             fontSize: 16,
             fontWeight: FontWeight.w500,
           ),
@@ -299,7 +299,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
           'Sign in with your credentials to access Voltcore inspection and maintenance management.',
           style: TextStyle(
             fontSize: 15,
-            color: Colors.white.withOpacity(0.7),
+            color: Colors.white.withValues(alpha: 0.7),
             height: 1.5,
           ),
         ),
@@ -353,7 +353,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                     _obscurePassword
                         ? Icons.visibility_outlined
                         : Icons.visibility_off_outlined,
-                    color: Colors.white.withOpacity(0.5),
+                    color: Colors.white.withValues(alpha: 0.5),
                   ),
                   onPressed: () {
                     setState(() {
@@ -413,16 +413,16 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.1),
+        color: Colors.white.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: Colors.white.withOpacity(0.2),
+          color: Colors.white.withValues(alpha: 0.2),
         ),
       ),
       child: Text(
         'SIGN IN',
         style: TextStyle(
-          color: Colors.white.withOpacity(0.9),
+          color: Colors.white.withValues(alpha: 0.9),
           fontSize: 11,
           fontWeight: FontWeight.w600,
           letterSpacing: 1.5,
@@ -436,10 +436,10 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.red.withOpacity(0.1),
+        color: Colors.red.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: Colors.red.withOpacity(0.3),
+          color: Colors.red.withValues(alpha: 0.3),
         ),
       ),
       child: Row(
@@ -466,7 +466,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
       children: [
         Expanded(
           child: Divider(
-            color: Colors.white.withOpacity(0.1),
+            color: Colors.white.withValues(alpha: 0.1),
             thickness: 1,
           ),
         ),
@@ -475,7 +475,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
           child: Text(
             'SELECT ROLE',
             style: TextStyle(
-              color: Colors.white.withOpacity(0.5),
+              color: Colors.white.withValues(alpha: 0.5),
               fontSize: 12,
               fontWeight: FontWeight.w600,
               letterSpacing: 1.2,
@@ -484,7 +484,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
         ),
         Expanded(
           child: Divider(
-            color: Colors.white.withOpacity(0.1),
+            color: Colors.white.withValues(alpha: 0.1),
             thickness: 1,
           ),
         ),
@@ -502,7 +502,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
         style: ElevatedButton.styleFrom(
           backgroundColor: Colors.white,
           foregroundColor: const Color(0xFF1a1a2e),
-          disabledBackgroundColor: Colors.white.withOpacity(0.3),
+          disabledBackgroundColor: Colors.white.withValues(alpha: 0.3),
           elevation: 0,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
@@ -551,7 +551,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
         style: OutlinedButton.styleFrom(
           foregroundColor: Colors.white,
           side: BorderSide(
-            color: Colors.white.withOpacity(0.3),
+            color: Colors.white.withValues(alpha: 0.3),
           ),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
@@ -629,47 +629,47 @@ class _ModernTextField extends StatelessWidget {
       decoration: InputDecoration(
         labelText: label,
         hintText: hintText,
-        prefixIcon: Icon(icon, color: Colors.white.withOpacity(0.5), size: 20),
+        prefixIcon: Icon(icon, color: Colors.white.withValues(alpha: 0.5), size: 20),
         suffixIcon: suffixIcon,
         labelStyle: TextStyle(
-          color: Colors.white.withOpacity(0.7),
+          color: Colors.white.withValues(alpha: 0.7),
           fontSize: 14,
         ),
         hintStyle: TextStyle(
-          color: Colors.white.withOpacity(0.3),
+          color: Colors.white.withValues(alpha: 0.3),
           fontSize: 14,
         ),
         filled: true,
-        fillColor: Colors.white.withOpacity(0.05),
+        fillColor: Colors.white.withValues(alpha: 0.05),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide(
-            color: Colors.white.withOpacity(0.1),
+            color: Colors.white.withValues(alpha: 0.1),
           ),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide(
-            color: Colors.white.withOpacity(0.1),
+            color: Colors.white.withValues(alpha: 0.1),
           ),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide(
-            color: Colors.white.withOpacity(0.4),
+            color: Colors.white.withValues(alpha: 0.4),
             width: 2,
           ),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide(
-            color: Colors.red.withOpacity(0.5),
+            color: Colors.red.withValues(alpha: 0.5),
           ),
         ),
         focusedErrorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide(
-            color: Colors.red.withOpacity(0.7),
+            color: Colors.red.withValues(alpha: 0.7),
             width: 2,
           ),
         ),
@@ -748,13 +748,13 @@ class _RoleOption extends StatelessWidget {
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             color: selected
-                ? Colors.white.withOpacity(0.1)
-                : Colors.white.withOpacity(0.03),
+                ? Colors.white.withValues(alpha: 0.1)
+                : Colors.white.withValues(alpha: 0.03),
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
               color: selected
-                  ? Colors.white.withOpacity(0.4)
-                  : Colors.white.withOpacity(0.1),
+                  ? Colors.white.withValues(alpha: 0.4)
+                  : Colors.white.withValues(alpha: 0.1),
               width: selected ? 2 : 1,
             ),
           ),
@@ -765,13 +765,13 @@ class _RoleOption extends StatelessWidget {
                 height: 36,
                 decoration: BoxDecoration(
                   color: selected
-                      ? Colors.white.withOpacity(0.2)
-                      : Colors.white.withOpacity(0.05),
+                      ? Colors.white.withValues(alpha: 0.2)
+                      : Colors.white.withValues(alpha: 0.05),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Icon(
                   icon,
-                  color: Colors.white.withOpacity(selected ? 0.9 : 0.6),
+                  color: Colors.white.withValues(alpha: selected ? 0.9 : 0.6),
                   size: 20,
                 ),
               ),
@@ -780,7 +780,7 @@ class _RoleOption extends StatelessWidget {
                 child: Text(
                   label,
                   style: TextStyle(
-                    color: Colors.white.withOpacity(selected ? 0.95 : 0.7),
+                    color: Colors.white.withValues(alpha: selected ? 0.95 : 0.7),
                     fontSize: 15,
                     fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
                   ),
@@ -789,7 +789,7 @@ class _RoleOption extends StatelessWidget {
               if (selected)
                 Icon(
                   Icons.check_circle,
-                  color: Colors.white.withOpacity(0.9),
+                  color: Colors.white.withValues(alpha: 0.9),
                   size: 20,
                 ),
             ],
@@ -814,10 +814,10 @@ class _CurrentSessionBanner extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.blue.withOpacity(0.1),
+        color: Colors.blue.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: Colors.blue.withOpacity(0.3),
+          color: Colors.blue.withValues(alpha: 0.3),
         ),
       ),
       child: Row(
@@ -855,7 +855,7 @@ class _FooterLink extends StatelessWidget {
     return Text(
       text,
       style: TextStyle(
-        color: Colors.white.withOpacity(0.4),
+        color: Colors.white.withValues(alpha: 0.4),
         fontSize: 13,
       ),
     );

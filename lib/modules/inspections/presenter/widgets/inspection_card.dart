@@ -39,7 +39,7 @@ class InspectionCard extends StatelessWidget {
                 height: 48,
                 decoration: BoxDecoration(
                   color: _getGradeColor(inspection.siteGrade, theme)
-                      .withOpacity(0.1),
+                      .withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(
@@ -85,7 +85,7 @@ class InspectionCard extends StatelessWidget {
                             decoration: BoxDecoration(
                               color:
                               _getGradeColor(inspection.siteGrade, theme)
-                                  .withOpacity(0.15),
+                                  .withValues(alpha: 0.15),
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Text(

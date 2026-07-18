@@ -28,13 +28,13 @@ class InspectionDetailPage extends ConsumerWidget {
               Icon(
                 Icons.error_outline,
                 size: 80,
-                color: theme.colorScheme.error.withOpacity(0.5),
+                color: theme.colorScheme.error.withValues(alpha: 0.5),
               ),
               const SizedBox(height: 24),
               Text(
                 'Inspection not found',
                 style: theme.textTheme.titleLarge?.copyWith(
-                  color: theme.colorScheme.onSurface.withOpacity(0.6),
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
                 ),
               ),
             ],
@@ -156,7 +156,7 @@ class InspectionDetailPage extends ConsumerWidget {
                         ),
                         decoration: BoxDecoration(
                           color:
-                          _getGradeColor(ins.siteGrade).withOpacity(0.15),
+                          _getGradeColor(ins.siteGrade).withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Row(
@@ -247,14 +247,14 @@ class InspectionDetailPage extends ConsumerWidget {
                       Icons.picture_as_pdf_outlined,
                       size: 80,
                       color:
-                      theme.colorScheme.primary.withOpacity(0.4),
+                      theme.colorScheme.primary.withValues(alpha: 0.4),
                     ),
                     const SizedBox(height: 16),
                     Text(
                       'PDF ready',
                       style: theme.textTheme.titleMedium?.copyWith(
                         color: theme.colorScheme.onSurface
-                            .withOpacity(0.7),
+                            .withValues(alpha: 0.7),
                       ),
                     ),
                     const SizedBox(height: 8),
@@ -263,7 +263,7 @@ class InspectionDetailPage extends ConsumerWidget {
                       textAlign: TextAlign.center,
                       style: theme.textTheme.bodyMedium?.copyWith(
                         color: theme.colorScheme.onSurface
-                            .withOpacity(0.6),
+                            .withValues(alpha: 0.6),
                       ),
                     ),
                     const SizedBox(height: 16),
@@ -295,14 +295,14 @@ class InspectionDetailPage extends ConsumerWidget {
                   Icon(
                     Icons.picture_as_pdf_outlined,
                     size: 80,
-                    color: theme.colorScheme.primary.withOpacity(0.3),
+                    color: theme.colorScheme.primary.withValues(alpha: 0.3),
                   ),
                   const SizedBox(height: 24),
                   Text(
                     'No PDF file available',
                     style: theme.textTheme.titleMedium?.copyWith(
                       color: theme.colorScheme.onSurface
-                          .withOpacity(0.6),
+                          .withValues(alpha: 0.6),
                     ),
                   ),
                   const SizedBox(height: 8),
@@ -310,7 +310,7 @@ class InspectionDetailPage extends ConsumerWidget {
                     'Generate a PDF to view it here',
                     style: theme.textTheme.bodyMedium?.copyWith(
                       color: theme.colorScheme.onSurface
-                          .withOpacity(0.5),
+                          .withValues(alpha: 0.5),
                     ),
                   ),
                 ],
@@ -326,7 +326,7 @@ class InspectionDetailPage extends ConsumerWidget {
             color: theme.colorScheme.surface,
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.05),
+                color: Colors.black.withValues(alpha: 0.05),
                 blurRadius: 10,
                 offset: const Offset(0, -2),
               ),

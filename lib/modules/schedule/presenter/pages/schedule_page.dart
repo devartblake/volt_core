@@ -114,7 +114,7 @@ class _SchedulePageState extends ConsumerState<SchedulePage> {
                                 mode.description,
                                 style: theme.textTheme.bodySmall?.copyWith(
                                   color: isActive
-                                      ? theme.colorScheme.primary.withOpacity(0.7)
+                                      ? theme.colorScheme.primary.withValues(alpha: 0.7)
                                       : theme.colorScheme.onSurfaceVariant,
                                 ),
                               ),
@@ -284,7 +284,7 @@ class _SchedulePageState extends ConsumerState<SchedulePage> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.3),
+        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
         border: Border(
           bottom: BorderSide(
             color: theme.colorScheme.outlineVariant,
@@ -433,20 +433,20 @@ class _SchedulePageState extends ConsumerState<SchedulePage> {
             Icon(
               Icons.event_busy,
               size: 80,
-              color: theme.colorScheme.primary.withOpacity(0.3),
+              color: theme.colorScheme.primary.withValues(alpha: 0.3),
             ),
             const SizedBox(height: 24),
             Text(
               'No inspections found',
               style: theme.textTheme.titleLarge?.copyWith(
-                color: theme.colorScheme.onSurface.withOpacity(0.6),
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
               ),
             ),
             const SizedBox(height: 8),
             Text(
               'Try adjusting your filter',
               style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSurface.withOpacity(0.5),
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
               ),
             ),
           ],
@@ -727,7 +727,7 @@ class _ScheduleCard extends StatelessWidget {
                 height: 48,
                 decoration: BoxDecoration(
                   color: isPast
-                      ? Colors.green.withOpacity(0.1)
+                      ? Colors.green.withValues(alpha: 0.1)
                       : theme.colorScheme.primaryContainer,
                   borderRadius: BorderRadius.circular(12),
                 ),
@@ -778,7 +778,7 @@ class _ScheduleCard extends StatelessWidget {
                             ),
                             decoration: BoxDecoration(
                               color: _getGradeColor(item.siteGrade)
-                                  .withOpacity(0.15),
+                                  .withValues(alpha: 0.15),
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Text(

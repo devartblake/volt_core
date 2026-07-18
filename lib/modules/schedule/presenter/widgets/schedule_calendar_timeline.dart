@@ -125,7 +125,7 @@ class ScheduleCalendarTimeline extends StatelessWidget {
                       shape: BoxShape.circle,
                     ),
                     todayDecoration: BoxDecoration(
-                      color: theme.colorScheme.primary.withOpacity(0.3),
+                      color: theme.colorScheme.primary.withValues(alpha: 0.3),
                       shape: BoxShape.circle,
                     ),
                     markerDecoration: BoxDecoration(
@@ -222,7 +222,7 @@ class ScheduleCalendarTimeline extends StatelessWidget {
             shape: BoxShape.circle,
           ),
           todayDecoration: BoxDecoration(
-            color: theme.colorScheme.primary.withOpacity(0.3),
+            color: theme.colorScheme.primary.withValues(alpha: 0.3),
             shape: BoxShape.circle,
           ),
           markerDecoration: BoxDecoration(
@@ -343,7 +343,7 @@ class ScheduleCalendarTimeline extends StatelessWidget {
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
             color: isToday
-                ? theme.colorScheme.primaryContainer.withOpacity(0.5)
+                ? theme.colorScheme.primaryContainer.withValues(alpha: 0.5)
                 : (isSelected
                 ? theme.colorScheme.surfaceContainerHighest
                 : null),
@@ -463,7 +463,7 @@ class ScheduleCalendarTimeline extends StatelessWidget {
                             ),
                             decoration: BoxDecoration(
                               color: isPast
-                                  ? Colors.green.withOpacity(0.1)
+                                  ? Colors.green.withValues(alpha: 0.1)
                                   : theme.colorScheme.primaryContainer,
                               borderRadius: BorderRadius.circular(8),
                             ),
@@ -566,7 +566,7 @@ class ScheduleCalendarTimeline extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.15),
+        color: color.withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Text(
@@ -589,7 +589,7 @@ class ScheduleCalendarTimeline extends StatelessWidget {
             Icon(
               Icons.timeline_outlined,
               size: 64,
-              color: theme.colorScheme.onSurfaceVariant.withOpacity(0.5),
+              color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
             ),
             const SizedBox(height: 16),
             Text(
@@ -603,7 +603,7 @@ class ScheduleCalendarTimeline extends StatelessWidget {
               'Tasks scheduled this week and month\nwill appear here',
               textAlign: TextAlign.center,
               style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant.withOpacity(0.7),
+                color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
               ),
             ),
           ],

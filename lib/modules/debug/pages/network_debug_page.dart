@@ -261,7 +261,7 @@ class _NetworkDebugPageState extends ConsumerState<NetworkDebugPage> {
             label,
             style: TextStyle(
               fontSize: 12,
-              color: textColor.withOpacity(0.7),
+              color: textColor.withValues(alpha: 0.7),
             ),
           ),
           const SizedBox(width: 6),
@@ -325,9 +325,9 @@ class _NetworkLogTile extends StatelessWidget {
             ? Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
           decoration: BoxDecoration(
-            color: statusColor.withOpacity(0.1),
+            color: statusColor.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: statusColor.withOpacity(0.3)),
+            border: Border.all(color: statusColor.withValues(alpha: 0.3)),
           ),
           child: Text(
             log.statusCode.toString(),
@@ -355,7 +355,7 @@ class _NetworkLogTile extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Text(
@@ -429,7 +429,7 @@ class _NetworkLogDetails extends StatelessWidget {
 
     return Container(
       padding: const EdgeInsets.all(16),
-      color: colors.surfaceVariant.withOpacity(0.3),
+      color: colors.surfaceVariant.withValues(alpha: 0.3),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -545,13 +545,13 @@ class _NetworkLogDetails extends StatelessWidget {
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
             color: isError
-                ? colors.errorContainer.withOpacity(0.3)
+                ? colors.errorContainer.withValues(alpha: 0.3)
                 : colors.surface,
             borderRadius: BorderRadius.circular(8),
             border: Border.all(
               color: isError
-                  ? colors.error.withOpacity(0.3)
-                  : colors.outline.withOpacity(0.2),
+                  ? colors.error.withValues(alpha: 0.3)
+                  : colors.outline.withValues(alpha: 0.2),
             ),
           ),
           child: SelectableText(
