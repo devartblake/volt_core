@@ -81,10 +81,10 @@ class _ScheduleTaskPageState extends ConsumerState<ScheduleTaskPage> {
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: theme.colorScheme.primaryContainer.withOpacity(0.3),
+            color: theme.colorScheme.primaryContainer.withValues(alpha: 0.3),
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
-              color: theme.colorScheme.primary.withOpacity(0.2),
+              color: theme.colorScheme.primary.withValues(alpha: 0.2),
             ),
           ),
           child: Row(
@@ -395,7 +395,7 @@ class _ScheduleTaskPageState extends ConsumerState<ScheduleTaskPage> {
                       color: (_selectedType == TaskType.inspection
                           ? Colors.blue
                           : Colors.orange)
-                          .withOpacity(0.1),
+                          .withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Icon(
@@ -456,7 +456,7 @@ class _ScheduleTaskPageState extends ConsumerState<ScheduleTaskPage> {
             Icon(
               icon,
               size: 64,
-              color: theme.colorScheme.onSurfaceVariant.withOpacity(0.5),
+              color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
             ),
             const SizedBox(height: 16),
             Text(
@@ -602,8 +602,8 @@ class _TaskTypeCard extends StatelessWidget {
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
                   color: isSelected
-                      ? color.withOpacity(0.1)
-                      : theme.colorScheme.surfaceVariant.withOpacity(0.3),
+                      ? color.withValues(alpha: 0.1)
+                      : theme.colorScheme.surfaceVariant.withValues(alpha: 0.3),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
@@ -762,7 +762,7 @@ class _ExistingJobCard extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: color.withOpacity(0.1),
+                  color: color.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Icon(icon, color: color, size: 24),
@@ -813,11 +813,11 @@ class _ExistingJobCard extends StatelessWidget {
                             ),
                             decoration: BoxDecoration(
                               color: _getGradeColor(grade!)
-                                  .withOpacity(0.1),
+                                  .withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(4),
                               border: Border.all(
                                 color: _getGradeColor(grade!)
-                                    .withOpacity(0.3),
+                                    .withValues(alpha: 0.3),
                               ),
                             ),
                             child: Text(

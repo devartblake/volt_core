@@ -1,10 +1,4 @@
-import 'package:hive/hive.dart';
-import 'package:uuid/uuid.dart';
-import '../../../../core/services/pdf/pdf_prefs_service.dart';
-import '../../../../core/services/pdf/pdf_service.dart';
 import '../entities/maintenance_job_entity.dart';
-import '../../infra/datasources/hive_boxes_maintenance.dart';
-import '../../infra/models/maintenance_record.dart';
 
 /// Clean-domain contract for maintenance jobs.
 ///

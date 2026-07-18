@@ -73,7 +73,6 @@ class _MaintenanceFormPageState extends ConsumerState<MaintenanceFormPage> {
 
     final controller =
     ref.read(maintenanceFormControllerProvider(widget.id).notifier);
-    final repo = ref.read(maintenanceRepoProvider);
 
     try {
       // Step 1: Save the maintenance record

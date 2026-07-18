@@ -51,7 +51,7 @@ class ScheduleRemoteDatasourceImpl implements ScheduleRemoteDatasource {
     if (response == null) return null;
 
     return ScheduleTaskModel.fromJson(
-      (response as Map<String, dynamic>),
+      response,
     ).toEntity();
   }
 
@@ -64,7 +64,7 @@ class ScheduleRemoteDatasourceImpl implements ScheduleRemoteDatasource {
         await _client.from(scheduleTable).upsert(payload).select().single();
 
     return ScheduleTaskModel.fromJson(
-      (response as Map<String, dynamic>),
+      response,
     ).toEntity();
   }
 

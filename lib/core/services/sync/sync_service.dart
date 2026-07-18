@@ -116,6 +116,12 @@ class SyncService {
     required String id,
     required Map<String, dynamic> payload,
   }) async {
+    if (table.isEmpty || id.trim().isEmpty) {
+      if (kDebugMode) {
+        debugPrint('[Sync] Skipping upsert enqueue with empty table/id ($table)');
+      }
+      return;
+    }
     await _queue.enqueue(SyncOperation(
       id: _uuid.v4(),
       type: SyncOpType.upsert,
@@ -130,6 +136,12 @@ class SyncService {
     required String table,
     required String id,
   }) async {
+    if (table.isEmpty || id.trim().isEmpty) {
+      if (kDebugMode) {
+        debugPrint('[Sync] Skipping delete enqueue with empty table/id ($table)');
+      }
+      return;
+    }
     await _queue.enqueue(SyncOperation(
       id: _uuid.v4(),
       type: SyncOpType.delete,
@@ -233,6 +245,24 @@ class SyncService {
     );
   }
 
+  /// Identity columns that are `uuid` in Postgres. An empty string is never a
+  /// valid uuid, so we must omit these rather than send '' (which triggers
+  /// `invalid input syntax for type uuid: ""`).
+  static const Set<String> _uuidKeys = {
+    'id',
+    'tenant_id',
+    'job_id',
+    'site_id',
+    'inspection_id',
+    'created_by',
+    'updated_by',
+    'assigned_technician_user_id',
+    'assigned_to_user_id',
+    'source_id',
+  };
+
+  bool _isBlank(dynamic v) => v == null || (v is String && v.trim().isEmpty);
+
   Future<void> _dispatch(SupabaseClient client, SyncOperation op) async {
     switch (op.type) {
       case SyncOpType.upsert:
@@ -251,8 +281,14 @@ class SyncService {
         break;
       case SyncOpType.delete:
         final table = op.payload['table'] as String;
-        final id = op.payload['id'] as String;
-        await client.from(table).delete().eq('id', id);
+        final id = op.payload['id'] as String?;
+        if (_isBlank(id)) {
+          if (kDebugMode) {
+            debugPrint('[Sync] Dropping delete on "$table" with no valid id');
+          }
+          return;
+        }
+        await client.from(table).delete().eq('id', id!);
         break;
       case SyncOpType.fileUpload:
         await FileBackupService.instance.uploadFile(

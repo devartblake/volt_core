@@ -1,5 +1,4 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:path/path.dart' as p;
 import '../../../../core/services/email/email_service.dart';
 import '../../../../core/services/pdf/pdf_prefs_service.dart';
 import '../../../../core/services/pdf/pdf_service.dart';

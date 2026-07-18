@@ -111,7 +111,7 @@ class ScheduleCalendarDailyAgenda extends StatelessWidget {
             shape: BoxShape.circle,
           ),
           todayDecoration: BoxDecoration(
-            color: theme.colorScheme.primary.withOpacity(0.3),
+            color: theme.colorScheme.primary.withValues(alpha: 0.3),
             shape: BoxShape.circle,
           ),
           markerDecoration: BoxDecoration(
@@ -153,7 +153,7 @@ class ScheduleCalendarDailyAgenda extends StatelessWidget {
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               color: isToday
-                  ? theme.colorScheme.primaryContainer.withOpacity(0.5)
+                  ? theme.colorScheme.primaryContainer.withValues(alpha: 0.5)
                   : null,
               border: Border(
                 bottom: BorderSide(
@@ -291,7 +291,7 @@ class ScheduleCalendarDailyAgenda extends StatelessWidget {
                           vertical: 2,
                         ),
                         decoration: BoxDecoration(
-                          color: Colors.green.withOpacity(0.1),
+                          color: Colors.green.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(
@@ -314,8 +314,8 @@ class ScheduleCalendarDailyAgenda extends StatelessWidget {
                 height: 60,
                 decoration: BoxDecoration(
                   color: isPast
-                      ? Colors.green.withOpacity(0.3)
-                      : theme.colorScheme.primary.withOpacity(0.3),
+                      ? Colors.green.withValues(alpha: 0.3)
+                      : theme.colorScheme.primary.withValues(alpha: 0.3),
                   borderRadius: BorderRadius.circular(1),
                 ),
               ),
@@ -387,7 +387,7 @@ class ScheduleCalendarDailyAgenda extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.15),
+        color: color.withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Text(
@@ -410,7 +410,7 @@ class ScheduleCalendarDailyAgenda extends StatelessWidget {
             Icon(
               Icons.event_available_outlined,
               size: 64,
-              color: theme.colorScheme.onSurfaceVariant.withOpacity(0.5),
+              color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
             ),
             const SizedBox(height: 16),
             Text(
@@ -424,7 +424,7 @@ class ScheduleCalendarDailyAgenda extends StatelessWidget {
               _formatDateHeader(selectedDay),
               textAlign: TextAlign.center,
               style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant.withOpacity(0.7),
+                color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
               ),
             ),
           ],

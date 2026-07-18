@@ -9,7 +9,7 @@ class Env {
     if (kReleaseMode) return AppEnvironment.prod;
 
     // You can also switch using --dart-define ENV=staging
-    const override = const String.fromEnvironment('ENV');
+    const override = String.fromEnvironment('ENV');
     switch (override) {
       case 'staging':
         return AppEnvironment.staging;

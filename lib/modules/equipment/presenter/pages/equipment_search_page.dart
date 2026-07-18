@@ -104,7 +104,7 @@ class _EquipmentSearchPageState extends ConsumerState<EquipmentSearchPage> {
                   color: colorScheme.surface,
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
+                      color: Colors.black.withValues(alpha: 0.05),
                       blurRadius: 4,
                       offset: const Offset(0, 2),
                     ),
@@ -132,7 +132,7 @@ class _EquipmentSearchPageState extends ConsumerState<EquipmentSearchPage> {
                           borderRadius: BorderRadius.circular(12),
                         ),
                         filled: true,
-                        fillColor: colorScheme.surfaceContainerHighest.withOpacity(0.5),
+                        fillColor: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
                       ),
                       textInputAction: TextInputAction.search,
                     ),
@@ -322,7 +322,7 @@ class _EquipmentSearchPageState extends ConsumerState<EquipmentSearchPage> {
             Icon(
               icon,
               size: 80,
-              color: colorScheme.onSurfaceVariant.withOpacity(0.5),
+              color: colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
             ),
             const SizedBox(height: 24),
             Text(
@@ -436,7 +436,7 @@ class _EquipmentCard extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: _getStatusColor(equipment.status, colorScheme).withOpacity(0.15),
+                      color: _getStatusColor(equipment.status, colorScheme).withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Icon(
@@ -568,10 +568,10 @@ class _StatusChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.15),
+        color: color.withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
-          color: color.withOpacity(0.3),
+          color: color.withValues(alpha: 0.3),
           width: 1,
         ),
       ),

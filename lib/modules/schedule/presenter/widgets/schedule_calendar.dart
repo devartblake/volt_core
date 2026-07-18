@@ -117,7 +117,7 @@ class ScheduleCalendarEnhanced extends StatelessWidget {
             shape: BoxShape.circle,
           ),
           todayDecoration: BoxDecoration(
-            color: theme.colorScheme.primary.withOpacity(0.3),
+            color: theme.colorScheme.primary.withValues(alpha: 0.3),
             shape: BoxShape.circle,
           ),
           markerDecoration: BoxDecoration(
@@ -427,7 +427,7 @@ class ScheduleCalendarEnhanced extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.15),
+        color: color.withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Text(
@@ -451,7 +451,7 @@ class ScheduleCalendarEnhanced extends StatelessWidget {
             Icon(
               Icons.event_available_outlined,
               size: 64,
-              color: theme.colorScheme.onSurfaceVariant.withOpacity(0.5),
+              color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
             ),
             const SizedBox(height: 16),
             Text(
@@ -465,7 +465,7 @@ class ScheduleCalendarEnhanced extends StatelessWidget {
               'Tasks scheduled for today and this week\nwill appear here',
               textAlign: TextAlign.center,
               style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant.withOpacity(0.7),
+                color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
               ),
             ),
           ],

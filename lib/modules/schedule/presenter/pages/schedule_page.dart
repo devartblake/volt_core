@@ -114,7 +114,7 @@ class _SchedulePageState extends ConsumerState<SchedulePage> {
                                 mode.description,
                                 style: theme.textTheme.bodySmall?.copyWith(
                                   color: isActive
-                                      ? theme.colorScheme.primary.withOpacity(0.7)
+                                      ? theme.colorScheme.primary.withValues(alpha: 0.7)
                                       : theme.colorScheme.onSurfaceVariant,
                                 ),
                               ),
@@ -284,7 +284,7 @@ class _SchedulePageState extends ConsumerState<SchedulePage> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.3),
+        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
         border: Border(
           bottom: BorderSide(
             color: theme.colorScheme.outlineVariant,
@@ -330,35 +330,6 @@ class _SchedulePageState extends ConsumerState<SchedulePage> {
 
   Widget _buildCalendarView(ThemeData theme, List<TaskScheduleEntity> allItems) {
     final viewMode = ref.watch(calendarViewModeProvider);
-
-    // Common properties for all calendar views
-    final commonProps = {
-      'focusedDay': _focusedDay,
-      'selectedDay': _selectedDay,
-      'calendarFormat': _calendarFormat,
-      'items': allItems,
-      'onDaySelected': (DateTime selectedDay, DateTime focusedDay) {
-        setState(() {
-          _selectedDay = selectedDay;
-          _focusedDay = focusedDay;
-        });
-      },
-      'onFormatChanged': (CalendarFormat format) {
-        setState(() {
-          _calendarFormat = format;
-        });
-      },
-      'onPageChanged': (DateTime focusedDay) {
-        setState(() {
-          _focusedDay = focusedDay;
-        });
-      },
-      'onTaskTap': (TaskScheduleEntity task) {
-        if (task.inspectionId != null && task.inspectionId!.isNotEmpty) {
-          context.push('/inspections/detail/${task.inspectionId}');
-        }
-      },
-    };
 
     switch (viewMode) {
       case CalendarViewMode.splitPanel:
@@ -450,65 +421,6 @@ class _SchedulePageState extends ConsumerState<SchedulePage> {
     }
   }
 
-  Widget _buildSelectedDayItems(ThemeData theme, List<TaskScheduleEntity> allItems) {
-    final dayItems = _itemsForDay(allItems, _selectedDay);
-
-    if (dayItems.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.event_busy,
-              size: 64,
-              color: theme.colorScheme.onSurface.withOpacity(0.3),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'No inspections scheduled',
-              style: theme.textTheme.titleMedium?.copyWith(
-                color: theme.colorScheme.onSurface.withOpacity(0.6),
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              _formatSelectedDate(_selectedDay),
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSurface.withOpacity(0.5),
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-          child: Text(
-            '${_formatSelectedDate(_selectedDay)} • ${dayItems.length} inspection${dayItems.length != 1 ? 's' : ''}',
-            style: theme.textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ),
-        Expanded(
-          child: ListView.builder(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            itemCount: dayItems.length,
-            itemBuilder: (context, index) => _ScheduleCard(
-              item: dayItems[index],
-              theme: theme,
-              showDate: false,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
   Widget _buildListView(
       ThemeData theme,
       List<TaskScheduleEntity> items,
@@ -521,20 +433,20 @@ class _SchedulePageState extends ConsumerState<SchedulePage> {
             Icon(
               Icons.event_busy,
               size: 80,
-              color: theme.colorScheme.primary.withOpacity(0.3),
+              color: theme.colorScheme.primary.withValues(alpha: 0.3),
             ),
             const SizedBox(height: 24),
             Text(
               'No inspections found',
               style: theme.textTheme.titleLarge?.copyWith(
-                color: theme.colorScheme.onSurface.withOpacity(0.6),
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
               ),
             ),
             const SizedBox(height: 8),
             Text(
               'Try adjusting your filter',
               style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSurface.withOpacity(0.5),
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
               ),
             ),
           ],
@@ -644,16 +556,6 @@ class _SchedulePageState extends ConsumerState<SchedulePage> {
     }
   }
 
-  List<TaskScheduleEntity> _itemsForDay(
-      List<TaskScheduleEntity> items,
-      DateTime day,
-      ) {
-    return items
-        .where((i) => isSameDay(i.scheduledDate, day))
-        .toList()
-      ..sort((a, b) => a.scheduledDate.compareTo(b.scheduledDate));
-  }
-
   Map<DateTime, List<TaskScheduleEntity>> _groupItemsByDate(
       List<TaskScheduleEntity> items,
       ) {
@@ -687,33 +589,6 @@ class _SchedulePageState extends ConsumerState<SchedulePage> {
     return date.year == now.year &&
         date.month == now.month &&
         date.day == now.day;
-  }
-
-  String _formatSelectedDate(DateTime date) {
-    if (_isToday(date)) return 'Today';
-
-    final tomorrow = DateTime.now().add(const Duration(days: 1));
-    if (isSameDay(date, tomorrow)) return 'Tomorrow';
-
-    final yesterday = DateTime.now().subtract(const Duration(days: 1));
-    if (isSameDay(date, yesterday)) return 'Yesterday';
-
-    const months = [
-      'January',
-      'February',
-      'March',
-      'April',
-      'May',
-      'June',
-      'July',
-      'August',
-      'September',
-      'October',
-      'November',
-      'December'
-    ];
-
-    return '${months[date.month - 1]} ${date.day}, ${date.year}';
   }
 
   String _formatDateHeader(DateTime date) {
@@ -852,7 +727,7 @@ class _ScheduleCard extends StatelessWidget {
                 height: 48,
                 decoration: BoxDecoration(
                   color: isPast
-                      ? Colors.green.withOpacity(0.1)
+                      ? Colors.green.withValues(alpha: 0.1)
                       : theme.colorScheme.primaryContainer,
                   borderRadius: BorderRadius.circular(12),
                 ),
@@ -903,7 +778,7 @@ class _ScheduleCard extends StatelessWidget {
                             ),
                             decoration: BoxDecoration(
                               color: _getGradeColor(item.siteGrade)
-                                  .withOpacity(0.15),
+                                  .withValues(alpha: 0.15),
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Text(

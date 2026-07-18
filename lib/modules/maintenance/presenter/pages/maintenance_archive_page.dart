@@ -5,7 +5,6 @@ import 'package:go_router/go_router.dart';
 import '../../../../app/app_drawer.dart';
 import '../../infra/models/maintenance_record.dart';
 import '../controllers/maintenance_list_controller.dart';
-import '../controllers/maintenance_providers.dart';
 
 class MaintenanceArchivePage extends ConsumerWidget {
   const MaintenanceArchivePage({super.key});
@@ -130,7 +129,7 @@ class _EmptyArchive extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
-                color: colorScheme.primaryContainer.withOpacity(0.3),
+                color: colorScheme.primaryContainer.withValues(alpha: 0.3),
                 shape: BoxShape.circle,
               ),
               child: Icon(

@@ -5,7 +5,6 @@ import 'package:go_router/go_router.dart';
 import 'package:voltcore/shared/widgets/responsive_scaffold.dart';
 import 'package:voltcore/app/app_drawer.dart';
 
-import '../../../schedule/infra/models/schedule_task.dart';
 import '../../../schedule/presenter/pages/schedule_task_page.dart';
 import '../../../schedule/presenter/widgets/dialogs/schedule_dialog.dart';
 import '../../infra/models/maintenance_record.dart';
@@ -438,7 +437,7 @@ class _MaintenanceEmpty extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
-                color: colorScheme.primaryContainer.withOpacity(0.3),
+                color: colorScheme.primaryContainer.withValues(alpha: 0.3),
                 shape: BoxShape.circle,
               ),
               child: Icon(

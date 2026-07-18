@@ -3,7 +3,6 @@ import 'package:voltcore/modules/admin/domain/entities/role_assignment_entity.da
 import 'package:voltcore/modules/admin/domain/entities/technician_entity.dart';
 import 'package:voltcore/modules/admin/infra/repositories/admin_repository.dart';
 import 'package:voltcore/modules/admin/external/datasources/admin_remote_datasource.dart';
-import 'package:voltcore/modules/admin/infra/models/technician_model.dart';
 import 'package:voltcore/modules/auth/domain/user_role.dart';
 
 import '../../domain/entities/admin_dashboard_stats_entity.dart';

@@ -1,7 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import '../../../../core/services/supabase/supabase_service.dart';
 import '../../domain/user_role.dart';
 
 /// Simple DTO representing the authenticated user/session info
@@ -56,7 +55,7 @@ class AuthRemoteDataSource {
     // Role derivation strategy:
     // - If a preferredRole is provided (e.g. from UI role selector), we use it.
     // - Otherwise, you can inspect user.appMetadata['role'] or default to tech.
-    final appMeta = user.appMetadata ?? <String, dynamic>{};
+    final appMeta = user.appMetadata;
     final remoteRoleString = (appMeta['role'] as String?)?.toLowerCase();
     final remoteRole = _mapRole(remoteRoleString);
 
@@ -92,7 +91,7 @@ class AuthRemoteDataSource {
         metadata['name'] as String? ??
         _deriveDisplayName(email);
 
-    final appMeta = user.appMetadata ?? <String, dynamic>{};
+    final appMeta = user.appMetadata;
     final remoteRoleString = (appMeta['role'] as String?)?.toLowerCase();
     final remoteRole = _mapRole(remoteRoleString);
     final effectiveRole = preferredRole ?? remoteRole ?? UserRole.tech;

@@ -37,7 +37,7 @@ class _InspectionListPageState
     // Watch providers for reactive updates
     final badges = ref.watch(appBadgesProvider);
     final userProfile = ref.watch(userProfileProvider);
-    final currentTenant = ref.watch(currentTenantProvider);
+    ref.watch(currentTenantProvider);
 
     // Apply filter if provided
     final allItems = state.items;
@@ -46,10 +46,10 @@ class _InspectionListPageState
             final status = widget.filterStatus!.toLowerCase();
             // 'pending' = inspections that need attention (Amber/Red grade)
             if (status == 'pending') {
-              final grade = (i.siteGrade ?? '').toLowerCase();
+              final grade = i.siteGrade.toLowerCase();
               return grade == 'amber' || grade == 'red';
             }
-            return (i.siteGrade ?? '').toLowerCase() == status;
+            return i.siteGrade.toLowerCase() == status;
           }).toList()
         : allItems;
 
@@ -93,7 +93,7 @@ class _InspectionListPageState
                       Icons.description_outlined,
                       size: 80,
                       color: theme.colorScheme.primary
-                          .withOpacity(0.3),
+                          .withValues(alpha: 0.3),
                     ),
                     const SizedBox(height: 24),
                     Text(
@@ -103,7 +103,7 @@ class _InspectionListPageState
                           ?.copyWith(
                         color: theme
                             .colorScheme.onSurface
-                            .withOpacity(0.6),
+                            .withValues(alpha: 0.6),
                       ),
                     ),
                     const SizedBox(height: 8),
@@ -114,7 +114,7 @@ class _InspectionListPageState
                           ?.copyWith(
                         color: theme
                             .colorScheme.onSurface
-                            .withOpacity(0.5),
+                            .withValues(alpha: 0.5),
                       ),
                     ),
                   ],
@@ -159,7 +159,7 @@ class _InspectionListPageState
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: theme.colorScheme.surfaceContainerHighest
-            .withOpacity(0.3),
+            .withValues(alpha: 0.3),
         border: Border(
           bottom: BorderSide(
             color: theme.colorScheme.outlineVariant,
@@ -218,17 +218,16 @@ class _InspectionListPageState
       ThemeData theme,
       InspectionEntity ins,
       ) {
-    final dateStr = (ins.serviceDate ?? ins.createdAt)
-        ?.toIso8601String()
+    final dateStr = ins.serviceDate
+        .toIso8601String()
         .split('T')
-        .first ??
-        '';
+        .first;
 
-    final grade = ins.siteGrade ?? '';
-    final address = (ins.address ?? '').isEmpty
+    final grade = ins.siteGrade;
+    final address = ins.address.isEmpty
         ? '(No address)'
-        : ins.address!;
-    final siteCode = ins.siteCode ?? '';
+        : ins.address;
+    final siteCode = ins.siteCode;
 
     return Card(
       margin: const EdgeInsets.symmetric(
@@ -256,7 +255,7 @@ class _InspectionListPageState
                 height: 48,
                 decoration: BoxDecoration(
                   color: _getGradeColor(grade, theme)
-                      .withOpacity(0.1),
+                      .withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(
@@ -308,7 +307,7 @@ class _InspectionListPageState
                             decoration: BoxDecoration(
                               color: _getGradeColor(
                                   grade, theme)
-                                  .withOpacity(0.15),
+                                  .withValues(alpha: 0.15),
                               borderRadius:
                               BorderRadius
                                   .circular(8),
@@ -420,7 +419,7 @@ class _StatCard extends StatelessWidget {
         ),
         boxShadow: [
           BoxShadow(
-            color: theme.shadowColor.withOpacity(0.05),
+            color: theme.shadowColor.withValues(alpha: 0.05),
             blurRadius: 4,
             offset: const Offset(0, 2),
           ),
@@ -432,7 +431,7 @@ class _StatCard extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
+              color: color.withValues(alpha: 0.1),
               shape: BoxShape.circle,
             ),
             child: Icon(
