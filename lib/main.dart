@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'app/app.dart';
 import 'core/configs/env.dart';
 import 'core/services/init_core_services.dart';
+import 'core/services/network/network_logger.dart';
 import 'modules/maintenance/infra/datasources/hive_boxes_maintenance.dart';
 
 Future<void> main() async {
@@ -46,9 +47,13 @@ Future<void> main() async {
       debugPrint('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     }
 
+    final container = ProviderContainer();
+    NetworkLogger.init(container.read(networkLogsProvider.notifier));
+
     runApp(
-      const ProviderScope(
-        child: VoltcoreApp(),
+      UncontrolledProviderScope(
+        container: container,
+        child: const VoltcoreApp(),
       ),
     );
   } catch (e, stackTrace) {

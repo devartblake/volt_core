@@ -6,6 +6,7 @@ import 'package:uuid/uuid.dart';
 
 import '../connectivity/connectivity_service.dart';
 import 'file_backup_service.dart';
+import 'sync_context.dart';
 import 'sync_operation.dart';
 import 'sync_queue.dart';
 
@@ -237,7 +238,15 @@ class SyncService {
       case SyncOpType.upsert:
         final table = op.payload['table'] as String;
         final row = (op.payload['row'] as Map).cast<String, dynamic>()
-          ..removeWhere((_, v) => v == null);
+          ..removeWhere((_, v) => v == null || v == '');
+
+        if (kDebugMode) {
+          debugPrint('[Sync] Dispatching upsert to "$table":');
+          debugPrint('       Row: $row');
+          debugPrint('       User: ${SyncContext.userId}');
+          debugPrint('       Tenant: ${SyncContext.tenantId}');
+        }
+
         await client.from(table).upsert(row);
         break;
       case SyncOpType.delete:

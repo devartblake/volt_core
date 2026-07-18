@@ -112,8 +112,6 @@ class NotificationService {
         uiLocalNotificationDateInterpretation:
             UILocalNotificationDateInterpretation.absoluteTime,
         payload: taskId,
-        uiLocalNotificationDateInterpretation:
-            UILocalNotificationDateInterpretation.absoluteTime,
       );
       if (kDebugMode) {
         debugPrint('[Notifications] Scheduled "$title" for $scheduledAt');
