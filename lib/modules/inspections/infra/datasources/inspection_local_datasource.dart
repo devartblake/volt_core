@@ -47,7 +47,10 @@ class InspectionLocalDatasource {
     if (existingKey != null) {
       await box.put(existingKey, model);
     } else {
-      await box.add(model);
+      // Key by the inspection's string id so lookups via box.get(id) (e.g. the
+      // detail page) find it. box.add() would use an auto-int key and the
+      // record would appear "not found" by id.
+      await box.put(model.id, model);
     }
 
     return model.toEntity();

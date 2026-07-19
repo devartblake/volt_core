@@ -8,6 +8,7 @@ import 'package:voltcore/core/services/storage/path_resolver.dart';
 
 import '../../../schedule/presenter/pages/schedule_task_page.dart';
 import '../../../schedule/presenter/widgets/dialogs/schedule_dialog.dart';
+import '../../infra/models/inspection.dart';
 
 class InspectionDetailPage extends ConsumerWidget {
   final String id;
@@ -15,10 +16,20 @@ class InspectionDetailPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final ins = HiveBoxes.inspections.get(id);
+    // Lookup by string-id key first; fall back to scanning values for records
+    // stored under legacy auto-int keys (older saves used box.add()).
+    Inspection? found = HiveBoxes.inspections.get(id);
+    if (found == null) {
+      for (final candidate in HiveBoxes.inspections.values) {
+        if (candidate.id == id) {
+          found = candidate;
+          break;
+        }
+      }
+    }
     final theme = Theme.of(context);
 
-    if (ins == null) {
+    if (found == null) {
       return Scaffold(
         appBar: AppBar(title: const Text('Inspection Detail')),
         body: Center(
@@ -42,6 +53,9 @@ class InspectionDetailPage extends ConsumerWidget {
         ),
       );
     }
+
+    // Effectively-final binding so closures below can use it non-nullably.
+    final Inspection ins = found;
 
     // Re-anchor the stored path to the current app-data root (iOS containers
     // change across updates), then check existence.
