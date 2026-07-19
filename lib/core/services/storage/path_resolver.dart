@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:path/path.dart' as p;
 
 import 'file_storage_service.dart';
@@ -26,8 +27,9 @@ class PathResolver {
 
   /// Async resolve. Returns the stored path if it already exists or can't be
   /// re-anchored; otherwise the rebuilt path under the current root.
+  /// On web (no filesystem) paths are logical keys — returned unchanged.
   static Future<String> resolve(String storedPath) async {
-    if (storedPath.isEmpty) return storedPath;
+    if (kIsWeb || storedPath.isEmpty) return storedPath;
     if (File(storedPath).existsSync()) return storedPath;
 
     final rel = relativeUnderMarker(storedPath);
@@ -39,8 +41,9 @@ class PathResolver {
 
   /// Synchronous resolve using the app-data root cached at startup. Falls back
   /// to the stored path if the root isn't cached yet or can't be re-anchored.
+  /// On web (no filesystem) paths are logical keys — returned unchanged.
   static String resolveSync(String storedPath) {
-    if (storedPath.isEmpty) return storedPath;
+    if (kIsWeb || storedPath.isEmpty) return storedPath;
     if (File(storedPath).existsSync()) return storedPath;
 
     final root = FileStorageService.instance.cachedAppDataPath;
@@ -53,8 +56,9 @@ class PathResolver {
   }
 
   /// Resolve to a [File], or null if it still doesn't exist after re-anchoring.
+  /// Always null on web (no filesystem).
   static Future<File?> resolveFile(String storedPath) async {
-    if (storedPath.isEmpty) return null;
+    if (kIsWeb || storedPath.isEmpty) return null;
     final resolved = await resolve(storedPath);
     final f = File(resolved);
     return f.existsSync() ? f : null;

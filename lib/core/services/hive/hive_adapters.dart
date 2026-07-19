@@ -8,6 +8,7 @@ import '../../../modules/inspections/infra/models/nameplate_data.dart';
 import '../../../modules/load_test/infra/models/load_test_record.dart';
 import '../../../modules/load_test/infra/models/test_interval_record.dart';
 import '../../../modules/maintenance/infra/models/maintenance_record.dart';
+import '../../../modules/schedule/infra/models/schedule_task.dart';
 
 /// Central place to register **all** Hive adapters used by the app.
 ///
@@ -26,6 +27,10 @@ class HiveAdapters {
     _safeRegister<LoadTestRecord>(LoadTestRecordAdapter());
     _safeRegister<TestIntervalRecord>(TestIntervalRecordAdapter());
     _safeRegister<MaintenanceRecord>(MaintenanceRecordAdapter());
+    // ScheduledTask (typeId 72) MUST be registered before HiveBoxes.init()
+    // opens the scheduled_tasks box, or every schedule save throws
+    // "HiveError: Cannot write, unknown type".
+    _safeRegister<ScheduledTask>(ScheduledTaskAdapter());
 
     _registered = true;
 

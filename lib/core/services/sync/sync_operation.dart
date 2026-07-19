@@ -8,8 +8,11 @@ enum SyncOpType {
   /// Delete a row from a Supabase table by id.
   delete,
 
-  /// Upload a local file's bytes to Supabase Storage.
+  /// Upload a local file's bytes to Supabase Storage (native platforms).
   fileUpload,
+
+  /// Upload bytes held in [WebFileStore] to Supabase Storage (web).
+  bytesUpload,
 }
 
 /// Lifecycle status of a queued operation.

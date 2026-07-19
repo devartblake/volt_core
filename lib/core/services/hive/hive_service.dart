@@ -1,7 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import '../../../modules/maintenance/infra/datasources/hive_boxes_maintenance.dart';
-import '../../../modules/schedule/infra/datasources/scheduled_tasks_box.dart';
 import '../storage/file_storage_service.dart';
 import 'hive_adapters.dart';
 import 'hive_boxes.dart';
@@ -43,7 +42,6 @@ class HiveService {
 
     await HiveBoxes.init();
     await MaintenanceBoxes.init();
-    ScheduledTasksBox();
 
     _initialized = true;
 

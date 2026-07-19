@@ -1,7 +1,7 @@
-import 'dart:io';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 
+import '../../../../core/services/storage/file_storage_service.dart';
 import '../../../../core/services/storage/path_resolver.dart';
 
 /// Reusable PDF template components matching the A&S Electric template
@@ -309,11 +309,13 @@ class PdfTemplate {
     pw.Widget signatureImage;
 
     try {
-      final resolvedPath = (signaturePath != null && signaturePath.isNotEmpty)
-          ? PathResolver.resolveSync(signaturePath)
+      // Cross-platform read: WebFileStore on web, filesystem (with stale-path
+      // re-anchoring) on native.
+      final bytes = (signaturePath != null && signaturePath.isNotEmpty)
+          ? FileStorageService.readSignatureBytesSync(
+              PathResolver.resolveSync(signaturePath))
           : null;
-      if (resolvedPath != null && File(resolvedPath).existsSync()) {
-        final bytes = File(resolvedPath).readAsBytesSync();
+      if (bytes != null) {
         signatureImage = pw.Container(
           height: 60,
           child: pw.Image(

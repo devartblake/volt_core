@@ -113,10 +113,11 @@ class _SectionMaintSignaturesState extends State<SectionMaintSignatures> {
       SignatureController controller,
       VoidCallback onSuccess,
       ) async {
-    final file = await FileStorageService.instance
-        .getMaintenanceSignature(recordId, signatureType);
+    // Web-aware existence check (WebFileStore on web, filesystem on native).
+    final exists = await FileStorageService.instance
+        .maintenanceSignatureExists(recordId, signatureType);
 
-    if (file != null && await file.exists()) {
+    if (exists) {
       // Note: We can't reimport the signature drawing, but we can show it was saved
       onSuccess();
     }

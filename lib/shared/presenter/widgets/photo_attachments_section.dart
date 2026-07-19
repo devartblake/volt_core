@@ -1,12 +1,9 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path/path.dart' as p;
 
 import '../../../core/services/photos/photo_attachment.dart';
 import '../../../core/services/photos/photo_service.dart';
-import '../../../core/services/storage/path_resolver.dart';
 
 /// Reusable "Photos" section for inspection and maintenance forms.
 ///
@@ -190,7 +187,8 @@ class _Thumbnail extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final file = File(PathResolver.resolveSync(photo.localPath));
+    // Bytes-based render works on web (WebFileStore) and native (filesystem).
+    final bytes = PhotoService.instance.loadBytesSync(photo);
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(8),
@@ -199,8 +197,8 @@ class _Thumbnail extends StatelessWidget {
         child: SizedBox(
           width: 84,
           height: 84,
-          child: file.existsSync()
-              ? Image.file(file, fit: BoxFit.cover)
+          child: bytes != null
+              ? Image.memory(bytes, fit: BoxFit.cover)
               : Container(
                   color: Theme.of(context).colorScheme.surfaceContainerHighest,
                   child: const Icon(Icons.broken_image_outlined),
@@ -302,7 +300,7 @@ class _PhotoDetailPageState extends State<_PhotoDetailPage> {
 
   @override
   Widget build(BuildContext context) {
-    final file = File(PathResolver.resolveSync(widget.photo.localPath));
+    final bytes = PhotoService.instance.loadBytesSync(widget.photo);
     return Scaffold(
       appBar: AppBar(
         title: const Text('Photo'),
@@ -320,8 +318,8 @@ class _PhotoDetailPageState extends State<_PhotoDetailPage> {
             child: Container(
               color: Colors.black,
               width: double.infinity,
-              child: file.existsSync()
-                  ? InteractiveViewer(child: Image.file(file))
+              child: bytes != null
+                  ? InteractiveViewer(child: Image.memory(bytes))
                   : const Center(
                       child: Icon(Icons.broken_image_outlined,
                           color: Colors.white54, size: 64),
