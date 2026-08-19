@@ -76,11 +76,15 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         return '/';
       }
 
-      // 3) Role-based guard using kRouteRoles (by route name)
+      // 3) Role-based guard using RouteRoles (by route name).
       //
-      // We assume:
-      //   const Map<String, Set<UserRole>> kRouteRoles = {...};
-      // Where keys are the *route names* below (e.g. 'dashboard', 'inspections', etc.)
+      // RouteRoles is default-deny: an unlisted route name is refused, so a
+      // forgotten entry fails closed. Every GoRoute below must therefore carry
+      // a `name:` — `test/app/route_roles_test.dart` enforces both halves of
+      // that invariant (named, and present in the role map).
+      //
+      // A null name here means no route matched at all (bad URL); GoRouter's
+      // own error page handles that and renders no app data.
       if (isLoggedIn && !isForbidden && routeName != null) {
         final isAllowed = RouteRoles.isAllowedByName(
           name: routeName,

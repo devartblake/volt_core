@@ -15,12 +15,17 @@ class AuthState {
   final String? email;
   final String? displayName;
 
+  /// Every role the server says this user holds. The role switcher may only
+  /// offer these, and [currentRole] is always one of them once authenticated.
+  final Set<UserRole> grantedRoles;
+
   const AuthState({
     required this.isAuthenticated,
     this.currentRole,
     this.userId,
     this.email,
     this.displayName,
+    this.grantedRoles = const {},
   });
 
   /// Convenience unauthenticated state.
@@ -29,7 +34,8 @@ class AuthState {
         currentRole = null,
         userId = null,
         email = null,
-        displayName = null;
+        displayName = null,
+        grantedRoles = const {};
 
   AuthState copyWith({
     bool? isAuthenticated,
@@ -37,6 +43,7 @@ class AuthState {
     String? userId,
     String? email,
     String? displayName,
+    Set<UserRole>? grantedRoles,
   }) {
     return AuthState(
       isAuthenticated: isAuthenticated ?? this.isAuthenticated,
@@ -44,16 +51,20 @@ class AuthState {
       userId: userId ?? this.userId,
       email: email ?? this.email,
       displayName: displayName ?? this.displayName,
+      grantedRoles: grantedRoles ?? this.grantedRoles,
     );
   }
 
   /// Optional: a quick flag that some UIs can use
   bool get isAdmin => currentRole == UserRole.admin;
 
+  /// True when the user actually holds [role] (server-granted).
+  bool canActAs(UserRole role) => grantedRoles.contains(role);
+
   @override
   String toString() {
     return 'AuthState(isAuthenticated: $isAuthenticated, '
         'currentRole: $currentRole, userId: $userId, email: $email, '
-        'displayName: $displayName)';
+        'displayName: $displayName, grantedRoles: $grantedRoles)';
   }
 }

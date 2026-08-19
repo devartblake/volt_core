@@ -17,8 +17,35 @@ enum UserRole {
   admin,
 }
 
+/// Highest-privilege role in [roles], or null when the set is empty.
+///
+/// Used when a user holds several grants (e.g. admin in one tenant, tech in
+/// another) and the session has to act as one of them.
+UserRole? highestRole(Iterable<UserRole> roles) {
+  UserRole? best;
+  for (final role in roles) {
+    if (best == null || role.privilege > best.privilege) best = role;
+  }
+  return best;
+}
+
 /// Convenience extension with helpers for display and parsing.
 extension UserRoleX on UserRole {
+  /// Relative privilege, used only to pick a default among granted roles.
+  /// Higher means more privileged. Not a substitute for per-route RBAC.
+  int get privilege {
+    switch (this) {
+      case UserRole.tech:
+        return 0;
+      case UserRole.dispatcher:
+        return 1;
+      case UserRole.supervisor:
+        return 2;
+      case UserRole.admin:
+        return 3;
+    }
+  }
+
   /// Human-friendly label for UI.
   String get label {
     switch (this) {

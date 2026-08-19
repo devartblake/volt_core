@@ -82,21 +82,26 @@ signed-in role:
 | `admin_technicians` | `/admin/technicians` | **Technician-role editor open to all roles** |
 | `tenants_settings` | `/tenants` | Tenant configuration |
 | `schedule_task` | `/schedule/task` | Low |
-| `debug_menu` | `/debug` | Debug surface |
-| `hive_debug` | `/debug/hive` | **Raw local-database browser** |
-| `network_debug` | `/debug/network` | **Request log, may contain tokens** |
+| `debug_menu` | `/debug` | Debug surface (debug builds only) |
+| `hive_debug` | `/debug/hive` | **Raw local-database browser** (debug builds only) |
+| `network_debug` | `/debug/network` | **Request log** (debug builds only) |
 
 **Fix:** flip the default to deny (unknown route ⇒ only allow if explicitly
 listed, with `login`/`forbidden` whitelisted), add the six missing entries, and
 add a test that fails when a `RouteNames` constant has no `RouteRoles` entry.
 
-### 2.3 Debug pages ship in release builds
+### 2.3 Debug pages are reachable by any role in debug builds
 
-`/debug`, `/debug/hive`, `/debug/network` are registered unconditionally in
-`app_router.dart:321-331`.
+`/debug`, `/debug/hive`, `/debug/network` expose the raw local database and the
+request log.
 
-**Fix:** wrap registration in `if (kDebugMode)`, and gate to admin via 2.2 for
-non-release internal builds.
+**Correction to an earlier draft of this audit:** these routes are *already*
+excluded from release builds — `app_router.dart:322` wraps them in
+`if (kDebugMode)`. The real gap was §2.2 only: with no `RouteRoles` entry they
+were open to every role in debug/internal builds.
+
+**Fix:** covered by the §2.2 entries (`debug_menu`, `hive_debug`,
+`network_debug` → admin only). No change to release-build behaviour is needed.
 
 ---
 
@@ -267,13 +272,32 @@ still unresolved). `TechDashboardPage` is also the only consumer of the
 
 Ordered so each phase is independently shippable and verifiable.
 
-### Phase 1 — Security (P0) · ~0.5 day
+### Phase 1 — Security (P0) · ~0.5 day · ✅ IMPLEMENTED
+
+> Delivered. `auth_remote_datasource` now reads grants from `tenant_members`
+> (active rows only, scoped to `SUPABASE_TENANT_ID` when set) and treats the
+> login selector as a hint that is honoured only if the user holds that role;
+> `restoreSession` validates the locally stored role the same way;
+> `AuthController.switchRole` refuses ungranted roles; `RouteRoles` is
+> default-deny with all previously missing entries added. 18 new tests
+> (`test/app/route_roles_test.dart`, `test/auth/role_resolution_test.dart`).
+>
+> **Operational note:** roles now come from the database. A user with no active
+> `tenant_members` row (or whose row is under a different tenant than
+> `SUPABASE_TENANT_ID`) is treated as `tech`, regardless of what they pick at
+> login. Grant admin explicitly:
+> ```sql
+> insert into public.tenant_members(tenant_id, user_id, role)
+> values ('<SUPABASE_TENANT_ID>', '<auth user uuid>', 'admin')
+> on conflict (tenant_id, user_id) do update set role='admin', is_active=true;
+> ```
 
 1. Invert role precedence in `auth_remote_datasource.dart`; source role from
    `tenant_members.role`.
 2. Reduce/remove the login role dropdown; add a role switcher limited to held roles.
 3. Flip `RouteRoles` to default-deny; add the 6 missing route entries.
-4. Register debug routes only under `kDebugMode`.
+4. ~~Register debug routes only under `kDebugMode`~~ — already the case
+   (`app_router.dart:322`); the admin-only entries from step 3 cover the gap.
 5. Add a test asserting every `RouteNames` constant has a `RouteRoles` entry.
 
 **Acceptance:** a `tech` account cannot reach `/admin/technicians`, `/tenants`, or
