@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../../app/app_drawer.dart';
+import '../../../../shared/widgets/widgets.dart';
 import '../../infra/models/maintenance_record.dart';
 import '../controllers/maintenance_list_controller.dart';
 
@@ -19,36 +19,29 @@ class MaintenanceArchivePage extends ConsumerWidget {
         .where((m) => m.completed)
         .toList(growable: false);
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Archived Maintenance Records'),
-        leading: Navigator.of(context).canPop()
-            ? IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => context.pop(),
-        )
-            : null,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            tooltip: 'Refresh',
-            onPressed: () {
-              ref
-                  .read(maintenanceListControllerProvider.notifier)
-                  .refresh();
-            },
-          ),
-        ],
-      ),
-      drawer: const AppDrawer(),
+    return AppPage(
+      title: 'Archived Maintenance',
+      actions: [
+        IconButton(
+          icon: const Icon(Icons.refresh),
+          tooltip: 'Refresh',
+          onPressed: () {
+            ref.read(maintenanceListControllerProvider.notifier).refresh();
+          },
+        ),
+      ],
       body: Builder(
         builder: (context) {
           if (listState.isLoading && archived.isEmpty) {
-            return const Center(child: CircularProgressIndicator());
+            return const LoadingIndicator();
           }
 
           if (archived.isEmpty) {
-            return _EmptyArchive(colorScheme: colorScheme, theme: theme);
+            return const EmptyState(
+              icon: Icons.archive_outlined,
+              title: 'No archived records yet',
+              message: 'Completed maintenance records will appear here.',
+            );
           }
 
           return ListView.builder(
@@ -109,53 +102,3 @@ class MaintenanceArchivePage extends ConsumerWidget {
   }
 }
 
-class _EmptyArchive extends StatelessWidget {
-  final ColorScheme colorScheme;
-  final ThemeData theme;
-
-  const _EmptyArchive({
-    required this.colorScheme,
-    required this.theme,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                color: colorScheme.primaryContainer.withValues(alpha: 0.3),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                Icons.archive_outlined,
-                size: 64,
-                color: colorScheme.primary,
-              ),
-            ),
-            const SizedBox(height: 24),
-            Text(
-              'No archived records yet',
-              style: theme.textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Completed maintenance records will appear here.',
-              textAlign: TextAlign.center,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: colorScheme.onSurfaceVariant,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}

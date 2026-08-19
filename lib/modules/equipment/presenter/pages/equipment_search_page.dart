@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../providers/equipment_providers.dart';
+import '../../../../shared/widgets/widgets.dart';
 
 /// Equipment search page
 class EquipmentSearchPage extends ConsumerStatefulWidget {
@@ -81,17 +82,8 @@ class _EquipmentSearchPageState extends ConsumerState<EquipmentSearchPage> {
     
     final equipmentAsync = ref.watch(equipmentListProvider);
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Equipment Search'),
-        elevation: 0,
-        leading: Navigator.of(context).canPop()
-            ? IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.of(context).pop(),
-        )
-            : null,
-      ),
+    return AppPage(
+      title: 'Equipment Search',
       body: equipmentAsync.when(
         data: (allEquipment) {
           final filteredEquipment = _getFilteredEquipment(allEquipment);
@@ -243,7 +235,7 @@ class _EquipmentSearchPageState extends ConsumerState<EquipmentSearchPage> {
             ],
           );
         },
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => const LoadingIndicator(),
         error: (error, stack) => Center(child: Text('Error: $error')),
       ),
     );

@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:printing/printing.dart';
 import 'package:share_plus/share_plus.dart';
+import '../../../../shared/widgets/widgets.dart';
 
 /// In-app PDF viewer. Renders a generated report from local storage using the
 /// `printing` package (companion to the `pdf` package already used to build the
@@ -19,17 +20,16 @@ class PdfViewerPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(title, overflow: TextOverflow.ellipsis),
-        actions: [
+    return AppPage(
+      title: '',
+      titleWidget: Text(title, overflow: TextOverflow.ellipsis),
+      actions: [
           IconButton(
             icon: const Icon(Icons.ios_share),
             tooltip: 'Share',
             onPressed: () => _share(context),
           ),
         ],
-      ),
       body: PdfPreview(
         build: (format) => File(filePath).readAsBytes(),
         canChangePageFormat: false,

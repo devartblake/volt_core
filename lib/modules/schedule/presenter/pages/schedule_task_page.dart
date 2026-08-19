@@ -5,6 +5,7 @@ import '../../../../core/services/hive/hive_boxes.dart';
 import '../../../inspections/infra/models/inspection.dart';
 import '../../../maintenance/infra/models/maintenance_record.dart';
 import '../../../maintenance/infra/datasources/hive_boxes_maintenance.dart';
+import '../../../../shared/widgets/widgets.dart';
 
 /// Page for scheduling a new task (inspection or maintenance)
 /// Allows selection between task type and new vs existing job
@@ -33,11 +34,8 @@ class _ScheduleTaskPageState extends ConsumerState<ScheduleTaskPage> {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Schedule Task'),
-        elevation: 0,
-      ),
+    return AppPage(
+      title: 'Schedule Task',
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(

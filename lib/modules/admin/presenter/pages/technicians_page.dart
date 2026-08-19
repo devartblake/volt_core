@@ -4,6 +4,7 @@ import '../../../auth/domain/user_role.dart';
 import '../../../auth/presenter/controllers/auth_controller.dart';
 import '../../domain/entities/technician_entity.dart';
 import '../controllers/role_management_controller.dart';
+import '../../../../shared/widgets/widgets.dart';
 
 /// Dedicated technicians / role management screen.
 ///
@@ -62,10 +63,9 @@ class _TechniciansPageState extends ConsumerState<TechniciansPage> {
 
     final assignedByUserId = auth.userId ?? auth.email ?? 'admin-local';
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Technicians & Roles'),
-        actions: [
+    return AppPage(
+      title: 'Technicians & Roles',
+      actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
             tooltip: 'Refresh list',
@@ -76,7 +76,6 @@ class _TechniciansPageState extends ConsumerState<TechniciansPage> {
             },
           ),
         ],
-      ),
       body: Column(
         children: [
           // Filters / search row
@@ -148,7 +147,12 @@ class _TechniciansPageState extends ConsumerState<TechniciansPage> {
 
           Expanded(
             child: filtered.isEmpty && !state.isLoading
-                ? const _EmptyState()
+                ? const EmptyState(
+                    icon: Icons.engineering_outlined,
+                    title: 'No technicians found',
+                    message: 'Once technicians are synced from Supabase, '
+                        'they will appear here.',
+                  )
                 : ListView.separated(
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
               itemCount: filtered.length,
@@ -295,40 +299,3 @@ class _TechnicianTile extends ConsumerWidget {
   }
 }
 
-class _EmptyState extends StatelessWidget {
-  const _EmptyState();
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final color = theme.colorScheme;
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.engineering_outlined,
-              size: 40,
-              color: color.onSurfaceVariant,
-            ),
-            const SizedBox(height: 12),
-            Text(
-              'No technicians found',
-              style: theme.textTheme.titleMedium,
-            ),
-            const SizedBox(height: 4),
-            Text(
-              'Once technicians are synced from Supabase, they will appear here.',
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: color.onSurfaceVariant,
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 
-import '../../../../app/app_drawer.dart';
+import '../../../../shared/widgets/widgets.dart';
 import '../../../../core/services/hive/hive_boxes.dart';
 import '../../../maintenance/infra/datasources/hive_boxes_maintenance.dart';
 import '../../../maintenance/infra/models/maintenance_record.dart';
@@ -36,18 +36,15 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
     final theme = Theme.of(context);
     final m = _metrics;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Analytics'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            tooltip: 'Refresh',
-            onPressed: _compute,
-          ),
-        ],
-      ),
-      drawer: const AppDrawer(),
+    return AppPage(
+      title: 'Analytics',
+      actions: [
+        IconButton(
+          icon: const Icon(Icons.refresh),
+          tooltip: 'Refresh',
+          onPressed: _compute,
+        ),
+      ],
       body: RefreshIndicator(
         onRefresh: () async => _compute(),
         child: ListView(

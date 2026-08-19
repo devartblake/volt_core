@@ -333,6 +333,25 @@ fabricated equipment is reachable from the UI.
 
 ### Phase 3 — UI/UX redesign · ~2–3 days
 
+> **3a and 3b delivered.** The shell now renders *no* AppBar: it publishes
+> navigation through an `AppShellScope` (drawer on compact, rail on wide) and
+> `AppPage` builds the single `Scaffold` + `AppBar`, appending the sync
+> indicator automatically. All 26 routed pages were converted, the 5 nested
+> `AppDrawer`s removed, and `ResponsiveScaffold` deleted. The kit
+> (`EmptyState` with error/offline variants, `LoadingIndicator` with
+> inline/button variants, `LabeledField`, `SelectionField`, `SectionCard` +
+> `SectionHeader`) is implemented behind one barrel import
+> (`shared/widgets/widgets.dart`); page-level spinners and the bespoke empty
+> states in technicians/documents/archive now use it. 17 new widget tests.
+>
+> Also removed en route: a hardcoded fake user profile ("Field Tech",
+> `tech@aselectricnyc.com`) that `maintenance_list_page` was passing to the
+> old scaffold.
+>
+> Still open from 3b: `LabeledField`/`SelectionField` exist and are tested but
+> the form sections have not been migrated onto them yet — that lands with the
+> form work in 3d.
+
 **3a. Unify page chrome (the double-app-bar fix).**
 Introduce a single contract so the shell owns the chrome:
 

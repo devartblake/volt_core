@@ -6,24 +6,25 @@ import 'package:voltcore/app/app_drawer.dart';
 import '../core/services/tenants/tenants_service.dart';
 import '../modules/auth/presenter/controllers/auth_controller.dart';
 import '../modules/auth/state/auth_state.dart';
-import '../shared/presenter/widgets/sync_status_indicator.dart';
+import '../shared/widgets/app_page.dart';
 
-/// Generic shell that wraps a page with AppDrawer + responsive layout.
+/// Generic shell that wraps a page with navigation + responsive layout.
 ///
-/// - On narrow screens: uses a Scaffold with a Drawer.
-/// - On wide screens: shows NavigationRail (from AppDrawer) on the left,
-///   and your page content on the right.
-/// - It also builds an AppUserProfile from the current AuthState so the
-///   drawer shows user info + (future) tenant switching.
+/// - On narrow screens: publishes an [AppDrawer] for the page's Scaffold.
+/// - On wide screens: shows the NavigationRail (from AppDrawer) on the left,
+///   with the page content on the right.
+/// - It builds an AppUserProfile from the current AuthState so the drawer shows
+///   user info, the active tenant, and role.
+///
+/// The shell deliberately renders **no AppBar** — the page does, via [AppPage].
+/// Both drawing one is what produced the doubled headers this replaced.
 class DefaultShell extends ConsumerWidget {
   const DefaultShell({
     super.key,
     required this.child,
-    this.title,
   });
 
   final Widget child;
-  final String? title;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -36,38 +37,28 @@ class DefaultShell extends ConsumerWidget {
     final profile = _buildProfileFromAuth(auth, tenants);
 
     final width = MediaQuery.sizeOf(context).width;
-    final isCompact = width < 800; // keep in sync with kCompactBreakpoint
+    final isCompact = width < kCompactBreakpoint;
 
+    // The shell owns *navigation only*. The page inside builds the single
+    // Scaffold + AppBar via AppPage, using the drawer published here — that is
+    // what keeps one header (and one drawer) per screen.
     if (isCompact) {
-      // Mobile / narrow → Drawer pattern
-      return Scaffold(
-        appBar: AppBar(
-          title: Text(title ?? 'Voltcore'),
-          actions: const [SyncStatusIndicator(), SizedBox(width: 4)],
-        ),
-        drawer: AppDrawer(
-          userProfile: profile,
-        ),
-        body: child,
+      return AppShellScope(
+        isCompact: true,
+        drawer: AppDrawer(userProfile: profile),
+        child: child,
       );
     }
 
-    // Wide screens → NavigationRail on the left, content on the right.
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(title ?? 'Voltcore'),
-        actions: const [SyncStatusIndicator(), SizedBox(width: 8)],
-      ),
-      body: Row(
+    // Wide screens → persistent NavigationRail beside the page.
+    return AppShellScope(
+      isCompact: false,
+      drawer: null,
+      child: Row(
         children: [
-          // AppDrawer will render as a NavigationRail + divider
-          AppDrawer(
-            userProfile: profile,
-          ),
-          // Main content
-          Expanded(
-            child: child,
-          ),
+          // AppDrawer renders as a NavigationRail + divider at this width.
+          AppDrawer(userProfile: profile),
+          Expanded(child: child),
         ],
       ),
     );
@@ -75,8 +66,10 @@ class DefaultShell extends ConsumerWidget {
 }
 
 /// Shell used for *technician / field* flows.
-/// Right now it just changes the title, but you can
-/// add tech-specific app bar actions later.
+///
+/// A semantic wrapper so the router can be explicit about intent. Navigation
+/// itself is already role-filtered inside [AppDrawer]; giving the shells
+/// genuinely different surfaces is Phase 3c.
 class TechShell extends ConsumerWidget {
   const TechShell({
     super.key,
@@ -87,16 +80,11 @@ class TechShell extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return DefaultShell(
-      title: 'Voltcore — Technician',
-      child: child,
-    );
+    return DefaultShell(child: child);
   }
 }
 
 /// Shell used for *admin / supervisor / dispatcher* flows.
-/// Again, mostly a semantic wrapper around DefaultShell
-/// so your AppRouter can be explicit about intent.
 class AdminShell extends ConsumerWidget {
   const AdminShell({
     super.key,
@@ -107,10 +95,7 @@ class AdminShell extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return DefaultShell(
-      title: 'Voltcore — Admin',
-      child: child,
-    );
+    return DefaultShell(child: child);
   }
 }
 

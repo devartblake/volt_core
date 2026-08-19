@@ -5,6 +5,7 @@ import 'package:uuid/uuid.dart';
 import '../../infra/models/nameplate_data.dart';
 import '../../../load_test/infra/models/test_interval_record.dart';
 import 'package:voltcore/core/services/hive/hive_boxes.dart';
+import '../../../../shared/widgets/widgets.dart';
 
 class NameplateIntervalsPage extends ConsumerStatefulWidget {
   final String inspectionId;
@@ -38,8 +39,8 @@ class _NameplateIntervalsPageState
         .toList()
       ..sort((a, b) => a.index.compareTo(b.index));
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Nameplate & Intervals')),
+    return AppPage(
+      title: 'Nameplate & Intervals',
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
@@ -48,7 +49,7 @@ class _NameplateIntervalsPageState
           _intervalsCard(rows),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
+      fab: FloatingActionButton.extended(
         onPressed: () async {
           await _saveNameplate();
           if (mounted) {

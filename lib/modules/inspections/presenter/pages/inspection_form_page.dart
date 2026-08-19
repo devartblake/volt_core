@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../../../../app/app_drawer.dart';
+import '../../../../shared/widgets/widgets.dart';
 import '../../domain/entities/inspection_entity.dart';
 import '../controllers/inspection_form_controller.dart';
 
@@ -67,20 +67,9 @@ class _InspectionFormPageState extends ConsumerState<InspectionFormPage> {
 
     // While loading an existing inspection, show a progress UI
     if (isLoading || inspection == null) {
-      return Scaffold(
-        appBar: AppBar(
-          title: const Text('Inspection'),
-          leading: Navigator.of(context).canPop()
-              ? IconButton(
-            icon: const Icon(Icons.arrow_back),
-            onPressed: () => context.pop(),
-          )
-              : null,
-        ),
-        drawer: const AppDrawer(),
-        body: const Center(
-          child: CircularProgressIndicator(),
-        ),
+      return const AppPage(
+        title: 'Inspection',
+        body: LoadingIndicator(message: 'Loading inspection…'),
       );
     }
 
@@ -127,18 +116,8 @@ class _InspectionFormPageState extends ConsumerState<InspectionFormPage> {
       const SizedBox(height: 120),
     ];
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(title),
-        leading: Navigator.of(context).canPop()
-            ? IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => context.pop(),
-        )
-            : null,
-        elevation: 0,
-      ),
-      drawer: const AppDrawer(),
+    return AppPage(
+      title: title,
       body: Form(
         key: _formKey,
         child: LayoutBuilder(
@@ -167,19 +146,14 @@ class _InspectionFormPageState extends ConsumerState<InspectionFormPage> {
 
                 // Saving overlay driven by controller state
                 if (isSaving)
-                  Container(
+                  ColoredBox(
                     color: Colors.black54,
                     child: const Center(
                       child: Card(
                         child: Padding(
                           padding: EdgeInsets.all(24),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              CircularProgressIndicator(),
-                              SizedBox(height: 16),
-                              Text('Saving and generating PDF...'),
-                            ],
+                          child: LoadingIndicator(
+                            message: 'Saving and generating PDF...',
                           ),
                         ),
                       ),
@@ -190,7 +164,7 @@ class _InspectionFormPageState extends ConsumerState<InspectionFormPage> {
           },
         ),
       ),
-      bottomNavigationBar: SafeArea(
+      bottomBar: SafeArea(
         child: Container(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
           decoration: BoxDecoration(

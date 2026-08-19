@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../../app/app_drawer.dart';
 import '../../infra/models/maintenance_record.dart';
 import '../controllers/maintenance_providers.dart';
+import '../../../../shared/widgets/widgets.dart';
 
 class MaintenanceDetailPage extends ConsumerWidget {
   final String id;
@@ -22,17 +22,9 @@ class MaintenanceDetailPage extends ConsumerWidget {
     final rec = repo.getById(id);
 
     if (rec == null) {
-      return Scaffold(
-        appBar: AppBar(
-          title: const Text('Maintenance Detail'),
-          leading: Navigator.of(context).canPop()
-              ? IconButton(
-            icon: const Icon(Icons.arrow_back),
-            onPressed: () => context.pop(),
-          )
-              : null,
-        ),
-        body: Center(
+      return AppPage(
+      title: 'Maintenance Detail',
+      body: Center(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -55,19 +47,13 @@ class MaintenanceDetailPage extends ConsumerWidget {
             ],
           ),
         ),
-      );
+    );
     }
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(rec.siteCode.isEmpty ? 'Maintenance Detail' : rec.siteCode),
-        leading: Navigator.of(context).canPop()
-            ? IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => context.pop(),
-        )
-            : null,
-        actions: [
+    return AppPage(
+      title: '',
+      titleWidget: Text(rec.siteCode.isEmpty ? 'Maintenance Detail' : rec.siteCode),
+      actions: [
           IconButton(
             tooltip: 'Export PDF',
             icon: const Icon(Icons.picture_as_pdf_outlined),
@@ -154,8 +140,6 @@ class MaintenanceDetailPage extends ConsumerWidget {
             ],
           ),
         ],
-      ),
-      drawer: const AppDrawer(),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: _DetailBody(rec: rec),

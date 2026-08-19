@@ -2,11 +2,11 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:voltcore/shared/widgets/responsive_scaffold.dart';
 import '../../../auth/domain/user_role.dart';
 import '../../../auth/presenter/controllers/auth_controller.dart';
 import '../../../schedule/domain/entities/task_schedule_entity.dart';
 import '../../../schedule/presenter/controllers/schedule_controller.dart';
+import '../../../../shared/widgets/widgets.dart';
 
 /// Enhanced role-aware dashboard with stats overview and quick actions
 /// FIXED VERSION: Shows upcoming tasks if no past tasks + debug logging
@@ -22,10 +22,9 @@ class DashboardPage extends ConsumerWidget {
     final color = theme.colorScheme;
     final scheduleState = ref.watch(scheduleControllerProvider);
 
-    return ResponsiveScaffold(
-      appBar: AppBar(
-        title: const Text('Dashboard'),
-        actions: [
+    return AppPage(
+      title: 'Dashboard',
+      actions: [
           if (isAuthed && role != null)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -45,9 +44,8 @@ class DashboardPage extends ConsumerWidget {
               ),
             ),
         ],
-      ),
       body: scheduleState.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => const LoadingIndicator(),
         error: (err, st) {
           if (kDebugMode) {
             debugPrint('=== DASHBOARD ERROR ===');

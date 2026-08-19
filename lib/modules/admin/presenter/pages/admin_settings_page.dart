@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../../shared/widgets/widgets.dart';
 
 class AdminSettingsPage extends StatelessWidget {
   const AdminSettingsPage({super.key});
@@ -16,10 +17,8 @@ class AdminSettingsPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Admin Settings'),
-      ),
+    return AppPage(
+      title: 'Admin Settings',
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [

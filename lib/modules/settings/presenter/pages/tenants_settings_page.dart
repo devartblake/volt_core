@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/services/tenants/tenants_service.dart';
 import '../../../inspections/presenter/controllers/user_profile_controller.dart';
+import '../../../../shared/widgets/widgets.dart';
 
 class TenantsSettingsPage extends ConsumerStatefulWidget {
   const TenantsSettingsPage({super.key});
@@ -27,24 +28,22 @@ class _TenantsSettingsPageState extends ConsumerState<TenantsSettingsPage> {
     final currentTenant = ref.watch(currentTenantProvider);
 
     return asyncService.when(
-      loading: () => Scaffold(
-        appBar: AppBar(title: Text('Tenants')),
-        body: Center(child: CircularProgressIndicator()),
-      ),
-      error: (err, stack) => Scaffold(
-        appBar: AppBar(title: const Text('Tenants')),
-        body: Center(
+      loading: () => AppPage(
+      title: 'Tenants',
+      body: const LoadingIndicator(),
+    ),
+      error: (err, stack) => AppPage(
+      title: 'Tenants',
+      body: Center(
           child: Text('Failed to load tenants: $err'),
         ),
-      ),
+    ),
       data: (service) {
         final tenants = service.getTenants();
 
-        return Scaffold(
-          appBar: AppBar(
-            title: const Text('Tenants'),
-          ),
-          body: Padding(
+        return AppPage(
+      title: 'Tenants',
+      body: Padding(
             padding: const EdgeInsets.all(16),
             child: Column(
               children: [
@@ -158,7 +157,7 @@ class _TenantsSettingsPageState extends ConsumerState<TenantsSettingsPage> {
               ],
             ),
           ),
-        );
+    );
       },
     );
   }

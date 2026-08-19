@@ -2,14 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import 'package:voltcore/shared/widgets/responsive_scaffold.dart';
-import 'package:voltcore/app/app_drawer.dart';
-
 import '../../../schedule/presenter/pages/schedule_task_page.dart';
 import '../../../schedule/presenter/widgets/dialogs/schedule_dialog.dart';
 import '../../infra/models/maintenance_record.dart';
 import '../controllers/maintenance_list_controller.dart';
 import '../controllers/maintenance_providers.dart';
+import '../../../../shared/widgets/widgets.dart';
 
 class MaintenanceListPage extends ConsumerWidget {
   const MaintenanceListPage({super.key});
@@ -22,16 +20,13 @@ class MaintenanceListPage extends ConsumerWidget {
     // Use the StateNotifier state instead of an AsyncValue
     final listState = ref.watch(maintenanceListControllerProvider);
 
-    return ResponsiveScaffold(
-      appBar: AppBar(
-        title: const Text('Maintenance Records'),
-        elevation: 0,
-      ),
+    return AppPage(
+      title: 'Maintenance Records',
       body: Builder(
         builder: (context) {
           // 1) Loading with no data yet
           if (listState.isLoading && listState.records.isEmpty) {
-            return const Center(child: CircularProgressIndicator());
+            return const LoadingIndicator();
           }
 
           // 2) Error with no data
@@ -352,12 +347,6 @@ class MaintenanceListPage extends ConsumerWidget {
         },
         icon: const Icon(Icons.add),
         label: const Text('New Maintenance'),
-      ),
-      userProfile: const AppUserProfile(
-        displayName: 'Field Tech',
-        email: 'tech@aselectricnyc.com',
-        currentTenant: 'A&S Electric',
-        tenants: ['A&S Electric'],
       ),
     );
   }

@@ -2,9 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../../shared/widgets/responsive_scaffold.dart';
-import '../../../inspections/presenter/controllers/app_badges_controller.dart';
 import '../../../inspections/presenter/controllers/user_profile_controller.dart';
+import '../../../../shared/widgets/widgets.dart';
 
 /// Settings page for app configuration
 class SettingsPage extends ConsumerStatefulWidget {
@@ -24,19 +23,10 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final badges = ref.watch(appBadgesProvider);
     final userProfile = ref.watch(userProfileProvider);
 
-    return ResponsiveScaffold(
-      appBar: AppBar(
-        title: const Text('Settings'),
-        leading: Navigator.of(context).canPop()
-            ? IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => context.pop(),
-        )
-            : null,
-      ),
+    return AppPage(
+      title: 'Settings',
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
@@ -298,14 +288,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           const SizedBox(height: 24),
         ],
       ),
-      badges: badges.toRouteMap(),
-      userProfile: userProfile,
-      onSwitchTenant: (tenant) {
-        ref.read(currentTenantProvider.notifier).switchTenant(tenant);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Switched to $tenant')),
-        );
-      },
     );
   }
 

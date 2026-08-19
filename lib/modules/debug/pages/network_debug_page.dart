@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/services/network/network_logger.dart';
+import '../../../shared/widgets/widgets.dart';
 
 /// Network debugging page for monitoring API requests and responses.
 ///
@@ -60,12 +61,9 @@ class _NetworkDebugPageState extends ConsumerState<NetworkDebugPage> {
       return true;
     }).toList();
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Network Debug'),
-        backgroundColor: colors.tertiaryContainer,
-        foregroundColor: colors.onTertiaryContainer,
-        actions: [
+    return AppPage(
+      title: 'Network Debug',
+      actions: [
           // Clear logs
           IconButton(
             onPressed: () {
@@ -90,7 +88,6 @@ class _NetworkDebugPageState extends ConsumerState<NetworkDebugPage> {
             tooltip: 'Back to Debug Menu',
           ),
         ],
-      ),
       body: Column(
         children: [
           // Search and filters

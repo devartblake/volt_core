@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:open_filex/open_filex.dart';
 
-import 'package:voltcore/shared/widgets/responsive_scaffold.dart';
 import '../../../../core/services/pdf/pdf_prefs_service.dart';
 import '../../../../core/services/pdf/pdf_service.dart';
 import '../../../../core/services/photos/photo_attachment.dart';
@@ -19,6 +18,7 @@ import '../widgets/section_maint_actions.dart';
 import '../widgets/section_maint_post_service.dart';
 import '../widgets/section_maint_parts.dart';
 import '../widgets/section_maint_signatures.dart';
+import '../../../../shared/widgets/widgets.dart';
 
 class MaintenanceFormPage extends ConsumerStatefulWidget {
   final String? id;
@@ -337,20 +337,14 @@ class _MaintenanceFormPageState extends ConsumerState<MaintenanceFormPage> {
     final m = formState.record;
     final sections = _buildSections(m);
 
-    return ResponsiveScaffold(
-      appBar: AppBar(
-        title: Text(
+    return AppPage(
+      title: '',
+      titleWidget: Text(
           widget.id == null
               ? 'New Maintenance Record'
               : 'Edit Maintenance Record',
         ),
-        leading: Navigator.of(context).canPop()
-            ? IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: _isSaving ? null : () => context.pop(),
-        )
-            : null,
-        actions: [
+      actions: [
           // Section indicator
           Container(
             margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
@@ -390,7 +384,6 @@ class _MaintenanceFormPageState extends ConsumerState<MaintenanceFormPage> {
               onPressed: _save,
             ),
         ],
-      ),
       body: Form(
         key: _formKey,
         child: LayoutBuilder(

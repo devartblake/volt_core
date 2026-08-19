@@ -3,9 +3,9 @@ import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../domain/entities/inspection_entity.dart';
 import '../controllers/inspection_list_controller.dart';
-import '../../../../shared/widgets/responsive_scaffold.dart';
 import '../controllers/app_badges_controller.dart';
 import '../controllers/user_profile_controller.dart';
+import '../../../../shared/widgets/widgets.dart';
 
 class InspectionListPage extends ConsumerStatefulWidget {
   final String? filterStatus;
@@ -31,12 +31,11 @@ class _InspectionListPageState
 
   @override
   Widget build(BuildContext context) {
+    final badges = ref.watch(appBadgesProvider);
     final state = ref.watch(inspectionListControllerProvider);
     final theme = Theme.of(context);
 
     // Watch providers for reactive updates
-    final badges = ref.watch(appBadgesProvider);
-    final userProfile = ref.watch(userProfileProvider);
     ref.watch(currentTenantProvider);
 
     // Apply filter if provided
@@ -53,12 +52,12 @@ class _InspectionListPageState
           }).toList()
         : allItems;
 
-    return ResponsiveScaffold(
-      appBar: AppBar(
-        title: Text(widget.filterStatus == 'pending'
+    return AppPage(
+      title: '',
+      titleWidget: Text(widget.filterStatus == 'pending'
             ? 'Pending Inspections'
             : 'Inspections'),
-        actions: [
+      actions: [
           IconButton(
             icon: const Icon(Icons.edit_outlined),
             onPressed: () {
@@ -70,7 +69,6 @@ class _InspectionListPageState
             },
           ),
         ],
-      ),
       body: Column(
         children: [
           if (items.isNotEmpty)
@@ -78,9 +76,7 @@ class _InspectionListPageState
 
           if (state.isLoading && items.isEmpty)
             const Expanded(
-              child: Center(
-                child: CircularProgressIndicator(),
-              ),
+              child: LoadingIndicator(),
             )
           else if (items.isEmpty)
             Expanded(
@@ -139,14 +135,6 @@ class _InspectionListPageState
         icon: const Icon(Icons.add),
         label: const Text('New Inspection'),
       ),
-      badges: badges.toRouteMap(),
-      userProfile: userProfile,
-      onSwitchTenant: (tenant) {
-        ref.read(currentTenantProvider.notifier).switchTenant(tenant);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Switched to $tenant')),
-        );
-      },
     );
   }
 

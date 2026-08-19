@@ -9,6 +9,7 @@ import 'package:voltcore/core/services/storage/path_resolver.dart';
 import '../../../schedule/presenter/pages/schedule_task_page.dart';
 import '../../../schedule/presenter/widgets/dialogs/schedule_dialog.dart';
 import '../../infra/models/inspection.dart';
+import '../../../../shared/widgets/widgets.dart';
 
 class InspectionDetailPage extends ConsumerWidget {
   final String id;
@@ -30,9 +31,9 @@ class InspectionDetailPage extends ConsumerWidget {
     final theme = Theme.of(context);
 
     if (found == null) {
-      return Scaffold(
-        appBar: AppBar(title: const Text('Inspection Detail')),
-        body: Center(
+      return AppPage(
+      title: 'Inspection Detail',
+      body: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -51,7 +52,7 @@ class InspectionDetailPage extends ConsumerWidget {
             ],
           ),
         ),
-      );
+    );
     }
 
     // Effectively-final binding so closures below can use it non-nullably.
@@ -63,11 +64,9 @@ class InspectionDetailPage extends ConsumerWidget {
     final hasPdf =
         ins.pdfPath.isNotEmpty && File(resolvedPdfPath).existsSync();
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Inspection Detail'),
-        elevation: 0,
-        actions: [
+    return AppPage(
+      title: 'Inspection Detail',
+      actions: [
           // ⭐ NEW: Schedule button in app bar
           IconButton(
             icon: const Icon(Icons.calendar_today),
@@ -100,7 +99,6 @@ class InspectionDetailPage extends ConsumerWidget {
             },
           ),
         ],
-      ),
       body: Column(
         children: [
           // Header Card
@@ -333,7 +331,7 @@ class InspectionDetailPage extends ConsumerWidget {
           ),
         ],
       ),
-      bottomNavigationBar: SafeArea(
+      bottomBar: SafeArea(
         child: Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
