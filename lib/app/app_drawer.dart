@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../core/constants/feature_flags.dart';
 import '../core/constants/route_paths.dart';
 import '../modules/auth/domain/user_role.dart';
 import '../modules/auth/presenter/controllers/auth_controller.dart';
@@ -144,13 +145,15 @@ const List<NavSection> _navSections = [
         routeName: 'nameplate_list',
         description: 'Equipment database',
       ),
-      NavItem(
-        'Asset Search',
-        Icons.search_outlined,
-        RoutePaths.equipmentSearch,
-        routeName: 'equipment_search',
-        description: 'Find equipment',
-      ),
+      // Hidden until backed by real data — see FeatureFlags.equipmentSearchEnabled.
+      if (FeatureFlags.equipmentSearchEnabled)
+        NavItem(
+          'Asset Search',
+          Icons.search_outlined,
+          RoutePaths.equipmentSearch,
+          routeName: 'equipment_search',
+          description: 'Find equipment',
+        ),
     ],
   ),
 
@@ -225,7 +228,11 @@ class AppUserProfile {
   final String displayName;
   final String email;
   final String? avatarUrl;
-  final String currentTenant;
+
+  /// Active tenant name, or null when none is known yet (still loading, or the
+  /// account has no tenant membership). The UI omits the row rather than
+  /// showing a placeholder.
+  final String? currentTenant;
   final List<String> tenants;
   final String? role; // Optional user role label
 
@@ -233,8 +240,8 @@ class AppUserProfile {
     required this.displayName,
     required this.email,
     this.avatarUrl,
-    required this.currentTenant,
-    required this.tenants,
+    this.currentTenant,
+    this.tenants = const [],
     this.role,
   });
 }
@@ -808,6 +815,7 @@ class _ProfileFooter extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 4),
+                  if (profile.currentTenant != null)
                   Row(
                     children: [
                       Icon(
@@ -818,7 +826,7 @@ class _ProfileFooter extends StatelessWidget {
                       const SizedBox(width: 4),
                       Expanded(
                         child: Text(
-                          profile.currentTenant,
+                          profile.currentTenant!,
                           style: theme.textTheme.bodySmall?.copyWith(
                             color: colorScheme.onSurfaceVariant,
                             fontWeight: FontWeight.w500,

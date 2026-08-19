@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import 'package:voltcore/app/app_shells.dart';
 import 'package:voltcore/app/route_roles.dart';
+import 'package:voltcore/core/constants/feature_flags.dart';
 import 'package:voltcore/core/constants/route_paths.dart';
 import 'package:voltcore/modules/auth/presenter/pages/login_page.dart';
 import 'package:voltcore/modules/auth/presenter/pages/forbidden_page.dart';
@@ -248,13 +249,15 @@ final goRouterProvider = Provider<GoRouter>((ref) {
           ),
         ),
       ),
-      GoRoute(
-        path: RoutePaths.equipmentSearch,
-        name: RouteNames.equipmentSearch,
-        builder: (_, __) => const TechShell(
-          child: EquipmentSearchPage(),
+      // Hidden until backed by real data — see FeatureFlags.equipmentSearchEnabled.
+      if (FeatureFlags.equipmentSearchEnabled)
+        GoRoute(
+          path: RoutePaths.equipmentSearch,
+          name: RouteNames.equipmentSearch,
+          builder: (_, __) => const TechShell(
+            child: EquipmentSearchPage(),
+          ),
         ),
-      ),
 
       // ========== DOCUMENTS ==========
       GoRoute(

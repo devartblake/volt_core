@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
-import '../../../../../core/services/notifications/notification_service.dart';
-import '../../../infra/datasources/scheduled_tasks_box.dart';
-import '../../../infra/models/schedule_task.dart';
+import '../../../domain/entities/task_schedule_entity.dart';
+import '../../../infra/repositories/schedule_repository_impl.dart';
 import '../../pages/schedule_task_page.dart';
 
 /// Shows a dialog to schedule a task
@@ -33,7 +33,7 @@ Future<bool?> showScheduleDialog({
   );
 }
 
-class ScheduleTaskDialog extends StatefulWidget {
+class ScheduleTaskDialog extends ConsumerStatefulWidget {
   final TaskType taskType;
   final String siteCode;
   final String address;
@@ -52,10 +52,11 @@ class ScheduleTaskDialog extends StatefulWidget {
   });
 
   @override
-  State<ScheduleTaskDialog> createState() => _ScheduleTaskDialogState();
+  ConsumerState<ScheduleTaskDialog> createState() =>
+      _ScheduleTaskDialogState();
 }
 
-class _ScheduleTaskDialogState extends State<ScheduleTaskDialog> {
+class _ScheduleTaskDialogState extends ConsumerState<ScheduleTaskDialog> {
   DateTime _selectedDate = DateTime.now();
   TimeOfDay _selectedTime = const TimeOfDay(hour: 9, minute: 0);
   final _notesController = TextEditingController();
@@ -129,7 +130,7 @@ class _ScheduleTaskDialogState extends State<ScheduleTaskDialog> {
         _selectedTime.hour,
         _selectedTime.minute,
       );
-      final task = ScheduledTask(
+      final task = TaskScheduleEntity(
         id: const Uuid().v4(),
         tenantId: '',
         title: widget.siteCode.isNotEmpty ? widget.siteCode : widget.address,
@@ -154,17 +155,9 @@ class _ScheduleTaskDialogState extends State<ScheduleTaskDialog> {
         updatedAt: now,
       );
 
-      await ScheduledTasksBox.box.put(task.id, task);
-
-      // Schedule a local reminder for the appointment time.
-      await NotificationService.instance.scheduleTaskReminder(
-        taskId: task.id,
-        title: 'Upcoming: ${task.title}',
-        body: task.address.isNotEmpty
-            ? '${task.sourceType} at ${task.address}'
-            : 'Scheduled ${task.sourceType}',
-        scheduledAt: scheduledAt,
-      );
+      // Saving through the repository keeps one write path: local Hive save,
+      // cloud sync enqueue, and the reminder are all handled there.
+      await ref.read(scheduleRepositoryProvider).saveTask(task);
 
       if (!mounted) return;
 

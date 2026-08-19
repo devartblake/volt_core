@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:voltcore/app/app_drawer.dart';
 
+import '../core/services/tenants/tenants_service.dart';
 import '../modules/auth/presenter/controllers/auth_controller.dart';
 import '../modules/auth/state/auth_state.dart';
 import '../shared/presenter/widgets/sync_status_indicator.dart';
@@ -27,7 +28,12 @@ class DefaultShell extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final auth = ref.watch(authStateProvider);
-    final profile = _buildProfileFromAuth(auth);
+
+    // Real tenants, fetched at login and cached in Hive by TenantsService.
+    // While the service is loading (or if it fails) we fall back to no tenant
+    // rather than inventing a name.
+    final tenants = ref.watch(tenantsProvider);
+    final profile = _buildProfileFromAuth(auth, tenants);
 
     final width = MediaQuery.sizeOf(context).width;
     final isCompact = width < 800; // keep in sync with kCompactBreakpoint
@@ -108,28 +114,50 @@ class AdminShell extends ConsumerWidget {
   }
 }
 
-/// Helper that maps AuthState → AppUserProfile used by AppDrawer.
+/// Tenant names for the signed-in user plus the active one.
 ///
-/// We intentionally keep this minimal so it doesn’t introduce new
-/// fields on AuthState beyond what you already have.
-AppUserProfile? _buildProfileFromAuth(AuthState auth) {
+/// Sourced from [TenantsService], which `AuthController.login` populates from
+/// `tenant_members` and caches in Hive so it survives restarts and offline use.
+@immutable
+class TenantSelection {
+  const TenantSelection({this.current, this.available = const []});
+
+  final String? current;
+  final List<String> available;
+
+  static const TenantSelection empty = TenantSelection();
+}
+
+final tenantsProvider = Provider<TenantSelection>((ref) {
+  final service = ref.watch(tenantsServiceProvider);
+
+  return service.maybeWhen(
+    data: (svc) {
+      final available = svc.getTenants();
+      final current = svc.getCurrentTenant() ??
+          (available.isNotEmpty ? available.first : null);
+      return TenantSelection(current: current, available: available);
+    },
+    orElse: () => TenantSelection.empty,
+  );
+});
+
+/// Helper that maps AuthState (+ tenants) → AppUserProfile used by AppDrawer.
+AppUserProfile? _buildProfileFromAuth(
+  AuthState auth,
+  TenantSelection tenants,
+) {
   if (!auth.isAuthenticated) return null;
 
-  // We assume AuthState has: email, displayName, currentRole.
-  // These were part of the previous RBAC/auth patches.
   final displayName = auth.displayName ?? auth.email ?? 'User';
   final email = auth.email ?? 'unknown@example.com';
-
-  // For now, single-tenant placeholder. You can later wire this
-  // to real tenant data without touching AppDrawer.
-  const tenantName = 'Default Site';
 
   return AppUserProfile(
     displayName: displayName,
     email: email,
     avatarUrl: null,
-    currentTenant: tenantName,
-    tenants: const [tenantName],
+    currentTenant: tenants.current,
+    tenants: tenants.available,
     role: auth.currentRole?.name, // e.g. 'tech', 'admin'
   );
 }

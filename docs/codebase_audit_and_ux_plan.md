@@ -303,7 +303,22 @@ Ordered so each phase is independently shippable and verifiable.
 **Acceptance:** a `tech` account cannot reach `/admin/technicians`, `/tenants`, or
 `/debug/*`; signing in with the dropdown set to Admin yields the server's role.
 
-### Phase 2 — Data correctness (P1) · ~1–1.5 days
+### Phase 2 — Data correctness (P1) · ~1–1.5 days · ✅ IMPLEMENTED
+
+> Delivered. `ScheduleRepositoryImpl` now enqueues upserts/deletes through
+> `SyncService` and hydrates from `ScheduleRemoteDatasource` on load (local wins
+> on conflict, so queued edits aren't clobbered); the schedule dialog was
+> converted to a `ConsumerStatefulWidget` and routed through the repository so
+> there is a single write path. `saveNameplate` keys by string id, with a
+> startup `HiveMigrations` pass that re-keys legacy integer-keyed rows and drops
+> duplicates. Equipment Search is hidden behind
+> `FeatureFlags.equipmentSearchEnabled` (route + drawer). The 8 empty settings
+> files are deleted. The drawer shows the real tenant from `TenantsService`
+> (and omits the row when none is known, instead of "Default Site").
+>
+> Also hardened along the way: `SyncContext.tenantId` no longer throws when
+> dotenv is uninitialised — it degrades to "no tenant", so a missing `.env`
+> can't take down every serializer.
 
 1. Wire `ScheduleRepositoryImpl` through `SyncService` (upsert + delete) and
    hydrate from `ScheduleRemoteDatasource.list()` on load.
