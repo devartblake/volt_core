@@ -655,14 +655,15 @@ class _SignatureCard extends StatelessWidget {
               if (!readOnly)
                 TextButton.icon(
                   onPressed: onClear,
-                  icon: const Icon(Icons.clear, size: 16),
+                  icon: const Icon(Icons.clear, size: 18),
                   label: const Text('Clear'),
                   style: TextButton.styleFrom(
-                    visualDensity: VisualDensity.compact,
+                    // Full 48dp target — tapped with gloves in the field.
                     padding: const EdgeInsets.symmetric(
                       horizontal: 12,
-                      vertical: 8,
+                      vertical: 12,
                     ),
+                    minimumSize: const Size(0, kMinInteractiveDimension),
                   ),
                 ),
             ],
@@ -670,8 +671,12 @@ class _SignatureCard extends StatelessWidget {
           const SizedBox(height: 8),
 
           // Signature pad
-          Container(
-            height: 180,
+          Semantics(
+            label: '$title signature pad',
+            hint: 'Draw the signature here',
+            container: true,
+            child: Container(
+            height: 220,
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(12),
@@ -693,6 +698,7 @@ class _SignatureCard extends StatelessWidget {
                 controller: signatureController,
                 backgroundColor: Colors.white,
               ),
+            ),
             ),
           ),
           const SizedBox(height: 12),

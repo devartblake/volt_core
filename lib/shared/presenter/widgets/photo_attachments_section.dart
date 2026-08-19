@@ -189,20 +189,33 @@ class _Thumbnail extends StatelessWidget {
   Widget build(BuildContext context) {
     // Bytes-based render works on web (WebFileStore) and native (filesystem).
     final bytes = PhotoService.instance.loadBytesSync(photo);
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
-      child: ClipRRect(
+
+    // Without a label a screen reader announces nothing for an image tile; the
+    // caption is the only description the photo carries.
+    final label = photo.caption.trim().isEmpty
+        ? 'Photo attachment'
+        : 'Photo: ${photo.caption.trim()}';
+
+    return Semantics(
+      button: true,
+      image: true,
+      label: bytes == null ? '$label (unavailable)' : label,
+      child: InkWell(
+        onTap: onTap,
         borderRadius: BorderRadius.circular(8),
-        child: SizedBox(
-          width: 84,
-          height: 84,
-          child: bytes != null
-              ? Image.memory(bytes, fit: BoxFit.cover)
-              : Container(
-                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                  child: const Icon(Icons.broken_image_outlined),
-                ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(8),
+          child: SizedBox(
+            width: 84,
+            height: 84,
+            child: bytes != null
+                ? Image.memory(bytes, fit: BoxFit.cover)
+                : Container(
+                    color:
+                        Theme.of(context).colorScheme.surfaceContainerHighest,
+                    child: const Icon(Icons.broken_image_outlined),
+                  ),
+          ),
         ),
       ),
     );

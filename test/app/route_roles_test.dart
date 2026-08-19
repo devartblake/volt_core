@@ -150,9 +150,25 @@ void main() {
       }
     });
 
+    test('the workload dashboard is reachable by every role', () {
+      // The dashboard offers "My Workload" to all roles, so the route must
+      // accept all of them — otherwise the tile leads straight to /403.
+      for (final role in UserRole.values) {
+        expect(
+          RouteRoles.isAllowedByName(
+            name: RouteNames.techDashboard,
+            role: role,
+          ),
+          isTrue,
+          reason: '$role should reach the workload dashboard',
+        );
+      }
+    });
+
     test('technicians keep access to their day-to-day routes', () {
       const techRoutes = [
         RouteNames.dashboard,
+        RouteNames.techDashboard,
         RouteNames.inspections,
         RouteNames.inspectionNew,
         RouteNames.inspectionDetail,

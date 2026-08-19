@@ -66,7 +66,12 @@ class EmptyState extends StatelessWidget {
     final scheme = theme.colorScheme;
     final tone = isError ? scheme.error : scheme.onSurfaceVariant;
 
-    return Center(
+    // The title and message are real Text nodes, so a screen reader already
+    // reads them; only the decorative icon needs hiding (see ExcludeSemantics
+    // below). MergeSemantics groups them into a single announcement rather
+    // than three separate stops.
+    return MergeSemantics(
+      child: Center(
       child: Padding(
         padding: EdgeInsets.symmetric(
           horizontal: 24,
@@ -76,10 +81,12 @@ class EmptyState extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              icon,
-              size: compact ? 40 : 64,
-              color: tone.withValues(alpha: 0.55),
+            ExcludeSemantics(
+              child: Icon(
+                icon,
+                size: compact ? 40 : 64,
+                color: tone.withValues(alpha: 0.55),
+              ),
             ),
             SizedBox(height: compact ? 12 : 20),
             Text(
@@ -109,6 +116,7 @@ class EmptyState extends StatelessWidget {
             ],
           ],
         ),
+      ),
       ),
     );
   }

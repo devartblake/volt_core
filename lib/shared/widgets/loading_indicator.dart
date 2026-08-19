@@ -55,6 +55,9 @@ class LoadingIndicator extends StatelessWidget {
       child: CircularProgressIndicator(
         strokeWidth: strokeWidth,
         color: color,
+        // Announced instead of the raw progress value, which is meaningless
+        // for an indeterminate spinner.
+        semanticsLabel: message ?? 'Loading',
       ),
     );
 

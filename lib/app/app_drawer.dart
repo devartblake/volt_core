@@ -868,8 +868,14 @@ class _ProfileFooter extends ConsumerWidget {
                             );
                           },
                           tooltip: 'Switch tenant',
+                          // Keep the 48dp minimum — this is a gloved,
+                          // outdoors app; the zeroed constraints it had
+                          // before made the target ~20dp.
                           padding: EdgeInsets.zero,
-                          constraints: const BoxConstraints(),
+                          constraints: const BoxConstraints(
+                            minWidth: kMinInteractiveDimension,
+                            minHeight: kMinInteractiveDimension,
+                          ),
                         ),
                     ],
                   ),

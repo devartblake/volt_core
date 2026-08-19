@@ -245,12 +245,17 @@ snackbar with no scroll-to-error.
   which will fight dark mode and any future rebrand.
 - `surfaceVariant` (deprecated) still used in 8 places.
 
-### 4.7 Two dashboards, one orphaned
+### 4.7 Two dashboards, with a routing mismatch
 
-`/` (`DashboardPage`) and `/tech-dashboard` (`TechDashboardPage`) both exist;
-nothing navigates to the latter (noted previously in `docs/routing_audit.md`,
-still unresolved). `TechDashboardPage` is also the only consumer of the
-`get_tech_dashboard_stats` RPC added in migration `0003`.
+`/` (`DashboardPage`) and `/tech-dashboard` (`TechDashboardPage`) both exist.
+
+**Correction to an earlier draft of this audit:** `/tech-dashboard` is *not*
+orphaned. `DashboardPage` offers a "My Workload" tile pointing at it
+(`dashboard_page.dart:799`), visible to all four roles — the `routing_audit.md`
+note predates that tile. The actual defect was an RBAC mismatch: the route was
+restricted to technicians, so every other role hit `/403` from a tile they were
+shown. Fixed in §6.3e. `TechDashboardPage` remains the only consumer of the
+`get_tech_dashboard_stats` RPC from migration `0003`.
 
 ---
 
@@ -414,16 +419,30 @@ Technicians / Tenants / Settings) or collapse them into one shell.
 - Persistent bottom **Save** bar on mobile (thumb reach) with explicit
   saving/queued/failed state fed by `SyncStatus`.
 
-**3e. Resolve the dashboard duplication.** Either route technicians to
-`/tech-dashboard` from the redirect (making the RPC live) or delete the page and
-fold its stats into the role-aware `DashboardPage`. Recommend the latter — one
-dashboard, role-conditional sections.
+**3e. Resolve the dashboard duplication.** ✅ **Done — kept both, fixed the
+mismatch.** `/tech-dashboard` is not orphaned after all: `DashboardPage` offers a
+"My Workload" tile to all four roles, but `RouteRoles` restricted the route to
+technicians, so everyone else landed on `/403`. Per the owner's decision the
+route now accepts all roles — personal workload stats are meaningful for each —
+which also keeps the `get_tech_dashboard_stats` RPC from migration 0003 in use.
+The earlier "orphaned page" reading in `docs/routing_audit.md` predates that tile.
 
-**3f. Ergonomics & a11y pass.** 48 dp minimum targets in dense lists; enlarge the
-signature canvas and its clear/save controls; `Semantics` labels on all icon-only
-buttons and status chips; verify contrast in both themes; replace the 256
-hardcoded colors with `ColorScheme` tokens (mechanical, do it with the deprecation
-sweep in Phase 4).
+**3f. Ergonomics & a11y pass.** ✅ **Done, except the colour sweep.** Signature
+pads grew 180→220 dp and their Clear buttons went from ~26 dp to the 48 dp
+minimum; the drawer's tenant-switch button had its constraints zeroed (~20 dp
+target) and now honours `kMinInteractiveDimension`. `Semantics` reached the app
+for the first time: the sync chip announces its state and action, photo
+thumbnails announce their caption, signature pads are labelled, `EmptyState`
+merges into one announcement with its icon excluded, `LoadingIndicator` has a
+spoken label, and `SectionHeader` is a real heading node. Six tests cover this,
+including Flutter's own `androidTapTargetGuideline` / `iOSTapTargetGuideline`.
+
+Fixed while testing: `SectionHeader`'s `header: true` had no `container: true`,
+so the flag merged upward and marked the *entire card* — fields included — as a
+heading.
+
+Still open: replacing the 256 hardcoded colours with `ColorScheme` tokens, which
+stays batched with the deprecation sweep in Phase 4.
 
 **Acceptance:** every screen shows exactly one app bar and one drawer; all list
 screens use `EmptyState`/`LoadingIndicator`; a dirty form prompts before

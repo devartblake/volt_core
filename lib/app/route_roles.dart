@@ -25,7 +25,15 @@ class RouteRoles {
       UserRole.dispatcher,
       UserRole.admin,
     },
-    'tech_dashboard': {UserRole.tech},
+    // "My Workload" — personal inspection/maintenance counts. Every role has
+    // their own workload, and the dashboard offers the tile to all of them, so
+    // restricting the route to techs only sent everyone else to /403.
+    'tech_dashboard': {
+      UserRole.tech,
+      UserRole.supervisor,
+      UserRole.dispatcher,
+      UserRole.admin,
+    },
     'analytics': {
       UserRole.tech,
       UserRole.supervisor,

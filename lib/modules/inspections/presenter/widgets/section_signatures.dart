@@ -362,19 +362,26 @@ class _SectionSignaturesState extends State<SectionSignatures> {
             ),
             const Spacer(),
             TextButton.icon(
-              icon: const Icon(Icons.clear, size: 16),
+              icon: const Icon(Icons.clear, size: 18),
               label: const Text('Clear'),
               style: TextButton.styleFrom(
+                // Full-height target: this gets tapped with gloves on, and
+                // the previous 4dp vertical padding made it ~26dp tall.
                 padding:
-                const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                minimumSize: const Size(0, kMinInteractiveDimension),
               ),
               onPressed: () => controller.clear(),
             ),
           ],
         ),
         const SizedBox(height: 8),
-        Container(
-          height: 180,
+        Semantics(
+          label: '$label signature pad',
+          hint: 'Draw the signature here',
+          container: true,
+          child: Container(
+          height: 220,
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(12),
@@ -438,6 +445,7 @@ class _SectionSignaturesState extends State<SectionSignatures> {
                 ),
               ],
             ),
+          ),
           ),
         ),
       ],

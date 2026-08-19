@@ -100,19 +100,22 @@ class SectionHeader extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         if (icon != null) ...[
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: badge,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(
-              icon,
-              size: 22,
-              color: ThemeData.estimateBrightnessForColor(badge) ==
-                      Brightness.dark
-                  ? Colors.white
-                  : scheme.onSecondaryContainer,
+          // Decorative: the heading text beside it already names the section.
+          ExcludeSemantics(
+            child: Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: badge,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(
+                icon,
+                size: 22,
+                color: ThemeData.estimateBrightnessForColor(badge) ==
+                        Brightness.dark
+                    ? Colors.white
+                    : scheme.onSecondaryContainer,
+              ),
             ),
           ),
           const SizedBox(width: 12),
@@ -122,10 +125,17 @@ class SectionHeader extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(
-                title,
-                style: theme.textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w600,
+              Semantics(
+                header: true,
+                // Its own node: without this the header flag merges into the
+                // surrounding node and marks the whole card — fields and all —
+                // as a heading.
+                container: true,
+                child: Text(
+                  title,
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
               if (subtitle != null) ...[
