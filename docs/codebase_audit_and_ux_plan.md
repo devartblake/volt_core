@@ -380,6 +380,25 @@ class AppPage extends StatelessWidget {
 (consistent sizing/centering), `LabeledField`, `SelectionField`, `AppCard`,
 `SectionHeader`. Then replace the 22 ad-hoc spinners and 6+ bespoke empty states.
 
+> **3c and 3d delivered.** Drawer filtering now fails closed (no role or no
+> `routeName` ⇒ hidden) and a new admin-only "Administration" section adds the
+> two screens that had *no* navigation entry at all — `/admin/technicians` and
+> `/tenants` were reachable only by typing a URL. A role switcher appears in the
+> profile footer only for accounts holding more than one server-granted role,
+> routed through the validated `switchRole`. The inspection form gained
+> debounced draft autosave (`FormDraftService`) with a restore prompt, a
+> `PopScope` discard guard, a section jump sheet flagging sections with missing
+> required fields, scroll-to-section on validation failure, and a named
+> validation message; the maintenance form gained the discard guard. 27 new
+> tests.
+>
+> Found while testing: the Hive `Inspection` model has no `updatedAt` column
+> (`toEntity()` substitutes `DateTime.now()`), so draft-vs-saved comparison by
+> `updatedAt` was meaningless. Draft write times are now stored separately.
+>
+> Still open from 3d: `LabeledField`/`SelectionField` adoption inside the form
+> sections, and per-section error badges beyond the site-info required fields.
+
 **3c. Role-aware navigation.** Filter drawer items through `RouteRoles` for the
 current role so users only see what they can open; keep `/403` as a backstop, not
 the primary experience. Give `TechShell`/`AdminShell` real differences (tech:

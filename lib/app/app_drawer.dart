@@ -189,19 +189,41 @@ const List<NavSection> _navSections = [
         routeName: 'about',
         description: 'App information',
       ),
+    ],
+  ),
+
+  // Administration — every item here is admin-only in RouteRoles, so the whole
+  // section disappears for other roles (empty sections are dropped).
+  NavSection(
+    title: 'Administration',
+    items: [
       NavItem(
         'Admin Dashboard',
         Icons.admin_panel_settings_outlined,
-        '/admin',
-        routeName: 'admin_dashboard',
+        RoutePaths.adminDashboard,
+        routeName: RouteNames.adminDashboard,
         description: 'Admin overview & controls',
+      ),
+      NavItem(
+        'Technicians',
+        Icons.engineering_outlined,
+        RoutePaths.adminTechnicians,
+        routeName: RouteNames.adminTechnicians,
+        description: 'Team roster & role assignment',
+      ),
+      NavItem(
+        'Tenants',
+        Icons.apartment_outlined,
+        RoutePaths.tenants,
+        routeName: RouteNames.tenantsSettings,
+        description: 'Organisations & sites',
       ),
       NavItem(
         'Admin Settings',
         Icons.security_outlined,
-        '/admin/settings',
-        routeName: 'admin_settings',
-        description: 'Role management & advanced settings',
+        RoutePaths.adminSettings,
+        routeName: RouteNames.adminSettings,
+        description: 'Advanced settings',
       ),
     ],
   ),
@@ -734,16 +756,17 @@ class _AppBrand extends StatelessWidget {
 }
 
 /// Profile footer for drawer
-class _ProfileFooter extends StatelessWidget {
+class _ProfileFooter extends ConsumerWidget {
   const _ProfileFooter(this.profile, this.onSwitchTenant);
 
   final AppUserProfile profile;
   final ValueChanged<String>? onSwitchTenant;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final colorScheme = Theme.of(context).colorScheme;
     final theme = Theme.of(context);
+    final auth = ref.watch(authStateProvider);
 
     return Container(
       decoration: BoxDecoration(
@@ -797,14 +820,10 @@ class _ProfileFooter extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                   ),
                   if (profile.role != null)
-                    Text(
-                      profile.role!,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: colorScheme.primary,
-                        fontWeight: FontWeight.w500,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                    _RoleLine(
+                      role: auth.currentRole,
+                      grantedRoles: auth.grantedRoles,
+                      label: profile.role!,
                     ),
                   Text(
                     profile.email,
@@ -859,6 +878,140 @@ class _ProfileFooter extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// Current role, tappable when the account holds more than one.
+///
+/// Roles come from the server (`tenant_members`); this only chooses which of
+/// the user's own grants the session acts as, and [AuthController.switchRole]
+/// refuses anything not granted.
+class _RoleLine extends ConsumerWidget {
+  const _RoleLine({
+    required this.role,
+    required this.grantedRoles,
+    required this.label,
+  });
+
+  final UserRole? role;
+  final Set<UserRole> grantedRoles;
+  final String label;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+
+    final style = theme.textTheme.bodySmall?.copyWith(
+      color: scheme.primary,
+      fontWeight: FontWeight.w500,
+    );
+
+    // Single-role accounts (the common case) just read the role.
+    if (grantedRoles.length < 2) {
+      return Text(
+        label,
+        style: style,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+      );
+    }
+
+    return InkWell(
+      onTap: () => showModalBottomSheet<void>(
+        context: context,
+        builder: (_) => _RoleSwitcher(
+          current: role,
+          granted: grantedRoles,
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 2),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Flexible(
+              child: Text(
+                label,
+                style: style,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            const SizedBox(width: 4),
+            Icon(Icons.unfold_more, size: 14, color: scheme.primary),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Bottom sheet listing the roles this account actually holds.
+class _RoleSwitcher extends ConsumerWidget {
+  const _RoleSwitcher({required this.current, required this.granted});
+
+  final UserRole? current;
+  final Set<UserRole> granted;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+
+    // Most privileged first, so the common "act as admin" is at the top.
+    final roles = granted.toList()
+      ..sort((a, b) => b.privilege.compareTo(a.privilege));
+
+    return SafeArea(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+            child: Row(
+              children: [
+                const Icon(Icons.badge_outlined),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'Act as',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Text(
+              'Switching changes which screens are available. Your access is '
+              'set by your organisation.',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          for (final role in roles)
+            ListTile(
+              leading: Icon(
+                role == current
+                    ? Icons.radio_button_checked
+                    : Icons.radio_button_unchecked,
+                color: role == current ? theme.colorScheme.primary : null,
+              ),
+              title: Text(role.label),
+              onTap: () {
+                ref.read(authStateProvider.notifier).switchRole(role);
+                Navigator.of(context).pop();
+              },
+            ),
+          const SizedBox(height: 8),
+        ],
       ),
     );
   }
@@ -1021,22 +1174,22 @@ class _ProfileMini extends StatelessWidget {
 // ===== Helper functions =====
 
 /// Filter nav sections by role using RouteRoles.
+///
+/// Fails closed, matching the router guard: with no role (not signed in yet)
+/// nothing is offered, and an item without a `routeName` can't be RBAC-checked
+/// so it is hidden rather than shown to everyone. Sections left with no visible
+/// items are dropped, so a technician never sees an empty "Administration"
+/// heading.
 List<NavSection> _visibleNavSectionsForRole(UserRole? role) {
-  // If no role yet (e.g. before login), just show everything.
-  if (role == null) return _navSections;
+  if (role == null) return const [];
 
   final result = <NavSection>[];
 
   for (final section in _navSections) {
     final visibleItems = section.items.where((item) {
       final name = item.routeName;
-      if (name == null) return true; // no RBAC info -> visible to all
-
-      final allowed = RouteRoles.isAllowedByName(
-        name: name,
-        role: role,
-      );
-      return allowed;
+      if (name == null) return false;
+      return RouteRoles.isAllowedByName(name: name, role: role);
     }).toList();
 
     if (visibleItems.isNotEmpty) {
@@ -1052,19 +1205,14 @@ List<NavSection> _visibleNavSectionsForRole(UserRole? role) {
   return result;
 }
 
-/// Filter quick actions by role as well.
+/// Filter quick actions by role as well. Same fail-closed rule.
 List<NavItem> _visibleQuickActionsForRole(UserRole? role) {
-  if (role == null) return _quickActions;
+  if (role == null) return const [];
 
   return _quickActions.where((item) {
     final name = item.routeName;
-    if (name == null) return true;
-
-    final allowed = RouteRoles.isAllowedByName(
-      name: name,
-      role: role,
-    );
-    return allowed;
+    if (name == null) return false;
+    return RouteRoles.isAllowedByName(name: name, role: role);
   }).toList();
 }
 

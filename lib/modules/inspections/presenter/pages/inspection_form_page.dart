@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../../../core/services/forms/form_draft_service.dart';
 import '../../../../shared/widgets/widgets.dart';
 import '../../domain/entities/inspection_entity.dart';
 import '../controllers/inspection_form_controller.dart';
@@ -32,6 +33,19 @@ class InspectionFormPage extends ConsumerStatefulWidget {
 
 class _InspectionFormPageState extends ConsumerState<InspectionFormPage> {
   final _formKey = GlobalKey<FormState>();
+  final _scrollController = ScrollController();
+
+  /// One key per section so the section list can scroll to it, and so a failed
+  /// validation can jump to the first section that needs attention.
+  final Map<_FormSection, GlobalKey> _sectionKeys = {
+    for (final s in _FormSection.values) s: GlobalKey(),
+  };
+
+  /// True once the user has edited anything — drives the unsaved-changes guard.
+  bool _dirty = false;
+
+  /// Set after a save so the guard doesn't prompt on the way out.
+  bool _saved = false;
 
   @override
   void initState() {
@@ -39,27 +53,113 @@ class _InspectionFormPageState extends ConsumerState<InspectionFormPage> {
 
     // ✅ FIX: Delay state modification until after the widget tree is built
     // This prevents "modifying provider during build" error
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       final controller = ref.read(inspectionFormControllerProvider.notifier);
 
       if (widget.inspectionId != null) {
         // Edit mode: load from repository via ListInspectionsUsecase
-        controller.loadForEdit(widget.inspectionId!);
+        await controller.loadForEdit(widget.inspectionId!);
+        await _offerDraftIfNewer(widget.inspectionId!);
       } else {
         // New inspection: start from a blank draft entity
         controller.reset();
-        controller.updateDraft(
-          InspectionEntity.newDraft(),
-        );
+        controller.updateDraft(InspectionEntity.newDraft());
       }
     });
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  /// If an autosaved draft exists for this inspection and is newer than the
+  /// saved record, offer to restore it rather than silently discarding work.
+  Future<void> _offerDraftIfNewer(String id) async {
+    final draft = FormDraftService.instance.loadDraft(id);
+    if (draft == null || !mounted) return;
+
+    // Use the draft's recorded write time, not the entity's updatedAt — the
+    // Hive model doesn't persist that field, so a loaded draft always reports
+    // "now" and would always look newer than the saved record.
+    final draftTime = FormDraftService.instance.draftSavedAt(id);
+
+    final controller = ref.read(inspectionFormControllerProvider.notifier);
+    final saved = ref.read(inspectionFormControllerProvider).inspection;
+    if (saved != null &&
+        draftTime != null &&
+        !draftTime.isAfter(saved.updatedAt)) {
+      // Draft is stale relative to what was saved; drop it.
+      await FormDraftService.instance.clearDraft(id);
+      return;
+    }
+
+    final restore = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Unsaved changes found'),
+        content: Text(
+          draftTime == null
+              ? 'You have unsaved edits to this inspection. Restore them?'
+              : 'You have unsaved edits to this inspection from '
+                  '${_relativeTime(draftTime)}. Restore them?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Discard'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Restore'),
+          ),
+        ],
+      ),
+    );
+
+    if (!mounted) return;
+    if (restore == true) {
+      controller.updateDraft(draft);
+      setState(() => _dirty = true);
+    } else {
+      await FormDraftService.instance.clearDraft(id);
+    }
+  }
+
+  /// Record an edit: mark dirty and queue a debounced draft write.
+  void _onSectionChanged(InspectionEntity updated) {
+    ref.read(inspectionFormControllerProvider.notifier).updateDraft(updated);
+    FormDraftService.instance.saveDraftDebounced(updated);
+    if (!_dirty) setState(() => _dirty = true);
+  }
+
+  /// Scroll a section into view (from the section jump list, or on validation
+  /// failure).
+  Future<void> _scrollToSection(_FormSection section) async {
+    final key = _sectionKeys[section];
+    final ctx = key?.currentContext;
+    if (ctx == null) return;
+    await Scrollable.ensureVisible(
+      ctx,
+      duration: const Duration(milliseconds: 350),
+      curve: Curves.easeInOut,
+      alignment: 0.05,
+    );
+  }
+
+  static String _relativeTime(DateTime t) {
+    final diff = DateTime.now().difference(t);
+    if (diff.inMinutes < 1) return 'a moment ago';
+    if (diff.inMinutes < 60) return '${diff.inMinutes} min ago';
+    if (diff.inHours < 24) return '${diff.inHours} h ago';
+    return '${diff.inDays} d ago';
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final formState = ref.watch(inspectionFormControllerProvider);
-    final controller = ref.read(inspectionFormControllerProvider.notifier);
 
     final inspection = formState.inspection;
     final isSaving = formState.isSaving;
@@ -76,48 +176,76 @@ class _InspectionFormPageState extends ConsumerState<InspectionFormPage> {
     final isEditing = formState.isEditing;
     final title = isEditing ? 'Edit Inspection' : 'New Inspection';
 
-    // Build all the section widgets with the current inspection as the model
+    // Each section is keyed so the jump list (and validation failures) can
+    // scroll straight to it.
+    Widget keyed(_FormSection section, Widget child) =>
+        KeyedSubtree(key: _sectionKeys[section], child: child);
+
     final children = [
-      SectionSiteInfo(
-        model: inspection,
-        onChanged: controller.updateDraft,
+      keyed(
+        _FormSection.siteInfo,
+        SectionSiteInfo(model: inspection, onChanged: _onSectionChanged),
       ),
-      SectionLocationSafety(
-        model: inspection,
-        onChanged: controller.updateDraft,
+      keyed(
+        _FormSection.locationSafety,
+        SectionLocationSafety(model: inspection, onChanged: _onSectionChanged),
       ),
-      SectionFdnyDep(
-        model: inspection,
-        onChanged: controller.updateDraft,
+      keyed(
+        _FormSection.fdnyDep,
+        SectionFdnyDep(model: inspection, onChanged: _onSectionChanged),
       ),
-      SectionOperationalUse(
-        model: inspection,
-        onChanged: controller.updateDraft,
+      keyed(
+        _FormSection.operationalUse,
+        SectionOperationalUse(model: inspection, onChanged: _onSectionChanged),
       ),
-      SectionPostInspection(
-        model: inspection,
-        onChanged: controller.updateDraft,
+      keyed(
+        _FormSection.postInspection,
+        SectionPostInspection(model: inspection, onChanged: _onSectionChanged),
       ),
-      SectionMaterials(
-        model: inspection,
-        onChanged: controller.updateDraft,
+      keyed(
+        _FormSection.materials,
+        SectionMaterials(model: inspection, onChanged: _onSectionChanged),
       ),
-      SectionSignatures(
-        model: inspection,
-        onChanged: controller.updateDraft,
+      keyed(
+        _FormSection.signatures,
+        SectionSignatures(model: inspection, onChanged: _onSectionChanged),
       ),
       // Load test section still works off inspection.id (Hive records)
-      SectionLoadTest(inspectionId: inspection.id),
+      keyed(
+        _FormSection.loadTest,
+        SectionLoadTest(inspectionId: inspection.id),
+      ),
       // Photos are self-managed by owner id (Hive-backed, like load tests)
-      PhotoAttachmentsSection(
-        ownerType: PhotoAttachment.ownerInspection,
-        ownerId: inspection.id,
+      keyed(
+        _FormSection.photos,
+        PhotoAttachmentsSection(
+          ownerType: PhotoAttachment.ownerInspection,
+          ownerId: inspection.id,
+        ),
       ),
       const SizedBox(height: 120),
     ];
 
-    return AppPage(
+    return PopScope(
+      // Don't let a back gesture / nav tap silently bin the work.
+      canPop: !_dirty || _saved,
+      onPopInvokedWithResult: (didPop, _) async {
+        if (didPop) return;
+        final leave = await _confirmDiscard();
+        if (leave && mounted) {
+          FormDraftService.instance.cancelPending(inspection.id);
+          if (context.mounted) context.pop();
+        }
+      },
+      child: AppPage(
       title: title,
+      actions: [
+        IconButton(
+          icon: const Icon(Icons.list_alt_outlined),
+          tooltip: 'Jump to section',
+          onPressed: () => _showSectionSheet(inspection),
+        ),
+      ],
       body: Form(
         key: _formKey,
         child: LayoutBuilder(
@@ -127,6 +255,7 @@ class _InspectionFormPageState extends ConsumerState<InspectionFormPage> {
             return Stack(
               children: [
                 SingleChildScrollView(
+                  controller: _scrollController,
                   padding: const EdgeInsets.all(16),
                   child: wide
                       ? Wrap(
@@ -177,21 +306,151 @@ class _InspectionFormPageState extends ConsumerState<InspectionFormPage> {
               ),
             ],
           ),
-          child: FilledButton.icon(
-            icon: const Icon(Icons.check_circle_outline),
-            label: Text(isSaving
-                ? 'Saving...'
-                : isEditing
-                ? 'Save Changes'
-                : 'Save & Generate PDF'),
-            style: FilledButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 16),
-            ),
-            onPressed: isSaving ? null : () => _handleSave(context, inspection),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (_dirty && !isSaving)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.edit_note,
+                        size: 16,
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        'Unsaved changes — kept on this device',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  icon: const Icon(Icons.check_circle_outline),
+                  label: Text(isSaving
+                      ? 'Saving...'
+                      : isEditing
+                      ? 'Save Changes'
+                      : 'Save & Generate PDF'),
+                  style: FilledButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                  ),
+                  onPressed:
+                      isSaving ? null : () => _handleSave(context, inspection),
+                ),
+              ),
+            ],
           ),
         ),
       ),
+      ),
     );
+  }
+
+  /// Ask before throwing away unsaved edits. Returns true to leave.
+  ///
+  /// "Keep editing" is the safe default; discarding also clears the autosaved
+  /// draft so it can't resurface later.
+  Future<bool> _confirmDiscard() async {
+    final inspection = ref.read(inspectionFormControllerProvider).inspection;
+
+    final choice = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Discard changes?'),
+        content: const Text(
+          'This inspection has unsaved changes. They are kept as a draft on '
+          'this device unless you discard them.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Keep editing'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Leave, keep draft'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(ctx).colorScheme.error,
+            ),
+            onPressed: () => Navigator.pop(ctx, null),
+            child: const Text('Discard'),
+          ),
+        ],
+      ),
+    );
+
+    // null == "Discard": drop the draft and leave.
+    if (choice == null) {
+      if (inspection != null) {
+        await FormDraftService.instance.clearDraft(inspection.id);
+      }
+      return true;
+    }
+    return choice;
+  }
+
+  /// Bottom sheet listing the form's sections so a long form isn't one blind
+  /// scroll. Marks sections that still need required fields.
+  Future<void> _showSectionSheet(InspectionEntity inspection) async {
+    final incomplete = _incompleteSections(inspection);
+
+    final target = await showModalBottomSheet<_FormSection>(
+      context: context,
+      showDragHandle: true,
+      builder: (ctx) => SafeArea(
+        child: ListView(
+          shrinkWrap: true,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+              child: Text(
+                'Sections',
+                style: Theme.of(ctx).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+              ),
+            ),
+            for (final section in _FormSection.values)
+              ListTile(
+                leading: Icon(section.icon),
+                title: Text(section.label),
+                trailing: incomplete.contains(section)
+                    ? Icon(
+                        Icons.error_outline,
+                        size: 18,
+                        color: Theme.of(ctx).colorScheme.error,
+                      )
+                    : null,
+                subtitle: incomplete.contains(section)
+                    ? const Text('Needs required fields')
+                    : null,
+                onTap: () => Navigator.pop(ctx, section),
+              ),
+          ],
+        ),
+      ),
+    );
+
+    if (target != null) await _scrollToSection(target);
+  }
+
+  /// Sections with required fields still empty. Kept deliberately small — it
+  /// mirrors the validators the form itself enforces.
+  Set<_FormSection> _incompleteSections(InspectionEntity i) {
+    return {
+      if (i.siteCode.trim().isEmpty || i.address.trim().isEmpty)
+        _FormSection.siteInfo,
+    };
   }
 
   Future<void> _handleSave(
@@ -199,12 +458,27 @@ class _InspectionFormPageState extends ConsumerState<InspectionFormPage> {
       InspectionEntity current,
       ) async {
     if (!_formKey.currentState!.validate()) {
+      // Say *what* is missing and take the user there, rather than a generic
+      // "fill in all required fields" on a nine-section form.
+      final incomplete = _incompleteSections(current);
+      final where = incomplete.isEmpty
+          ? null
+          : incomplete.map((s) => s.label).join(', ');
+
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please fill in all required fields'),
+        SnackBar(
+          content: Text(
+            where == null
+                ? 'Some required fields still need attention.'
+                : 'Required fields missing in: $where',
+          ),
           backgroundColor: Colors.orange,
         ),
       );
+
+      if (incomplete.isNotEmpty) {
+        await _scrollToSection(incomplete.first);
+      }
       return;
     }
 
@@ -230,6 +504,14 @@ class _InspectionFormPageState extends ConsumerState<InspectionFormPage> {
         return;
       }
 
+      // Saved for real: drop the autosaved draft and let the guard stand down.
+      await FormDraftService.instance.clearDraft(current.id);
+      if (!mounted) return;
+      setState(() {
+        _dirty = false;
+        _saved = true;
+      });
+
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Inspection saved'),
@@ -250,4 +532,25 @@ class _InspectionFormPageState extends ConsumerState<InspectionFormPage> {
       );
     }
   }
+}
+/// The form's sections, in the order they appear.
+///
+/// Having these as an enum (rather than a bare list of widgets) is what lets
+/// the jump list, the scroll-to-section, and the validation summary all refer
+/// to the same thing.
+enum _FormSection {
+  siteInfo('Site information', Icons.location_on_outlined),
+  locationSafety('Location & safety', Icons.health_and_safety_outlined),
+  fdnyDep('FDNY / DEP', Icons.verified_user_outlined),
+  operationalUse('Operational use', Icons.speed_outlined),
+  postInspection('Post-inspection', Icons.fact_check_outlined),
+  materials('Materials', Icons.inventory_2_outlined),
+  signatures('Signatures', Icons.draw_outlined),
+  loadTest('Load test', Icons.bolt_outlined),
+  photos('Photos', Icons.photo_camera_outlined);
+
+  const _FormSection(this.label, this.icon);
+
+  final String label;
+  final IconData icon;
 }
