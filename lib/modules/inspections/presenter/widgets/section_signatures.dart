@@ -5,6 +5,7 @@ import '../../../../core/services/storage/file_storage_service.dart';
 import '../../../schedule/presenter/pages/schedule_task_page.dart';
 import '../../../schedule/presenter/widgets/dialogs/schedule_dialog.dart';
 import '../../domain/entities/inspection_entity.dart';
+import '../../../../shared/widgets/widgets.dart';
 
 class SectionSignatures extends StatefulWidget {
   final InspectionEntity model;
@@ -68,22 +69,7 @@ class _SectionSignaturesState extends State<SectionSignatures> {
   Future<void> _handleSave() async {
     if (techCtl.isEmpty || custCtl.isEmpty) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Row(
-            children: [
-              Icon(Icons.warning_amber_rounded, color: Colors.white),
-              SizedBox(width: 12),
-              Expanded(child: Text('Please provide both signatures')),
-            ],
-          ),
-          backgroundColor: Colors.orange,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ),
-      );
+      AppSnackBar.warning(context, 'Please provide both signatures');
       return;
     }
 
@@ -127,42 +113,12 @@ class _SectionSignaturesState extends State<SectionSignatures> {
       widget.onChanged(updated);
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Row(
-              children: [
-                Icon(Icons.check_circle, color: Colors.white),
-                SizedBox(width: 12),
-                Text('Signatures saved successfully'),
-              ],
-            ),
-            backgroundColor: Colors.green,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-          ),
-        );
+        AppSnackBar.success(context, 'Signatures saved successfully');
       }
     } catch (e) {
       if (mounted) {
         setState(() => _isSaving = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                const Icon(Icons.error, color: Colors.white),
-                const SizedBox(width: 12),
-                Expanded(child: Text('Error saving signatures: $e')),
-              ],
-            ),
-            backgroundColor: Colors.red,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-          ),
-        );
+        AppSnackBar.error(context, 'Error saving signatures: $e');
       }
     }
   }
@@ -179,22 +135,7 @@ class _SectionSignaturesState extends State<SectionSignatures> {
     );
 
     if (scheduled == true && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Row(
-            children: [
-              Icon(Icons.check_circle, color: Colors.white),
-              SizedBox(width: 12),
-              Text('Inspection scheduled successfully'),
-            ],
-          ),
-          backgroundColor: Colors.green,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ),
-      );
+      AppSnackBar.success(context, 'Inspection scheduled successfully');
     }
   }
 

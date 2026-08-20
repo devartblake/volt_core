@@ -5,6 +5,7 @@ import '../../../domain/entities/task_schedule_entity.dart';
 import '../../../infra/repositories/schedule_repository_impl.dart';
 import '../../pages/schedule_task_page.dart';
 import '../../../../../core/theme/status_colors.dart';
+import '../../../../../shared/widgets/widgets.dart';
 
 /// Shows a dialog to schedule a task
 /// Returns true if task was scheduled successfully
@@ -162,47 +163,17 @@ class _ScheduleTaskDialogState extends ConsumerState<ScheduleTaskDialog> {
 
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            children: [
-              const Icon(Icons.check_circle, color: Colors.white),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  'Task scheduled for ${_formatDate(_selectedDate)} at ${_selectedTime.format(context)}',
-                ),
-              ),
-            ],
-          ),
-          backgroundColor: Colors.green,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ),
+      AppSnackBar.success(
+        context,
+        'Task scheduled for ${_formatDate(_selectedDate)} '
+        'at ${_selectedTime.format(context)}',
       );
 
       Navigator.of(context).pop(true);
     } catch (e) {
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            children: [
-              const Icon(Icons.error, color: Colors.white),
-              const SizedBox(width: 12),
-              Expanded(child: Text('Error scheduling task: $e')),
-            ],
-          ),
-          backgroundColor: Colors.red,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ),
-      );
+      AppSnackBar.error(context, 'Error scheduling task: $e');
 
       setState(() => _isSaving = false);
     }

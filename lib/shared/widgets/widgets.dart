@@ -6,6 +6,7 @@
 library;
 
 export 'app_page.dart';
+export 'app_snack_bar.dart';
 export 'empty_state.dart';
 export 'form_fields/labeled_field.dart';
 export 'form_fields/selection_field.dart';

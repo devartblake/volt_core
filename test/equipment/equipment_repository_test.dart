@@ -38,6 +38,7 @@ Inspection _inspection({
 
 void main() {
   late Directory tempDir;
+  // No remote datasource: these cover local derivation only.
   const repo = EquipmentRepositoryImpl();
 
   setUpAll(() {

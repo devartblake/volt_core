@@ -1,7 +1,8 @@
 # Deferred migrations — plan of action
 
 **Date:** 2026-08-20
-**Status:** Not started. Both items were deliberately deferred during the audit
+**Status:** In progress — category (a) of item 2 (snackbars) is done; the rest
+is still open. Both items were deliberately deferred during the audit
 remediation; this is the plan for picking them up.
 
 Two pieces of mechanical-but-visible work were left out of Phases 3 and 4:
@@ -118,20 +119,23 @@ irrelevant; for something inside a `ListView.builder` row it is not.
 
 ### Approach — by category, not by file
 
-**(a) Snackbars — do these first, ~20 sites.** Success/error snackbars are
-built once per action; de-consting is free. Better still, most should not be
-choosing colours at all:
+**(a) Snackbars — ✅ DONE.** Success/error snackbars are built once per action,
+so de-consting them is free — and most shouldn't have been choosing colours at
+all:
 
 ```dart
-// Instead of: const SnackBar(backgroundColor: Colors.green, …)
-ScaffoldMessenger.of(context).showSnackBar(
-  AppSnackBar.success('Inspection scheduled'),   // to be added to the kit
-);
+// Was: const SnackBar(backgroundColor: Colors.green, …) inside a Row of
+//      Icon + Text, repeated at every call site.
+AppSnackBar.success(context, 'Inspection scheduled');
 ```
 
-Adding `AppSnackBar.success/error/warning` to `shared/widgets` fixes the colour
-*and* the copy inconsistency (some use `Row(Icon, Text)`, some plain text) in
-one move. This is the highest-value slice.
+`AppSnackBar.success/error/warning/info` now lives in the kit and every
+feature-code snackbar uses it, which fixed the colour *and* the markup
+inconsistency (some were plain text, some a hand-built `Row`) in one move.
+Colours come from `StatusColors` / `colorScheme.error` and adapt to dark mode;
+error toasts stay up 5s against success's 3s; the leading icon is
+`ExcludeSemantics` so a screen reader announces the message once. Debug pages
+were left alone per category (c). 9 tests cover it.
 
 **(b) Icons on coloured surfaces — leave alone, ~15 sites.**
 `const Icon(Icons.check, color: Colors.white)` sitting on a filled primary
@@ -172,8 +176,8 @@ another 1–2 hours.
 
 ## Suggested order
 
-1. **Snackbar helper + category (a)** — best value-to-risk in the whole
-   document; also removes duplicated snackbar markup.
+1. ~~**Snackbar helper + category (a)**~~ — ✅ done. `AppSnackBar` added and all
+   feature-code snackbars migrated.
 2. **Form sections (item 1)** — do it in one sitting so spacing is consistent
    across the form, not half-migrated.
 3. **Category (d)** — the dark-mode status colours in list rows.

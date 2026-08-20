@@ -466,15 +466,11 @@ class _InspectionFormPageState extends ConsumerState<InspectionFormPage> {
           ? null
           : incomplete.map((s) => s.label).join(', ');
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            where == null
-                ? 'Some required fields still need attention.'
-                : 'Required fields missing in: $where',
-          ),
-          backgroundColor: Colors.orange,
-        ),
+      AppSnackBar.warning(
+        context,
+        where == null
+            ? 'Some required fields still need attention.'
+            : 'Required fields missing in: $where',
       );
 
       if (incomplete.isNotEmpty) {
@@ -496,12 +492,7 @@ class _InspectionFormPageState extends ConsumerState<InspectionFormPage> {
       // check it so a failed save doesn't show success and navigate away.
       final saveError = ref.read(inspectionFormControllerProvider).error;
       if (saveError != null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error saving inspection: $saveError'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        AppSnackBar.error(context, 'Error saving inspection: $saveError');
         return;
       }
 
@@ -513,24 +504,14 @@ class _InspectionFormPageState extends ConsumerState<InspectionFormPage> {
         _saved = true;
       });
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Inspection saved'),
-          duration: Duration(seconds: 2),
-        ),
-      );
+      AppSnackBar.success(context, 'Inspection saved');
 
       // FIXED: Navigate to detail page instead of just popping
       // This uses the inspection ID to show the generated PDF
       context.go('/inspections/detail/${current.id}');
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error saving inspection: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      AppSnackBar.error(context, 'Error saving inspection: $e');
     }
   }
 }

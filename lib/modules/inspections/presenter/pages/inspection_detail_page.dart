@@ -82,19 +82,7 @@ class InspectionDetailPage extends ConsumerWidget {
               );
 
               if (scheduled == true && context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Row(
-                      children: [
-                        Icon(Icons.check_circle, color: Colors.white),
-                        SizedBox(width: 12),
-                        Text('Inspection scheduled successfully'),
-                      ],
-                    ),
-                    backgroundColor: Colors.green,
-                    behavior: SnackBarBehavior.floating,
-                  ),
-                );
+                AppSnackBar.success(context, 'Inspection scheduled successfully');
               }
             },
           ),
@@ -215,20 +203,7 @@ class InspectionDetailPage extends ConsumerWidget {
                           );
 
                           if (scheduled == true && context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Row(
-                                  children: [
-                                    Icon(Icons.check_circle,
-                                        color: Colors.white),
-                                    SizedBox(width: 12),
-                                    Text('Added to schedule'),
-                                  ],
-                                ),
-                                backgroundColor: Colors.green,
-                                behavior: SnackBarBehavior.floating,
-                              ),
-                            );
+                            AppSnackBar.success(context, 'Added to schedule');
                           }
                         },
                       ),

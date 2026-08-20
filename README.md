@@ -62,6 +62,7 @@ Run these in the SQL editor of your project, in order:
 2. `supabase/migrations/0002_align_app_sync_columns.sql`
 3. `supabase/migrations/0003_missing_tables.sql` — `schedule_tasks`,
    `technicians`, `role_assignments`, and the dashboard RPC.
+4. `supabase/migrations/0004_equipment.sql` — the shared equipment registry.
 
 Then create a tenant and grant yourself membership — **roles come from the
 database**, so without a `tenant_members` row the app treats you as a technician

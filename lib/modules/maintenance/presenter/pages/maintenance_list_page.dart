@@ -8,7 +8,6 @@ import '../../infra/models/maintenance_record.dart';
 import '../controllers/maintenance_list_controller.dart';
 import '../controllers/maintenance_providers.dart';
 import '../../../../shared/widgets/widgets.dart';
-import '../../../../core/theme/status_colors.dart';
 
 class MaintenanceListPage extends ConsumerWidget {
   const MaintenanceListPage({super.key});
@@ -183,22 +182,7 @@ class MaintenanceListPage extends ConsumerWidget {
                                   );
 
                                   if (scheduled == true && context.mounted) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: const Row(
-                                          children: [
-                                            Icon(Icons.check_circle, color: Colors.white),
-                                            SizedBox(width: 12),
-                                            Text('Maintenance scheduled'),
-                                          ],
-                                        ),
-                                        backgroundColor: theme.status.success,
-                                        behavior: SnackBarBehavior.floating,
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(8),
-                                        ),
-                                      ),
-                                    );
+                                    AppSnackBar.success(context, 'Maintenance scheduled');
                                   }
                                 },
                               ),
