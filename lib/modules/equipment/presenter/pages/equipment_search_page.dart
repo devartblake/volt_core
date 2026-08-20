@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../providers/equipment_providers.dart';
+import '../../infra/repositories/equipment_repository.dart';
 import '../../../../shared/widgets/widgets.dart';
 
 /// Equipment search page
@@ -230,24 +231,39 @@ class _EquipmentSearchPageState extends ConsumerState<EquipmentSearchPage> {
 
               // Results
               Expanded(
-                child: _buildResults(filteredEquipment, colorScheme, theme),
+                child: _buildResults(
+                  filteredEquipment,
+                  colorScheme,
+                  theme,
+                  registryIsEmpty: allEquipment.isEmpty,
+                ),
               ),
             ],
           );
         },
         loading: () => const LoadingIndicator(),
-        error: (error, stack) => Center(child: Text('Error: $error')),
+        error: (error, stack) => EmptyState.error(
+          title: 'Could not load equipment',
+          message: '$error',
+        ),
       ),
     );
   }
 
-  Widget _buildResults(List<Equipment> equipment, ColorScheme colorScheme, ThemeData theme) {
-    if (_searchQuery.isEmpty && !_filters.hasFilters) {
-      return _buildEmptyState(
-        icon: Icons.search,
-        title: 'Start Searching',
-        message: 'Enter a search term or apply filters to find equipment',
-        colorScheme: colorScheme,
+  Widget _buildResults(
+    List<Equipment> equipment,
+    ColorScheme colorScheme,
+    ThemeData theme, {
+    required bool registryIsEmpty,
+  }) {
+    // Nothing has ever been inspected: explain where equipment comes from
+    // rather than showing a bare "no results".
+    if (registryIsEmpty) {
+      return const EmptyState(
+        icon: Icons.precision_manufacturing_outlined,
+        title: 'No equipment yet',
+        message: 'Generators appear here once they have been inspected. '
+            'Create an inspection and record its nameplate details.',
       );
     }
 
@@ -653,7 +669,7 @@ class _DetailItem extends StatelessWidget {
 }
 
 /// Filters bottom sheet
-class _FiltersBottomSheet extends StatefulWidget {
+class _FiltersBottomSheet extends ConsumerStatefulWidget {
   const _FiltersBottomSheet({
     required this.currentFilters,
     required this.onApplyFilters,
@@ -663,10 +679,11 @@ class _FiltersBottomSheet extends StatefulWidget {
   final ValueChanged<EquipmentSearchFilters> onApplyFilters;
 
   @override
-  State<_FiltersBottomSheet> createState() => _FiltersBottomSheetState();
+  ConsumerState<_FiltersBottomSheet> createState() =>
+      _FiltersBottomSheetState();
 }
 
-class _FiltersBottomSheetState extends State<_FiltersBottomSheet> {
+class _FiltersBottomSheetState extends ConsumerState<_FiltersBottomSheet> {
   late EquipmentSearchFilters _filters;
 
   @override
@@ -680,9 +697,15 @@ class _FiltersBottomSheetState extends State<_FiltersBottomSheet> {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
-    final makes = ['Caterpillar', 'Cummins', 'Generac', 'Kohler'];
-    final voltages = ['120V', '208V', '240V', '480V'];
-    final locations = ['Building A - Basement', 'Building B - Roof', 'Building C - Generator Room'];
+    // Only offer filter values that exist in the inspection history, so a
+    // filter can never produce an empty result by construction.
+    final facets = ref.watch(equipmentFacetsProvider).maybeWhen(
+      data: (f) => f,
+      orElse: () => const EquipmentFacets(),
+    );
+    final makes = facets.makes;
+    final voltages = facets.voltages;
+    final locations = facets.locations;
 
     return Container(
       padding: EdgeInsets.only(

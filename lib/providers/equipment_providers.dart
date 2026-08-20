@@ -1,5 +1,9 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../modules/equipment/domain/entities/equipment_entity.dart' as domain;
+import '../modules/equipment/infra/repositories/equipment_repository.dart';
+import '../modules/equipment/infra/repositories/equipment_repository_impl.dart';
+
 enum EquipmentStatus {
   active,
   inactive,
@@ -29,6 +33,23 @@ class Equipment {
     this.lastInspection,
     this.status = EquipmentStatus.active,
   });
+
+  /// Adapt the domain entity the repository produces to the model the search
+  /// UI renders. Extra context the entity carries (site code, grade, how many
+  /// inspections) isn't shown by the current UI and is dropped here.
+  factory Equipment.fromEntity(domain.EquipmentEntity e) {
+    return Equipment(
+      id: e.id,
+      name: e.name,
+      make: e.make,
+      model: e.model,
+      serialNumber: e.serialNumber,
+      voltage: e.voltage,
+      location: e.location,
+      lastInspection: e.lastInspection,
+      status: EquipmentStatus.values.byName(e.status.name),
+    );
+  }
 
   factory Equipment.fromJson(Map<String, dynamic> json) {
     return Equipment(
@@ -143,44 +164,20 @@ class EquipmentSearchFilters {
       make.hashCode ^ voltage.hashCode ^ status.hashCode ^ location.hashCode;
 }
 
-/// Provider for the full list of equipment
+/// Provider for the full list of equipment.
+///
+/// Backed by [EquipmentRepository], which derives the registry from the local
+/// inspection history — one entry per physical generator, showing its latest
+/// known state. Previously this returned hardcoded sample records.
 final equipmentListProvider = FutureProvider<List<Equipment>>((ref) async {
-  // TODO: Implement actual data fetching from repository
-  // For now, returning dummy data as requested/implied by the project state
-  await Future.delayed(const Duration(milliseconds: 500));
-  return [
-    Equipment(
-      id: '1',
-      name: 'Generator Unit A1',
-      make: 'Caterpillar',
-      model: 'C32',
-      serialNumber: 'CAT-2024-001',
-      voltage: '480V',
-      location: 'Building A - Basement',
-      lastInspection: DateTime.now().subtract(const Duration(days: 30)),
-      status: EquipmentStatus.active,
-    ),
-    Equipment(
-      id: '2',
-      name: 'Backup Generator B2',
-      make: 'Cummins',
-      model: 'QSX15',
-      serialNumber: 'CUM-2024-002',
-      voltage: '208V',
-      location: 'Building B - Roof',
-      lastInspection: DateTime.now().subtract(const Duration(days: 15)),
-      status: EquipmentStatus.active,
-    ),
-    Equipment(
-      id: '3',
-      name: 'Emergency Generator C3',
-      make: 'Generac',
-      model: 'MD200',
-      serialNumber: 'GEN-2024-003',
-      voltage: '480V',
-      location: 'Building C - Generator Room',
-      lastInspection: DateTime.now().subtract(const Duration(days: 60)),
-      status: EquipmentStatus.maintenance,
-    ),
-  ];
+  final repo = ref.watch(equipmentRepositoryProvider);
+  final entities = await repo.listEquipment();
+  return entities.map(Equipment.fromEntity).toList(growable: false);
+});
+
+/// Filter values actually present in the data, so the filter sheet never
+/// offers a choice that would return nothing.
+final equipmentFacetsProvider = FutureProvider<EquipmentFacets>((ref) async {
+  final repo = ref.watch(equipmentRepositoryProvider);
+  return repo.facets();
 });

@@ -124,7 +124,18 @@ Consequences: scheduled tasks exist only on the device that created them; the
 `ScheduleRemoteDatasource.list()` on schedule-page load, merging remote rows into
 Hive by id. Stamp `tenant_id` from `SyncContext`.
 
-### 3.2 Equipment Search is a mock
+### 3.2 Equipment Search is a mock — ✅ RESOLVED
+
+> **Implemented.** `EquipmentRepository` now derives the registry from the local
+> inspection history: inspections are grouped by unit (serial number where
+> known, else site+make+model), and each unit reports its latest state.
+> Nameplate records take precedence over form-typed generator fields. Filter
+> options come from the data via `facets()`, so a filter can't return nothing.
+> `equipment.id` is the latest inspection's id, which makes the existing
+> `/nameplate/:inspectionId` link resolve. Feature flag removed; 15 tests cover
+> the derivation.
+
+### 3.2 (original finding) Equipment Search is a mock
 
 `lib/providers/equipment_providers.dart:147` — `equipmentListProvider` returns a
 hardcoded list ("Generator Unit A1", Caterpillar C32, …) after a simulated 500 ms
@@ -508,7 +519,11 @@ select exists(
 
 ## 8. Out of scope / follow-ups
 
-- Real equipment inventory backend (§3.2) — needs a schema and an import path.
+- ~~Real equipment inventory backend (§3.2)~~ — done, derived from inspection
+  history rather than a new table. A dedicated Supabase `equipment` table would
+  still be needed to track units that have never been inspected.
+- Deferred UI migrations (form fields onto the kit; colour tokens in `const`
+  contexts) — planned in [`deferred_migrations_plan.md`](deferred_migrations_plan.md).
 - Multi-tenant switching UX beyond displaying the active tenant.
 - Conflict resolution for concurrent edits (sync is currently last-write-wins via
   `client_updated_at`).

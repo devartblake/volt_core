@@ -161,6 +161,7 @@ Deeper notes live in [`docs/`](docs/):
 | Document | Covers |
 | --- | --- |
 | `codebase_audit_and_ux_plan.md` | Full audit, findings, and the phased remediation plan |
+| `deferred_migrations_plan.md` | Plan for the two deferred UI migrations |
 | `offline_sync_and_backup.md` | Sync engine and cloud file backup |
 | `photos_reminders_and_reliability.md` | Photo attachments, reminders, path handling |
 | `email_and_documents.md` | Report email and the PDF library |

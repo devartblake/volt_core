@@ -8,12 +8,9 @@ class FeatureFlags {
 
   /// Equipment Search (`/equipment/search`).
   ///
-  /// The UI is complete, but `equipmentListProvider` still returns hardcoded
-  /// sample records ("Generator Unit A1", …) and its rows link to nameplate ids
-  /// that don't exist. Showing invented equipment in a compliance tool is worse
-  /// than showing nothing, so the screen stays hidden until it reads real data.
-  ///
-  /// To enable: back `equipmentListProvider` with the nameplate/inspection data
-  /// (or a Supabase `equipment` table), then set this to `true`.
-  static const bool equipmentSearchEnabled = false;
+  /// Enabled: `equipmentListProvider` is backed by `EquipmentRepository`, which
+  /// derives the registry from the local inspection history (one entry per
+  /// physical generator, grouped by serial number). It was previously hidden
+  /// because the screen ran on hardcoded sample records.
+  static const bool equipmentSearchEnabled = true;
 }
