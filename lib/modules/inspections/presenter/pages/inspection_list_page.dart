@@ -6,6 +6,7 @@ import '../controllers/inspection_list_controller.dart';
 import '../controllers/app_badges_controller.dart';
 import '../controllers/user_profile_controller.dart';
 import '../../../../shared/widgets/widgets.dart';
+import '../../../../core/theme/status_colors.dart';
 
 class InspectionListPage extends ConsumerStatefulWidget {
   final String? filterStatus;
@@ -182,7 +183,7 @@ class _InspectionListPageState
               icon: Icons.warning_amber_rounded,
               label: 'Amber',
               count: badges.amberGradeInspections,
-              color: Colors.orange,
+              color: theme.status.warning,
               theme: theme,
             ),
           ),
@@ -192,7 +193,7 @@ class _InspectionListPageState
               icon: Icons.error_outline,
               label: 'Red',
               count: badges.redGradeInspections,
-              color: Colors.red,
+              color: theme.colorScheme.error,
               theme: theme,
             ),
           ),
@@ -332,11 +333,11 @@ class _InspectionListPageState
   Color _getGradeColor(String grade, ThemeData theme) {
     switch (grade.toLowerCase()) {
       case 'green':
-        return Colors.green;
+        return theme.status.success;
       case 'amber':
-        return Colors.orange;
+        return theme.status.warning;
       case 'red':
-        return Colors.red;
+        return theme.colorScheme.error;
       default:
         return theme.colorScheme.primary;
     }

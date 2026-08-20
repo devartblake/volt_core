@@ -7,6 +7,7 @@ import '../../../maintenance/infra/datasources/hive_boxes_maintenance.dart';
 import '../../../maintenance/infra/models/maintenance_record.dart';
 import '../../../schedule/infra/datasources/scheduled_tasks_box.dart';
 import '../../../schedule/infra/models/schedule_task.dart';
+import '../../../../core/theme/status_colors.dart';
 
 /// Analytics overview computed from local Hive data: inspection volume and site
 /// grades, maintenance completion, and schedule health. Offline-friendly — it
@@ -69,7 +70,7 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
                   label: 'With deficiencies',
                   value: '${m.deficiencies}',
                   icon: Icons.report_problem_outlined,
-                  color: Colors.orange,
+                  color: theme.status.warning,
                 ),
                 _StatCard(
                   label: 'Load tests done',
@@ -114,7 +115,7 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
                   label: 'Completed',
                   value: '${m.maintenanceCompleted}',
                   icon: Icons.check_circle_outline,
-                  color: Colors.green,
+                  color: theme.status.success,
                 ),
                 _StatCard(
                   label: 'Open',
@@ -126,7 +127,7 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
                   label: 'Needs follow-up',
                   value: '${m.maintenanceFollowUp}',
                   icon: Icons.flag_outlined,
-                  color: Colors.redAccent,
+                  color: theme.colorScheme.error,
                 ),
               ],
             ),
@@ -158,7 +159,7 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
                   label: 'Overdue',
                   value: '${m.overdueTasks}',
                   icon: Icons.event_busy_outlined,
-                  color: Colors.red,
+                  color: theme.colorScheme.error,
                 ),
               ],
             ),
@@ -416,9 +417,9 @@ class _GradeBreakdown extends StatelessWidget {
                 borderRadius: BorderRadius.circular(6),
                 child: Row(
                   children: [
-                    _bar(green, total, Colors.green),
-                    _bar(amber, total, Colors.orange),
-                    _bar(red, total, Colors.red),
+                    _bar(green, total, theme.status.success),
+                    _bar(amber, total, theme.status.warning),
+                    _bar(red, total, theme.colorScheme.error),
                     _bar(ungraded, total, theme.colorScheme.outlineVariant),
                   ],
                 ),
@@ -428,9 +429,9 @@ class _GradeBreakdown extends StatelessWidget {
                 spacing: 16,
                 runSpacing: 8,
                 children: [
-                  _legend('Green', green, Colors.green),
-                  _legend('Amber', amber, Colors.orange),
-                  _legend('Red', red, Colors.red),
+                  _legend('Green', green, theme.status.success),
+                  _legend('Amber', amber, theme.status.warning),
+                  _legend('Red', red, theme.colorScheme.error),
                   _legend('Ungraded', ungraded,
                       theme.colorScheme.outlineVariant),
                 ],

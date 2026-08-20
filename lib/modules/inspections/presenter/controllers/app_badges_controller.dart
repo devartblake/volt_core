@@ -49,7 +49,7 @@ final appBadgesProvider = Provider<AppBadges>((ref) {
 
   final now = DateTime.now();
 
-  int _daysSince(InspectionEntity ins) {
+  int daysSince(InspectionEntity ins) {
     final date = ins.serviceDate;
     return now.difference(date).inDays;
   }
@@ -58,7 +58,7 @@ final appBadgesProvider = Provider<AppBadges>((ref) {
 
   // "Pending" definition: last 7 days
   final pending = inspections
-      .where((ins) => _daysSince(ins) <= 7)
+      .where((ins) => daysSince(ins) <= 7)
       .length;
 
   final redGrade = inspections

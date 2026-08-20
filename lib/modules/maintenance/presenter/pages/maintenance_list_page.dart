@@ -8,6 +8,7 @@ import '../../infra/models/maintenance_record.dart';
 import '../controllers/maintenance_list_controller.dart';
 import '../controllers/maintenance_providers.dart';
 import '../../../../shared/widgets/widgets.dart';
+import '../../../../core/theme/status_colors.dart';
 
 class MaintenanceListPage extends ConsumerWidget {
   const MaintenanceListPage({super.key});
@@ -191,7 +192,7 @@ class MaintenanceListPage extends ConsumerWidget {
                                             Text('Maintenance scheduled'),
                                           ],
                                         ),
-                                        backgroundColor: Colors.green,
+                                        backgroundColor: theme.status.success,
                                         behavior: SnackBarBehavior.floating,
                                         shape: RoundedRectangleBorder(
                                           borderRadius: BorderRadius.circular(8),
@@ -343,6 +344,7 @@ class MaintenanceListPage extends ConsumerWidget {
               .refresh();
 
           // Navigate to the form route with the new id
+          if (!context.mounted) return;
           context.push('/maintenance/new?id=${rec.id}');
         },
         icon: const Icon(Icons.add),

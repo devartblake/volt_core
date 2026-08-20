@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/semantics.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:voltcore/shared/widgets/empty_state.dart';
 import 'package:voltcore/shared/widgets/loading_indicator.dart';
@@ -74,7 +73,7 @@ void main() {
 
       final node = tester.getSemantics(find.text('FDNY / DEP'));
       expect(node.label, 'FDNY / DEP');
-      expect(node.hasFlag(SemanticsFlag.isHeader), isTrue);
+      expect(node.flagsCollection.isHeader, isTrue);
       handle.dispose();
     });
   });

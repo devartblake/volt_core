@@ -292,82 +292,56 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   }
 
   void _showLanguageDialog(BuildContext context) {
-    showDialog(
+    _showChoiceDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Select Language'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            RadioListTile<String>(
-              title: const Text('English'),
-              value: 'English',
-              groupValue: _language,
-              onChanged: (value) {
-                setState(() => _language = value!);
-                Navigator.pop(ctx);
-              },
-            ),
-            RadioListTile<String>(
-              title: const Text('Spanish'),
-              value: 'Spanish',
-              groupValue: _language,
-              onChanged: (value) {
-                setState(() => _language = value!);
-                Navigator.pop(ctx);
-              },
-            ),
-            RadioListTile<String>(
-              title: const Text('French'),
-              value: 'French',
-              groupValue: _language,
-              onChanged: (value) {
-                setState(() => _language = value!);
-                Navigator.pop(ctx);
-              },
-            ),
-          ],
-        ),
-      ),
+      title: 'Select Language',
+      options: const ['English', 'Spanish', 'French'],
+      selected: _language,
+      onSelected: (value) => setState(() => _language = value),
     );
   }
 
   void _showDateFormatDialog(BuildContext context) {
-    showDialog(
+    _showChoiceDialog(
+      context: context,
+      title: 'Select Date Format',
+      options: const ['MM/DD/YYYY', 'DD/MM/YYYY', 'YYYY-MM-DD'],
+      selected: _dateFormat,
+      onSelected: (value) => setState(() => _dateFormat = value),
+    );
+  }
+
+  /// Single-choice dialog shared by the language and date-format settings.
+  ///
+  /// Uses [RadioGroup], which owns the selection and the change callback; the
+  /// per-tile `groupValue`/`onChanged` pair it replaces is deprecated.
+  void _showChoiceDialog({
+    required BuildContext context,
+    required String title,
+    required List<String> options,
+    required String selected,
+    required ValueChanged<String> onSelected,
+  }) {
+    showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Select Date Format'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            RadioListTile<String>(
-              title: const Text('MM/DD/YYYY'),
-              value: 'MM/DD/YYYY',
-              groupValue: _dateFormat,
-              onChanged: (value) {
-                setState(() => _dateFormat = value!);
-                Navigator.pop(ctx);
-              },
-            ),
-            RadioListTile<String>(
-              title: const Text('DD/MM/YYYY'),
-              value: 'DD/MM/YYYY',
-              groupValue: _dateFormat,
-              onChanged: (value) {
-                setState(() => _dateFormat = value!);
-                Navigator.pop(ctx);
-              },
-            ),
-            RadioListTile<String>(
-              title: const Text('YYYY-MM-DD'),
-              value: 'YYYY-MM-DD',
-              groupValue: _dateFormat,
-              onChanged: (value) {
-                setState(() => _dateFormat = value!);
-                Navigator.pop(ctx);
-              },
-            ),
-          ],
+        title: Text(title),
+        content: RadioGroup<String>(
+          groupValue: selected,
+          onChanged: (value) {
+            if (value != null) onSelected(value);
+            Navigator.pop(ctx);
+          },
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              for (final option in options)
+                RadioListTile<String>(
+                  title: Text(option),
+                  value: option,
+                ),
+            ],
+          ),
         ),
       ),
     );

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../domain/entities/inspection_entity.dart';
+import '../../../../core/theme/status_colors.dart';
 
 class SectionFdnyDep extends StatefulWidget {
   final InspectionEntity model;
@@ -85,7 +86,7 @@ class _SectionFdnyDepState extends State<SectionFdnyDep> {
                 ),
                 filled: true,
               ),
-              value: m.fuelStoredType.isEmpty ? null : m.fuelStoredType,
+              initialValue: m.fuelStoredType.isEmpty ? null : m.fuelStoredType,
               items: const [
                 DropdownMenuItem(value: 'Diesel', child: Text('Diesel')),
                 DropdownMenuItem(value: 'Gasoline', child: Text('Gasoline')),
@@ -270,18 +271,18 @@ class _SectionFdnyDepState extends State<SectionFdnyDep> {
         ),
         filled: true,
       ),
-      value: opts.contains(current) ? current : null,
+      initialValue: opts.contains(current) ? current : null,
       items: opts.map((e) {
         Color? color;
         IconData? statusIcon;
         if (e == 'Yes') {
-          color = Colors.green;
+          color = theme.status.success;
           statusIcon = Icons.check_circle;
         } else if (e == 'No') {
-          color = Colors.red;
+          color = theme.colorScheme.error;
           statusIcon = Icons.cancel;
         } else if (e == 'Unknown') {
-          color = Colors.orange;
+          color = theme.status.warning;
           statusIcon = Icons.help;
         } else {
           color = Colors.grey;

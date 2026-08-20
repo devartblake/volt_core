@@ -448,7 +448,28 @@ stays batched with the deprecation sweep in Phase 4.
 screens use `EmptyState`/`LoadingIndicator`; a dirty form prompts before
 discarding; a technician's drawer contains no admin entries.
 
-### Phase 4 — Quality · ~0.5–1 day
+### Phase 4 — Quality · ~0.5–1 day · ✅ IMPLEMENTED
+
+> Delivered. The analyzer is at **0 errors, 0 warnings, 0 infos** (from 55) and
+> CI now runs `--fatal-infos --fatal-warnings` plus a web build, so nothing new
+> accumulates silently. `Radio`/`RadioListTile` moved to `RadioGroup`,
+> `DropdownButtonFormField.value` → `initialValue`, `surfaceVariant` →
+> `surfaceContainerHighest`, `anonKey` → `publishableKey`, and the async
+> `BuildContext` uses are guarded. The README is a real one.
+>
+> **Colour tokens:** new `StatusColors` theme extension (success / warning /
+> info, light + dark) wired into both themes, with `forSiteGrade` for the
+> Green/Amber/Red site grades. 39 call sites migrated off raw `Colors.*`. The
+> remaining ~64 sit inside `const` widget constructors, where a theme lookup
+> isn't available without de-consting the widget — left alone deliberately
+> rather than churn hot UI for a mechanical win.
+>
+> **Fixed while clearing lints:** `_uuidKeys` in `SyncService` was flagged as
+> dead, but it wasn't dead code to delete — a blunt
+> `removeWhere((_, v) => v == '')` had replaced it, stripping empty strings from
+> *every* column. That meant clearing a text field (notes, site code) never
+> synced: the server kept the old value. The precise filter is restored, so only
+> blank **uuid** columns are omitted.
 
 1. Clear the 51 analyzer infos (Radio migration, `surfaceContainerHighest`,
    `publishableKey`, `mounted` guards, doc-comment backticks, `_uuidKeys`).

@@ -51,12 +51,14 @@ class _NameplateIntervalsPageState
       ),
       fab: FloatingActionButton.extended(
         onPressed: () async {
+          // Resolve the messenger before awaiting: the build context captured
+          // by this closure may be gone by the time the save completes.
+          final messenger = ScaffoldMessenger.of(context);
           await _saveNameplate();
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Saved')),
-            );
-          }
+          if (!mounted) return;
+          messenger.showSnackBar(
+            const SnackBar(content: Text('Saved')),
+          );
         },
         label: const Text('Save'),
         icon: const Icon(Icons.save),

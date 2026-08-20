@@ -288,8 +288,14 @@ class SyncService {
     switch (op.type) {
       case SyncOpType.upsert:
         final table = op.payload['table'] as String;
+        // Drop nulls (leave those columns to their defaults / existing values)
+        // and blank *uuid* columns, which Postgres rejects. Blank text columns
+        // are sent through: '' is how the user clears a field, and stripping it
+        // silently kept the old value on the server.
         final row = (op.payload['row'] as Map).cast<String, dynamic>()
-          ..removeWhere((_, v) => v == null || v == '');
+          ..removeWhere(
+            (k, v) => v == null || (_uuidKeys.contains(k) && _isBlank(v)),
+          );
 
         if (kDebugMode) {
           debugPrint('[Sync] Dispatching upsert to "$table":');

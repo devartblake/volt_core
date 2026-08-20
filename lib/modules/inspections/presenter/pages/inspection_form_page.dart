@@ -343,7 +343,7 @@ class _InspectionFormPageState extends ConsumerState<InspectionFormPage> {
                     padding: const EdgeInsets.symmetric(vertical: 16),
                   ),
                   onPressed:
-                      isSaving ? null : () => _handleSave(context, inspection),
+                      isSaving ? null : () => _handleSave(inspection),
                 ),
               ),
             ],
@@ -453,10 +453,11 @@ class _InspectionFormPageState extends ConsumerState<InspectionFormPage> {
     };
   }
 
-  Future<void> _handleSave(
-      BuildContext context,
-      InspectionEntity current,
-      ) async {
+  /// Validate, save, then navigate.
+  ///
+  /// Takes no BuildContext: using the State's own `context` is what lets the
+  /// `mounted` checks after each await actually protect the later uses.
+  Future<void> _handleSave(InspectionEntity current) async {
     if (!_formKey.currentState!.validate()) {
       // Say *what* is missing and take the user there, rather than a generic
       // "fill in all required fields" on a nine-section form.

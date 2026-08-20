@@ -4,6 +4,7 @@ import 'package:uuid/uuid.dart';
 import '../../../domain/entities/task_schedule_entity.dart';
 import '../../../infra/repositories/schedule_repository_impl.dart';
 import '../../pages/schedule_task_page.dart';
+import '../../../../../core/theme/status_colors.dart';
 
 /// Shows a dialog to schedule a task
 /// Returns true if task was scheduled successfully
@@ -220,7 +221,7 @@ class _ScheduleTaskDialogState extends ConsumerState<ScheduleTaskDialog> {
     final theme = Theme.of(context);
     final taskColor = widget.taskType == TaskType.inspection
         ? Colors.blue
-        : Colors.orange;
+        : theme.status.warning;
 
     return Padding(
       padding: EdgeInsets.only(

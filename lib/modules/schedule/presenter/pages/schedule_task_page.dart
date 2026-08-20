@@ -6,6 +6,7 @@ import '../../../inspections/infra/models/inspection.dart';
 import '../../../maintenance/infra/models/maintenance_record.dart';
 import '../../../maintenance/infra/datasources/hive_boxes_maintenance.dart';
 import '../../../../shared/widgets/widgets.dart';
+import '../../../../core/theme/status_colors.dart';
 
 /// Page for scheduling a new task (inspection or maintenance)
 /// Allows selection between task type and new vs existing job
@@ -156,7 +157,7 @@ class _ScheduleTaskPageState extends ConsumerState<ScheduleTaskPage> {
             title: 'Maintenance',
             description: 'Repair or service job',
             isSelected: _selectedType == TaskType.maintenance,
-            color: Colors.orange,
+            color: theme.status.warning,
             onTap: () {
               setState(() {
                 _selectedType = TaskType.maintenance;
@@ -348,7 +349,7 @@ class _ScheduleTaskPageState extends ConsumerState<ScheduleTaskPage> {
                   : job.generalNotes!,
               date: job.dateOfService ?? DateTime.now(),
               icon: Icons.build_circle_outlined,
-              color: Colors.orange,
+              color: theme.status.warning,
               onTap: () => _scheduleExistingMaintenance(job),
             ),
           );
@@ -392,7 +393,7 @@ class _ScheduleTaskPageState extends ConsumerState<ScheduleTaskPage> {
                     decoration: BoxDecoration(
                       color: (_selectedType == TaskType.inspection
                           ? Colors.blue
-                          : Colors.orange)
+                          : theme.status.warning)
                           .withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(12),
                     ),
@@ -402,7 +403,7 @@ class _ScheduleTaskPageState extends ConsumerState<ScheduleTaskPage> {
                           : Icons.build_circle_outlined,
                       color: _selectedType == TaskType.inspection
                           ? Colors.blue
-                          : Colors.orange,
+                          : theme.status.warning,
                       size: 32,
                     ),
                   ),
@@ -601,7 +602,7 @@ class _TaskTypeCard extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: isSelected
                       ? color.withValues(alpha: 0.1)
-                      : theme.colorScheme.surfaceVariant.withValues(alpha: 0.3),
+                      : theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(

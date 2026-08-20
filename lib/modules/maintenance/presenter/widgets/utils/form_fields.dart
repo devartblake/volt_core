@@ -172,7 +172,7 @@ class FormDropdownRow extends StatelessWidget {
         Text(label, style: theme.textTheme.labelMedium),
         const SizedBox(height: 4),
         DropdownButtonFormField<String>(
-          value: value,
+          initialValue: value,
           onChanged: readOnly ? null : onChanged,
           items: items
               .map(

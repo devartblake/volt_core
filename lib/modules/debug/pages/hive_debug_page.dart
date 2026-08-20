@@ -238,7 +238,7 @@ class _HiveDebugPageState extends State<HiveDebugPage> {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: colors.surfaceVariant,
+              color: colors.surfaceContainerHighest,
               borderRadius: BorderRadius.circular(12),
             ),
             child: Column(

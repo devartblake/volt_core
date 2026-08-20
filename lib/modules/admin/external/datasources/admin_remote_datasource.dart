@@ -26,7 +26,7 @@ class AdminRemoteDatasource {
   AdminRemoteDatasource({SupabaseClient? client})
       : _client = client ?? Supabase.instance.client;
 
-  /// ORIGINAL: Raw technician rows as Map<String, dynamic>.
+  /// ORIGINAL: Raw technician rows as `Map<String, dynamic>`.
   ///
   /// Kept for backward compatibility with any existing code that
   /// expects a raw list of maps.

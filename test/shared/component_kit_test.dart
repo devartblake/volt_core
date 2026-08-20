@@ -50,8 +50,8 @@ void main() {
       final context = tester.element(find.byType(EmptyState));
       final icon = tester.widget<Icon>(find.byIcon(Icons.error_outline));
       expect(
-        icon.color?.value,
-        Theme.of(context).colorScheme.error.withValues(alpha: 0.55).value,
+        icon.color?.toARGB32(),
+        Theme.of(context).colorScheme.error.withValues(alpha: 0.55).toARGB32(),
       );
     });
 

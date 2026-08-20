@@ -169,9 +169,12 @@ class DebugMenuPage extends StatelessWidget {
                 },
               ),
               onTap: () async {
+                final messenger = ScaffoldMessenger.of(context);
                 await FileStorageService.instance.printDebugInfo();
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Storage info printed to console')),
+                messenger.showSnackBar(
+                  const SnackBar(
+                    content: Text('Storage info printed to console'),
+                  ),
                 );
               },
             ),
@@ -188,7 +191,7 @@ class DebugMenuPage extends StatelessWidget {
             child: ListTile(
               enabled: false,
               leading: CircleAvatar(
-                backgroundColor: colors.surfaceVariant,
+                backgroundColor: colors.surfaceContainerHighest,
                 child: Icon(
                   Icons.cloud,
                   color: colors.onSurfaceVariant,
@@ -206,7 +209,7 @@ class DebugMenuPage extends StatelessWidget {
             child: ListTile(
               enabled: false,
               leading: CircleAvatar(
-                backgroundColor: colors.surfaceVariant,
+                backgroundColor: colors.surfaceContainerHighest,
                 child: Icon(
                   Icons.flag,
                   color: colors.onSurfaceVariant,
@@ -224,7 +227,7 @@ class DebugMenuPage extends StatelessWidget {
             child: ListTile(
               enabled: false,
               leading: CircleAvatar(
-                backgroundColor: colors.surfaceVariant,
+                backgroundColor: colors.surfaceContainerHighest,
                 child: Icon(
                   Icons.speed,
                   color: colors.onSurfaceVariant,

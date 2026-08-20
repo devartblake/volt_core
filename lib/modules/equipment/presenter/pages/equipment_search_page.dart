@@ -818,24 +818,26 @@ class _FiltersBottomSheetState extends State<_FiltersBottomSheet> {
                     _FilterSection(
                       title: 'Location',
                       icon: Icons.location_on_outlined,
-                      child: Column(
-                        children: locations.map((location) {
-                          return RadioListTile<String>(
-                            title: Text(location),
-                            value: location,
-                            groupValue: _filters.location,
-                            onChanged: (value) {
-                              setState(() {
-                                _filters = _filters.copyWith(
-                                  location: value,
-                                );
-                              });
-                            },
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          );
-                        }).toList(),
+                      // RadioGroup owns the selection; per-tile groupValue and
+                      // onChanged are deprecated.
+                      child: RadioGroup<String>(
+                        groupValue: _filters.location,
+                        onChanged: (value) {
+                          setState(() {
+                            _filters = _filters.copyWith(location: value);
+                          });
+                        },
+                        child: Column(
+                          children: locations.map((location) {
+                            return RadioListTile<String>(
+                              title: Text(location),
+                              value: location,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            );
+                          }).toList(),
+                        ),
                       ),
                     ),
                   ],

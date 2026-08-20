@@ -10,6 +10,7 @@ import '../widgets/calendar_view_mode.dart';
 import '../widgets/schedule_calendar_daily_agenda.dart';
 import '../widgets/schedule_calendar_timeline.dart';
 import '../../../../shared/widgets/widgets.dart';
+import '../../../../core/theme/status_colors.dart';
 
 /// Schedule view mode enum
 enum ScheduleView { list, calendar }
@@ -298,7 +299,7 @@ class _SchedulePageState extends ConsumerState<SchedulePage> {
               icon: Icons.check_circle_outline,
               label: 'Completed',
               value: '${_countPast(filteredItems)}',
-              color: Colors.green,
+              color: theme.status.success,
               theme: theme,
             ),
           ),
@@ -706,13 +707,13 @@ class _ScheduleCard extends StatelessWidget {
                 height: 48,
                 decoration: BoxDecoration(
                   color: isPast
-                      ? Colors.green.withValues(alpha: 0.1)
+                      ? theme.status.success.withValues(alpha: 0.1)
                       : theme.colorScheme.primaryContainer,
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(
                   isPast ? Icons.check_circle : Icons.schedule,
-                  color: isPast ? Colors.green : theme.colorScheme.primary,
+                  color: isPast ? theme.status.success : theme.colorScheme.primary,
                 ),
               ),
               const SizedBox(width: 16),
@@ -814,11 +815,11 @@ class _ScheduleCard extends StatelessWidget {
   Color _getGradeColor(String grade) {
     switch (grade.toLowerCase()) {
       case 'green':
-        return Colors.green;
+        return theme.status.success;
       case 'amber':
-        return Colors.orange;
+        return theme.status.warning;
       case 'red':
-        return Colors.red;
+        return theme.colorScheme.error;
       default:
         return theme.colorScheme.primary;
     }

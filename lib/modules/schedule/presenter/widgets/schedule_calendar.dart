@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:table_calendar/table_calendar.dart';
 import '../../domain/entities/task_schedule_entity.dart';
+import '../../../../core/theme/status_colors.dart';
 
 /// Enhanced schedule calendar with split-panel design
 /// Left: Calendar view (60%) | Right: Upcoming tasks panel (40%)
@@ -498,7 +499,7 @@ class ScheduleCalendarEnhanced extends StatelessWidget {
   // Helper: Get task status color
   Color _getTaskStatusColor(TaskScheduleEntity task, bool isPast, ThemeData theme) {
     if (isPast) {
-      return Colors.green; // Completed
+      return theme.status.success; // Completed
     }
 
     final now = DateTime.now();
@@ -510,7 +511,7 @@ class ScheduleCalendarEnhanced extends StatelessWidget {
     final today = DateTime(now.year, now.month, now.day);
 
     if (taskDate.isAtSameMomentAs(today)) {
-      return Colors.orange; // Today
+      return theme.status.warning; // Today
     }
 
     return theme.colorScheme.primary; // Upcoming
