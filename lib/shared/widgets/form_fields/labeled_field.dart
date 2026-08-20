@@ -25,6 +25,7 @@ class LabeledField extends StatelessWidget {
     this.helper,
     this.prefixIcon,
     this.suffix,
+    this.suffixText,
     this.keyboardType,
     this.maxLines = 1,
     this.minLines,
@@ -35,6 +36,8 @@ class LabeledField extends StatelessWidget {
     this.validator,
     this.textCapitalization = TextCapitalization.none,
     this.autofocus = false,
+    this.dense = false,
+    this.filled,
   }) : assert(
           value == null || controller == null,
           'Provide either value or controller, not both.',
@@ -52,6 +55,10 @@ class LabeledField extends StatelessWidget {
   final String? helper;
   final IconData? prefixIcon;
   final Widget? suffix;
+
+  /// Inline unit shown after the value ("Gallons", "kW", "hours"). Rendered as
+  /// text inside the field rather than as a trailing icon.
+  final String? suffixText;
   final TextInputType? keyboardType;
   final int maxLines;
   final int? minLines;
@@ -66,12 +73,21 @@ class LabeledField extends StatelessWidget {
   final TextCapitalization textCapitalization;
   final bool autofocus;
 
+  /// Compact variant for fields nested inside an already-padded row (a
+  /// checklist row, a dialog column). Drops the outer vertical padding and
+  /// tightens the decoration so the field doesn't blow out the row height.
+  final bool dense;
+
+  /// Overrides the theme's `filled` for this field. Only set it where a
+  /// surrounding surface makes the default read wrong.
+  final bool? filled;
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
+      padding: EdgeInsets.symmetric(vertical: dense ? 0 : 8),
       child: TextFormField(
         initialValue: controller == null ? value : null,
         controller: controller,
@@ -95,8 +111,11 @@ class LabeledField extends StatelessWidget {
           hintText: hint,
           helperText: helper,
           helperMaxLines: 2,
+          isDense: dense,
+          filled: filled,
           prefixIcon: prefixIcon == null ? null : Icon(prefixIcon),
           suffixIcon: suffix,
+          suffixText: suffixText,
           labelStyle: theme.textTheme.bodyMedium,
         ),
       ),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../domain/entities/inspection_entity.dart';
 import '../../../../core/theme/status_colors.dart';
+import '../../../../shared/widgets/widgets.dart';
 
 class SectionFdnyDep extends StatefulWidget {
   final InspectionEntity model;
@@ -97,21 +98,14 @@ class _SectionFdnyDepState extends State<SectionFdnyDep> {
               ),
             ),
             const SizedBox(height: 16),
-            TextFormField(
-              decoration: InputDecoration(
-                labelText: 'Fuel Quantity',
-                prefixIcon: const Icon(Icons.water_drop_outlined),
-                suffixText: 'Gallons',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                filled: true,
-              ),
-              initialValue: m.fuelQtyGallons,
+            LabeledField(
+              label: 'Fuel Quantity',
+              value: m.fuelQtyGallons,
+              prefixIcon: Icons.water_drop_outlined,
+              suffixText: 'Gallons',
               keyboardType: TextInputType.number,
-              onChanged: (v) => _update(
-                    (curr) => curr.copyWith(fuelQtyGallons: v),
-              ),
+              onChanged: (v) =>
+                  _update((curr) => curr.copyWith(fuelQtyGallons: v)),
             ),
             const SizedBox(height: 16),
             _modernYesNo(
@@ -154,21 +148,14 @@ class _SectionFdnyDepState extends State<SectionFdnyDep> {
               ),
             ),
             const SizedBox(height: 12),
-            TextFormField(
-              decoration: InputDecoration(
-                labelText: 'DEP Size',
-                prefixIcon: const Icon(Icons.power),
-                suffixText: 'kW',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                filled: true,
-              ),
-              initialValue: m.depSizeKw,
+            LabeledField(
+              label: 'DEP Size',
+              value: m.depSizeKw,
+              prefixIcon: Icons.power,
+              suffixText: 'kW',
               keyboardType: TextInputType.number,
-              onChanged: (v) => _update(
-                    (curr) => curr.copyWith(depSizeKw: v),
-              ),
+              onChanged: (v) =>
+                  _update((curr) => curr.copyWith(depSizeKw: v)),
             ),
             const SizedBox(height: 16),
             _modernYesNo(

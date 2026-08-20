@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../infra/models/maintenance_record.dart';
+import '../../../../shared/widgets/widgets.dart';
 
 /// Modern site information section with enhanced UI
 class SectionMaintSiteInfo extends StatelessWidget {
@@ -268,21 +269,17 @@ class _ModernTextField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return TextFormField(
-      initialValue: initialValue,
+    // Delegates to the shared kit so every field in the app has the same
+    // spacing, label and validation treatment.
+    return LabeledField(
+      label: label,
+      value: initialValue,
+      hint: hintText,
+      prefixIcon: icon,
+      suffixText: suffixText,
       readOnly: readOnly,
       maxLines: maxLines,
       keyboardType: keyboardType,
-      decoration: InputDecoration(
-        labelText: label,
-        hintText: hintText,
-        prefixIcon: icon != null ? Icon(icon, size: 20) : null,
-        suffixText: suffixText,
-        filled: true,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
-      ),
       onChanged: onChanged,
     );
   }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../../shared/widgets/widgets.dart';
 import '../../domain/entities/inspection_entity.dart';
 
 class SectionMaterials extends StatefulWidget {
@@ -85,27 +86,26 @@ class _SectionMaterialsState extends State<SectionMaterials> {
       child: Row(
         children: [
           Expanded(
-            child: TextFormField(
-              decoration: InputDecoration(
-                labelText: label,
-                prefixIcon: Icon(icon),
-                hintText: 'YYYY-MM-DD',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                filled: true,
-                suffixIcon: hasDate
-                    ? IconButton(
-                  icon: const Icon(Icons.clear, size: 20),
-                  onPressed: () =>
-                      _update((curr) => onSavedBuilder(curr, '')),
-                  tooltip: 'Clear date',
-                )
-                    : null,
-              ),
-              initialValue: value,
+            child: LabeledField(
+              // Keyed by the stored value: a TextFormField built from
+              // `initialValue` keeps its first text across rebuilds, so
+              // without this the field would still show the old date after
+              // picking a new one.
+              key: ValueKey('$label|$value'),
+              label: label,
+              value: value,
+              hint: 'YYYY-MM-DD',
+              prefixIcon: icon,
               readOnly: true,
               onTap: () => _pickDate(context, value, onSavedBuilder),
+              suffix: hasDate
+                  ? IconButton(
+                      icon: const Icon(Icons.clear, size: 20),
+                      onPressed: () =>
+                          _update((curr) => onSavedBuilder(curr, '')),
+                      tooltip: 'Clear date',
+                    )
+                  : null,
             ),
           ),
           const SizedBox(width: 8),
@@ -179,7 +179,6 @@ class _SectionMaterialsState extends State<SectionMaterials> {
                 color: theme.colorScheme.primary,
               ),
             ),
-            const SizedBox(height: 12),
             _modernDateRow(
               'Last Full Service Date',
               Icons.construction,
@@ -195,7 +194,6 @@ class _SectionMaterialsState extends State<SectionMaterials> {
                 color: theme.colorScheme.primary,
               ),
             ),
-            const SizedBox(height: 12),
             _modernDateRow(
               'Oil Filter Change Date',
               Icons.oil_barrel,
@@ -203,7 +201,6 @@ class _SectionMaterialsState extends State<SectionMaterials> {
                   (curr, v) => curr.copyWith(oilFilterChangeDate: v),
               theme,
             ),
-            const SizedBox(height: 12),
             _modernDateRow(
               'Fuel Filter Change Date',
               Icons.filter_alt_outlined,
@@ -211,7 +208,6 @@ class _SectionMaterialsState extends State<SectionMaterials> {
                   (curr, v) => curr.copyWith(fuelFilterDate: v),
               theme,
             ),
-            const SizedBox(height: 12),
             _modernDateRow(
               'Air Filter Change Date',
               Icons.air,
@@ -227,7 +223,6 @@ class _SectionMaterialsState extends State<SectionMaterials> {
                 color: theme.colorScheme.primary,
               ),
             ),
-            const SizedBox(height: 12),
             _modernDateRow(
               'Coolant Flush Date',
               Icons.water_drop_outlined,
@@ -235,7 +230,6 @@ class _SectionMaterialsState extends State<SectionMaterials> {
                   (curr, v) => curr.copyWith(coolantFlushDate: v),
               theme,
             ),
-            const SizedBox(height: 12),
             _modernDateRow(
               'Battery Replacement Date',
               Icons.battery_charging_full,

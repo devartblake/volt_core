@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../infra/models/maintenance_record.dart';
+import '../../../../shared/widgets/widgets.dart';
 
 /// Modern walkthrough section with enhanced UI
 class SectionMaintWalkthrough extends StatelessWidget {
@@ -141,18 +142,12 @@ class SectionMaintWalkthrough extends StatelessWidget {
 
             if (model.generatorLocation == 'Other') ...[
               const SizedBox(height: 12),
-              TextFormField(
-                initialValue: model.generatorLocationOther,
+              LabeledField(
+                label: 'Specify Location',
+                value: model.generatorLocationOther,
+                hint: 'Describe the location',
+                prefixIcon: Icons.edit_location_outlined,
                 readOnly: readOnly,
-                decoration: InputDecoration(
-                  labelText: 'Specify Location',
-                  hintText: 'Describe the location',
-                  prefixIcon: const Icon(Icons.edit_location_outlined, size: 20),
-                  filled: true,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
                 onChanged: (value) => _updateModel(() =>
                 model.generatorLocationOther = value.trim()),
               ),

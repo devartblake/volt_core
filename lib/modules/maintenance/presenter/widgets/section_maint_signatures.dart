@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:signature/signature.dart';
 import '../../../schedule/presenter/pages/schedule_task_page.dart';
 import '../../../schedule/presenter/widgets/dialogs/schedule_dialog.dart';
+import '../../../../shared/widgets/widgets.dart';
 import '../../presenter/widgets/utils/form_fields.dart';
 import '../../../../core/services/storage/file_storage_service.dart';
 import '../../infra/models/maintenance_record.dart';
@@ -605,40 +606,32 @@ class _SignatureCard extends StatelessWidget {
           const SizedBox(height: 16),
 
           // Name field
-          TextFormField(
-            initialValue: nameValue,
+          LabeledField(
+            label: 'Name',
+            value: nameValue,
             readOnly: readOnly,
-            decoration: InputDecoration(
-              labelText: 'Name',
-              hintText: 'Enter full name',
-              prefixIcon: const Icon(Icons.person_outline, size: 20),
-              filled: true,
-            ),
+            hint: 'Enter full name',
+            prefixIcon: Icons.person_outline,
+            filled: true,
             onChanged: onNameChanged,
           ),
           const SizedBox(height: 12),
 
-          // Date field
-          InkWell(
+          // Date field. Keyed by the formatted value: a field built from
+          // `initialValue` keeps its first text across rebuilds, so without
+          // this it would still show the old date after picking a new one.
+          LabeledField(
+            key: ValueKey('sig-date|${formatDate(dateValue)}'),
+            label: 'Date Signed',
+            value: formatDate(dateValue),
+            hint: 'Tap to select date',
+            readOnly: true,
             onTap: readOnly ? null : onDateTap,
-            borderRadius: BorderRadius.circular(12),
-            child: IgnorePointer(
-              child: TextFormField(
-                readOnly: true,
-                decoration: InputDecoration(
-                  labelText: 'Date Signed',
-                  hintText: 'Tap to select date',
-                  prefixIcon: const Icon(Icons.calendar_today_outlined, size: 20),
-                  suffixIcon: readOnly
-                      ? null
-                      : const Icon(Icons.edit_calendar_outlined, size: 20),
-                  filled: true,
-                ),
-                controller: TextEditingController(
-                  text: formatDate(dateValue),
-                ),
-              ),
-            ),
+            prefixIcon: Icons.calendar_today_outlined,
+            filled: true,
+            suffix: readOnly
+                ? null
+                : const Icon(Icons.edit_calendar_outlined, size: 20),
           ),
           const SizedBox(height: 16),
 
@@ -839,16 +832,14 @@ class _ServiceStatusCard extends StatelessWidget {
             ),
             Padding(
               padding: const EdgeInsets.all(16),
-              child: TextFormField(
-                initialValue: model.followUpNotes ?? '',
+              child: LabeledField(
+                label: 'Follow-up Notes',
+                value: model.followUpNotes ?? '',
                 readOnly: readOnly,
                 maxLines: 3,
-                decoration: InputDecoration(
-                  labelText: 'Follow-up Notes',
-                  hintText: 'Describe what is required on the follow-up visit',
-                  filled: true,
-                  prefixIcon: const Icon(Icons.notes_outlined),
-                ),
+                hint: 'Describe what is required on the follow-up visit',
+                filled: true,
+                prefixIcon: Icons.notes_outlined,
                 onChanged: (value) {
                   _updateModel(() {
                     final trimmed = value.trim();

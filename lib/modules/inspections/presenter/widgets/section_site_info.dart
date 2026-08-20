@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../domain/entities/inspection_entity.dart';
 import '../../../settings/presenter/controllers/selection_options_provider.dart';
+import '../../../../shared/widgets/widgets.dart';
 
 class SectionSiteInfo extends ConsumerStatefulWidget {
   final InspectionEntity model;
@@ -87,222 +88,112 @@ class _SectionSiteInfoState extends ConsumerState<SectionSiteInfo> {
             // If still initializing, render inputs but show progress
             if (ready.isLoading) const LinearProgressIndicator(),
 
-            TextFormField(
-              decoration: const InputDecoration(labelText: 'Site Code'),
-              initialValue: m.siteCode,
+            LabeledField(
+              label: 'Site Code',
+              value: m.siteCode,
+              required: true,
               onChanged: (v) =>
                   _update((curr) => curr.copyWith(siteCode: v)),
             ),
-            const SizedBox(height: 8),
-            DropdownButtonFormField<String>(
-              decoration:
-              const InputDecoration(labelText: 'Site Grade'),
-              initialValue: m.siteGrade.isEmpty ? null : m.siteGrade,
-              items: const [
-                DropdownMenuItem(value: 'Green', child: Text('Green')),
-                DropdownMenuItem(value: 'Amber', child: Text('Amber')),
-                DropdownMenuItem(value: 'Red', child: Text('Red')),
-              ],
+            SelectionField<String>(
+              label: 'Site Grade',
+              value: m.siteGrade.isEmpty ? null : m.siteGrade,
+              options: const ['Green', 'Amber', 'Red'],
               onChanged: (v) => _update(
-                      (curr) => curr.copyWith(siteGrade: v ?? '')),
+                  (curr) => curr.copyWith(siteGrade: v ?? '')),
             ),
-            const SizedBox(height: 8),
-            TextFormField(
-              decoration: const InputDecoration(labelText: 'Address'),
-              initialValue: m.address,
+            LabeledField(
+              label: 'Address',
+              value: m.address,
+              required: true,
               maxLines: 2,
               onChanged: (v) =>
                   _update((curr) => curr.copyWith(address: v)),
             ),
-            const SizedBox(height: 8),
 
-            // Technician
-            Row(
-              children: [
-                Expanded(
-                  child: DropdownButtonFormField<String>(
-                    decoration: const InputDecoration(
-                      labelText: 'Technician Name',
-                    ),
-                    initialValue:
-                    m.technicianName.isEmpty ? null : m.technicianName,
-                    items: [
-                      for (final t in opts.techs)
-                        DropdownMenuItem(
-                          value: t,
-                          child: Text(t),
-                        ),
-                    ],
-                    onChanged: ready.isLoading
-                        ? null
-                        : (v) => _update(
-                            (curr) => curr.copyWith(
-                          technicianName: v ?? '',
-                        )),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                IconButton(
-                  tooltip: 'Add technician',
-                  onPressed: ready.isLoading
-                      ? null
-                      : () => _promptAdd('Technician', opts.addTech),
-                  icon: const Icon(Icons.add),
-                ),
-              ],
+            // Technician — the kit's own "add option" affordance replaces the
+            // hand-built Row + IconButton this used to need.
+            SelectionField<String>(
+              label: 'Technician Name',
+              value: m.technicianName.isEmpty ? null : m.technicianName,
+              options: opts.techs,
+              enabled: !ready.isLoading,
+              onChanged: (v) =>
+                  _update((curr) => curr.copyWith(technicianName: v ?? '')),
+              onAddOption: () => _promptAdd('Technician', opts.addTech),
+              addTooltip: 'Add technician',
             ),
-            const SizedBox(height: 8),
 
-            // Generator Make
-            Row(
-              children: [
-                Expanded(
-                  child: DropdownButtonFormField<String>(
-                    decoration: const InputDecoration(
-                      labelText: 'Generator Make',
-                    ),
-                    initialValue:
-                    m.generatorMake.isEmpty ? null : m.generatorMake,
-                    items: [
-                      for (final t in opts.makes)
-                        DropdownMenuItem(
-                          value: t,
-                          child: Text(t),
-                        ),
-                    ],
-                    onChanged: ready.isLoading
-                        ? null
-                        : (v) => _update(
-                            (curr) => curr.copyWith(
-                          generatorMake: v ?? '',
-                        )),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                IconButton(
-                  tooltip: 'Add make',
-                  onPressed: ready.isLoading
-                      ? null
-                      : () =>
-                      _promptAdd('Generator Make', opts.addMake),
-                  icon: const Icon(Icons.add),
-                ),
-              ],
+            SelectionField<String>(
+              label: 'Generator Make',
+              value: m.generatorMake.isEmpty ? null : m.generatorMake,
+              options: opts.makes,
+              enabled: !ready.isLoading,
+              onChanged: (v) =>
+                  _update((curr) => curr.copyWith(generatorMake: v ?? '')),
+              onAddOption: () => _promptAdd('Generator Make', opts.addMake),
+              addTooltip: 'Add make',
             ),
-            const SizedBox(height: 8),
 
-            // Generator Model (free text)
-            TextFormField(
-              decoration: const InputDecoration(
-                labelText: 'Generator Model',
-              ),
-              initialValue: m.generatorModel,
-              onChanged: (v) => _update(
-                    (curr) => curr.copyWith(generatorModel: v),
-              ),
+            LabeledField(
+              label: 'Generator Model',
+              value: m.generatorModel,
+              onChanged: (v) =>
+                  _update((curr) => curr.copyWith(generatorModel: v)),
             ),
-            const SizedBox(height: 8),
 
             // Serial + kW
             Row(
               children: [
                 Expanded(
-                  child: TextFormField(
-                    decoration: const InputDecoration(
-                      labelText: 'Serial Number',
-                    ),
-                    initialValue: m.generatorSerial,
-                    onChanged: (v) => _update(
-                          (curr) => curr.copyWith(generatorSerial: v),
-                    ),
+                  child: LabeledField(
+                    label: 'Serial Number',
+                    value: m.generatorSerial,
+                    onChanged: (v) =>
+                        _update((curr) => curr.copyWith(generatorSerial: v)),
                   ),
                 ),
                 const SizedBox(width: 8),
                 Expanded(
-                  child: TextFormField(
-                    decoration: const InputDecoration(
-                      labelText: 'kW Rating',
-                    ),
-                    initialValue: m.generatorKw,
-                    onChanged: (v) => _update(
-                          (curr) => curr.copyWith(generatorKw: v),
-                    ),
+                  child: LabeledField(
+                    label: 'kW Rating',
+                    value: m.generatorKw,
+                    keyboardType: TextInputType.number,
+                    onChanged: (v) =>
+                        _update((curr) => curr.copyWith(generatorKw: v)),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 8),
 
-            // Engine hours
-            TextFormField(
-              decoration:
-              const InputDecoration(labelText: 'Engine Hours'),
-              initialValue: m.engineHours,
-              onChanged: (v) => _update(
-                    (curr) => curr.copyWith(engineHours: v),
-              ),
+            LabeledField(
+              label: 'Engine Hours',
+              value: m.engineHours,
+              keyboardType: TextInputType.number,
+              onChanged: (v) =>
+                  _update((curr) => curr.copyWith(engineHours: v)),
             ),
-            const SizedBox(height: 8),
 
-            // Voltage
-            Row(
-              children: [
-                Expanded(
-                  child: DropdownButtonFormField<String>(
-                    decoration: const InputDecoration(
-                      labelText: 'Voltage Rating',
-                    ),
-                    initialValue: m.voltageRating.isEmpty
-                        ? null
-                        : m.voltageRating,
-                    items: [
-                      for (final t in opts.voltages)
-                        DropdownMenuItem(
-                          value: t,
-                          child: Text(t),
-                        ),
-                    ],
-                    onChanged: ready.isLoading
-                        ? null
-                        : (v) => _update(
-                          (curr) => curr.copyWith(
-                        voltageRating: v ?? '',
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                IconButton(
-                  tooltip: 'Add voltage',
-                  onPressed: ready.isLoading
-                      ? null
-                      : () => _promptAdd(
-                    'Voltage Rating',
-                    opts.addVoltage,
-                  ),
-                  icon: const Icon(Icons.add),
-                ),
-              ],
+            SelectionField<String>(
+              label: 'Voltage Rating',
+              value: m.voltageRating.isEmpty ? null : m.voltageRating,
+              options: opts.voltages,
+              enabled: !ready.isLoading,
+              onChanged: (v) =>
+                  _update((curr) => curr.copyWith(voltageRating: v ?? '')),
+              onAddOption: () =>
+                  _promptAdd('Voltage Rating', opts.addVoltage),
+              addTooltip: 'Add voltage',
             ),
-            const SizedBox(height: 8),
 
             // Fuel type
-            DropdownButtonFormField<String>(
-              decoration:
-              const InputDecoration(labelText: 'Fuel Type'),
-              initialValue: m.fuelType.isEmpty ? null : m.fuelType,
-              items: const [
-                DropdownMenuItem(value: 'Diesel', child: Text('Diesel')),
-                DropdownMenuItem(value: 'Gasoline', child: Text('Gasoline')),
-                DropdownMenuItem(
-                  value: 'NaturalGas',
-                  child: Text('Natural Gas'),
-                ),
-                DropdownMenuItem(value: 'None', child: Text('None')),
-              ],
-              onChanged: (v) => _update(
-                    (curr) => curr.copyWith(fuelType: v ?? ''),
-              ),
+            SelectionField<String>(
+              label: 'Fuel Type',
+              value: m.fuelType.isEmpty ? null : m.fuelType,
+              options: const ['Diesel', 'Gasoline', 'NaturalGas', 'None'],
+              labelOf: (v) => v == 'NaturalGas' ? 'Natural Gas' : v,
+              onChanged: (v) =>
+                  _update((curr) => curr.copyWith(fuelType: v ?? '')),
             ),
           ],
         ),

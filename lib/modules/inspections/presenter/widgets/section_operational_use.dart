@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../domain/entities/inspection_entity.dart';
 import '../../../../core/theme/status_colors.dart';
+import '../../../../shared/widgets/widgets.dart';
 
 class SectionOperationalUse extends StatefulWidget {
   final InspectionEntity model;
@@ -111,22 +112,15 @@ class _SectionOperationalUseState extends State<SectionOperationalUse> {
               ),
             ),
             const SizedBox(height: 16),
-            TextFormField(
-              decoration: InputDecoration(
-                labelText: 'Estimated Annual Runtime',
-                prefixIcon: const Icon(Icons.schedule),
-                suffixText: 'hours',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                filled: true,
-                helperText: 'Expected hours of operation per year',
-              ),
-              initialValue: m.estimatedAnnualRuntimeHours,
+            LabeledField(
+              label: 'Estimated Annual Runtime',
+              value: m.estimatedAnnualRuntimeHours,
+              prefixIcon: Icons.schedule,
+              suffixText: 'hours',
+              helper: 'Expected hours of operation per year',
               keyboardType: TextInputType.number,
               onChanged: (v) => _update(
-                    (curr) => curr.copyWith(estimatedAnnualRuntimeHours: v),
-              ),
+                  (curr) => curr.copyWith(estimatedAnnualRuntimeHours: v)),
             ),
             const SizedBox(height: 16),
             _modernYesNo(
@@ -147,22 +141,13 @@ class _SectionOperationalUseState extends State<SectionOperationalUse> {
               ),
             ),
             const SizedBox(height: 12),
-            TextFormField(
-              decoration: InputDecoration(
-                hintText: 'Add any additional observations or notes...',
-                prefixIcon: const Padding(
-                  padding: EdgeInsets.only(bottom: 60),
-                  child: Icon(Icons.notes),
-                ),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                filled: true,
-              ),
+            LabeledField(
+              label: 'Notes',
+              value: m.notes,
+              hint: 'Add any additional observations or notes...',
+              prefixIcon: Icons.notes,
               maxLines: 4,
-              initialValue: m.notes,
-              onChanged: (v) =>
-                  _update((curr) => curr.copyWith(notes: v)),
+              onChanged: (v) => _update((curr) => curr.copyWith(notes: v)),
             ),
           ],
         ),
