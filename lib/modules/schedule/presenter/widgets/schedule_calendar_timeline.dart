@@ -563,7 +563,7 @@ class ScheduleCalendarTimeline extends StatelessWidget {
   }
 
   Widget _buildGradeBadge(String grade, ThemeData theme) {
-    final color = _getGradeColor(grade);
+    final color = theme.gradeColor(grade);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
@@ -646,19 +646,6 @@ class ScheduleCalendarTimeline extends StatelessWidget {
     return '${days[date.weekday - 1]}, ${months[date.month - 1]} ${date.day}';
   }
 
-  Color _getGradeColor(String grade) {
-    switch (grade.toLowerCase()) {
-      case 'green':
-        return Colors.green;
-      case 'amber':
-      case 'yellow':
-        return Colors.orange;
-      case 'red':
-        return Colors.red;
-      default:
-        return Colors.grey;
-    }
-  }
 }
 
 class _FilterButton extends StatelessWidget {

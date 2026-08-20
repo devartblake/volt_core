@@ -39,13 +39,13 @@ class InspectionCard extends StatelessWidget {
                 width: 48,
                 height: 48,
                 decoration: BoxDecoration(
-                  color: _getGradeColor(inspection.siteGrade, theme)
+                  color: theme.gradeColor(inspection.siteGrade, fallback: theme.colorScheme.primary)
                       .withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(
                   Icons.settings_input_antenna,
-                  color: _getGradeColor(inspection.siteGrade, theme),
+                  color: theme.gradeColor(inspection.siteGrade, fallback: theme.colorScheme.primary),
                 ),
               ),
               const SizedBox(width: 16),
@@ -85,15 +85,15 @@ class InspectionCard extends StatelessWidget {
                             ),
                             decoration: BoxDecoration(
                               color:
-                              _getGradeColor(inspection.siteGrade, theme)
+                              theme.gradeColor(inspection.siteGrade, fallback: theme.colorScheme.primary)
                                   .withValues(alpha: 0.15),
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Text(
                               inspection.siteGrade,
                               style: theme.textTheme.labelSmall?.copyWith(
-                                color: _getGradeColor(
-                                    inspection.siteGrade, theme),
+                                color: theme.gradeColor(inspection.siteGrade,
+                                    fallback: theme.colorScheme.primary),
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
@@ -114,18 +114,6 @@ class InspectionCard extends StatelessWidget {
     );
   }
 
-  Color _getGradeColor(String grade, ThemeData theme) {
-    switch (grade.toLowerCase()) {
-      case 'green':
-        return theme.status.success;
-      case 'amber':
-        return theme.status.warning;
-      case 'red':
-        return theme.colorScheme.error;
-      default:
-        return theme.colorScheme.primary;
-    }
-  }
 }
 
 class _InfoChip extends StatelessWidget {

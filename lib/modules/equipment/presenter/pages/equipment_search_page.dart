@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../providers/equipment_providers.dart';
 import '../../infra/repositories/equipment_repository.dart';
+import '../../../../core/theme/status_colors.dart';
 import '../../../../shared/widgets/widgets.dart';
 
 /// Equipment search page
@@ -444,12 +445,12 @@ class _EquipmentCard extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: _getStatusColor(equipment.status, colorScheme).withValues(alpha: 0.15),
+                      color: _statusColor(equipment.status, theme).withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Icon(
                       _getStatusIcon(equipment.status),
-                      color: _getStatusColor(equipment.status, colorScheme),
+                      color: _statusColor(equipment.status, theme),
                       size: 24,
                     ),
                   ),
@@ -524,18 +525,6 @@ class _EquipmentCard extends StatelessWidget {
     );
   }
 
-  Color _getStatusColor(EquipmentStatus status, ColorScheme colorScheme) {
-    switch (status) {
-      case EquipmentStatus.active:
-        return Colors.green;
-      case EquipmentStatus.inactive:
-        return Colors.grey;
-      case EquipmentStatus.maintenance:
-        return Colors.orange;
-      case EquipmentStatus.retired:
-        return Colors.red;
-    }
-  }
 
   IconData _getStatusIcon(EquipmentStatus status) {
     switch (status) {
@@ -570,8 +559,8 @@ class _StatusChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final color = _getStatusColor(status, colorScheme);
+    final theme = Theme.of(context);
+    final color = _statusColor(status, theme);
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -594,18 +583,6 @@ class _StatusChip extends StatelessWidget {
     );
   }
 
-  Color _getStatusColor(EquipmentStatus status, ColorScheme colorScheme) {
-    switch (status) {
-      case EquipmentStatus.active:
-        return Colors.green;
-      case EquipmentStatus.inactive:
-        return Colors.grey;
-      case EquipmentStatus.maintenance:
-        return Colors.orange;
-      case EquipmentStatus.retired:
-        return Colors.red;
-    }
-  }
 
   String _getStatusLabel(EquipmentStatus status) {
     switch (status) {
@@ -953,5 +930,24 @@ class _FilterSection extends StatelessWidget {
         child,
       ],
     );
+  }
+}
+
+/// Colour for an equipment status.
+///
+/// `_EquipmentCard` and `_StatusChip` each carried a private copy of this that
+/// took a [ColorScheme], ignored it, and returned raw `Colors.*` — so the
+/// status dots stayed mid-tone in dark mode.
+Color _statusColor(EquipmentStatus status, ThemeData theme) {
+  switch (status) {
+    case EquipmentStatus.active:
+      return theme.status.success;
+    case EquipmentStatus.inactive:
+      // Not a problem, just not in service: neutral rather than a status hue.
+      return theme.colorScheme.outline;
+    case EquipmentStatus.maintenance:
+      return theme.status.warning;
+    case EquipmentStatus.retired:
+      return theme.colorScheme.error;
   }
 }

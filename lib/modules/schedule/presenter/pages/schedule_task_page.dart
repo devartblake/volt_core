@@ -811,18 +811,18 @@ class _ExistingJobCard extends StatelessWidget {
                               vertical: 2,
                             ),
                             decoration: BoxDecoration(
-                              color: _getGradeColor(grade!)
+                              color: theme.gradeColor(grade!)
                                   .withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(4),
                               border: Border.all(
-                                color: _getGradeColor(grade!)
+                                color: theme.gradeColor(grade!)
                                     .withValues(alpha: 0.3),
                               ),
                             ),
                             child: Text(
                               grade!,
                               style: theme.textTheme.labelSmall?.copyWith(
-                                color: _getGradeColor(grade!),
+                                color: theme.gradeColor(grade!),
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
@@ -848,17 +848,4 @@ class _ExistingJobCard extends StatelessWidget {
     return '${date.month}/${date.day}/${date.year}';
   }
 
-  Color _getGradeColor(String grade) {
-    switch (grade.toLowerCase()) {
-      case 'green':
-        return Colors.green;
-      case 'amber':
-      case 'yellow':
-        return Colors.orange;
-      case 'red':
-        return Colors.red;
-      default:
-        return Colors.grey;
-    }
-  }
 }

@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+
+import '../../../../core/theme/status_colors.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/services/tenants/tenants_service.dart';
@@ -112,8 +114,8 @@ class _TenantsSettingsPageState extends ConsumerState<TenantsSettingsPage> {
                       return ListTile(
                         title: Text(tenant),
                         leading: isCurrent
-                            ? const Icon(Icons.check_circle,
-                            color: Colors.green)
+                            ? Icon(Icons.check_circle,
+                                color: Theme.of(context).status.success)
                             : const Icon(Icons.circle_outlined),
                         subtitle: isCurrent
                             ? const Text('Current tenant')

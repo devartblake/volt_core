@@ -243,13 +243,13 @@ class _InspectionListPageState
                 width: 48,
                 height: 48,
                 decoration: BoxDecoration(
-                  color: _getGradeColor(grade, theme)
+                  color: theme.gradeColor(grade, fallback: theme.colorScheme.primary)
                       .withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(
                   Icons.settings_input_antenna,
-                  color: _getGradeColor(grade, theme),
+                  color: theme.gradeColor(grade, fallback: theme.colorScheme.primary),
                 ),
               ),
               const SizedBox(width: 16),
@@ -294,8 +294,8 @@ class _InspectionListPageState
                               vertical: 4,
                             ),
                             decoration: BoxDecoration(
-                              color: _getGradeColor(
-                                  grade, theme)
+                              color: theme.gradeColor(grade,
+                                  fallback: theme.colorScheme.primary)
                                   .withValues(alpha: 0.15),
                               borderRadius:
                               BorderRadius
@@ -306,8 +306,8 @@ class _InspectionListPageState
                               style: theme.textTheme
                                   .labelSmall
                                   ?.copyWith(
-                                color: _getGradeColor(
-                                    grade, theme),
+                                color: theme.gradeColor(grade,
+                                    fallback: theme.colorScheme.primary),
                                 fontWeight:
                                 FontWeight.w600,
                               ),
@@ -330,18 +330,6 @@ class _InspectionListPageState
     );
   }
 
-  Color _getGradeColor(String grade, ThemeData theme) {
-    switch (grade.toLowerCase()) {
-      case 'green':
-        return theme.status.success;
-      case 'amber':
-        return theme.status.warning;
-      case 'red':
-        return theme.colorScheme.error;
-      default:
-        return theme.colorScheme.primary;
-    }
-  }
 }
 
 class _InfoChip extends StatelessWidget {

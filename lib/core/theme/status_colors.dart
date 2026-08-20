@@ -69,6 +69,9 @@ class StatusColors extends ThemeExtension<StatusColors> {
   ///
   /// Grades arrive as free-text strings from the form, so anything
   /// unrecognised falls back to [fallback].
+  ///
+  /// Prefer [StatusColorsX.gradeColor], which supplies [red] and [fallback]
+  /// from the surrounding theme. This method is the primitive underneath it.
   Color forSiteGrade(String grade, {required Color fallback, Color? red}) {
     switch (grade.trim().toLowerCase()) {
       case 'green':
@@ -77,6 +80,9 @@ class StatusColors extends ThemeExtension<StatusColors> {
       case 'yellow':
         return warning;
       case 'red':
+        // Red is a failure, not a warning: it belongs to the colour scheme's
+        // error role. Callers that don't have one fall back to warning rather
+        // than silently rendering a Red grade in a neutral colour.
         return red ?? warning;
       default:
         return fallback;
@@ -127,4 +133,20 @@ class StatusColors extends ThemeExtension<StatusColors> {
 /// `Theme.of(context).status.success`
 extension StatusColorsX on ThemeData {
   StatusColors get status => extension<StatusColors>() ?? StatusColors.light;
+
+  /// Colour for an inspection site grade, resolved against this theme.
+  ///
+  /// This is the single implementation. Eight screens previously each carried
+  /// a private `_getGradeColor` switch, which had already drifted — most
+  /// returned grey for an unknown grade, one returned blue, and only two of
+  /// them used theme tokens at all.
+  ///
+  /// [fallback] covers grades the form has never heard of; it defaults to a
+  /// neutral outline rather than an attention colour, because an unrecognised
+  /// grade is missing information, not a problem with the site.
+  Color gradeColor(String grade, {Color? fallback}) => status.forSiteGrade(
+        grade,
+        fallback: fallback ?? colorScheme.outline,
+        red: colorScheme.error,
+      );
 }

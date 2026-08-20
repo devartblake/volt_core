@@ -1,6 +1,11 @@
 # Miscellaneous
 *.class
 *.lock
+# Voltcore is an application, not a package: its lockfile is the only thing
+# making every machine and CI resolve the same dependency versions. Leaving it
+# ignored is how one machine ended up on supabase_flutter 2.17 and another on
+# 2.12, with the same source compiling on one and not the other.
+!pubspec.lock
 *.log
 *.pyc
 *.swp
