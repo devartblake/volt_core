@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../presenter/widgets/utils/form_fields.dart';
 import '../../infra/models/maintenance_record.dart';
+import '../../../../shared/widgets/widgets.dart';
 
 /// Actions performed section for the maintenance form.
 ///
@@ -464,15 +465,12 @@ class _ActionTile extends StatelessWidget {
             ),
             if (value) ...[
               const SizedBox(height: 8),
-              TextFormField(
-                initialValue: notes,
+              LabeledField(
+                label: 'Notes',
+                value: notes,
+                hint: 'Part numbers, quantities, observations',
                 readOnly: readOnly,
                 maxLines: 2,
-                decoration: const InputDecoration(
-                  labelText: 'Notes',
-                  hintText: 'Part numbers, quantities, observations',
-                  isDense: true,
-                ),
                 onChanged: (t) => onNotes(t.trim()),
               ),
             ],

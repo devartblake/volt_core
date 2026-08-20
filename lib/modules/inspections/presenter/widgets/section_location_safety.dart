@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../domain/entities/inspection_entity.dart';
+import '../../../../shared/widgets/widgets.dart';
 
 class SectionLocationSafety extends StatefulWidget {
   final InspectionEntity model;
@@ -109,19 +110,12 @@ class _SectionLocationSafetyState extends State<SectionLocationSafety> {
               ],
             ),
             const SizedBox(height: 16),
-            TextFormField(
-              decoration: InputDecoration(
-                labelText: 'Other Location',
-                prefixIcon: const Icon(Icons.place_outlined),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                filled: true,
-                hintText: 'Specify if not listed above',
-              ),
-              initialValue: m.locOther,
-              onChanged: (v) =>
-                  _update((curr) => curr.copyWith(locOther: v)),
+            LabeledField(
+              label: 'Other Location',
+              value: m.locOther,
+              prefixIcon: Icons.place_outlined,
+              hint: 'Specify if not listed above',
+              onChanged: (v) => _update((curr) => curr.copyWith(locOther: v)),
             ),
             const SizedBox(height: 24),
             Divider(color: theme.colorScheme.outlineVariant),

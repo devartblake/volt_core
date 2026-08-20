@@ -181,20 +181,12 @@ class _SectionSignaturesState extends State<SectionSignatures> {
               ],
             ),
             const SizedBox(height: 24),
-            TextFormField(
+            LabeledField(
+              label: 'Customer Name',
               controller: custNameCtl,
-              decoration: InputDecoration(
-                labelText: 'Customer Name',
-                prefixIcon: const Icon(Icons.person_outline),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                filled: true,
-              ),
-              onChanged: (value) {
-                _update((curr) =>
-                    curr.copyWith(customerName: value.trim()));
-              },
+              prefixIcon: Icons.person_outline,
+              onChanged: (value) => _update(
+                  (curr) => curr.copyWith(customerName: value.trim())),
             ),
             const SizedBox(height: 24),
             _modernSignaturePad(

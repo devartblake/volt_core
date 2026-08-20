@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../../shared/widgets/widgets.dart';
 import '../../presenter/widgets/utils/form_fields.dart';
 import '../../infra/models/maintenance_record.dart';
 
@@ -615,13 +616,12 @@ class _HoseRow extends StatelessWidget {
               ),
             ],
           ),
-          TextFormField(
-            initialValue: notes,
+          LabeledField(
+            label: 'Notes / observations',
+            value: notes,
             readOnly: readOnly,
             maxLines: 2,
-            decoration: const InputDecoration(
-              hintText: 'Notes / observations',
-            ),
+            dense: true,
             onChanged: (value) =>
                 onChanged(compromised, recommendChange, value.trim()),
           ),
@@ -681,13 +681,11 @@ class _CannisterRow extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 if (allowLabelEdit)
-                  TextFormField(
-                    initialValue: effectiveLabel,
+                  LabeledField(
+                    label: 'Label',
+                    value: effectiveLabel,
                     readOnly: readOnly,
-                    decoration: const InputDecoration(
-                      labelText: 'Label',
-                      isDense: true,
-                    ),
+                    dense: true,
                     onChanged: (value) {
                       effectiveLabel = value.trim();
                       onChanged?.call(selected, partNumber, label: effectiveLabel);
@@ -699,13 +697,11 @@ class _CannisterRow extends StatelessWidget {
                     style: theme.textTheme.bodyMedium,
                   ),
                 const SizedBox(height: 4),
-                TextFormField(
-                  initialValue: partNumber,
+                LabeledField(
+                  label: 'Part Number',
+                  value: partNumber,
                   readOnly: readOnly,
-                  decoration: const InputDecoration(
-                    labelText: 'Part Number',
-                    isDense: true,
-                  ),
+                  dense: true,
                   onChanged: (value) {
                     onChanged?.call(selected, value.trim(), label: effectiveLabel);
                   },

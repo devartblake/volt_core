@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../../../shared/widgets/widgets.dart';
 
 /// Shared UI helpers for maintenance form sections.
 ///
@@ -81,24 +82,17 @@ class FormTextFieldRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label, style: theme.textTheme.labelMedium),
-        const SizedBox(height: 4),
-        TextFormField(
-          initialValue: initialValue,
-          readOnly: readOnly,
-          maxLines: maxLines,
-          keyboardType: keyboardType,
-          decoration: InputDecoration(
-            hintText: hintText,
-          ),
-          onChanged: onChanged,
-        ),
-      ],
+    // Delegates to the shared kit so maintenance and inspection fields share
+    // one implementation; the wrapper stays because five section widgets are
+    // built around this API.
+    return LabeledField(
+      label: label,
+      value: initialValue,
+      hint: hintText,
+      readOnly: readOnly,
+      maxLines: maxLines,
+      keyboardType: keyboardType,
+      onChanged: onChanged,
     );
   }
 }
@@ -123,23 +117,13 @@ class FormTextAreaRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label, style: theme.textTheme.labelMedium),
-        const SizedBox(height: 4),
-        TextFormField(
-          initialValue: initialValue,
-          readOnly: readOnly,
-          maxLines: maxLines,
-          decoration: InputDecoration(
-            hintText: hintText,
-          ),
-          onChanged: onChanged,
-        ),
-      ],
+    return LabeledField(
+      label: label,
+      value: initialValue,
+      hint: hintText,
+      readOnly: readOnly,
+      maxLines: maxLines,
+      onChanged: onChanged,
     );
   }
 }
@@ -164,29 +148,13 @@ class FormDropdownRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label, style: theme.textTheme.labelMedium),
-        const SizedBox(height: 4),
-        DropdownButtonFormField<String>(
-          initialValue: value,
-          onChanged: readOnly ? null : onChanged,
-          items: items
-              .map(
-                (e) => DropdownMenuItem(
-              value: e,
-              child: Text(e),
-            ),
-          )
-              .toList(),
-          decoration: InputDecoration(
-            hintText: hintText ?? 'Select',
-          ),
-        ),
-      ],
+    return SelectionField<String>(
+      label: label,
+      value: value,
+      options: items,
+      hint: hintText ?? 'Select',
+      enabled: !readOnly,
+      onChanged: onChanged,
     );
   }
 }

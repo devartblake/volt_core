@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../shared/widgets/widgets.dart';
 import '../../../inspections/presenter/controllers/inspection_controller.dart';
 import '../../infra/models/load_test_record.dart';
 
@@ -142,9 +143,10 @@ class _LoadRowEditorState extends State<_LoadRowEditor> {
               ),
               const SizedBox(width: 8),
               Expanded(
-                child: TextFormField(
-                  decoration: const InputDecoration(labelText: 'Minutes'),
-                  initialValue: '${m.durationMinutes}',
+                child: LabeledField(
+                  label: 'Minutes',
+                  value: '${m.durationMinutes}',
+                  dense: true,
                   keyboardType: TextInputType.number,
                   onChanged: (v) => m = m.copyWith(durationMinutes: int.tryParse(v) ?? 0),
                 ),
@@ -173,10 +175,11 @@ class _LoadRowEditorState extends State<_LoadRowEditor> {
               value: m.pass,
               onChanged: (v) => setState(() => m = m.copyWith(pass: v)),
             ),
-            TextFormField(
-              decoration: const InputDecoration(labelText: 'Notes'),
+            LabeledField(
+              label: 'Notes',
+              value: m.notes,
               maxLines: 3,
-              initialValue: m.notes,
+              dense: true,
               onChanged: (v) => m = m.copyWith(notes: v),
             ),
           ]),
@@ -192,9 +195,10 @@ class _LoadRowEditorState extends State<_LoadRowEditor> {
     );
   }
 
-  Widget _t(String label, String value, ValueChanged<String> on) => TextFormField(
-    decoration: InputDecoration(labelText: label),
-    initialValue: value,
+  Widget _t(String label, String value, ValueChanged<String> on) => LabeledField(
+    label: label,
+    value: value,
+    dense: true,
     onChanged: on,
   );
 }
