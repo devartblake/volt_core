@@ -43,11 +43,8 @@ class SupabaseService {
     }
 
     try {
-      await Supabase.initialize(
         url: cfg.supabaseUrl,
-        // Renamed upstream: the anon key is now the "publishable" key. The env
-        // variable keeps its SUPABASE_ANON_KEY name.
-        publishableKey: cfg.supabaseAnonKey,
+        anonKey: cfg.supabaseAnonKey,
         // Add HTTP client for network logging (debug only)
         httpClient: SupabaseHttpClientFactory.create(),
       );
