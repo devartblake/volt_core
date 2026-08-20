@@ -10,7 +10,7 @@ final loadScheduleUseCaseProvider = Provider<LoadScheduleUseCase>((ref) {
   return LoadScheduleUseCase(repo);
 });
 
-/// Controller state is simply AsyncValue<List<TaskScheduleEntity>>
+/// Controller state is simply `AsyncValue<List<TaskScheduleEntity>>`
 class ScheduleController
     extends StateNotifier<AsyncValue<List<TaskScheduleEntity>>> {
   final LoadScheduleUseCase _loadSchedule;

@@ -32,7 +32,7 @@ class VoltcoreSupabase {
       debugPrint('Initializing Supabase...');
     }
 
-    await Supabase.initialize(url: url, anonKey: anonKey);
+    await Supabase.initialize(url: url, publishableKey: anonKey);
     _instance = VoltcoreSupabase._internal(Supabase.instance.client);
   }
 }

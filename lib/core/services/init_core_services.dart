@@ -3,6 +3,7 @@ import 'package:flutter/widgets.dart';
 
 import 'hive/hive_service.dart';
 import 'notifications/notification_service.dart';
+import 'forms/form_draft_service.dart';
 import 'photos/photo_repository.dart';
 import 'storage/file_storage_service.dart';
 import 'storage/web_file_store.dart';
@@ -45,6 +46,9 @@ Future<void> initCoreServices() async {
 
   // Open the adapter-free photo-attachments box.
   await PhotoRepository.instance.init();
+
+  // Open the form-drafts box so unsaved form work survives navigation.
+  await FormDraftService.instance.init();
 
   // On web there is no filesystem: signature/photo bytes live in the
   // WebFileStore (IndexedDB-backed Hive box). Open it so synchronous reads

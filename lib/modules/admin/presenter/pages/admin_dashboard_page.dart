@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:voltcore/modules/admin/presenter/controllers/admin_dashboard_controller.dart';
+import '../../../../shared/widgets/widgets.dart';
 
 /// Admin dashboard with basic system overview + live "Active Technicians" count.
 ///
@@ -24,10 +25,8 @@ class AdminDashboardPage extends ConsumerWidget {
 
     final stats = state.stats;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Admin Dashboard'),
-      ),
+    return AppPage(
+      title: 'Admin Dashboard',
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: ListView(
@@ -49,7 +48,7 @@ class AdminDashboardPage extends ConsumerWidget {
             // Loading / error indicators
             if (state.isLoading && stats == null) ...[
               const SizedBox(height: 12),
-              const Center(child: CircularProgressIndicator()),
+              const LoadingIndicator(),
               const SizedBox(height: 12),
             ],
             if (state.errorMessage != null) ...[

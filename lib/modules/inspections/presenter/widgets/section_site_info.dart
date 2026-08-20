@@ -97,7 +97,7 @@ class _SectionSiteInfoState extends ConsumerState<SectionSiteInfo> {
             DropdownButtonFormField<String>(
               decoration:
               const InputDecoration(labelText: 'Site Grade'),
-              value: m.siteGrade.isEmpty ? null : m.siteGrade,
+              initialValue: m.siteGrade.isEmpty ? null : m.siteGrade,
               items: const [
                 DropdownMenuItem(value: 'Green', child: Text('Green')),
                 DropdownMenuItem(value: 'Amber', child: Text('Amber')),
@@ -124,7 +124,7 @@ class _SectionSiteInfoState extends ConsumerState<SectionSiteInfo> {
                     decoration: const InputDecoration(
                       labelText: 'Technician Name',
                     ),
-                    value:
+                    initialValue:
                     m.technicianName.isEmpty ? null : m.technicianName,
                     items: [
                       for (final t in opts.techs)
@@ -161,7 +161,7 @@ class _SectionSiteInfoState extends ConsumerState<SectionSiteInfo> {
                     decoration: const InputDecoration(
                       labelText: 'Generator Make',
                     ),
-                    value:
+                    initialValue:
                     m.generatorMake.isEmpty ? null : m.generatorMake,
                     items: [
                       for (final t in opts.makes)
@@ -252,7 +252,7 @@ class _SectionSiteInfoState extends ConsumerState<SectionSiteInfo> {
                     decoration: const InputDecoration(
                       labelText: 'Voltage Rating',
                     ),
-                    value: m.voltageRating.isEmpty
+                    initialValue: m.voltageRating.isEmpty
                         ? null
                         : m.voltageRating,
                     items: [
@@ -290,7 +290,7 @@ class _SectionSiteInfoState extends ConsumerState<SectionSiteInfo> {
             DropdownButtonFormField<String>(
               decoration:
               const InputDecoration(labelText: 'Fuel Type'),
-              value: m.fuelType.isEmpty ? null : m.fuelType,
+              initialValue: m.fuelType.isEmpty ? null : m.fuelType,
               items: const [
                 DropdownMenuItem(value: 'Diesel', child: Text('Diesel')),
                 DropdownMenuItem(value: 'Gasoline', child: Text('Gasoline')),

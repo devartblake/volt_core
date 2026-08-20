@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import '../../../../shared/widgets/widgets.dart';
 
 class ForbiddenPage extends StatelessWidget {
   const ForbiddenPage({
@@ -18,10 +19,8 @@ class ForbiddenPage extends StatelessWidget {
     final theme = Theme.of(context);
     final color = theme.colorScheme;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Access denied'),
-      ),
+    return AppPage(
+      title: 'Access denied',
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 420),

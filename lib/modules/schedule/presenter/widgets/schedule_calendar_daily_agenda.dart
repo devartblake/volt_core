@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:table_calendar/table_calendar.dart';
 import '../../domain/entities/task_schedule_entity.dart';
+import '../../../../core/theme/status_colors.dart';
 
 /// Daily Agenda View: Calendar (70%) + Selected day detailed schedule (30%)
 class ScheduleCalendarDailyAgenda extends StatelessWidget {
@@ -269,7 +270,7 @@ class ScheduleCalendarDailyAgenda extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Time column
-              Container(
+              SizedBox(
                 width: 70,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -291,13 +292,13 @@ class ScheduleCalendarDailyAgenda extends StatelessWidget {
                           vertical: 2,
                         ),
                         decoration: BoxDecoration(
-                          color: Colors.green.withValues(alpha: 0.1),
+                          color: theme.status.success.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(
                           'Done',
                           style: theme.textTheme.labelSmall?.copyWith(
-                            color: Colors.green,
+                            color: theme.status.success,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -314,7 +315,7 @@ class ScheduleCalendarDailyAgenda extends StatelessWidget {
                 height: 60,
                 decoration: BoxDecoration(
                   color: isPast
-                      ? Colors.green.withValues(alpha: 0.3)
+                      ? theme.status.success.withValues(alpha: 0.3)
                       : theme.colorScheme.primary.withValues(alpha: 0.3),
                   borderRadius: BorderRadius.circular(1),
                 ),

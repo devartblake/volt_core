@@ -19,10 +19,16 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
-      # Fail on real errors, but tolerate the project's existing
-      # warnings/deprecations so CI isn't red from pre-existing debt.
+      # The tree is clean as of Phase 4 (0 errors, 0 warnings, 0 infos), so CI
+      # now fails on anything new — including lints and deprecations, which is
+      # how the previous 50-odd infos accumulated unnoticed.
       - name: Analyze
-        run: flutter analyze --no-fatal-infos --no-fatal-warnings
+        run: flutter analyze --fatal-infos --fatal-warnings
 
       - name: Test
         run: flutter test
+
+      # Catches web-only breakage (dart:io usage, conditional imports) that
+      # analyze and the unit tests don't.
+      - name: Build web
+        run: flutter build web --no-tree-shake-icons

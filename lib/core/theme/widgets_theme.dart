@@ -7,7 +7,7 @@ class WidgetsTheme {
   static InputDecorationTheme inputDecoration(ColorScheme colors) {
     return InputDecorationTheme(
       filled: true,
-      fillColor: colors.surfaceVariant.withValues(alpha: 0.4),
+      fillColor: colors.surfaceContainerHighest.withValues(alpha: 0.4),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
         borderSide: BorderSide(color: colors.outlineVariant),

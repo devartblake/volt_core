@@ -90,12 +90,18 @@ class AuthController extends StateNotifier<AuthState> {
     debugPrint('AuthController.restoreSession → $state');
   }
 
-  /// Switch role for the currently logged-in user.
+  /// Switch which of the user's *granted* roles this session acts as.
   ///
-  /// This is still local-only; if you want to persist role changes
-  /// to Hive or Supabase, we can later add a dedicated usecase and repo.
+  /// Roles are issued by the server (`tenant_members`); this only chooses among
+  /// them. A role the user doesn't hold is refused, so the UI can never grant
+  /// itself privileges.
   void switchRole(UserRole role) {
     if (!state.isAuthenticated) return;
+    if (!state.canActAs(role)) {
+      debugPrint('AuthController.switchRole → refused $role '
+          '(granted: ${state.grantedRoles})');
+      return;
+    }
     state = state.copyWith(currentRole: role);
     debugPrint('AuthController.switchRole → $state');
   }

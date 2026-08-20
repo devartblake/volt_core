@@ -93,11 +93,14 @@ class InspectionLocalDatasource {
       }
     }
 
-    if (existingKey != null) {
-      await box.put(existingKey, model);
-    } else {
-      await box.add(model);
+    // Always end up keyed by the nameplate's string id. Other call sites
+    // (e.g. nameplate_intervals_page) write with `put(id, …)`, so using
+    // `box.add()` here would store the same record a second time under an
+    // auto-integer key and the two copies would drift apart.
+    if (existingKey != null && existingKey != model.id) {
+      await box.delete(existingKey);
     }
+    await box.put(model.id, model);
 
     return model.toEntity();
   }

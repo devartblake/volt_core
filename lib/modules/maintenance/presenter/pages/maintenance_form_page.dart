@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:open_filex/open_filex.dart';
 
-import 'package:voltcore/shared/widgets/responsive_scaffold.dart';
 import '../../../../core/services/pdf/pdf_prefs_service.dart';
 import '../../../../core/services/pdf/pdf_service.dart';
 import '../../../../core/services/photos/photo_attachment.dart';
@@ -19,6 +18,7 @@ import '../widgets/section_maint_actions.dart';
 import '../widgets/section_maint_post_service.dart';
 import '../widgets/section_maint_parts.dart';
 import '../widgets/section_maint_signatures.dart';
+import '../../../../shared/widgets/widgets.dart';
 
 class MaintenanceFormPage extends ConsumerStatefulWidget {
   final String? id;
@@ -40,9 +40,47 @@ class _MaintenanceFormPageState extends ConsumerState<MaintenanceFormPage> {
   bool _isGeneratingPdf = false;
   String? _savedPdfPath;
 
+  /// True once a section has edited the record — drives the unsaved guard.
+  bool _dirty = false;
+
+  /// Set after a successful save so leaving doesn't prompt.
+  bool _saved = false;
+
   /// Small helper to trigger rebuild when sections mutate the model.
   void _update(void Function() fn) {
-    setState(fn);
+    setState(() {
+      fn();
+      _dirty = true;
+    });
+  }
+
+  /// Ask before discarding unsaved edits. Returns true to leave.
+  ///
+  /// The maintenance record is written to Hive as it is edited, so there is no
+  /// separate draft to keep — this only guards against leaving mid-edit by
+  /// accident.
+  Future<bool> _confirmDiscard() async {
+    final leave = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Leave this record?'),
+        content: const Text(
+          'This maintenance record has unsaved changes. Leaving now keeps '
+          'what is already on this device but does not generate the report.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Keep editing'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Leave'),
+          ),
+        ],
+      ),
+    );
+    return leave ?? false;
   }
 
   /// Complete save flow: save record -> generate PDF -> save PDF
@@ -101,6 +139,9 @@ class _MaintenanceFormPageState extends ConsumerState<MaintenanceFormPage> {
       setState(() {
         _isSaving = false;
         _isGeneratingPdf = false;
+        // Saved for real — the unsaved-changes guard can stand down.
+        _dirty = false;
+        _saved = true;
       });
 
       // Show success message
@@ -337,20 +378,19 @@ class _MaintenanceFormPageState extends ConsumerState<MaintenanceFormPage> {
     final m = formState.record;
     final sections = _buildSections(m);
 
-    return ResponsiveScaffold(
-      appBar: AppBar(
-        title: Text(
-          widget.id == null
-              ? 'New Maintenance Record'
-              : 'Edit Maintenance Record',
-        ),
-        leading: Navigator.of(context).canPop()
-            ? IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: _isSaving ? null : () => context.pop(),
-        )
-            : null,
-        actions: [
+    return PopScope(
+      // Don't let a back gesture / nav tap silently bin the work.
+      canPop: !_dirty || _saved,
+      onPopInvokedWithResult: (didPop, _) async {
+        if (didPop) return;
+        final leave = await _confirmDiscard();
+        if (leave && context.mounted) context.pop();
+      },
+      child: AppPage(
+      title: widget.id == null
+          ? 'New Maintenance Record'
+          : 'Edit Maintenance Record',
+      actions: [
           // Section indicator
           Container(
             margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
@@ -390,7 +430,6 @@ class _MaintenanceFormPageState extends ConsumerState<MaintenanceFormPage> {
               onPressed: _save,
             ),
         ],
-      ),
       body: Form(
         key: _formKey,
         child: LayoutBuilder(
@@ -433,6 +472,7 @@ class _MaintenanceFormPageState extends ConsumerState<MaintenanceFormPage> {
         ),
       ),
       fab: _buildFloatingActionButton(sections, colorScheme),
+      ),
     );
   }
 

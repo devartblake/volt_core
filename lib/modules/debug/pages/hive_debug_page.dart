@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/services/hive/hive_service.dart';
 import '../../../modules/maintenance/infra/datasources/hive_boxes_maintenance.dart';
+import '../../../shared/widgets/widgets.dart';
 
 /// Debug menu page for Hive management.
 ///
@@ -113,14 +114,10 @@ class _HiveDebugPageState extends State<HiveDebugPage> {
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Hive Debug'),
-        backgroundColor: colors.errorContainer,
-        foregroundColor: colors.onErrorContainer,
-      ),
+    return AppPage(
+      title: 'Hive Debug',
       body: _loading
-          ? const Center(child: CircularProgressIndicator())
+          ? const LoadingIndicator()
           : ListView(
         padding: const EdgeInsets.all(16),
         children: [
@@ -241,7 +238,7 @@ class _HiveDebugPageState extends State<HiveDebugPage> {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: colors.surfaceVariant,
+              color: colors.surfaceContainerHighest,
               borderRadius: BorderRadius.circular(12),
             ),
             child: Column(

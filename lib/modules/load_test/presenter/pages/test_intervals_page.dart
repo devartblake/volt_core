@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:voltcore/shared/widgets/responsive_scaffold.dart';
 
 import '../../infra/models/test_interval_record.dart';
 import '../../../../core/services/hive/hive_boxes.dart';
+import '../../../../shared/widgets/widgets.dart';
 
 class TestIntervalsPage extends StatefulWidget {
   final String inspectionId;
@@ -37,16 +37,8 @@ class _TestIntervalsPageState extends State<TestIntervalsPage> {
 
   @override
   Widget build(BuildContext context) {
-    return ResponsiveScaffold(
-      appBar: AppBar(
-        title: const Text('Test Reading Intervals'),
-        leading: Navigator.of(context).canPop()
-            ? IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.of(context).pop(),
-        )
-            : null,
-      ),
+    return AppPage(
+      title: 'Test Reading Intervals',
       body: _rows.isEmpty
           ? const Center(child: Text('No interval readings recorded.'))
           : SingleChildScrollView(

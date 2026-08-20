@@ -4,6 +4,7 @@ import '../../../modules/maintenance/infra/datasources/hive_boxes_maintenance.da
 import '../storage/file_storage_service.dart';
 import 'hive_adapters.dart';
 import 'hive_boxes.dart';
+import 'hive_migrations.dart';
 
 /// Top-level Hive lifecycle manager.
 ///
@@ -42,6 +43,10 @@ class HiveService {
 
     await HiveBoxes.init();
     await MaintenanceBoxes.init();
+
+    // Repair local data written by older builds (e.g. records stored under
+    // auto-integer keys instead of their string id). Idempotent and non-fatal.
+    await HiveMigrations.runAll();
 
     _initialized = true;
 

@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 
 import '../constants/app_colors.dart';
 import '../constants/app_typography.dart';
+import 'status_colors.dart';
 import 'widgets_theme.dart';
 
 class AppTheme {
@@ -67,6 +68,9 @@ class AppTheme {
       elevatedButtonTheme: WidgetsTheme.elevatedButton(colorScheme),
       outlinedButtonTheme: WidgetsTheme.outlinedButton(colorScheme),
       cardTheme: WidgetsTheme.card(colorScheme),
+
+      // Semantic status colours (success/warning/info) that ColorScheme lacks.
+      extensions: const [StatusColors.light],
     );
   }
 
@@ -122,6 +126,8 @@ class AppTheme {
       elevatedButtonTheme: WidgetsTheme.elevatedButton(colorScheme),
       outlinedButtonTheme: WidgetsTheme.outlinedButton(colorScheme),
       cardTheme: WidgetsTheme.card(colorScheme),
+
+      extensions: const [StatusColors.dark],
     );
   }
 }

@@ -25,7 +25,7 @@ class SupabaseService {
   ///
   /// Call this once at startup *before* runApp():
   ///
-  ///   Future<void> main() async {
+  ///   `Future<void> main() async {`
   ///     WidgetsFlutterBinding.ensureInitialized();
   ///     await SupabaseService.init();
   ///     runApp(const ProviderScope(child: VoltcoreApp()));
@@ -45,7 +45,9 @@ class SupabaseService {
     try {
       await Supabase.initialize(
         url: cfg.supabaseUrl,
-        anonKey: cfg.supabaseAnonKey,
+        // Renamed upstream: the anon key is now the "publishable" key. The env
+        // variable keeps its SUPABASE_ANON_KEY name.
+        publishableKey: cfg.supabaseAnonKey,
         // Add HTTP client for network logging (debug only)
         httpClient: SupabaseHttpClientFactory.create(),
       );

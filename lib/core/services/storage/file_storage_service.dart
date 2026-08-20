@@ -553,7 +553,7 @@ class FileStorageService {
     return dir;
   }
 
-  /// Per-owner photo directory: [AppData]/photos/<ownerType>/<ownerId>/
+  /// Per-owner photo directory: `[AppData]/photos/<ownerType>/<ownerId>/`
   Future<Directory> getOwnerPhotosDirectory(
     String ownerType,
     String ownerId,

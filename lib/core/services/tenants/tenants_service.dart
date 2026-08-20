@@ -17,7 +17,7 @@ final tenantsServiceProvider = FutureProvider<TenantsService>((ref) async {
 /// Box layout:
 ///  box: 'tenants_prefs'
 ///    - 'current_tenant' : String
-///    - 'tenants'        : List<String>
+///    - 'tenants'        : `List<String>`
 class TenantsService {
   static const String _boxName = 'tenants_prefs';
   static const String _keyCurrentTenant = 'current_tenant';

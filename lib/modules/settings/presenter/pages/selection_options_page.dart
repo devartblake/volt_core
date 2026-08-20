@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
-import '../../../../shared/widgets/responsive_scaffold.dart';
 import '../controllers/selection_options_provider.dart';
+import '../../../../shared/widgets/widgets.dart';
 
 class SelectionOptionsPage extends ConsumerWidget {
   const SelectionOptionsPage({super.key});
@@ -12,21 +11,9 @@ class SelectionOptionsPage extends ConsumerWidget {
     final svc = ref.watch(selectionOptionsProvider);
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final canPop = GoRouter.of(context).canPop();
 
-    return ResponsiveScaffold(
-      appBar: AppBar(
-        title: const Text('Selection Options'),
-        centerTitle: false,
-        elevation: 0,
-        leading: canPop
-            ? IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => context.pop(),
-          tooltip: 'Back',
-        )
-            : null,
-      ),
+    return AppPage(
+      title: 'Selection Options',
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [

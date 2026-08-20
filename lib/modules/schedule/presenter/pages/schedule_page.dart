@@ -3,15 +3,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 import 'package:go_router/go_router.dart';
 import 'package:table_calendar/table_calendar.dart';
-import '../../../../shared/widgets/responsive_scaffold.dart';
-import '../../../inspections/presenter/controllers/app_badges_controller.dart';
-import '../../../inspections/presenter/controllers/user_profile_controller.dart';
 import '../../domain/entities/task_schedule_entity.dart';
 import '../controllers/schedule_controller.dart';
 import '../widgets/schedule_calendar.dart';
 import '../widgets/calendar_view_mode.dart';
 import '../widgets/schedule_calendar_daily_agenda.dart';
 import '../widgets/schedule_calendar_timeline.dart';
+import '../../../../shared/widgets/widgets.dart';
+import '../../../../core/theme/status_colors.dart';
 
 /// Schedule view mode enum
 enum ScheduleView { list, calendar }
@@ -54,32 +53,29 @@ class _SchedulePageState extends ConsumerState<SchedulePage> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final badges = ref.watch(appBadgesProvider);
-    final userProfile = ref.watch(userProfileProvider);
     final scheduleView = ref.watch(scheduleViewProvider);
     final timeRange = ref.watch(timeRangeProvider);
 
     final scheduleState = ref.watch(scheduleControllerProvider);
 
     return scheduleState.when(
-      loading: () => Scaffold(
-        appBar: AppBar(title: const Text('Schedule')),
-        body: const Center(child: CircularProgressIndicator()),
-      ),
-      error: (err, st) => Scaffold(
-        appBar: AppBar(title: const Text('Schedule')),
-        body: Center(
+      loading: () => AppPage(
+      title: 'Schedule',
+      body: const LoadingIndicator(),
+    ),
+      error: (err, st) => AppPage(
+      title: 'Schedule',
+      body: Center(
           child: Text('Error loading schedule: $err'),
         ),
-      ),
+    ),
       data: (allItems) {
         final filteredItems =
         _filterItems(allItems, timeRange, _selectedDay);
 
-        return ResponsiveScaffold(
-          appBar: AppBar(
-            title: const Text('Schedule'),
-            actions: [
+        return AppPage(
+      title: 'Schedule',
+      actions: [
               // Calendar view mode selector
               PopupMenuButton<CalendarViewMode>(
                 icon: Icon(ref.watch(calendarViewModeProvider).icon),
@@ -165,8 +161,7 @@ class _SchedulePageState extends ConsumerState<SchedulePage> {
                 ),
               ),
             ],
-          ),
-          body: Column(
+      body: Column(
             children: [
               // Stats summary bar
               _buildStatsBar(
@@ -184,22 +179,7 @@ class _SchedulePageState extends ConsumerState<SchedulePage> {
               ),
             ],
           ),
-          // FAB to create new scheduled task
-          fab: FloatingActionButton.extended(
-            onPressed: () => context.goNamed('schedule_task'),
-            icon: const Icon(Icons.add),
-            label: const Text('Schedule Task'),
-            tooltip: 'Schedule new inspection or maintenance',
-          ),
-          badges: badges.toRouteMap(),
-          userProfile: userProfile,
-          onSwitchTenant: (tenant) {
-            ref.read(currentTenantProvider.notifier).switchTenant(tenant);
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Switched to $tenant')),
-            );
-          },
-        );
+    );
       },
     );
   }
@@ -319,7 +299,7 @@ class _SchedulePageState extends ConsumerState<SchedulePage> {
               icon: Icons.check_circle_outline,
               label: 'Completed',
               value: '${_countPast(filteredItems)}',
-              color: Colors.green,
+              color: theme.status.success,
               theme: theme,
             ),
           ),
@@ -727,13 +707,13 @@ class _ScheduleCard extends StatelessWidget {
                 height: 48,
                 decoration: BoxDecoration(
                   color: isPast
-                      ? Colors.green.withValues(alpha: 0.1)
+                      ? theme.status.success.withValues(alpha: 0.1)
                       : theme.colorScheme.primaryContainer,
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(
                   isPast ? Icons.check_circle : Icons.schedule,
-                  color: isPast ? Colors.green : theme.colorScheme.primary,
+                  color: isPast ? theme.status.success : theme.colorScheme.primary,
                 ),
               ),
               const SizedBox(width: 16),
@@ -835,11 +815,11 @@ class _ScheduleCard extends StatelessWidget {
   Color _getGradeColor(String grade) {
     switch (grade.toLowerCase()) {
       case 'green':
-        return Colors.green;
+        return theme.status.success;
       case 'amber':
-        return Colors.orange;
+        return theme.status.warning;
       case 'red':
-        return Colors.red;
+        return theme.colorScheme.error;
       default:
         return theme.colorScheme.primary;
     }
