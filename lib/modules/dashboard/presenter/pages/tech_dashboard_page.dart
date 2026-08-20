@@ -7,6 +7,7 @@ import 'package:voltcore/modules/dashboard/domain/usecases/load_dashboard_stats_
 import 'package:voltcore/modules/dashboard/infra/repositories/dashboard_repository_impl.dart';
 
 import '../../../auth/presenter/controllers/auth_controller.dart';
+import '../../../../shared/widgets/widgets.dart';
 
 /// Provide the usecase from the repository.
 final loadDashboardStatsUsecaseProvider =
@@ -109,14 +110,12 @@ class _TechDashboardPageState extends ConsumerState<TechDashboardPage> {
     final theme = Theme.of(context);
     final color = theme.colorScheme;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Tech Dashboard'),
-      ),
+    return AppPage(
+      title: 'Tech Dashboard',
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: state.isLoading
-            ? const Center(child: CircularProgressIndicator())
+            ? const LoadingIndicator()
             : state.error != null
             ? Center(
           child: Text(

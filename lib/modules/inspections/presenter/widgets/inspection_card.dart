@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../domain/entities/inspection_entity.dart';
+import '../../../../core/theme/status_colors.dart';
 
 class InspectionCard extends StatelessWidget {
   final InspectionEntity inspection;
@@ -116,11 +117,11 @@ class InspectionCard extends StatelessWidget {
   Color _getGradeColor(String grade, ThemeData theme) {
     switch (grade.toLowerCase()) {
       case 'green':
-        return Colors.green;
+        return theme.status.success;
       case 'amber':
-        return Colors.orange;
+        return theme.status.warning;
       case 'red':
-        return Colors.red;
+        return theme.colorScheme.error;
       default:
         return theme.colorScheme.primary;
     }

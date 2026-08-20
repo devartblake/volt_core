@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/services/network/network_logger.dart';
+import '../../../shared/widgets/widgets.dart';
 
 /// Network debugging page for monitoring API requests and responses.
 ///
@@ -60,12 +61,9 @@ class _NetworkDebugPageState extends ConsumerState<NetworkDebugPage> {
       return true;
     }).toList();
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Network Debug'),
-        backgroundColor: colors.tertiaryContainer,
-        foregroundColor: colors.onTertiaryContainer,
-        actions: [
+    return AppPage(
+      title: 'Network Debug',
+      actions: [
           // Clear logs
           IconButton(
             onPressed: () {
@@ -90,13 +88,12 @@ class _NetworkDebugPageState extends ConsumerState<NetworkDebugPage> {
             tooltip: 'Back to Debug Menu',
           ),
         ],
-      ),
       body: Column(
         children: [
           // Search and filters
           Container(
             padding: const EdgeInsets.all(16),
-            color: colors.surfaceVariant,
+            color: colors.surfaceContainerHighest,
             child: Column(
               children: [
                 // Search bar
@@ -128,7 +125,7 @@ class _NetworkDebugPageState extends ConsumerState<NetworkDebugPage> {
                           filled: true,
                           fillColor: colors.surface,
                         ),
-                        value: _filterMethod,
+                        initialValue: _filterMethod,
                         items: const [
                           DropdownMenuItem(value: null, child: Text('All')),
                           DropdownMenuItem(value: 'GET', child: Text('GET')),
@@ -153,7 +150,7 @@ class _NetworkDebugPageState extends ConsumerState<NetworkDebugPage> {
                           filled: true,
                           fillColor: colors.surface,
                         ),
-                        value: _filterStatus,
+                        initialValue: _filterStatus,
                         items: const [
                           DropdownMenuItem(value: null, child: Text('All')),
                           DropdownMenuItem(value: 'success', child: Text('Success')),
@@ -429,7 +426,7 @@ class _NetworkLogDetails extends StatelessWidget {
 
     return Container(
       padding: const EdgeInsets.all(16),
-      color: colors.surfaceVariant.withValues(alpha: 0.3),
+      color: colors.surfaceContainerHighest.withValues(alpha: 0.3),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

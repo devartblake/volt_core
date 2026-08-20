@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../../shared/widgets/responsive_scaffold.dart';
-import '../../../inspections/presenter/controllers/user_profile_controller.dart';
-import '../../../inspections/presenter/controllers/app_badges_controller.dart';
+import '../../../../shared/widgets/widgets.dart';
 
 /// About page showing app information and credits
 class AboutPage extends ConsumerWidget {
@@ -11,13 +9,9 @@ class AboutPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    final badges = ref.watch(appBadgesProvider);
-    final userProfile = ref.watch(userProfileProvider);
 
-    return ResponsiveScaffold(
-      appBar: AppBar(
-        title: const Text('About'),
-      ),
+    return AppPage(
+      title: 'About',
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
@@ -329,14 +323,6 @@ class AboutPage extends ConsumerWidget {
           ),
         ],
       ),
-      badges: badges.toRouteMap(),
-      userProfile: userProfile,
-      onSwitchTenant: (tenant) {
-        ref.read(currentTenantProvider.notifier).switchTenant(tenant);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Switched to $tenant')),
-        );
-      },
     );
   }
 }

@@ -1,11 +1,10 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:share_plus/share_plus.dart';
 
-import '../../../../app/app_drawer.dart';
+import '../../../../shared/widgets/widgets.dart';
 import '../../../../core/services/email/email_service.dart';
 import '../../../../core/services/storage/pdf_library_service.dart';
 import 'pdf_viewer_page.dart';
@@ -50,26 +49,15 @@ class _DocumentLibraryPageState extends State<DocumentLibraryPage> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Documents'),
-        leading: Navigator.of(context).canPop()
-            ? IconButton(
-                icon: const Icon(Icons.arrow_back),
-                onPressed: () => context.pop(),
-              )
-            : null,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            tooltip: 'Refresh',
-            onPressed: _reload,
-          ),
-        ],
-      ),
-      drawer: const AppDrawer(),
+    return AppPage(
+      title: 'Documents',
+      actions: [
+        IconButton(
+          icon: const Icon(Icons.refresh),
+          tooltip: 'Refresh',
+          onPressed: _reload,
+        ),
+      ],
       body: Column(
         children: [
           Padding(
@@ -95,7 +83,7 @@ class _DocumentLibraryPageState extends State<DocumentLibraryPage> {
               future: _future,
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
+                  return const LoadingIndicator();
                 }
                 if (snapshot.hasError) {
                   return Center(
@@ -107,9 +95,16 @@ class _DocumentLibraryPageState extends State<DocumentLibraryPage> {
                 final docs = _apply(all);
 
                 if (docs.isEmpty) {
-                  return _EmptyState(
-                    theme: theme,
-                    filtered: all.isNotEmpty,
+                  final filtered = all.isNotEmpty;
+                  return EmptyState(
+                    icon: Icons.folder_open,
+                    title: filtered
+                        ? 'No matching reports'
+                        : 'No reports yet',
+                    message: filtered
+                        ? 'Try a different search or filter.'
+                        : 'Generated inspection and maintenance PDFs '
+                            'appear here.',
                   );
                 }
 
@@ -349,38 +344,3 @@ class _DocumentTile extends StatelessWidget {
   }
 }
 
-class _EmptyState extends StatelessWidget {
-  const _EmptyState({required this.theme, required this.filtered});
-
-  final ThemeData theme;
-  final bool filtered;
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            Icons.folder_open,
-            size: 64,
-            color: theme.colorScheme.outline,
-          ),
-          const SizedBox(height: 12),
-          Text(
-            filtered ? 'No matching reports' : 'No reports yet',
-            style: theme.textTheme.titleMedium,
-          ),
-          const SizedBox(height: 4),
-          Text(
-            filtered
-                ? 'Try a different search or filter.'
-                : 'Generated inspection and maintenance PDFs appear here.',
-            style: theme.textTheme.bodySmall,
-            textAlign: TextAlign.center,
-          ),
-        ],
-      ),
-    );
-  }
-}

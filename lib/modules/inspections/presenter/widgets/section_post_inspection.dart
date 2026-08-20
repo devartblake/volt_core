@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../domain/entities/inspection_entity.dart';
+import '../../../../core/theme/status_colors.dart';
 
 class SectionPostInspection extends StatefulWidget {
   final InspectionEntity model;
@@ -112,10 +113,10 @@ class _SectionPostInspectionState extends State<SectionPostInspection> {
                 backgroundColor: theme.colorScheme.surfaceContainerHighest,
                 valueColor: AlwaysStoppedAnimation<Color>(
                   percentage < 50
-                      ? Colors.red
+                      ? theme.colorScheme.error
                       : percentage < 80
-                      ? Colors.orange
-                      : Colors.green,
+                      ? theme.status.warning
+                      : theme.status.success,
                 ),
               ),
             ),

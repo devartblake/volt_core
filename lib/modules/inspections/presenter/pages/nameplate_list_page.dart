@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../../../../shared/widgets/responsive_scaffold.dart';
 import '../../domain/entities/inspection_entity.dart';
-import '../controllers/app_badges_controller.dart';
 import '../controllers/inspection_list_controller.dart';
 import '../controllers/user_profile_controller.dart';
+import '../../../../shared/widgets/widgets.dart';
 
 /// Future provider moved here if you prefer to keep it local.
 /// If you already added it elsewhere, remove this duplicate.
@@ -22,22 +21,13 @@ class NameplateListPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    final badges = ref.watch(appBadgesProvider);
-    final userProfile = ref.watch(userProfileProvider);
     ref.watch(currentTenantProvider);
 
     final inspectionsAsync = ref.watch(nameplateInspectionsProvider);
 
-    return ResponsiveScaffold(
-      appBar: AppBar(
-        title: const Text('Nameplate Data'),
-        leading: Navigator.of(context).canPop()
-            ? IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => context.pop(),
-        )
-            : null,
-        actions: [
+    return AppPage(
+      title: 'Nameplate Data',
+      actions: [
           IconButton(
             icon: const Icon(Icons.info_outline),
             onPressed: () {
@@ -61,9 +51,8 @@ class NameplateListPage extends ConsumerWidget {
             },
           ),
         ],
-      ),
       body: inspectionsAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => const LoadingIndicator(),
         error: (error, stack) => Center(
           child: Text(
             'Failed to load inspections.\n$error',
@@ -116,14 +105,6 @@ class NameplateListPage extends ConsumerWidget {
           );
         },
       ),
-      badges: badges.toRouteMap(),
-      userProfile: userProfile,
-      onSwitchTenant: (tenant) {
-        ref.read(currentTenantProvider.notifier).switchTenant(tenant);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Switched to $tenant')),
-        );
-      },
     );
   }
 }

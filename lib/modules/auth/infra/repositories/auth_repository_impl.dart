@@ -37,6 +37,7 @@ class AuthRepositoryImpl implements AuthRepository {
       userId: remoteUser.userId,
       email: remoteUser.email,
       displayName: remoteUser.displayName,
+      grantedRoles: remoteUser.grantedRoles,
     );
 
     if (kDebugMode) {
@@ -48,8 +49,13 @@ class AuthRepositoryImpl implements AuthRepository {
 
   @override
   Future<AuthState?> restoreSession() async {
-    final remoteUser = await _remote.getCurrentUser();
     final localUser = await _local.loadUser();
+
+    // The locally stored role is only a *preference* for which of the user's
+    // granted roles to resume as — the datasource validates it against the
+    // server's grants, so a tampered local store cannot escalate.
+    final remoteUser =
+        await _remote.getCurrentUser(preferredRole: localUser.role);
 
     // If Supabase has no user, we are unauthenticated.
     if (remoteUser == null) {
@@ -59,15 +65,13 @@ class AuthRepositoryImpl implements AuthRepository {
       return null;
     }
 
-    // If local has a stored role, prefer it (user’s last chosen role).
-    final effectiveRole = localUser.role ?? remoteUser.role;
-
     final state = AuthState(
       isAuthenticated: true,
-      currentRole: effectiveRole,
+      currentRole: remoteUser.role,
       userId: remoteUser.userId,
       email: remoteUser.email,
       displayName: remoteUser.displayName,
+      grantedRoles: remoteUser.grantedRoles,
     );
 
     if (kDebugMode) {

@@ -135,7 +135,7 @@ class _LoadRowEditorState extends State<_LoadRowEditor> {
               Expanded(
                 child: DropdownButtonFormField<int>(
                   decoration: const InputDecoration(labelText: '% Load'),
-                  value: _percentOptions.contains(m.loadPercent) ? m.loadPercent : 0,
+                  initialValue: _percentOptions.contains(m.loadPercent) ? m.loadPercent : 0,
                   items: _percentOptions.map((e) => DropdownMenuItem(value: e, child: Text('$e'))).toList(),
                   onChanged: (v) => setState(() => m = m.copyWith(loadPercent: v ?? 0)),
                 ),

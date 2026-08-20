@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/services/storage/file_storage_service.dart';
+import '../../../shared/widgets/widgets.dart';
 
 /// Debug menu page for development utilities.
 ///
@@ -20,12 +21,9 @@ class DebugMenuPage extends StatelessWidget {
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Debug Menu'),
-        backgroundColor: colors.errorContainer,
-        foregroundColor: colors.onErrorContainer,
-        actions: [
+    return AppPage(
+      title: 'Debug Menu',
+      actions: [
           // Quick return to main page
           IconButton(
             onPressed: () => context.goNamed('dashboard'),
@@ -33,7 +31,6 @@ class DebugMenuPage extends StatelessWidget {
             tooltip: 'Back to Dashboard',
           ),
         ],
-      ),
       body: ListView(
         children: [
           // Warning banner
@@ -172,9 +169,12 @@ class DebugMenuPage extends StatelessWidget {
                 },
               ),
               onTap: () async {
+                final messenger = ScaffoldMessenger.of(context);
                 await FileStorageService.instance.printDebugInfo();
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Storage info printed to console')),
+                messenger.showSnackBar(
+                  const SnackBar(
+                    content: Text('Storage info printed to console'),
+                  ),
                 );
               },
             ),
@@ -191,7 +191,7 @@ class DebugMenuPage extends StatelessWidget {
             child: ListTile(
               enabled: false,
               leading: CircleAvatar(
-                backgroundColor: colors.surfaceVariant,
+                backgroundColor: colors.surfaceContainerHighest,
                 child: Icon(
                   Icons.cloud,
                   color: colors.onSurfaceVariant,
@@ -209,7 +209,7 @@ class DebugMenuPage extends StatelessWidget {
             child: ListTile(
               enabled: false,
               leading: CircleAvatar(
-                backgroundColor: colors.surfaceVariant,
+                backgroundColor: colors.surfaceContainerHighest,
                 child: Icon(
                   Icons.flag,
                   color: colors.onSurfaceVariant,
@@ -227,7 +227,7 @@ class DebugMenuPage extends StatelessWidget {
             child: ListTile(
               enabled: false,
               leading: CircleAvatar(
-                backgroundColor: colors.surfaceVariant,
+                backgroundColor: colors.surfaceContainerHighest,
                 child: Icon(
                   Icons.speed,
                   color: colors.onSurfaceVariant,

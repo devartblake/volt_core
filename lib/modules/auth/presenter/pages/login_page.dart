@@ -21,7 +21,11 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   final _nameCtrl = TextEditingController();
   final _passwordCtrl = TextEditingController();
 
-  UserRole _selectedRole = UserRole.admin;
+  /// Preferred view to open after sign-in. This is only a *hint*: the server
+  /// (`tenant_members`) decides which roles the account actually holds, and a
+  /// preference the user doesn't hold is ignored. Defaults to the least
+  /// privileged role so the form can never imply an entitlement.
+  UserRole _selectedRole = UserRole.tech;
   bool _isLoading = false;
   String? _errorText;
   bool _obscurePassword = true;
@@ -370,7 +374,8 @@ class _LoginPageState extends ConsumerState<LoginPage> {
               ),
               const SizedBox(height: 32),
 
-              // Divider with "SELECT ROLE"
+              // Divider with "PREFERRED VIEW" — a hint only; actual access is
+              // decided server-side from the account's granted roles.
               _buildRoleDivider(),
               const SizedBox(height: 24),
 
@@ -473,7 +478,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Text(
-            'SELECT ROLE',
+            'PREFERRED VIEW',
             style: TextStyle(
               color: Colors.white.withValues(alpha: 0.5),
               fontSize: 12,
@@ -523,7 +528,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
             Icon(Icons.login, size: 20),
             const SizedBox(width: 12),
             Text(
-              'Login as ${roleLabel(_selectedRole)}',
+              'Sign in',
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w600,

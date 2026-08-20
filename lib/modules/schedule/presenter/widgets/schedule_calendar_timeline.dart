@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:table_calendar/table_calendar.dart';
 import '../../domain/entities/task_schedule_entity.dart';
+import '../../../../core/theme/status_colors.dart';
 
 /// Timeline View: Mini calendar sidebar (20%) + Chronological timeline (80%)
 class ScheduleCalendarTimeline extends StatelessWidget {
@@ -415,7 +416,7 @@ class ScheduleCalendarTimeline extends StatelessWidget {
                 width: 12,
                 height: 12,
                 decoration: BoxDecoration(
-                  color: isPast ? Colors.green : theme.colorScheme.primary,
+                  color: isPast ? theme.status.success : theme.colorScheme.primary,
                   border: Border.all(
                     color: theme.colorScheme.surface,
                     width: 2,
@@ -463,7 +464,7 @@ class ScheduleCalendarTimeline extends StatelessWidget {
                             ),
                             decoration: BoxDecoration(
                               color: isPast
-                                  ? Colors.green.withValues(alpha: 0.1)
+                                  ? theme.status.success.withValues(alpha: 0.1)
                                   : theme.colorScheme.primaryContainer,
                               borderRadius: BorderRadius.circular(8),
                             ),
@@ -474,7 +475,7 @@ class ScheduleCalendarTimeline extends StatelessWidget {
                                   Icons.access_time,
                                   size: 14,
                                   color: isPast
-                                      ? Colors.green
+                                      ? theme.status.success
                                       : theme.colorScheme.onPrimaryContainer,
                                 ),
                                 const SizedBox(width: 4),
@@ -482,7 +483,7 @@ class ScheduleCalendarTimeline extends StatelessWidget {
                                   _formatTime(task.scheduledDate),
                                   style: theme.textTheme.labelSmall?.copyWith(
                                     color: isPast
-                                        ? Colors.green
+                                        ? theme.status.success
                                         : theme.colorScheme.onPrimaryContainer,
                                     fontWeight: FontWeight.w600,
                                   ),
@@ -497,7 +498,7 @@ class ScheduleCalendarTimeline extends StatelessWidget {
                           if (isPast)
                             Icon(
                               Icons.check_circle,
-                              color: Colors.green,
+                              color: theme.status.success,
                               size: 20,
                             ),
                         ],

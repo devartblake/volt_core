@@ -23,7 +23,14 @@ class SyncStatusIndicator extends StatelessWidget {
 
         return Tooltip(
           message: visual.tooltip,
-          child: InkWell(
+          // Icon-only status: without this a screen reader announces nothing
+          // useful, and the count badge is just a bare number.
+          child: Semantics(
+            button: true,
+            container: true,
+            label: 'Sync status: ${visual.tooltip}',
+            hint: status.failed > 0 ? 'Retry failed uploads' : 'Sync now',
+            child: InkWell(
             borderRadius: BorderRadius.circular(20),
             onTap: () {
               if (status.failed > 0) {
@@ -33,7 +40,10 @@ class SyncStatusIndicator extends StatelessWidget {
               }
             },
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+              padding: const EdgeInsets.symmetric(
+                horizontal: 8,
+                vertical: 6,
+              ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -68,6 +78,7 @@ class SyncStatusIndicator extends StatelessWidget {
                 ],
               ),
             ),
+          ),
           ),
         );
       },

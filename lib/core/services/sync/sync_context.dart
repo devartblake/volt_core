@@ -17,7 +17,16 @@ class SyncContext {
   /// `tenant_id` and the server's NOT NULL / RLS checks will reject the write —
   /// configure `SUPABASE_TENANT_ID` to enable cloud sync.
   static String? get tenantId {
-    String v = (dotenv.env['SUPABASE_TENANT_ID'] ?? '').trim();
+    String v;
+    try {
+      v = (dotenv.env['SUPABASE_TENANT_ID'] ?? '').trim();
+    } catch (_) {
+      // dotenv not initialised (env file missing, or running under tests).
+      // Degrade to "no tenant configured" rather than throwing out of a
+      // serializer and failing the whole save.
+      return null;
+    }
+
     // Strip leading/trailing quotes if the env parser didn't
     if (v.startsWith('"') && v.endsWith('"')) {
       v = v.substring(1, v.length - 1).trim();

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../domain/entities/inspection_entity.dart';
+import '../../../../core/theme/status_colors.dart';
 
 class SectionOperationalUse extends StatefulWidget {
   final InspectionEntity model;
@@ -187,15 +188,15 @@ class _SectionOperationalUseState extends State<SectionOperationalUse> {
         ),
         filled: true,
       ),
-      value: opts.contains(current) ? current : null,
+      initialValue: opts.contains(current) ? current : null,
       items: opts.map((e) {
         Color? color;
         IconData? statusIcon;
         if (e == 'Yes') {
-          color = Colors.green;
+          color = theme.status.success;
           statusIcon = Icons.check_circle;
         } else if (e == 'No') {
-          color = Colors.red;
+          color = theme.colorScheme.error;
           statusIcon = Icons.cancel;
         } else {
           color = Colors.grey;

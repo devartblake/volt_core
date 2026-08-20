@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../../../core/services/sync/sync_context.dart';
 import '../../domain/user_role.dart';
 
 /// Simple DTO representing the authenticated user/session info
@@ -8,18 +9,27 @@ class AuthRemoteUser {
   final String userId;
   final String email;
   final String displayName;
+
+  /// The role the session is acting as. Always one of [grantedRoles] when the
+  /// server returned any — never a value chosen purely on the client.
   final UserRole role;
+
+  /// Every role this user actually holds, per `tenant_members`. Drives the
+  /// role switcher so it can only ever offer real grants.
+  final Set<UserRole> grantedRoles;
 
   const AuthRemoteUser({
     required this.userId,
     required this.email,
     required this.displayName,
     required this.role,
+    this.grantedRoles = const {},
   });
 
   @override
   String toString() {
-    return 'AuthRemoteUser(userId: $userId, email: $email, displayName: $displayName, role: $role)';
+    return 'AuthRemoteUser(userId: $userId, email: $email, '
+        'displayName: $displayName, role: $role, granted: $grantedRoles)';
   }
 }
 
@@ -52,20 +62,18 @@ class AuthRemoteDataSource {
         metadata['name'] as String? ??
         _deriveDisplayName(email);
 
-    // Role derivation strategy:
-    // - If a preferredRole is provided (e.g. from UI role selector), we use it.
-    // - Otherwise, you can inspect user.appMetadata['role'] or default to tech.
-    final appMeta = user.appMetadata;
-    final remoteRoleString = (appMeta['role'] as String?)?.toLowerCase();
-    final remoteRole = _mapRole(remoteRoleString);
-
-    final effectiveRole = preferredRole ?? remoteRole ?? UserRole.tech;
+    final granted = await _fetchGrantedRoles(user);
+    final effectiveRole = _resolveRole(
+      granted: granted,
+      preferredRole: preferredRole,
+    );
 
     final result = AuthRemoteUser(
       userId: user.id,
       email: user.email ?? email,
       displayName: fullName,
       role: effectiveRole,
+      grantedRoles: granted,
     );
 
     if (kDebugMode) {
@@ -91,16 +99,18 @@ class AuthRemoteDataSource {
         metadata['name'] as String? ??
         _deriveDisplayName(email);
 
-    final appMeta = user.appMetadata;
-    final remoteRoleString = (appMeta['role'] as String?)?.toLowerCase();
-    final remoteRole = _mapRole(remoteRoleString);
-    final effectiveRole = preferredRole ?? remoteRole ?? UserRole.tech;
+    final granted = await _fetchGrantedRoles(user);
+    final effectiveRole = _resolveRole(
+      granted: granted,
+      preferredRole: preferredRole,
+    );
 
     final result = AuthRemoteUser(
       userId: user.id,
       email: email,
       displayName: fullName,
       role: effectiveRole,
+      grantedRoles: granted,
     );
 
     if (kDebugMode) {
@@ -108,6 +118,65 @@ class AuthRemoteDataSource {
     }
 
     return result;
+  }
+
+  /// Roles this user actually holds, read from `tenant_members` (the server is
+  /// the authority). Scoped to the active tenant when one is configured.
+  ///
+  /// Falls back to the JWT's `app_metadata.role` claim if the table is
+  /// unreachable or has no row — never to a client-supplied value.
+  Future<Set<UserRole>> _fetchGrantedRoles(User user) async {
+    final roles = <UserRole>{};
+
+    try {
+      var query = _client
+          .from('tenant_members')
+          .select('role')
+          .eq('user_id', user.id)
+          // A revoked/suspended membership must not confer a role.
+          .eq('is_active', true);
+
+      final tenantId = SyncContext.tenantId;
+      if (tenantId != null) {
+        query = query.eq('tenant_id', tenantId);
+      }
+
+      final rows = (await query) as List;
+      for (final row in rows.cast<Map<String, dynamic>>()) {
+        final role = UserRoleX.fromString(row['role']?.toString());
+        if (role != null) roles.add(role);
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('[AuthRemoteDataSource] tenant_members role lookup '
+            'failed: $e');
+      }
+    }
+
+    if (roles.isEmpty) {
+      // No membership row (or lookup failed): fall back to the signed JWT claim.
+      final claimed = _mapRole((user.appMetadata['role'] as String?)?.toLowerCase());
+      if (claimed != null) roles.add(claimed);
+    }
+
+    return roles;
+  }
+
+  /// Pick the role for this session.
+  ///
+  /// [preferredRole] is only a *hint* from the UI: it is honoured when the user
+  /// genuinely holds it, and ignored otherwise, so the client can never escalate
+  /// its own privileges. With no grants at all we fall back to the least
+  /// privileged role.
+  UserRole _resolveRole({
+    required Set<UserRole> granted,
+    UserRole? preferredRole,
+  }) {
+    if (granted.isEmpty) return UserRole.tech;
+    if (preferredRole != null && granted.contains(preferredRole)) {
+      return preferredRole;
+    }
+    return highestRole(granted) ?? UserRole.tech;
   }
 
   String _deriveDisplayName(String email) {
