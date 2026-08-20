@@ -49,11 +49,15 @@ dependencies:
   pdf: ^3.11.3
   printing: ^5.13.4
   table_calendar: ^3.2.0
-  # 2.13.0 renamed anonKey -> publishableKey. The floor must stay at or above
+  # 2.14.0 renamed anonKey -> publishableKey. The floor must stay at or above
   # it: ^2.10.3 also allowed 2.10-2.12, where publishableKey does not exist and
   # anonKey is required, so the same source failed to compile depending on
   # which version a machine happened to resolve.
-  supabase_flutter: ^2.13.0
+  #
+  # Note there is no supabase_flutter 2.13.x — it goes 2.12.4 -> 2.14.0. The
+  # "## 2.13.0" heading in its CHANGELOG is the monorepo's aggregated entry for
+  # the `supabase` Dart package, not a release of this one.
+  supabase_flutter: ^2.14.0
   path: ^1.9.1
   equatable: ^2.0.7
   open_filex: ^4.7.0
