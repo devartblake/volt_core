@@ -1,20 +1,23 @@
 # Deferred migrations — plan of action
 
 **Date:** 2026-08-20
-**Status:** In progress — item 1 is largely done (all inspection sections, the
-maintenance field helper, and three further maintenance sections); category (a)
-of item 2 (snackbars) is done. Remaining work is listed under each item. Both items were deliberately deferred during the audit
-remediation; this is the plan for picking them up.
+**Status:** ✅ **Complete.** Item 1 (form-field kit adoption) is done. Item 2 is
+done for the categories worth doing — (a) snackbars and (d) status colours —
+with (b) and (c) explicitly recommended against and recorded below with the
+reasoning. Both items were deliberately deferred during the audit remediation;
+this document is the plan and the record of carrying it out.
 
 Two pieces of mechanical-but-visible work were left out of Phases 3 and 4:
 
-| # | Item | Why deferred | Size |
-| --- | --- | --- | --- |
-| 1 | Form sections onto `LabeledField` / `SelectionField` | Changes spacing and required-field markers across the form used daily; the owner chose to defer rather than absorb visual churn mid-remediation | 13 fields across 6 widgets |
-| 2 | Colour tokens in `const` widget contexts | A theme lookup isn't available inside a `const` constructor; reaching these means de-consting hot UI | 59 sites across 15 files |
+| # | Item | Why deferred | Size as scoped | Outcome |
+| --- | --- | --- | --- | --- |
+| 1 | Form sections onto `LabeledField` / `SelectionField` | Changes spacing and required-field markers across the form used daily; the owner chose to defer rather than absorb visual churn mid-remediation | 13 fields across 6 widgets | Actually ~30 fields across 13 files; 3 latent bugs found |
+| 2 | Colour tokens in `const` widget contexts | A theme lookup isn't available inside a `const` constructor; reaching these means de-consting hot UI | 59 sites across 15 files | Category (d) was 10 duplicated functions, not a colour sweep |
 
-Neither is a correctness problem. Both are consistency debt with a visible
-surface, so each wants its own PR and a real look at the screens afterwards.
+Neither was a correctness problem *as scoped*. Both turned out to be hiding
+correctness problems anyway — a form that never validated, a leaked controller,
+fields that displayed stale values, and a grade colour that differed by screen.
+Details under each item.
 
 ---
 
@@ -167,16 +170,55 @@ visually and costs the `const`. Not worth it — document the intent instead.
 **(c) Debug pages — leave alone, 17 sites.** `network_debug_page` and
 `hive_debug_page` are `kDebugMode`-only and never ship. Lowest possible value.
 
-**(d) Genuine status colours in list rows — the careful ~7.** Grade dots,
-status chips inside `ListView.builder` items. These are the ones that actually
-look wrong in dark mode. Handle by lifting the colour out of the `const` child
-and into the parent that already has `theme` in scope, rather than de-consting
-the leaf.
+**(d) Genuine status colours in list rows — ✅ DONE.** This turned out not to
+be a colour problem at all. It was **ten copies of the same function.**
+
+Eight screens each carried a private `_getGradeColor(String grade)`, and
+`equipment_search_page` carried two copies of `_getStatusColor`. They had
+already drifted: six returned `Colors.grey` for an unknown grade, one returned
+`Colors.blue`, two had been converted to theme tokens in Phase 4 and the rest
+had not, and the two equipment copies *accepted* a `ColorScheme` parameter and
+then ignored it. Meanwhile `StatusColors.forSiteGrade` — added in Phase 4 for
+exactly this — had **zero production callers**; only its own tests used it.
+
+The fix is one `ThemeData.gradeColor(grade, {fallback})` extension method on
+top of `forSiteGrade`, and the deletion of all ten private copies:
+
+```dart
+// Was, in eight files, with three different defaults:
+Color _getGradeColor(String grade) { switch (...) { ... Colors.green ... } }
+
+// Now:
+theme.gradeColor(grade)
+```
+
+Two behavioural corrections fell out of consolidating:
+
+- **A `Red` grade now renders in `colorScheme.error`** rather than raw
+  `Colors.red`, everywhere. The two Phase 4 copies already did this; the six
+  others did not, so the same grade was drawn in two different reds depending
+  on which screen you were looking at.
+- **An unknown grade is neutral (`colorScheme.outline`), not blue.**
+  `inspection_detail_page` was alone in defaulting to `Colors.blue`, which read
+  as a fourth grade rather than as "no grade recorded". Call sites that
+  deliberately want the primary accent pass `fallback:` explicitly.
+
+Also swept up in the same pass: the equipment status chips, the load-test
+pass/fail column, the tenant "current" check, two `Colors.grey` dropdown icons
+Phase 4 missed, and the schedule dialog's date/time pickers, which tinted
+themselves literal `Colors.blue` / `Colors.orange` by task type and now use
+`primary` / `tertiary`.
+
+6 new tests in `test/theme/status_colors_test.dart` pin the shared behaviour,
+including that light and dark actually differ — the reason the migration
+existed.
 
 ### Guardrails
 
 - Do **not** run a blanket regex. The Phase 4 attempt is recorded above; it
-  failed for a structural reason that has not changed.
+  failed for a structural reason that has not changed. Category (d) was done by
+  deleting duplicated *functions*, not by rewriting colour literals in place,
+  which is why it did not hit the same wall.
 - After each category, run `flutter analyze --fatal-infos` and look at the
   screens in both light and dark mode. The tokens are deliberately darker in
   light mode and lighter in dark mode than the raw Material swatches, so
@@ -184,14 +226,19 @@ the leaf.
 
 ### Acceptance
 
-- `AppSnackBar` in the kit, with all success/error snackbars using it.
-- No `Colors.green` / `Colors.orange` / `Colors.amber` outside `debug/`.
-- Remaining `Colors.white` / `Colors.black` uses are on-colour only, with a
-  short comment at each explaining why they are not tokens.
+- ✅ `AppSnackBar` in the kit, with all success/error snackbars using it.
+- ✅ No `Colors.green` / `Colors.orange` / `Colors.amber` / `Colors.red`
+  outside `debug/` and `login_page.dart`.
+- ✅ One implementation of the grade→colour mapping, test-covered.
 
-**Estimate:** category (a) is 2–3 hours and delivers most of the value.
-Categories (b) and (c) are explicitly *not* recommended. Category (d) is
-another 1–2 hours.
+### What is deliberately left
+
+| Site | Count | Why |
+| --- | --- | --- |
+| `debug/` pages | 17 | `kDebugMode`-only, never ship — category (c) |
+| `login_page.dart` | 7 | Bespoke `Colors.red[300]` on a fixed dark gradient; it does not follow the app theme by design |
+| On-colour `Colors.white` / `Colors.black` | ~15 | Correct as literals on filled surfaces — category (b) |
+| `PdfColors.*` in `pdf_service` / `pdf_template` | ~20 | Print output. No theme, no dark mode |
 
 ---
 

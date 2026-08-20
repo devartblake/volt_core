@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/theme/status_colors.dart';
 import '../../../../shared/widgets/widgets.dart';
 import '../../../inspections/presenter/controllers/inspection_controller.dart';
 import '../../infra/models/load_test_record.dart';
@@ -16,6 +17,7 @@ class SectionLoadTest extends ConsumerStatefulWidget {
 class _SectionLoadTestState extends ConsumerState<SectionLoadTest> {
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final ctl = ref.read(inspectionControllerProvider);
     final rows = ctl.listLoadTests(widget.inspectionId);
 
@@ -65,7 +67,7 @@ class _SectionLoadTestState extends ConsumerState<SectionLoadTest> {
                     DataCell(Text(r.frequencyHz), onTap: () => _editRow(r)),
                     DataCell(Text(r.currentA), onTap: () => _editRow(r)),
                     DataCell(Text(r.measuredKw), onTap: () => _editRow(r)),
-                    DataCell(Icon(r.pass ? Icons.check_circle : Icons.cancel, color: r.pass ? Colors.green : Colors.red)),
+                    DataCell(Icon(r.pass ? Icons.check_circle : Icons.cancel, color: r.pass ? theme.status.success : theme.colorScheme.error)),
                     DataCell(Text(r.notes, maxLines: 1, overflow: TextOverflow.ellipsis), onTap: () => _editRow(r)),
                     DataCell(Row(children: [
                       IconButton(icon: const Icon(Icons.edit), tooltip: 'Edit', onPressed: () => _editRow(r)),

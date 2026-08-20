@@ -184,7 +184,7 @@ class _SectionOperationalUseState extends State<SectionOperationalUse> {
           color = theme.colorScheme.error;
           statusIcon = Icons.cancel;
         } else {
-          color = Colors.grey;
+          color = theme.colorScheme.outline;
           statusIcon = Icons.remove_circle_outline;
         }
 

@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:open_filex/open_filex.dart'; // NEW: open with system viewer
 import 'package:voltcore/core/services/hive/hive_boxes.dart';
 import 'package:voltcore/core/services/storage/path_resolver.dart';
+import 'package:voltcore/core/theme/status_colors.dart';
 
 import '../../../schedule/presenter/pages/schedule_task_page.dart';
 import '../../../schedule/presenter/widgets/dialogs/schedule_dialog.dart';
@@ -156,7 +157,7 @@ class InspectionDetailPage extends ConsumerWidget {
                         ),
                         decoration: BoxDecoration(
                           color:
-                          _getGradeColor(ins.siteGrade).withValues(alpha: 0.15),
+                          theme.gradeColor(ins.siteGrade, fallback: theme.colorScheme.primary).withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Row(
@@ -165,13 +166,13 @@ class InspectionDetailPage extends ConsumerWidget {
                             Icon(
                               Icons.circle,
                               size: 8,
-                              color: _getGradeColor(ins.siteGrade),
+                              color: theme.gradeColor(ins.siteGrade, fallback: theme.colorScheme.primary),
                             ),
                             const SizedBox(width: 6),
                             Text(
                               'Grade: ${ins.siteGrade}',
                               style: theme.textTheme.labelMedium?.copyWith(
-                                color: _getGradeColor(ins.siteGrade),
+                                color: theme.gradeColor(ins.siteGrade, fallback: theme.colorScheme.primary),
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
@@ -356,16 +357,4 @@ class InspectionDetailPage extends ConsumerWidget {
     );
   }
 
-  Color _getGradeColor(String grade) {
-    switch (grade.toLowerCase()) {
-      case 'green':
-        return Colors.green;
-      case 'amber':
-        return Colors.orange;
-      case 'red':
-        return Colors.red;
-      default:
-        return Colors.blue;
-    }
-  }
 }

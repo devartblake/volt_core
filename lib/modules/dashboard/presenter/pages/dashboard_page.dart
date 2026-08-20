@@ -597,7 +597,7 @@ class DashboardPage extends ConsumerWidget {
   }
 
   Widget _buildGradeBadge(String grade, ThemeData theme) {
-    final color = _getGradeColor(grade);
+    final color = theme.gradeColor(grade);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
@@ -615,19 +615,6 @@ class DashboardPage extends ConsumerWidget {
     );
   }
 
-  Color _getGradeColor(String grade) {
-    switch (grade.toLowerCase()) {
-      case 'green':
-        return Colors.green;
-      case 'amber':
-      case 'yellow':
-        return Colors.orange;
-      case 'red':
-        return Colors.red;
-      default:
-        return Colors.grey;
-    }
-  }
 
   Widget _buildSystemInfo(ThemeData theme) {
     return Column(

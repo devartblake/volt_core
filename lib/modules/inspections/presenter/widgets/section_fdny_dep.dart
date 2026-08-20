@@ -272,7 +272,7 @@ class _SectionFdnyDepState extends State<SectionFdnyDep> {
           color = theme.status.warning;
           statusIcon = Icons.help;
         } else {
-          color = Colors.grey;
+          color = theme.colorScheme.outline;
           statusIcon = Icons.remove_circle_outline;
         }
 

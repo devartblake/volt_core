@@ -423,7 +423,7 @@ class ScheduleCalendarEnhanced extends StatelessWidget {
 
   // Grade badge
   Widget _buildGradeBadge(String grade, ThemeData theme) {
-    final color = _getGradeColor(grade);
+    final color = theme.gradeColor(grade);
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -518,17 +518,4 @@ class ScheduleCalendarEnhanced extends StatelessWidget {
   }
 
   // Helper: Get grade color
-  Color _getGradeColor(String grade) {
-    switch (grade.toLowerCase()) {
-      case 'green':
-        return Colors.green;
-      case 'amber':
-      case 'yellow':
-        return Colors.orange;
-      case 'red':
-        return Colors.red;
-      default:
-        return Colors.grey;
-    }
-  }
 }

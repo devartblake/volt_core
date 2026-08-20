@@ -69,6 +69,49 @@ void main() {
         );
       });
     });
+
+    group('ThemeData.gradeColor', () {
+      // The single implementation. Eight screens previously carried a private
+      // copy of this switch; these cases pin the behaviour they now share.
+      final light = AppTheme.lightTheme;
+
+      test('resolves red to the scheme error role', () {
+        // The drifted copies returned Colors.red here, which is not the same
+        // colour and does not change between light and dark.
+        expect(light.gradeColor('Red'), light.colorScheme.error);
+        expect(
+          AppTheme.darkTheme.gradeColor('Red'),
+          AppTheme.darkTheme.colorScheme.error,
+        );
+      });
+
+      test('maps green and amber to status tokens', () {
+        expect(light.gradeColor('Green'), light.status.success);
+        expect(light.gradeColor('Amber'), light.status.warning);
+        expect(light.gradeColor('yellow'), light.status.warning);
+      });
+
+      test('an unknown grade is neutral, not an alarm colour', () {
+        // An unrecognised grade is missing information, not a bad site.
+        expect(light.gradeColor('purple'), light.colorScheme.outline);
+        expect(light.gradeColor(''), light.colorScheme.outline);
+      });
+
+      test('callers can override the fallback', () {
+        expect(
+          light.gradeColor('purple', fallback: light.colorScheme.primary),
+          light.colorScheme.primary,
+        );
+      });
+
+      test('the same grade differs between light and dark', () {
+        // The reason the migration happened at all.
+        expect(
+          light.gradeColor('Green'),
+          isNot(AppTheme.darkTheme.gradeColor('Green')),
+        );
+      });
+    });
   });
 
   group('theme wiring', () {

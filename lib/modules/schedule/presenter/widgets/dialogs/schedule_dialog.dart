@@ -82,9 +82,11 @@ class _ScheduleTaskDialogState extends ConsumerState<ScheduleTaskDialog> {
         return Theme(
           data: Theme.of(context).copyWith(
             colorScheme: Theme.of(context).colorScheme.copyWith(
+              // Distinguish the two task types with scheme roles rather than
+              // literal blue/orange, so the picker follows the app's theme.
               primary: widget.taskType == TaskType.inspection
-                  ? Colors.blue
-                  : Colors.orange,
+                  ? Theme.of(context).colorScheme.primary
+                  : Theme.of(context).colorScheme.tertiary,
             ),
           ),
           child: child!,
@@ -105,9 +107,11 @@ class _ScheduleTaskDialogState extends ConsumerState<ScheduleTaskDialog> {
         return Theme(
           data: Theme.of(context).copyWith(
             colorScheme: Theme.of(context).colorScheme.copyWith(
+              // Distinguish the two task types with scheme roles rather than
+              // literal blue/orange, so the picker follows the app's theme.
               primary: widget.taskType == TaskType.inspection
-                  ? Colors.blue
-                  : Colors.orange,
+                  ? Theme.of(context).colorScheme.primary
+                  : Theme.of(context).colorScheme.tertiary,
             ),
           ),
           child: child!,

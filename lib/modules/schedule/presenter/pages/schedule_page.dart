@@ -757,14 +757,14 @@ class _ScheduleCard extends StatelessWidget {
                               vertical: 4,
                             ),
                             decoration: BoxDecoration(
-                              color: _getGradeColor(item.siteGrade)
+                              color: theme.gradeColor(item.siteGrade, fallback: theme.colorScheme.primary)
                                   .withValues(alpha: 0.15),
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Text(
                               item.siteGrade,
                               style: theme.textTheme.labelSmall?.copyWith(
-                                color: _getGradeColor(item.siteGrade),
+                                color: theme.gradeColor(item.siteGrade, fallback: theme.colorScheme.primary),
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
@@ -812,18 +812,6 @@ class _ScheduleCard extends StatelessWidget {
     return '${months[date.month - 1]} ${date.day}';
   }
 
-  Color _getGradeColor(String grade) {
-    switch (grade.toLowerCase()) {
-      case 'green':
-        return theme.status.success;
-      case 'amber':
-        return theme.status.warning;
-      case 'red':
-        return theme.colorScheme.error;
-      default:
-        return theme.colorScheme.primary;
-    }
-  }
 }
 
 class _InfoChip extends StatelessWidget {
