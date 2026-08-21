@@ -45,7 +45,7 @@ class SupabaseService {
     try {
       await Supabase.initialize(
         url: cfg.supabaseUrl,
-        // Renamed upstream in supabase_flutter 2.13.0: the anon key is now the
+        // Renamed upstream in supabase_flutter 2.14.0: the anon key is now the
         // "publishable" key. The env variable keeps its SUPABASE_ANON_KEY name.
         publishableKey: cfg.supabaseAnonKey,
         // Add HTTP client for network logging (debug only)

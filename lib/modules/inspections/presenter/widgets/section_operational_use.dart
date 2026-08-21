@@ -75,41 +75,13 @@ class _SectionOperationalUseState extends State<SectionOperationalUse> {
               ],
             ),
             const SizedBox(height: 24),
-            Container(
-              decoration: BoxDecoration(
-                color: m.emergencyOnly
-                    ? theme.colorScheme.errorContainer.withValues(alpha: 0.3)
-                    : theme.colorScheme.surfaceContainerHighest
-                    .withValues(alpha: 0.3),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: m.emergencyOnly
-                      ? theme.colorScheme.error.withValues(alpha: 0.5)
-                      : theme.colorScheme.outlineVariant,
-                  width: 1,
-                ),
-              ),
-              child: SwitchListTile(
-                title: Row(
-                  children: [
-                    Icon(
-                      Icons.warning_amber_rounded,
-                      size: 20,
-                      color: m.emergencyOnly
-                          ? theme.colorScheme.error
-                          : theme.colorScheme.onSurfaceVariant,
-                    ),
-                    const SizedBox(width: 12),
-                    const Expanded(child: Text('Emergency Use Only')),
-                  ],
-                ),
-                value: m.emergencyOnly,
-                onChanged: (v) =>
-                    _update((curr) => curr.copyWith(emergencyOnly: v)),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
+            StatusSwitchTile(
+              label: 'Emergency Use Only',
+              icon: Icons.warning_amber_rounded,
+              value: m.emergencyOnly,
+              accent: StatusTileAccent.error,
+              onChanged: (v) =>
+                  _update((curr) => curr.copyWith(emergencyOnly: v)),
             ),
             const SizedBox(height: 16),
             LabeledField(

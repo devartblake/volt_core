@@ -213,40 +213,12 @@ class _SectionLocationSafetyState extends State<SectionLocationSafety> {
       ValueChanged<bool> on,
       ThemeData theme,
       ) {
-    return Container(
+    return StatusSwitchTile(
+      label: text,
+      icon: icon,
+      value: val,
+      onChanged: on,
       margin: const EdgeInsets.only(bottom: 8),
-      decoration: BoxDecoration(
-        color: val
-            ? theme.colorScheme.primaryContainer.withValues(alpha: 0.3)
-            : theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: val
-              ? theme.colorScheme.primary.withValues(alpha: 0.5)
-              : theme.colorScheme.outlineVariant,
-          width: 1,
-        ),
-      ),
-      child: SwitchListTile(
-        title: Row(
-          children: [
-            Icon(
-              icon,
-              size: 20,
-              color: val
-                  ? theme.colorScheme.primary
-                  : theme.colorScheme.onSurfaceVariant,
-            ),
-            const SizedBox(width: 12),
-            Expanded(child: Text(text)),
-          ],
-        ),
-        value: val,
-        onChanged: on,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
-      ),
     );
   }
 

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../domain/entities/inspection_entity.dart';
 import '../../../../core/theme/status_colors.dart';
+import '../../../../shared/widgets/widgets.dart';
 
 class SectionPostInspection extends StatefulWidget {
   final InspectionEntity model;
@@ -220,39 +221,11 @@ class _SectionPostInspectionState extends State<SectionPostInspection> {
       InspectionEntity Function(InspectionEntity, bool) onSavedBuilder,
       ThemeData theme,
       ) {
-    return Container(
-      decoration: BoxDecoration(
-        color: val
-            ? theme.colorScheme.primaryContainer.withValues(alpha: 0.3)
-            : theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: val
-              ? theme.colorScheme.primary.withValues(alpha: 0.5)
-              : theme.colorScheme.outlineVariant,
-          width: 1,
-        ),
-      ),
-      child: SwitchListTile(
-        title: Row(
-          children: [
-            Icon(
-              icon,
-              size: 20,
-              color: val
-                  ? theme.colorScheme.primary
-                  : theme.colorScheme.onSurfaceVariant,
-            ),
-            const SizedBox(width: 12),
-            Expanded(child: Text(label)),
-          ],
-        ),
-        value: val,
-        onChanged: (v) => _update((curr) => onSavedBuilder(curr, v)),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
-      ),
+    return StatusSwitchTile(
+      label: label,
+      icon: icon,
+      value: val,
+      onChanged: (v) => _update((curr) => onSavedBuilder(curr, v)),
     );
   }
 }
