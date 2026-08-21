@@ -8,7 +8,9 @@ import '../../domain/usecases/create_inspections_usecase.dart';
 import '../../domain/usecases/update_inspections_usecase.dart';
 import '../../domain/usecases/list_inspections_usecase.dart';
 
-// Reuse the shared repository + list usecase from the list controller
+import '../../infra/repositories/inspection_repository_impl.dart';
+
+// Reuse the shared list usecase from the list controller
 import 'inspection_list_controller.dart';
 
 /// Provide ONLY the create/update usecases here, based on the shared repo.

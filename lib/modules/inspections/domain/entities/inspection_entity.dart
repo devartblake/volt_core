@@ -376,3 +376,37 @@ class InspectionEntity {
     );
   }
 }
+
+/// A human label for an inspection, for list rows, page titles and the
+/// dashboard.
+///
+/// Inspections carry no title field — they are identified by *where* the work
+/// was done. Five screens each hard-coded `address.isEmpty ? '(No address)'`,
+/// which rendered every incomplete record identically and gave the reader
+/// nothing to tell them apart. Falls back address -> site code -> service
+/// date, so a row is always distinguishable from its neighbours.
+String inspectionDisplayTitle({
+  required String address,
+  required String siteCode,
+  required DateTime serviceDate,
+}) {
+  final trimmedAddress = address.trim();
+  if (trimmedAddress.isNotEmpty) return trimmedAddress;
+
+  final trimmedSiteCode = siteCode.trim();
+  if (trimmedSiteCode.isNotEmpty) return trimmedSiteCode;
+
+  // Matches the month/day/year the rest of the app renders.
+  return 'Untitled inspection — '
+      '${serviceDate.month}/${serviceDate.day}/${serviceDate.year}';
+}
+
+extension InspectionEntityDisplay on InspectionEntity {
+  /// See [inspectionDisplayTitle].
+  String get displayTitle => inspectionDisplayTitle(
+        address: address,
+        siteCode: siteCode,
+        serviceDate: serviceDate,
+      );
+}
+

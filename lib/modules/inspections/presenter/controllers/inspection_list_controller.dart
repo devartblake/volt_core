@@ -1,34 +1,13 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
-import 'package:voltcore/core/services/pdf/pdf_service.dart';
-import 'package:voltcore/modules/inspections/external/drivers/inspection_pdf_driver.dart';
 
-import '../../../../core/services/email/email_service.dart';
-import '../../../../core/services/pdf/pdf_prefs_service.dart';
-import '../../../../core/services/storage/export_service.dart';
 import '../../domain/entities/inspection_entity.dart';
 import '../../domain/usecases/list_inspections_usecase.dart';
-import '../../infra/datasources/inspection_local_datasource.dart';
-import '../../infra/datasources/inspection_remote_datasource.dart';
-import '../../infra/repositories/inspection_repository.dart';
 import '../../infra/repositories/inspection_repository_impl.dart';
 
-/// Wire the clean repository
-final inspectionRepositoryProvider = Provider<InspectionRepository>((ref) {
-  final local = ref.watch(inspectionLocalDatasourceProvider);
-  final remote = ref.watch(inspectionRemoteDatasourceProvider);
-  final pdfDriver = InspectionPdfDriver(
-    pdfService: PdfService.instance,
-    prefsService: PdfPrefsService.instance,
-    emailService: EmailService(),
-    exportService: ExportService(),
-  );
-  return InspectionRepositoryImpl(
-    localDatasource: local,
-    remoteDatasource: remote,
-    pdfDriver: pdfDriver,
-  );
-});
+// The repository provider lives with the implementation, in
+// inspection_repository_impl.dart. A second copy used to be declared here,
+// so which instance you got depended on which file you imported.
 
 /// Usecase provider
 final listInspectionsUsecaseProvider =

@@ -54,9 +54,7 @@ class InspectionCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      inspection.address.isEmpty
-                          ? '(No address)'
-                          : inspection.address,
+                      inspection.displayTitle,
                       style: theme.textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.w600,
                       ),
