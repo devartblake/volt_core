@@ -63,7 +63,7 @@ group by u.id;
 -- ===========================================================================
 do $$
 declare
-  v_email  text := 'you@example.com';      -- <<< EDIT (same address)
+  v_email  text := 'aselectricnyc@gmail.com';      -- <<< EDIT (same address)
   v_user   uuid;
   v_tenant uuid;
 begin

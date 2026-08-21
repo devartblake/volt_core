@@ -90,7 +90,7 @@ flutter:
   # To add assets to your application, add an assets section, like this:
   assets:
     - assets/env/
-    - assets/fonts/
+    - fonts/
     - assets/pdf/Modified Comp Checklist With Load Test.pdf
     - assets/images/company_logo.png
   #   - images/a_dot_ham.jpeg
@@ -109,8 +109,8 @@ flutter:
   fonts:
      - family: NotoSans
        fonts:
-         - asset: fonts/NotoSans-Regular.ttf
-         - asset: fonts/NotoSans-Bold.ttf
+         - asset: fonts/NotoSans/NotoSans-Regular.ttf
+         - asset: fonts/NotoSans/NotoSans-Bold.ttf
            weight: 700
   #   - family: Trajan Pro
   #     fonts:
