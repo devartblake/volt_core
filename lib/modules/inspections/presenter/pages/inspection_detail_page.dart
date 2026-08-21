@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 import 'package:open_filex/open_filex.dart'; // NEW: open with system viewer
 import 'package:voltcore/core/services/hive/hive_boxes.dart';
 import 'package:voltcore/core/services/storage/path_resolver.dart';
@@ -9,7 +10,9 @@ import 'package:voltcore/core/theme/status_colors.dart';
 
 import '../../../schedule/presenter/pages/schedule_task_page.dart';
 import '../../../schedule/presenter/widgets/dialogs/schedule_dialog.dart';
+import '../../domain/entities/inspection_entity.dart';
 import '../../infra/models/inspection.dart';
+import '../../infra/repositories/inspection_repository_impl.dart';
 import '../../../../shared/widgets/widgets.dart';
 
 class InspectionDetailPage extends ConsumerWidget {
@@ -18,11 +21,23 @@ class InspectionDetailPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Rebuild on every write to the box. The PDF is rendered in the background
+    // after save and lands as a *second* write to this record, so a page that
+    // read Hive once would show "no PDF" until it was navigated away from and
+    // back.
+    return ValueListenableBuilder<Box<Inspection>>(
+      valueListenable: HiveBoxes.inspections.listenable(),
+      builder: (context, box, _) => _buildContent(context, ref, box),
+    );
+  }
+
+  Widget _buildContent(
+      BuildContext context, WidgetRef ref, Box<Inspection> box) {
     // Lookup by string-id key first; fall back to scanning values for records
     // stored under legacy auto-int keys (older saves used box.add()).
-    Inspection? found = HiveBoxes.inspections.get(id);
+    Inspection? found = box.get(id);
     if (found == null) {
-      for (final candidate in HiveBoxes.inspections.values) {
+      for (final candidate in box.values) {
         if (candidate.id == id) {
           found = candidate;
           break;
@@ -129,9 +144,7 @@ class InspectionDetailPage extends ConsumerWidget {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                ins.address.isEmpty
-                                    ? '(No address)'
-                                    : ins.address,
+                                ins.toEntity().displayTitle,
                                 style: theme.textTheme.titleLarge?.copyWith(
                                   fontWeight: FontWeight.bold,
                                 ),
@@ -320,41 +333,102 @@ class InspectionDetailPage extends ConsumerWidget {
               ),
             ],
           ),
-          child: FilledButton.icon(
-            icon: const Icon(Icons.print_outlined),
-            label: const Text('Open / Print PDF'),
-            style: FilledButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 16),
-            ),
-            onPressed: !hasPdf
-                ? null
-                : () async {
-              final file = File(resolvedPdfPath);
-              if (!await file.exists()) {
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('PDF file not found on device.'),
-                    ),
-                  );
-                }
-                return;
-              }
-
-              final result = await OpenFilex.open(resolvedPdfPath);
-              if (result.type != ResultType.done && context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content:
-                    Text('Could not open PDF: ${result.message}'),
-                  ),
-                );
-              }
-            },
+          child: _PdfActionButton(
+            inspection: ins,
+            resolvedPdfPath: resolvedPdfPath,
+            hasPdf: hasPdf,
           ),
         ),
       ),
     );
   }
 
+}
+
+/// Opens the inspection's PDF, or renders one when it has none.
+///
+/// The second case is not just a retry for a failed background render: every
+/// inspection saved before the export path was wired up has an empty
+/// `pdfPath`, and this is how those get a document without re-entering the
+/// form.
+class _PdfActionButton extends ConsumerStatefulWidget {
+  const _PdfActionButton({
+    required this.inspection,
+    required this.resolvedPdfPath,
+    required this.hasPdf,
+  });
+
+  final Inspection inspection;
+  final String resolvedPdfPath;
+  final bool hasPdf;
+
+  @override
+  ConsumerState<_PdfActionButton> createState() => _PdfActionButtonState();
+}
+
+class _PdfActionButtonState extends ConsumerState<_PdfActionButton> {
+  bool _generating = false;
+
+  Future<void> _open() async {
+    final file = File(widget.resolvedPdfPath);
+    if (!await file.exists()) {
+      if (mounted) {
+        AppSnackBar.error(context, 'PDF file not found on device.');
+      }
+      return;
+    }
+
+    final result = await OpenFilex.open(widget.resolvedPdfPath);
+    if (result.type != ResultType.done && mounted) {
+      AppSnackBar.error(context, 'Could not open PDF: ${result.message}');
+    }
+  }
+
+  Future<void> _generate() async {
+    setState(() => _generating = true);
+    final repo = ref.read(inspectionRepositoryProvider);
+
+    final result =
+        await repo.generatePdf(widget.inspection.toEntity());
+
+    if (!mounted) return;
+    setState(() => _generating = false);
+
+    if (result == null) {
+      AppSnackBar.error(context, 'Could not generate the PDF.');
+      return;
+    }
+    // The Hive write from generatePdf rebuilds the page around us, so there is
+    // nothing to refresh here.
+    AppSnackBar.success(context, 'PDF ready');
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_generating) {
+      return FilledButton.icon(
+        icon: const SizedBox(
+          width: 18,
+          height: 18,
+          child: CircularProgressIndicator(strokeWidth: 2),
+        ),
+        label: const Text('Generating PDF...'),
+        style: FilledButton.styleFrom(
+          padding: const EdgeInsets.symmetric(vertical: 16),
+        ),
+        onPressed: null,
+      );
+    }
+
+    return FilledButton.icon(
+      icon: Icon(
+        widget.hasPdf ? Icons.print_outlined : Icons.picture_as_pdf_outlined,
+      ),
+      label: Text(widget.hasPdf ? 'Open / Print PDF' : 'Generate PDF'),
+      style: FilledButton.styleFrom(
+        padding: const EdgeInsets.symmetric(vertical: 16),
+      ),
+      onPressed: widget.hasPdf ? _open : _generate,
+    );
+  }
 }

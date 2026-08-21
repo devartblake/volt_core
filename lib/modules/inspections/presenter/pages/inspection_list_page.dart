@@ -213,9 +213,7 @@ class _InspectionListPageState
         .first;
 
     final grade = ins.siteGrade;
-    final address = ins.address.isEmpty
-        ? '(No address)'
-        : ins.address;
+    final address = ins.displayTitle;
     final siteCode = ins.siteCode;
 
     return Card(
