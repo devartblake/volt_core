@@ -109,8 +109,8 @@ flutter:
   fonts:
      - family: NotoSans
        fonts:
-         - asset: assets/fonts/NotoSans-Regular.ttf
-         - asset: assets/fonts/NotoSans-Bold.ttf
+         - asset: fonts/NotoSans-Regular.ttf
+         - asset: fonts/NotoSans-Bold.ttf
            weight: 700
   #   - family: Trajan Pro
   #     fonts:
