@@ -14,7 +14,7 @@ import 'package:flutter/material.dart';
 ///   required: true,
 /// )
 /// ```
-class LabeledField extends StatelessWidget {
+class LabeledField extends StatefulWidget {
   const LabeledField({
     super.key,
     required this.label,
@@ -83,39 +83,83 @@ class LabeledField extends StatelessWidget {
   final bool? filled;
 
   @override
+  State<LabeledField> createState() => _LabeledFieldState();
+}
+
+class _LabeledFieldState extends State<LabeledField> {
+  /// Owned only when running uncontrolled (`value` rather than `controller`).
+  TextEditingController? _owned;
+
+  TextEditingController? get _controller => widget.controller ?? _owned;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.controller == null) {
+      _owned = TextEditingController(text: widget.value ?? '');
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant LabeledField oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final owned = _owned;
+    if (owned == null) return;
+
+    // Adopt a value the parent changed underneath us — a restored draft, a
+    // cleared field, a date just picked. Guarding on `owned.text` is what
+    // keeps typing intact: while the user types, `onChanged` has already told
+    // the parent, so the value coming back equals what is in the field and
+    // this does nothing, leaving the cursor alone.
+    final incoming = widget.value ?? '';
+    if (incoming != oldWidget.value && incoming != owned.text) {
+      owned.value = TextEditingValue(
+        text: incoming,
+        selection: TextSelection.collapsed(offset: incoming.length),
+      );
+    }
+  }
+
+  @override
+  void dispose() {
+    _owned?.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
     return Padding(
-      padding: EdgeInsets.symmetric(vertical: dense ? 0 : 8),
+      padding: EdgeInsets.symmetric(vertical: widget.dense ? 0 : 8),
       child: TextFormField(
-        initialValue: controller == null ? value : null,
-        controller: controller,
-        onChanged: onChanged,
-        enabled: enabled,
-        readOnly: readOnly,
-        onTap: onTap,
-        autofocus: autofocus,
-        keyboardType: keyboardType,
-        maxLines: maxLines,
-        minLines: minLines,
-        textCapitalization: textCapitalization,
-        validator: validator ??
-            (required
+        controller: _controller,
+        onChanged: widget.onChanged,
+        enabled: widget.enabled,
+        readOnly: widget.readOnly,
+        onTap: widget.onTap,
+        autofocus: widget.autofocus,
+        keyboardType: widget.keyboardType,
+        maxLines: widget.maxLines,
+        minLines: widget.minLines,
+        textCapitalization: widget.textCapitalization,
+        validator: widget.validator ??
+            (widget.required
                 ? (v) => (v == null || v.trim().isEmpty)
-                    ? '$label is required'
+                    ? '${widget.label} is required'
                     : null
                 : null),
         decoration: InputDecoration(
-          labelText: required ? '$label *' : label,
-          hintText: hint,
-          helperText: helper,
+          labelText: widget.required ? '${widget.label} *' : widget.label,
+          hintText: widget.hint,
+          helperText: widget.helper,
           helperMaxLines: 2,
-          isDense: dense,
-          filled: filled,
-          prefixIcon: prefixIcon == null ? null : Icon(prefixIcon),
-          suffixIcon: suffix,
-          suffixText: suffixText,
+          isDense: widget.dense,
+          filled: widget.filled,
+          prefixIcon:
+              widget.prefixIcon == null ? null : Icon(widget.prefixIcon),
+          suffixIcon: widget.suffix,
+          suffixText: widget.suffixText,
           labelStyle: theme.textTheme.bodyMedium,
         ),
       ),

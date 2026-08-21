@@ -617,11 +617,7 @@ class _SignatureCard extends StatelessWidget {
           ),
           const SizedBox(height: 12),
 
-          // Date field. Keyed by the formatted value: a field built from
-          // `initialValue` keeps its first text across rebuilds, so without
-          // this it would still show the old date after picking a new one.
           LabeledField(
-            key: ValueKey('sig-date|${formatDate(dateValue)}'),
             label: 'Date Signed',
             value: formatDate(dateValue),
             hint: 'Tap to select date',

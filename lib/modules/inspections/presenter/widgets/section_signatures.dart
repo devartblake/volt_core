@@ -33,12 +33,18 @@ class _SectionSignaturesState extends State<SectionSignatures> {
   final custNameCtl = TextEditingController();
 
   bool _isSaving = false;
-  late InspectionEntity m;
+  /// The parent's current entity, never a snapshot.
+  ///
+  /// This used to be a field seeded in initState and never resynced. Because
+  /// every section held its own copy from first build, each section's
+  /// `copyWith` was applied to the *original* entity — so whichever section
+  /// the technician edited last silently discarded every other section's data
+  /// and the inspection saved almost empty.
+  InspectionEntity get m => widget.model;
 
   @override
   void initState() {
     super.initState();
-    m = widget.model;
     custNameCtl.text = m.customerName;
   }
 
@@ -51,10 +57,7 @@ class _SectionSignaturesState extends State<SectionSignatures> {
   }
 
   void _update(InspectionEntity Function(InspectionEntity) transform) {
-    setState(() {
-      m = transform(m);
-    });
-    widget.onChanged(m);
+    widget.onChanged(transform(widget.model));
   }
 
   Future<String> _savePng(Uint8List bytes, String name) {
@@ -79,22 +82,29 @@ class _SectionSignaturesState extends State<SectionSignatures> {
       final techBytes = await techCtl.toPngBytes();
       final custBytes = await custCtl.toPngBytes();
 
-      var updated = m;
-
       // Use a date-only DateTime (midnight) to keep it clean
       final now = DateTime.now();
       final today = DateTime(now.year, now.month, now.day);
 
-      if (techBytes != null) {
-        final techPath = await _savePng(techBytes, 'tech-sign');
+      // Gather the results of the (slow, awaited) uploads first, and only
+      // fold them into the entity at the end. Reading `widget.model` up front
+      // and copying onto that snapshot would drop anything edited elsewhere in
+      // the form while the PNGs were uploading.
+      String? techPath;
+      String? custPath;
+      if (techBytes != null) techPath = await _savePng(techBytes, 'tech-sign');
+      if (custBytes != null) custPath = await _savePng(custBytes, 'cust-sign');
+
+      if (!mounted) return;
+
+      var updated = widget.model;
+      if (techPath != null) {
         updated = updated.copyWith(
           technicianSignaturePath: techPath,
           technicianSigDate: today,
         );
       }
-
-      if (custBytes != null) {
-        final custPath = await _savePng(custBytes, 'cust-sign');
+      if (custPath != null) {
         updated = updated.copyWith(
           customerSignaturePath: custPath,
           customerSigDate: today,
@@ -106,10 +116,8 @@ class _SectionSignaturesState extends State<SectionSignatures> {
         updated = updated.copyWith(customerName: name);
       }
 
-      setState(() {
-        m = updated;
-        _isSaving = false;
-      });
+      setState(() => _isSaving = false);
+      // The parent owns the entity; handing it up is what re-renders us.
       widget.onChanged(updated);
 
       if (mounted) {

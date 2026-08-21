@@ -86,7 +86,7 @@ void main() {
       expect(taps, 1);
     });
 
-    testWidgets('a value-derived key makes a new value visible after rebuild',
+    testWidgets('a keyed field shows a new value after rebuild',
         (tester) async {
       await tester.pumpWidget(const _Rebuildable(keyed: true));
       expect(find.text('2026-01-31'), findsNothing);
@@ -97,18 +97,44 @@ void main() {
       expect(find.text('2026-01-31'), findsOneWidget);
     });
 
-    testWidgets('without that key the old text survives the rebuild',
-        (tester) async {
-      // Documents why the date fields are keyed. TextFormField seeds its
-      // controller from `initialValue` exactly once, so an unkeyed field keeps
-      // showing the value it was first built with — the entity updates, the
-      // UI does not.
+    testWidgets('an unkeyed field adopts the new value too', (tester) async {
+      // This used to be the opposite assertion. A TextFormField seeds its
+      // controller from `initialValue` exactly once, so the field kept showing
+      // whatever it was first built with while the entity moved on — the
+      // stale-date bug. Call sites papered over it with a value-derived key,
+      // which is not an option for an editable field: rebuilding it on every
+      // keystroke would drop focus and the cursor.
+      //
+      // LabeledField now owns its controller and adopts an externally changed
+      // value in didUpdateWidget, so correctness no longer depends on the
+      // caller remembering a key.
       await tester.pumpWidget(const _Rebuildable(keyed: false));
 
       await tester.tap(find.text('set'));
       await tester.pumpAndSettle();
 
-      expect(find.text('2026-01-31'), findsNothing);
+      expect(find.text('2026-01-31'), findsOneWidget);
+    });
+
+    testWidgets('typing is not disturbed by the parent echoing the value back',
+        (tester) async {
+      // The guard on the sync above: while the user types, onChanged has
+      // already told the parent, so the value coming back equals the field's
+      // text and didUpdateWidget must leave the selection alone.
+      final controller = TextEditingController();
+      addTearDown(controller.dispose);
+
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: LabeledField(label: 'Site code', controller: controller),
+        ),
+      ));
+
+      await tester.enterText(find.byType(TextFormField), 'SITE-42');
+      await tester.pump();
+
+      expect(controller.text, 'SITE-42');
+      expect(controller.selection.baseOffset, 'SITE-42'.length);
     });
 
     testWidgets('dense drops the outer padding used by the standalone variant',

@@ -21,19 +21,17 @@ class SectionSiteInfo extends ConsumerStatefulWidget {
 }
 
 class _SectionSiteInfoState extends ConsumerState<SectionSiteInfo> {
-  late InspectionEntity m;
-
-  @override
-  void initState() {
-    super.initState();
-    m = widget.model;
-  }
+  /// The parent's current entity, never a snapshot.
+  ///
+  /// This used to be a field seeded in initState and never resynced. Because
+  /// every section held its own copy from first build, each section's
+  /// `copyWith` was applied to the *original* entity — so whichever section
+  /// the technician edited last silently discarded every other section's data
+  /// and the inspection saved almost empty.
+  InspectionEntity get m => widget.model;
 
   void _update(InspectionEntity Function(InspectionEntity) transform) {
-    setState(() {
-      m = transform(m);
-    });
-    widget.onChanged(m);
+    widget.onChanged(transform(widget.model));
   }
 
   Future<void> _promptAdd(
