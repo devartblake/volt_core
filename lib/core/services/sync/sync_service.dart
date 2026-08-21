@@ -245,6 +245,7 @@ class SyncService {
           if (kDebugMode) {
             debugPrint(
                 '[Sync] ${op.type.name} failed (attempt ${op.attempts}): $e');
+            _debugExplainIfRlsDenied(e);
           }
         }
       }
@@ -258,6 +259,33 @@ class SyncService {
   }
 
   /// Exponential backoff capped at 5 minutes between retries of one op.
+  /// Turns Postgres 42501 into the one thing that actually causes it here.
+  ///
+  /// An RLS rejection is a configuration problem, not a transient one, so the
+  /// retry log alone just repeats "Forbidden" until the attempt limit. The
+  /// tenant-scoped tables accept a row only when an active `tenant_members`
+  /// row pairs this user with `tenant_id`; `schedule_tasks` is not
+  /// tenant-scoped, which is why it can succeed in the same session.
+  static void _debugExplainIfRlsDenied(Object error) {
+    if (!error.toString().contains('42501')) return;
+
+    final tenant = SyncContext.tenantId;
+    final user = SyncContext.userId;
+
+    debugPrint(
+      '[Sync] ^ This is row-level security, not connectivity. Retrying will '
+      'not clear it.\n'
+      '       tenant_id sent = ${tenant ?? '(SUPABASE_TENANT_ID not set)'}\n'
+      '       auth user      = ${user ?? '(no session)'}\n'
+      '${tenant != null && tenant == user ? '       These are the same uuid: SUPABASE_TENANT_ID is set to the\n'
+          '       user id rather than a tenant id.\n' : ''}'
+      '       Fix: run supabase/migrations/0005_tenant_bootstrap.sql, then set\n'
+      '       SUPABASE_TENANT_ID to the tenant id it prints and restart.\n'
+      '       Rows already queued keep the old tenant_id — clear the sync '
+      'queue after.',
+    );
+  }
+
   bool _backoffElapsed(SyncOperation op) {
     final exp = op.attempts.clamp(0, 8);
     final delaySeconds = (1 << exp).clamp(1, 300);
