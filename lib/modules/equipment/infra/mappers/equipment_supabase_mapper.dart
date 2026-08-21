@@ -68,7 +68,7 @@ EquipmentEntity equipmentFromSupabaseJson(Map<String, dynamic> row) {
   return EquipmentEntity(
     // Keep a stable row id for rendering keys. The flag prevents the UI from
     // treating a registry id as an inspection route for pre-inspection assets.
-    id: hasInspectionLink ? latestInspectionId! : (row['id'] ?? '').toString(),
+    id: hasInspectionLink ? latestInspectionId : (row['id'] ?? '').toString(),
     name: (row['name'] ?? '').toString(),
     assetType: _assetTypeFromName((row['asset_type'] ?? '').toString()),
     metadata: Map<String, dynamic>.from(row['metadata'] as Map? ?? const {}),

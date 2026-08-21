@@ -79,18 +79,23 @@ class _EquipmentSearchPageState extends ConsumerState<EquipmentSearchPage> {
       }
 
       // Filters
-      if (_filters.make != null && equipment.make != _filters.make)
+      if (_filters.make != null && equipment.make != _filters.make) {
         return false;
-      if (_filters.voltage != null && equipment.voltage != _filters.voltage)
+      }
+      if (_filters.voltage != null && equipment.voltage != _filters.voltage) {
         return false;
+      }
       if (_filters.assetType != null &&
           equipment.assetType != _filters.assetType) {
         return false;
       }
-      if (_filters.status != null && equipment.status != _filters.status)
+      if (_filters.status != null && equipment.status != _filters.status) {
         return false;
-      if (_filters.location != null && equipment.location != _filters.location)
+      }
+      if (_filters.location != null &&
+          equipment.location != _filters.location) {
         return false;
+      }
 
       return true;
     }).toList();
