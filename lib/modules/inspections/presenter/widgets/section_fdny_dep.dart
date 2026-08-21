@@ -198,40 +198,12 @@ class _SectionFdnyDepState extends State<SectionFdnyDep> {
               theme,
             ),
             const SizedBox(height: 16),
-            Container(
-              decoration: BoxDecoration(
-                color: m.recordsKept5Years
-                    ? theme.colorScheme.primaryContainer.withValues(alpha: 0.3)
-                    : theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: m.recordsKept5Years
-                      ? theme.colorScheme.primary.withValues(alpha: 0.5)
-                      : theme.colorScheme.outlineVariant,
-                  width: 1,
-                ),
-              ),
-              child: SwitchListTile(
-                title: Row(
-                  children: [
-                    Icon(
-                      Icons.history,
-                      size: 20,
-                      color: m.recordsKept5Years
-                          ? theme.colorScheme.primary
-                          : theme.colorScheme.onSurfaceVariant,
-                    ),
-                    const SizedBox(width: 12),
-                    const Expanded(child: Text('Records kept for 5 years')),
-                  ],
-                ),
-                value: m.recordsKept5Years,
-                onChanged: (v) => _update(
-                      (curr) => curr.copyWith(recordsKept5Years: v),
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
+            StatusSwitchTile(
+              label: 'Records kept for 5 years',
+              icon: Icons.history,
+              value: m.recordsKept5Years,
+              onChanged: (v) => _update(
+                (curr) => curr.copyWith(recordsKept5Years: v),
               ),
             ),
           ],
