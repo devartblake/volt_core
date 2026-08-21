@@ -79,6 +79,8 @@ class EquipmentRepositoryImpl implements EquipmentRepository {
       makes: distinct((e) => e.make),
       voltages: distinct((e) => e.voltage),
       locations: distinct((e) => e.location),
+      assetTypes: all.map((e) => e.assetType).toSet().toList()
+        ..sort((a, b) => a.name.compareTo(b.name)),
     );
   }
 
@@ -145,6 +147,7 @@ class EquipmentRepositoryImpl implements EquipmentRepository {
             siteCode: latest.siteCode,
             siteGrade: latest.siteGrade,
             lastInspection: latest.serviceDate,
+            hasInspectionLink: true,
             inspectionCount: history.length,
             status: _statusFor(latest),
           ),

@@ -34,11 +34,9 @@ enum AssetType {
 
 /// A physical asset the company inspects or maintains.
 ///
-/// Equipment isn't a table the user maintains by hand — it is *derived* from
-/// the inspection history: every inspection names a generator (make, model,
-/// serial), and the nameplate record attached to it carries the plate details.
-/// Grouping that history by serial number gives one row per physical unit,
-/// showing its latest known state.
+/// Assets may be derived from inspection history or entered into the shared
+/// registry before their first inspection. Generator inspections remain the
+/// first source, but the entity is intentionally not generator-specific.
 @immutable
 class EquipmentEntity {
   const EquipmentEntity({
@@ -54,6 +52,7 @@ class EquipmentEntity {
     this.siteCode = '',
     this.siteGrade = '',
     this.lastInspection,
+    this.hasInspectionLink = true,
     this.inspectionCount = 0,
     this.status = EquipmentStatus.active,
   });
@@ -87,6 +86,10 @@ class EquipmentEntity {
   final String siteGrade;
 
   final DateTime? lastInspection;
+
+  /// Whether [id] points to an inspection/nameplate record that can be opened.
+  /// Manually registered assets have no inspection until field work is done.
+  final bool hasInspectionLink;
 
   /// How many inspections contributed to this record.
   final int inspectionCount;
@@ -130,6 +133,7 @@ class EquipmentEntity {
     String? siteCode,
     String? siteGrade,
     DateTime? lastInspection,
+    bool? hasInspectionLink,
     int? inspectionCount,
     EquipmentStatus? status,
   }) {
@@ -146,6 +150,7 @@ class EquipmentEntity {
       siteCode: siteCode ?? this.siteCode,
       siteGrade: siteGrade ?? this.siteGrade,
       lastInspection: lastInspection ?? this.lastInspection,
+      hasInspectionLink: hasInspectionLink ?? this.hasInspectionLink,
       inspectionCount: inspectionCount ?? this.inspectionCount,
       status: status ?? this.status,
     );

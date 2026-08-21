@@ -154,14 +154,24 @@ void main() {
     });
 
     test(
-      'a row never inspected here falls back to the row id for navigation',
+      'a row never inspected here keeps its row id but cannot open a nameplate',
       () {
         final unit = equipmentFromSupabaseJson(
           _remoteRow(identityKey: 'sn:rem-1', latestInspectionId: null),
         );
         expect(unit.id, '11111111-1111-1111-1111-111111111111');
+        expect(unit.hasInspectionLink, isFalse);
       },
     );
+
+    test('a row with an inspection id can open its nameplate record', () {
+      final unit = equipmentFromSupabaseJson(
+        _remoteRow(identityKey: 'sn:inspected', latestInspectionId: 'insp-7'),
+      );
+
+      expect(unit.id, 'insp-7');
+      expect(unit.hasInspectionLink, isTrue);
+    });
 
     test('an unknown status degrades to active rather than throwing', () {
       final unit = equipmentFromSupabaseJson(
@@ -281,7 +291,9 @@ void main() {
         ]),
       );
 
-      expect((await repo.facets()).makes, contains('Kohler'));
+      final facets = await repo.facets();
+      expect(facets.makes, contains('Kohler'));
+      expect(facets.assetTypes, contains(AssetType.transferSwitch));
     });
   });
 }

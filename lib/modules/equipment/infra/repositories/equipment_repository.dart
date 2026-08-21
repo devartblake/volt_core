@@ -2,8 +2,8 @@ import '../../domain/entities/equipment_entity.dart';
 
 /// Read model for the equipment registry.
 abstract class EquipmentRepository {
-  /// Every generator known from the inspection history, newest inspection
-  /// first. One entry per physical unit, not per inspection.
+  /// Every known asset, newest inspection first when one exists. One entry per
+  /// physical unit, not per inspection.
   Future<List<EquipmentEntity>> listEquipment();
 
   /// The distinct makes / voltages / locations present, for filter chips.
@@ -17,12 +17,17 @@ class EquipmentFacets {
     this.makes = const [],
     this.voltages = const [],
     this.locations = const [],
+    this.assetTypes = const [],
   });
 
   final List<String> makes;
   final List<String> voltages;
   final List<String> locations;
+  final List<AssetType> assetTypes;
 
   bool get isEmpty =>
-      makes.isEmpty && voltages.isEmpty && locations.isEmpty;
+      makes.isEmpty &&
+      voltages.isEmpty &&
+      locations.isEmpty &&
+      assetTypes.isEmpty;
 }

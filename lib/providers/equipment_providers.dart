@@ -4,12 +4,7 @@ import '../modules/equipment/domain/entities/equipment_entity.dart' as domain;
 import '../modules/equipment/infra/repositories/equipment_repository.dart';
 import '../modules/equipment/infra/repositories/equipment_repository_impl.dart';
 
-enum EquipmentStatus {
-  active,
-  inactive,
-  maintenance,
-  retired,
-}
+enum EquipmentStatus { active, inactive, maintenance, retired }
 
 class Equipment {
   final String id;
@@ -19,7 +14,9 @@ class Equipment {
   final String serialNumber;
   final String voltage;
   final String location;
+  final domain.AssetType assetType;
   final DateTime? lastInspection;
+  final bool hasInspectionLink;
   final EquipmentStatus status;
 
   const Equipment({
@@ -30,7 +27,9 @@ class Equipment {
     required this.serialNumber,
     required this.voltage,
     required this.location,
+    this.assetType = domain.AssetType.generator,
     this.lastInspection,
+    this.hasInspectionLink = true,
     this.status = EquipmentStatus.active,
   });
 
@@ -46,7 +45,9 @@ class Equipment {
       serialNumber: e.serialNumber,
       voltage: e.voltage,
       location: e.location,
+      assetType: e.assetType,
       lastInspection: e.lastInspection,
+      hasInspectionLink: e.hasInspectionLink,
       status: EquipmentStatus.values.byName(e.status.name),
     );
   }
@@ -60,9 +61,14 @@ class Equipment {
       serialNumber: json['serial_number'] as String,
       voltage: json['voltage'] as String,
       location: json['location'] as String,
+      assetType: domain.AssetType.values.firstWhere(
+        (value) => value.name == (json['asset_type'] as String? ?? 'generator'),
+        orElse: () => domain.AssetType.other,
+      ),
       lastInspection: json['last_inspection'] != null
           ? DateTime.parse(json['last_inspection'] as String)
           : null,
+      hasInspectionLink: json['has_inspection_link'] as bool? ?? true,
       status: EquipmentStatus.values.firstWhere(
         (e) => e.name == (json['status'] as String? ?? 'active'),
         orElse: () => EquipmentStatus.active,
@@ -79,6 +85,8 @@ class Equipment {
       'serial_number': serialNumber,
       'voltage': voltage,
       'location': location,
+      'asset_type': assetType.name,
+      'has_inspection_link': hasInspectionLink,
       'last_inspection': lastInspection?.toIso8601String(),
       'status': status.name,
     };
@@ -89,12 +97,14 @@ class Equipment {
 class EquipmentSearchFilters {
   final String? make;
   final String? voltage;
+  final domain.AssetType? assetType;
   final EquipmentStatus? status;
   final String? location;
 
   const EquipmentSearchFilters({
     this.make,
     this.voltage,
+    this.assetType,
     this.status,
     this.location,
   });
@@ -102,28 +112,36 @@ class EquipmentSearchFilters {
   EquipmentSearchFilters copyWith({
     String? make,
     String? voltage,
+    domain.AssetType? assetType,
     EquipmentStatus? status,
     String? location,
     bool clearMake = false,
     bool clearVoltage = false,
+    bool clearAssetType = false,
     bool clearStatus = false,
     bool clearLocation = false,
   }) {
     return EquipmentSearchFilters(
       make: clearMake ? null : (make ?? this.make),
       voltage: clearVoltage ? null : (voltage ?? this.voltage),
+      assetType: clearAssetType ? null : (assetType ?? this.assetType),
       status: clearStatus ? null : (status ?? this.status),
       location: clearLocation ? null : (location ?? this.location),
     );
   }
 
   bool get hasFilters =>
-      make != null || voltage != null || status != null || location != null;
+      make != null ||
+      voltage != null ||
+      assetType != null ||
+      status != null ||
+      location != null;
 
   int get activeFilterCount {
     int count = 0;
     if (make != null) count++;
     if (voltage != null) count++;
+    if (assetType != null) count++;
     if (status != null) count++;
     if (location != null) count++;
     return count;
@@ -133,6 +151,7 @@ class EquipmentSearchFilters {
     return {
       'make': make,
       'voltage': voltage,
+      'asset_type': assetType?.name,
       'status': status?.name,
       'location': location,
     };
@@ -142,6 +161,12 @@ class EquipmentSearchFilters {
     return EquipmentSearchFilters(
       make: json['make'] as String?,
       voltage: json['voltage'] as String?,
+      assetType: json['asset_type'] == null
+          ? null
+          : domain.AssetType.values.firstWhere(
+              (value) => value.name == json['asset_type'],
+              orElse: () => domain.AssetType.other,
+            ),
       status: json['status'] != null
           ? EquipmentStatus.values.firstWhere((e) => e.name == json['status'])
           : null,
@@ -156,12 +181,17 @@ class EquipmentSearchFilters {
           runtimeType == other.runtimeType &&
           make == other.make &&
           voltage == other.voltage &&
+          assetType == other.assetType &&
           status == other.status &&
           location == other.location;
 
   @override
   int get hashCode =>
-      make.hashCode ^ voltage.hashCode ^ status.hashCode ^ location.hashCode;
+      make.hashCode ^
+      voltage.hashCode ^
+      assetType.hashCode ^
+      status.hashCode ^
+      location.hashCode;
 }
 
 /// Provider for the full list of equipment.
