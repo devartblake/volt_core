@@ -8,15 +8,20 @@ import '../mappers/maintenance_supabase_mapper.dart';
 import '../models/maintenance_record.dart';
 
 class MaintenanceRepo {
-  final Box<MaintenanceRecord> _box;
+  /// Only set when a box is injected (tests). Otherwise the box is resolved
+  /// per use, so a HiveService reset cannot leave this repository holding a
+  /// closed one for the rest of the session.
+  final Box<MaintenanceRecord>? _injectedBox;
   final _uuid = const Uuid();
   final PdfService _pdfService;
 
   MaintenanceRepo({
     Box<MaintenanceRecord>? box,
     PdfService? pdfService,
-  })  : _box = box ?? MaintenanceBoxes.maintenance,
+  })  : _injectedBox = box,
         _pdfService = pdfService ?? PdfService.instance;
+
+  Box<MaintenanceRecord> get _box => _injectedBox ?? MaintenanceBoxes.maintenance;
 
   List<MaintenanceRecord> getAll() {
     final list = _box.values.toList();

@@ -143,6 +143,12 @@ class HiveService {
     // (This catches boxes opened via openBox() or MaintenanceBoxes)
     await Hive.close();
 
+    // Drop handles cached elsewhere. Without this, MaintenanceBoxes keeps
+    // handing out the box it closed above — its own `_initialized` flag says
+    // the cached instance is fine — and the maintenance form throws
+    // "Box has already been closed" for the rest of the session.
+    MaintenanceBoxes.invalidate();
+
     _initialized = false;
 
     if (kDebugMode) {

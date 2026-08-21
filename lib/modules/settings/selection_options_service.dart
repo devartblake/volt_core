@@ -6,7 +6,20 @@ class SelectionOptionsService {
   static const kMakes = 'makes';
   static const kVoltages = 'voltages';
 
-  Box? _box; // <-- nullable so we can guard safely
+  /// Cached only while it is still open.
+  ///
+  /// A plain non-null check was not enough: HiveService.reset closes every box
+  /// and reopens new instances, so `_box` stayed non-null while pointing at a
+  /// closed box, and every read threw "Box has already been closed" — which is
+  /// what crashed the inspection form's Site Info section after a reset.
+  Box? _cached;
+
+  Box? get _box {
+    final cached = _cached;
+    if (cached != null && cached.isOpen) return cached;
+    if (Hive.isBoxOpen(_boxName)) return _cached = Hive.box(_boxName);
+    return _cached = null;
+  }
 
   bool get isReady => _box != null;
 
@@ -17,7 +30,7 @@ class SelectionOptionsService {
     if (!b.containsKey(kTechs)) await b.put(kTechs, <String>[]);
     if (!b.containsKey(kMakes)) await b.put(kMakes, <String>[]);
     if (!b.containsKey(kVoltages)) await b.put(kVoltages, <String>[]);
-    _box = b;
+    _cached = b;
   }
 
   /// For UI that wants to be extra safe, ensures readiness.
