@@ -56,7 +56,10 @@ void main() {
       // silently drop the appointment time.
       expect(json.containsKey('schedule_at'), isTrue);
       expect(json.containsKey('scheduled_at'), isFalse);
-      expect(json['schedule_at'], DateTime.utc(2026, 7, 21, 9).toIso8601String());
+      expect(
+        json['schedule_at'],
+        DateTime.utc(2026, 7, 21, 9).toIso8601String(),
+      );
       expect(
         json['scheduled_date'],
         DateTime.utc(2026, 7, 21).toIso8601String(),
@@ -64,8 +67,11 @@ void main() {
     });
 
     test('prefers the entity tenant when it carries one', () {
-      final json = scheduleTaskToSupabaseJson(_task(tenantId: 'tenant-abc'));
-      expect(json['tenant_id'], 'tenant-abc');
+      const tenantId = '123e4567-e89b-12d3-a456-426614174000';
+      final task = _task(tenantId: tenantId);
+      final json = scheduleTaskToSupabaseJson(task);
+      expect(json['tenant_id'], tenantId);
+      expect(hasValidScheduleTaskTenant(task), isTrue);
     });
 
     test('always emits a tenant_id key (column is NOT NULL)', () {
@@ -74,12 +80,24 @@ void main() {
       expect(json['tenant_id'], isA<String>());
     });
 
+    test('does not mark a blank or non-UUID tenant as cloud-safe', () {
+      expect(hasValidScheduleTaskTenant(_task()), isFalse);
+      expect(
+        hasValidScheduleTaskTenant(_task(tenantId: 'tenant-abc')),
+        isFalse,
+      );
+    });
+
     test('timestamps round-trip as ISO-8601 strings', () {
       final json = scheduleTaskToSupabaseJson(_task());
-      expect(DateTime.parse(json['created_at'] as String),
-          DateTime.utc(2026, 7, 1));
-      expect(DateTime.parse(json['updated_at'] as String),
-          DateTime.utc(2026, 7, 2));
+      expect(
+        DateTime.parse(json['created_at'] as String),
+        DateTime.utc(2026, 7, 1),
+      );
+      expect(
+        DateTime.parse(json['updated_at'] as String),
+        DateTime.utc(2026, 7, 2),
+      );
     });
 
     test('table constant matches the migration', () {

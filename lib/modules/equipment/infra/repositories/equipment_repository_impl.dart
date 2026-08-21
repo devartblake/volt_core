@@ -31,7 +31,7 @@ import 'equipment_repository.dart';
 /// duplicate.
 class EquipmentRepositoryImpl implements EquipmentRepository {
   const EquipmentRepositoryImpl({EquipmentRemoteDatasource? remote})
-      : _remote = remote;
+    : _remote = remote;
 
   final EquipmentRemoteDatasource? _remote;
 
@@ -64,13 +64,14 @@ class EquipmentRepositoryImpl implements EquipmentRepository {
     final all = await listEquipment();
 
     List<String> distinct(String Function(EquipmentEntity) get) {
-      final values = all
-          .map(get)
-          .map((v) => v.trim())
-          .where((v) => v.isNotEmpty)
-          .toSet()
-          .toList()
-        ..sort();
+      final values =
+          all
+              .map(get)
+              .map((v) => v.trim())
+              .where((v) => v.isNotEmpty)
+              .toSet()
+              .toList()
+            ..sort();
       return values;
     }
 
@@ -78,6 +79,8 @@ class EquipmentRepositoryImpl implements EquipmentRepository {
       makes: distinct((e) => e.make),
       voltages: distinct((e) => e.voltage),
       locations: distinct((e) => e.location),
+      assetTypes: all.map((e) => e.assetType).toSet().toList()
+        ..sort((a, b) => a.name.compareTo(b.name)),
     );
   }
 
@@ -144,6 +147,7 @@ class EquipmentRepositoryImpl implements EquipmentRepository {
             siteCode: latest.siteCode,
             siteGrade: latest.siteGrade,
             lastInspection: latest.serviceDate,
+            hasInspectionLink: true,
             inspectionCount: history.length,
             status: _statusFor(latest),
           ),
@@ -235,7 +239,7 @@ class EquipmentRepositoryImpl implements EquipmentRepository {
     if (label.isNotEmpty) return label;
     if (siteCode.trim().isNotEmpty) return siteCode.trim();
     if (address.trim().isNotEmpty) return address.trim();
-    return 'Unidentified generator';
+    return 'Unidentified asset';
   }
 
   /// Service state from the latest inspection.

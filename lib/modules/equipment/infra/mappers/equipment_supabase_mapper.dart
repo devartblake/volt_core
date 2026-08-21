@@ -33,6 +33,8 @@ Map<String, dynamic> equipmentToSupabaseJson(
     'tenant_id': tenantId,
     'identity_key': identityKey,
     'name': e.name,
+    'asset_type': e.assetType.name,
+    'metadata': e.metadata,
     'make': e.make,
     'model': e.model,
     'serial_number': e.serialNumber,
@@ -54,14 +56,22 @@ Map<String, dynamic> equipmentToSupabaseJson(
 ///
 /// `id` becomes the **latest inspection id** rather than the row id, because
 /// that is what the UI navigates with (`/nameplate/:inspectionId`). Rows for
-/// units never inspected on this device carry no inspection id; those get the
-/// row id, and the nameplate page will open an empty record for them.
+/// units never inspected on this device retain their row id and set
+/// [EquipmentEntity.hasInspectionLink] to false, so the UI does not route them
+/// to a nonexistent nameplate.
 EquipmentEntity equipmentFromSupabaseJson(Map<String, dynamic> row) {
   final lastInspection = row['last_inspection_at'];
+  final latestInspectionId = row['latest_inspection_id']?.toString().trim();
+  final hasInspectionLink =
+      latestInspectionId != null && latestInspectionId.isNotEmpty;
 
   return EquipmentEntity(
-    id: (row['latest_inspection_id'] ?? row['id'] ?? '').toString(),
+    // Keep a stable row id for rendering keys. The flag prevents the UI from
+    // treating a registry id as an inspection route for pre-inspection assets.
+    id: hasInspectionLink ? latestInspectionId : (row['id'] ?? '').toString(),
     name: (row['name'] ?? '').toString(),
+    assetType: _assetTypeFromName((row['asset_type'] ?? '').toString()),
+    metadata: Map<String, dynamic>.from(row['metadata'] as Map? ?? const {}),
     make: (row['make'] ?? '').toString(),
     model: (row['model'] ?? '').toString(),
     serialNumber: (row['serial_number'] ?? '').toString(),
@@ -69,8 +79,10 @@ EquipmentEntity equipmentFromSupabaseJson(Map<String, dynamic> row) {
     location: (row['location'] ?? '').toString(),
     siteCode: (row['site_code'] ?? '').toString(),
     siteGrade: (row['site_grade'] ?? '').toString(),
-    lastInspection:
-        lastInspection == null ? null : DateTime.tryParse('$lastInspection'),
+    lastInspection: lastInspection == null
+        ? null
+        : DateTime.tryParse('$lastInspection'),
+    hasInspectionLink: hasInspectionLink,
     inspectionCount: (row['inspection_count'] as num?)?.toInt() ?? 0,
     status: _statusFromName((row['status'] ?? '').toString()),
   );
@@ -86,4 +98,11 @@ EquipmentStatus _statusFromName(String name) {
     if (status.name == name) return status;
   }
   return EquipmentStatus.active;
+}
+
+AssetType _assetTypeFromName(String name) {
+  for (final assetType in AssetType.values) {
+    if (assetType.name == name) return assetType;
+  }
+  return AssetType.other;
 }

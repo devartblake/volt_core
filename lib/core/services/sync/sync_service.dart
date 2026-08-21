@@ -279,7 +279,7 @@ class SyncService {
       '       auth user      = ${user ?? '(no session)'}\n'
       '${tenant != null && tenant == user ? '       These are the same uuid: SUPABASE_TENANT_ID is set to the\n'
           '       user id rather than a tenant id.\n' : ''}'
-      '       Fix: run supabase/migrations/0005_tenant_bootstrap.sql, then set\n'
+      '       Fix: run supabase/manual/tenant_bootstrap.sql, then set\n'
       '       SUPABASE_TENANT_ID to the tenant id it prints and restart.\n'
       '       Rows already queued keep the old tenant_id — clear the sync '
       'queue after.',

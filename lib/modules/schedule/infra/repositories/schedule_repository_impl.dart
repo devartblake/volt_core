@@ -23,8 +23,8 @@ class ScheduleRepositoryImpl implements ScheduleRepository {
   ScheduleRepositoryImpl({
     Box<ScheduledTask>? box,
     ScheduleRemoteDatasource? remote,
-  })  : _box = box ?? ScheduledTasksBox.box,
-        _remote = remote;
+  }) : _box = box ?? ScheduledTasksBox.box,
+       _remote = remote;
 
   // ---------------------------
   // Mapping
@@ -82,6 +82,16 @@ class ScheduleRepositoryImpl implements ScheduleRepository {
   /// happened, so this only records intent — [SyncService] pushes it to Supabase
   /// when connectivity allows and never blocks the caller.
   Future<void> _queueUpsert(TaskScheduleEntity task) {
+    if (!hasValidScheduleTaskTenant(task)) {
+      if (kDebugMode) {
+        debugPrint(
+          '[Schedule] Skipped cloud sync: no valid tenant is available for '
+          'task ${task.id}.',
+        );
+      }
+      return Future.value();
+    }
+
     return SyncService.instance.enqueueUpsert(
       table: kScheduleTasksTable,
       id: task.id,
@@ -124,8 +134,7 @@ class ScheduleRepositoryImpl implements ScheduleRepository {
       if (from != null && m.scheduledAt.isBefore(from)) return false;
       if (to != null && m.scheduledAt.isAfter(to)) return false;
       return true;
-    }).toList()
-      ..sort((a, b) => a.scheduledAt.compareTo(b.scheduledAt));
+    }).toList()..sort((a, b) => a.scheduledAt.compareTo(b.scheduledAt));
 
     return items.map(_toEntity).toList(growable: false);
   }
@@ -137,7 +146,8 @@ class ScheduleRepositoryImpl implements ScheduleRepository {
     await _queueUpsert(updated);
 
     // Keep the local reminder in sync with the task's state.
-    final isActive = updated.status == 'scheduled' || updated.status == 'overdue';
+    final isActive =
+        updated.status == 'scheduled' || updated.status == 'overdue';
     if (isActive) {
       await NotificationService.instance.scheduleTaskReminder(
         taskId: updated.id,
@@ -158,8 +168,10 @@ class ScheduleRepositoryImpl implements ScheduleRepository {
   @override
   Future<void> deleteTask(String id) async {
     await _box.delete(id);
-    await SyncService.instance
-        .enqueueDelete(table: kScheduleTasksTable, id: id);
+    await SyncService.instance.enqueueDelete(
+      table: kScheduleTasksTable,
+      id: id,
+    );
     await NotificationService.instance.cancelTaskReminder(id);
   }
 

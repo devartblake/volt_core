@@ -14,8 +14,7 @@ const String kScheduleTasksTable = 'schedule_tasks';
 /// created locally with an empty `tenantId`, and the server rejects rows whose
 /// tenant doesn't match the caller's membership.
 Map<String, dynamic> scheduleTaskToSupabaseJson(TaskScheduleEntity e) {
-  final tenantId =
-      e.tenantId.isNotEmpty ? e.tenantId : (SyncContext.tenantId ?? '');
+  final tenantId = scheduleTaskTenantId(e);
 
   return {
     'id': e.id,
@@ -37,3 +36,17 @@ Map<String, dynamic> scheduleTaskToSupabaseJson(TaskScheduleEntity e) {
     'updated_at': e.updatedAt.toIso8601String(),
   };
 }
+
+/// Resolves the tenant that will be written for a task.
+///
+/// The entity wins when it is already tenant-scoped; otherwise tasks inherit
+/// the authenticated sync context. A blank result is intentionally not valid
+/// for cloud persistence after Phase 1's tenant-RLS migration.
+String scheduleTaskTenantId(TaskScheduleEntity e) =>
+    e.tenantId.isNotEmpty ? e.tenantId : (SyncContext.tenantId ?? '');
+
+/// Whether a task can safely be written to the tenant-scoped schedule table.
+bool hasValidScheduleTaskTenant(TaskScheduleEntity e) => RegExp(
+  r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$',
+  caseSensitive: false,
+).hasMatch(scheduleTaskTenantId(e));
