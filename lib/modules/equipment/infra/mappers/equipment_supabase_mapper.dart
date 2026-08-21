@@ -33,6 +33,8 @@ Map<String, dynamic> equipmentToSupabaseJson(
     'tenant_id': tenantId,
     'identity_key': identityKey,
     'name': e.name,
+    'asset_type': e.assetType.name,
+    'metadata': e.metadata,
     'make': e.make,
     'model': e.model,
     'serial_number': e.serialNumber,
@@ -62,6 +64,8 @@ EquipmentEntity equipmentFromSupabaseJson(Map<String, dynamic> row) {
   return EquipmentEntity(
     id: (row['latest_inspection_id'] ?? row['id'] ?? '').toString(),
     name: (row['name'] ?? '').toString(),
+    assetType: _assetTypeFromName((row['asset_type'] ?? '').toString()),
+    metadata: Map<String, dynamic>.from(row['metadata'] as Map? ?? const {}),
     make: (row['make'] ?? '').toString(),
     model: (row['model'] ?? '').toString(),
     serialNumber: (row['serial_number'] ?? '').toString(),
@@ -69,8 +73,9 @@ EquipmentEntity equipmentFromSupabaseJson(Map<String, dynamic> row) {
     location: (row['location'] ?? '').toString(),
     siteCode: (row['site_code'] ?? '').toString(),
     siteGrade: (row['site_grade'] ?? '').toString(),
-    lastInspection:
-        lastInspection == null ? null : DateTime.tryParse('$lastInspection'),
+    lastInspection: lastInspection == null
+        ? null
+        : DateTime.tryParse('$lastInspection'),
     inspectionCount: (row['inspection_count'] as num?)?.toInt() ?? 0,
     status: _statusFromName((row['status'] ?? '').toString()),
   );
@@ -86,4 +91,11 @@ EquipmentStatus _statusFromName(String name) {
     if (status.name == name) return status;
   }
   return EquipmentStatus.active;
+}
+
+AssetType _assetTypeFromName(String name) {
+  for (final assetType in AssetType.values) {
+    if (assetType.name == name) return assetType;
+  }
+  return AssetType.other;
 }

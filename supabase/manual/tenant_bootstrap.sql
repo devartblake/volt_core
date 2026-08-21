@@ -1,5 +1,5 @@
 -- ---------------------------------------------------------------------------
--- 0005_tenant_bootstrap.sql
+-- tenant_bootstrap.sql (manual operator runbook; not a database migration)
 --
 -- Fixes: POST /rest/v1/inspections -> 403
 --   "new row violates row-level security policy for table \"inspections\"" (42501)

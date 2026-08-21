@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart';
 
-/// Service state of a generator, derived from its most recent inspection.
+/// Service state of an asset, derived from its most recent inspection.
 enum EquipmentStatus {
   /// Passing its last inspection.
   active,
@@ -15,7 +15,24 @@ enum EquipmentStatus {
   retired,
 }
 
-/// A generator the company inspects.
+/// Supported field-service asset categories.
+///
+/// The database persists the stable [name], allowing additional categories to
+/// be introduced later without a destructive schema migration.
+enum AssetType {
+  generator,
+  transferSwitch,
+  switchgear,
+  panelboard,
+  transformer,
+  emergencyLighting,
+  ups,
+  evCharger,
+  batteryEnergyStorage,
+  other,
+}
+
+/// A physical asset the company inspects or maintains.
 ///
 /// Equipment isn't a table the user maintains by hand — it is *derived* from
 /// the inspection history: every inspection names a generator (make, model,
@@ -32,6 +49,8 @@ class EquipmentEntity {
     required this.serialNumber,
     required this.voltage,
     required this.location,
+    this.assetType = AssetType.generator,
+    this.metadata = const {},
     this.siteCode = '',
     this.siteGrade = '',
     this.lastInspection,
@@ -54,6 +73,13 @@ class EquipmentEntity {
 
   /// Where it lives — the address from the latest inspection.
   final String location;
+
+  /// Broad asset category. Existing records default to [AssetType.generator].
+  final AssetType assetType;
+
+  /// Asset-type-specific values, such as generator kW or charger connector
+  /// count. Generic identity and lifecycle fields remain first-class fields.
+  final Map<String, dynamic> metadata;
 
   final String siteCode;
 
@@ -99,6 +125,8 @@ class EquipmentEntity {
     String? serialNumber,
     String? voltage,
     String? location,
+    AssetType? assetType,
+    Map<String, dynamic>? metadata,
     String? siteCode,
     String? siteGrade,
     DateTime? lastInspection,
@@ -113,6 +141,8 @@ class EquipmentEntity {
       serialNumber: serialNumber ?? this.serialNumber,
       voltage: voltage ?? this.voltage,
       location: location ?? this.location,
+      assetType: assetType ?? this.assetType,
+      metadata: metadata ?? this.metadata,
       siteCode: siteCode ?? this.siteCode,
       siteGrade: siteGrade ?? this.siteGrade,
       lastInspection: lastInspection ?? this.lastInspection,
