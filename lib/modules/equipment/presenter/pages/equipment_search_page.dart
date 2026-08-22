@@ -7,6 +7,7 @@ import '../../infra/repositories/equipment_repository.dart';
 import '../../../../core/theme/status_colors.dart';
 import '../../../../shared/widgets/widgets.dart';
 import '../../domain/entities/equipment_entity.dart' show AssetType;
+import '../widgets/asset_registration_sheet.dart';
 
 /// Equipment search page
 class EquipmentSearchPage extends ConsumerStatefulWidget {
@@ -110,6 +111,11 @@ class _EquipmentSearchPageState extends ConsumerState<EquipmentSearchPage> {
 
     return AppPage(
       title: 'Equipment Search',
+      fab: FloatingActionButton.extended(
+        onPressed: _showRegistrationSheet,
+        icon: const Icon(Icons.add),
+        label: const Text('Register asset'),
+      ),
       body: equipmentAsync.when(
         data: (allEquipment) {
           final filteredEquipment = _getFilteredEquipment(allEquipment);
@@ -423,6 +429,14 @@ class _EquipmentSearchPageState extends ConsumerState<EquipmentSearchPage> {
           Navigator.pop(context);
         },
       ),
+    );
+  }
+
+  void _showRegistrationSheet() {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (_) => const AssetRegistrationSheet(),
     );
   }
 

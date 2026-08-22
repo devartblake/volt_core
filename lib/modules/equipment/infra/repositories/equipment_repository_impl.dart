@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive/hive.dart';
+import 'package:uuid/uuid.dart';
 
 import '../../../../core/services/hive/hive_boxes.dart';
 import '../../../../core/services/sync/sync_context.dart';
@@ -30,18 +31,31 @@ import 'equipment_repository.dart';
 /// tenant + identity key, which is what makes a plain upsert merge rather than
 /// duplicate.
 class EquipmentRepositoryImpl implements EquipmentRepository {
-  const EquipmentRepositoryImpl({EquipmentRemoteDatasource? remote})
+  EquipmentRepositoryImpl({EquipmentRemoteDatasource? remote})
     : _remote = remote;
 
   final EquipmentRemoteDatasource? _remote;
 
+  /// Manual assets are held in-memory until the next remote read sees the
+  /// queued upsert. This makes registration immediately visible offline
+  /// without introducing a second local source of truth for the registry.
+  final Map<String, _KeyedUnit> _registered = {};
+
   @override
   Future<List<EquipmentEntity>> listEquipment() async {
-    final local = _deriveFromInspections();
+    final derived = _deriveFromInspections();
 
     // Push what we derived so other devices see it. Best-effort and
     // non-blocking: the queue handles retries.
-    unawaited(_publish(local));
+    unawaited(_publish(derived));
+
+    // Locally derived inspection records take precedence over a manual asset
+    // with the same identity; a freshly collected inspection is the richer
+    // source of truth for the displayed registry item.
+    final local = <String, _KeyedUnit>{
+      for (final unit in _registered.values) unit.identityKey: unit,
+      for (final unit in derived) unit.identityKey: unit,
+    }.values.toList(growable: false);
 
     // Copy before sorting: the no-inspections path yields a const list, and
     // sorting that throws.
@@ -82,6 +96,68 @@ class EquipmentRepositoryImpl implements EquipmentRepository {
       assetTypes: all.map((e) => e.assetType).toSet().toList()
         ..sort((a, b) => a.name.compareTo(b.name)),
     );
+  }
+
+  @override
+  Future<EquipmentEntity> registerAsset({
+    required String name,
+    required AssetType assetType,
+    required String make,
+    required String model,
+    required String serialNumber,
+    required String voltage,
+    required String location,
+    required String siteCode,
+    String notes = '',
+  }) async {
+    final tenantId = SyncContext.tenantId;
+    if (tenantId == null) {
+      throw StateError('Select an active tenant before registering an asset.');
+    }
+
+    final normalizedName = name.trim();
+    if (normalizedName.isEmpty) {
+      throw ArgumentError.value(name, 'name', 'Asset name cannot be blank.');
+    }
+
+    final fallbackId = const Uuid().v4();
+    final identityKey = EquipmentEntity.identityKey(
+      serialNumber: serialNumber,
+      siteCode: siteCode,
+      make: make,
+      model: model,
+      fallbackId: fallbackId,
+    );
+    final rowId = equipmentIdFor(tenantId: tenantId, identityKey: identityKey);
+    final asset = EquipmentEntity(
+      id: rowId,
+      name: normalizedName,
+      assetType: assetType,
+      make: make.trim(),
+      model: model.trim(),
+      serialNumber: serialNumber.trim(),
+      voltage: voltage.trim(),
+      location: location.trim(),
+      siteCode: siteCode.trim(),
+      metadata: notes.trim().isEmpty ? const {} : {'notes': notes.trim()},
+      hasInspectionLink: false,
+      status: EquipmentStatus.inactive,
+    );
+
+    await SyncService.instance.enqueueUpsert(
+      table: kEquipmentTable,
+      id: rowId,
+      payload: equipmentToSupabaseJson(
+        asset,
+        identityKey: identityKey,
+        tenantId: tenantId,
+      ),
+    );
+    _registered[identityKey] = _KeyedUnit(
+      identityKey: identityKey,
+      unit: asset,
+    );
+    return asset;
   }
 
   // ---------------------------------------------------------------------------

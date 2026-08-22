@@ -46,7 +46,9 @@ Map<String, dynamic> equipmentToSupabaseJson(
     'last_inspection_at': e.lastInspection?.toIso8601String(),
     'inspection_count': e.inspectionCount,
     // The local inspection this was derived from, for the nameplate deep-link.
-    'latest_inspection_id': e.id,
+    'latest_inspection_id': e.hasInspectionLink ? e.id : null,
+    'is_manual': !e.hasInspectionLink,
+    if (e.metadata['notes'] case final String notes) 'notes': notes,
     'updated_at': DateTime.now().toIso8601String(),
     if (SyncContext.userId != null) 'updated_by': SyncContext.userId,
   };

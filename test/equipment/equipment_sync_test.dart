@@ -173,6 +173,33 @@ void main() {
       expect(unit.hasInspectionLink, isTrue);
     });
 
+    test('a manually registered asset has no inspection deep link', () {
+      const unit = EquipmentEntity(
+        id: '22222222-2222-2222-2222-222222222222',
+        name: 'Main ATS',
+        make: 'ASCO',
+        model: '7000',
+        serialNumber: 'ATS-9',
+        voltage: '480V',
+        location: 'Electrical room',
+        assetType: AssetType.transferSwitch,
+        metadata: {'notes': 'Annual service due'},
+        hasInspectionLink: false,
+        status: EquipmentStatus.inactive,
+      );
+
+      final row = equipmentToSupabaseJson(
+        unit,
+        identityKey: 'sn:ats-9',
+        tenantId: 'tenant-1',
+      );
+
+      expect(row['latest_inspection_id'], isNull);
+      expect(row['is_manual'], isTrue);
+      expect(row['notes'], 'Annual service due');
+      expect(equipmentFromSupabaseJson(row).hasInspectionLink, isFalse);
+    });
+
     test('an unknown status degrades to active rather than throwing', () {
       final unit = equipmentFromSupabaseJson(
         _remoteRow(identityKey: 'sn:x', status: 'decommissioned'),
