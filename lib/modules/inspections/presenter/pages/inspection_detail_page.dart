@@ -374,8 +374,9 @@ Future<void> _openPdf(
   if (kIsWeb) {
     final bytes = WebFileStore.instance.getSync(pdfPath);
     if (bytes == null) {
-      if (context.mounted)
+      if (context.mounted) {
         AppSnackBar.error(context, 'PDF data is unavailable.');
+      }
       return;
     }
     await Navigator.of(context).push(
