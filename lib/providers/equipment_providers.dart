@@ -15,6 +15,10 @@ class Equipment {
   final String voltage;
   final String location;
   final String siteCode;
+  final String? siteId;
+  final String? registryId;
+  final String? registryIdentityKey;
+  final Map<String, dynamic> metadata;
   final domain.AssetType assetType;
   final DateTime? lastInspection;
   final bool hasInspectionLink;
@@ -30,6 +34,10 @@ class Equipment {
     required this.voltage,
     required this.location,
     this.siteCode = '',
+    this.siteId,
+    this.registryId,
+    this.registryIdentityKey,
+    this.metadata = const {},
     this.assetType = domain.AssetType.generator,
     this.lastInspection,
     this.hasInspectionLink = true,
@@ -50,6 +58,10 @@ class Equipment {
       voltage: e.voltage,
       location: e.location,
       siteCode: e.siteCode,
+      siteId: e.siteId,
+      registryId: e.registryId,
+      registryIdentityKey: e.registryIdentityKey,
+      metadata: e.metadata,
       assetType: e.assetType,
       lastInspection: e.lastInspection,
       hasInspectionLink: e.hasInspectionLink,
@@ -71,6 +83,10 @@ class Equipment {
       voltage: voltage,
       location: location,
       siteCode: siteCode,
+      siteId: siteId,
+      registryId: registryId,
+      registryIdentityKey: registryIdentityKey,
+      metadata: metadata,
       assetType: assetType,
       lastInspection: lastInspection,
       hasInspectionLink: hasInspectionLink,

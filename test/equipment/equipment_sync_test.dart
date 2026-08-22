@@ -121,6 +121,7 @@ void main() {
         location: '9 Wall St',
         assetType: AssetType.transferSwitch,
         metadata: {'amp_rating': 400},
+        siteId: 'site-9',
         siteCode: 'AS-9',
         siteGrade: 'Amber',
         inspectionCount: 2,
@@ -138,6 +139,7 @@ void main() {
       expect(row['status'], 'maintenance');
       expect(row['asset_type'], 'transferSwitch');
       expect(row['metadata'], {'amp_rating': 400});
+      expect(row['site_id'], 'site-9');
       // The deep-link target travels separately from the row id.
       expect(row['latest_inspection_id'], 'insp-9');
       expect(
@@ -151,6 +153,7 @@ void main() {
       expect(back.assetType, AssetType.transferSwitch);
       expect(back.metadata, {'amp_rating': 400});
       expect(back.id, 'insp-9');
+      expect(back.siteId, 'site-9');
     });
 
     test(

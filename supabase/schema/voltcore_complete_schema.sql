@@ -1,14 +1,17 @@
 -- ============================================================================
 -- Voltcore / A&S Electric — COMPLETE Supabase schema (app-aligned)
 -- ============================================================================
--- Single, self-contained, idempotent setup for the projects database. Safe to
--- run once or re-run. It is a superset of the consolidated v2 schema, aligned
+-- Single, self-contained setup for the projects database. It is a superset of
+-- the consolidated v2 schema and all committed Phase 1 / Phase 2 migrations,
+-- aligned
 -- with what the Flutter app actually reads/writes:
 --
 --   * inspections           -> identity columns + `payload` jsonb
 --   * maintenance_jobs       -> identity row (id == app record id)
 --   * maintenance_records    -> `data` jsonb, job_id == app record id
 --   * files (pdf/signature/photo) -> Storage bucket 'voltcore-files'
+--   * schedule_tasks, equipment, technicians, role_assignments
+--   * customers and customer-owned sites
 --
 -- Differences vs v2 (all additive):
 --   * creates the 'voltcore-files' storage bucket the app uploads to
@@ -19,8 +22,9 @@
 --     for the stricter alternative.
 --   * storage.objects policies for authenticated upload/read.
 --
--- If your ChatGPT design session defined extra tables/columns, share them and
--- they can be merged — this file is built from the v2 schema + the app code.
+-- This is a bootstrap artifact for a NEW VoltCore project. Apply the numbered
+-- migrations to an existing project instead; do not use this file to upgrade
+-- a populated database.
 -- ============================================================================
 
 begin;
@@ -42,8 +46,17 @@ do $$ begin
   end if;
 end $$;
 
-create or replace function public.set_updated_at() returns trigger language plpgsql as $$
-begin new.updated_at=now(); return new; end $$;
+create or replace function public.set_updated_at()
+returns trigger
+language plpgsql
+security invoker
+set search_path = pg_catalog
+as $$
+begin
+  new.updated_at = now();
+  return new;
+end;
+$$;
 
 -- ---------------------------------------------------------------------------
 -- Core / tenancy
@@ -169,6 +182,18 @@ language sql stable security definer set search_path=public as $$
  select p_user_id=auth.uid() and public.has_tenant_role(p_tenant_id,array['technician']::public.app_role[])
 $$;
 
+-- These helpers are required by authenticated RLS policies, but are not an
+-- anonymous API surface. Trigger-only functions do not need client execution.
+revoke all on function public.set_updated_at() from public, anon, authenticated;
+revoke all on function public.is_tenant_member(uuid) from public, anon;
+revoke all on function public.has_tenant_role(uuid, public.app_role[]) from public, anon;
+revoke all on function public.can_manage_tenant_work(uuid) from public, anon;
+revoke all on function public.is_assigned_technician(uuid, uuid) from public, anon;
+grant execute on function public.is_tenant_member(uuid) to authenticated;
+grant execute on function public.has_tenant_role(uuid, public.app_role[]) to authenticated;
+grant execute on function public.can_manage_tenant_work(uuid) to authenticated;
+grant execute on function public.is_assigned_technician(uuid, uuid) to authenticated;
+
 -- ---------------------------------------------------------------------------
 -- Enable RLS
 -- ---------------------------------------------------------------------------
@@ -293,6 +318,281 @@ end $$;
 drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created after insert on auth.users
 for each row execute function public.handle_new_auth_user();
+revoke all on function public.handle_new_auth_user() from public, anon, authenticated;
+
+-- ============================================================================
+-- Phase 1 / Phase 2 additions included in a new-project setup
+-- ============================================================================
+-- These definitions reflect the final state of migrations 0003, 0004, 0006,
+-- 20260822205219, and 20260822205311. They intentionally follow the original
+-- schema above so this file can also document the project's schema evolution.
+
+-- Remote schedule sync. tenant_id remains text for compatibility with the
+-- current Flutter serializer, but the check and RLS policies below require a
+-- canonical tenant UUID for every new or changed row.
+create table if not exists public.schedule_tasks(
+  id uuid primary key default gen_random_uuid(),
+  tenant_id text not null default '',
+  title text not null default '',
+  description text not null default '',
+  scheduled_date timestamptz,
+  schedule_at timestamptz,
+  status text not null default 'scheduled',
+  source_type text not null default '',
+  source_id text,
+  inspection_id text,
+  site_code text not null default '',
+  site_grade text not null default '',
+  address text not null default '',
+  assigned_to_user_id text,
+  notes text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  constraint schedule_tasks_tenant_id_uuid check (
+    tenant_id ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+  )
+);
+
+create index if not exists idx_schedule_tasks_date on public.schedule_tasks(scheduled_date);
+create index if not exists idx_schedule_tasks_assignee on public.schedule_tasks(assigned_to_user_id);
+create index if not exists idx_schedule_tasks_tenant_date
+  on public.schedule_tasks(tenant_id, scheduled_date);
+
+alter table public.schedule_tasks enable row level security;
+drop policy if exists schedule_tasks_authenticated on public.schedule_tasks;
+drop policy if exists schedule_tasks_member_select on public.schedule_tasks;
+drop policy if exists schedule_tasks_member_insert on public.schedule_tasks;
+drop policy if exists schedule_tasks_member_update on public.schedule_tasks;
+drop policy if exists schedule_tasks_member_delete on public.schedule_tasks;
+create policy schedule_tasks_member_select on public.schedule_tasks for select to authenticated using (
+  case when tenant_id ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+    then public.is_tenant_member(tenant_id::uuid) else false end
+);
+create policy schedule_tasks_member_insert on public.schedule_tasks for insert to authenticated with check (
+  case when tenant_id ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+    then public.is_tenant_member(tenant_id::uuid) else false end
+);
+create policy schedule_tasks_member_update on public.schedule_tasks for update to authenticated using (
+  case when tenant_id ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+    then public.is_tenant_member(tenant_id::uuid) else false end
+) with check (
+  case when tenant_id ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+    then public.is_tenant_member(tenant_id::uuid) else false end
+);
+create policy schedule_tasks_member_delete on public.schedule_tasks for delete to authenticated using (
+  case when tenant_id ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+    then public.is_tenant_member(tenant_id::uuid) else false end
+);
+revoke all on public.schedule_tasks from anon, authenticated;
+grant select, insert, update, delete on public.schedule_tasks to authenticated;
+
+-- Shared, generic asset registry. Generator remains the default asset_type;
+-- the metadata field supports non-generator asset-specific attributes.
+create table if not exists public.equipment(
+  id uuid primary key,
+  tenant_id uuid not null references public.tenants(id) on delete cascade,
+  identity_key text not null,
+  name text not null default '',
+  make text not null default '',
+  model text not null default '',
+  serial_number text not null default '',
+  voltage text not null default '',
+  location text not null default '',
+  site_code text not null default '',
+  site_grade text not null default '',
+  status text not null default 'active',
+  last_inspection_at timestamptz,
+  inspection_count integer not null default 0,
+  latest_inspection_id text,
+  is_manual boolean not null default false,
+  notes text,
+  first_seen_at timestamptz not null default now(),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  updated_by uuid references auth.users(id) on delete set null,
+  asset_type text not null default 'generator',
+  metadata jsonb not null default '{}'::jsonb,
+  site_id uuid,
+  constraint equipment_identity_unique unique(tenant_id, identity_key),
+  constraint equipment_status_valid check(status in ('active','inactive','maintenance','retired')),
+  constraint equipment_asset_type_not_blank check(length(trim(asset_type)) > 0)
+);
+
+create index if not exists idx_equipment_tenant on public.equipment(tenant_id);
+create index if not exists idx_equipment_serial on public.equipment(tenant_id, serial_number);
+create index if not exists idx_equipment_last_inspection
+  on public.equipment(tenant_id, last_inspection_at desc nulls last);
+create index if not exists idx_equipment_status on public.equipment(tenant_id, status);
+create index if not exists idx_equipment_tenant_asset_type on public.equipment(tenant_id, asset_type);
+create index if not exists idx_equipment_tenant_site on public.equipment(tenant_id, site_id)
+  where site_id is not null;
+drop trigger if exists trg_equipment_updated_at on public.equipment;
+create trigger trg_equipment_updated_at before update on public.equipment
+  for each row execute function public.set_updated_at();
+
+alter table public.equipment enable row level security;
+drop policy if exists equipment_read on public.equipment;
+drop policy if exists equipment_write on public.equipment;
+create policy equipment_read on public.equipment for select to authenticated
+  using((select public.is_tenant_member(tenant_id)));
+create policy equipment_write on public.equipment for all to authenticated
+  using((select public.is_tenant_member(tenant_id)))
+  with check((select public.is_tenant_member(tenant_id)));
+revoke all on public.equipment from anon, authenticated;
+grant select, insert, update, delete on public.equipment to authenticated;
+
+-- Customer directory and optional customer ownership for each service site.
+create table if not exists public.customers(
+  id uuid primary key default gen_random_uuid(),
+  tenant_id uuid not null references public.tenants(id) on delete cascade,
+  name text not null,
+  legal_name text not null default '',
+  primary_contact_name text not null default '',
+  primary_contact_email text not null default '',
+  primary_contact_phone text not null default '',
+  billing_address text not null default '',
+  notes text not null default '',
+  is_active boolean not null default true,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  constraint customers_name_not_blank check(length(trim(name)) > 0),
+  constraint customers_tenant_name_unique unique(tenant_id, name),
+  constraint customers_tenant_id_id_unique unique(tenant_id, id)
+);
+create index if not exists idx_customers_tenant_active_name
+  on public.customers(tenant_id, is_active, name);
+drop trigger if exists trg_customers_updated_at on public.customers;
+create trigger trg_customers_updated_at before update on public.customers
+  for each row execute function public.set_updated_at();
+
+alter table public.sites add column if not exists customer_id uuid;
+create unique index if not exists idx_sites_tenant_id_id on public.sites(tenant_id, id);
+create index if not exists idx_sites_tenant_customer on public.sites(tenant_id, customer_id)
+  where customer_id is not null;
+
+do $$
+begin
+  if not exists (select 1 from pg_constraint where conname='sites_customer_tenant_fk' and conrelid='public.sites'::regclass) then
+    alter table public.sites add constraint sites_customer_tenant_fk
+      foreign key(tenant_id, customer_id) references public.customers(tenant_id, id) on delete restrict;
+  end if;
+  if not exists (select 1 from pg_constraint where conname='equipment_tenant_site_fk' and conrelid='public.equipment'::regclass) then
+    alter table public.equipment add constraint equipment_tenant_site_fk
+      foreign key(tenant_id, site_id) references public.sites(tenant_id, id) on delete restrict;
+  end if;
+  if not exists (select 1 from pg_constraint where conname='inspections_tenant_site_fk' and conrelid='public.inspections'::regclass) then
+    alter table public.inspections add constraint inspections_tenant_site_fk
+      foreign key(tenant_id, site_id) references public.sites(tenant_id, id) on delete restrict;
+  end if;
+  if not exists (select 1 from pg_constraint where conname='maintenance_jobs_tenant_site_fk' and conrelid='public.maintenance_jobs'::regclass) then
+    alter table public.maintenance_jobs add constraint maintenance_jobs_tenant_site_fk
+      foreign key(tenant_id, site_id) references public.sites(tenant_id, id) on delete restrict;
+  end if;
+end $$;
+
+alter table public.customers enable row level security;
+drop policy if exists customers_read on public.customers;
+drop policy if exists customers_manage on public.customers;
+drop policy if exists customers_insert on public.customers;
+drop policy if exists customers_update on public.customers;
+create policy customers_read on public.customers for select to authenticated
+  using((select public.is_tenant_member(tenant_id)));
+create policy customers_insert on public.customers for insert to authenticated
+  with check((select public.can_manage_tenant_work(tenant_id)));
+create policy customers_update on public.customers for update to authenticated
+  using((select public.can_manage_tenant_work(tenant_id)))
+  with check((select public.can_manage_tenant_work(tenant_id)));
+revoke all on public.customers from anon, authenticated;
+grant select, insert, update on public.customers to authenticated;
+
+drop policy if exists sites_read on public.sites;
+drop policy if exists sites_manage on public.sites;
+drop policy if exists sites_write on public.sites;
+drop policy if exists sites_insert on public.sites;
+drop policy if exists sites_update on public.sites;
+create policy sites_read on public.sites for select to authenticated
+  using((select public.is_tenant_member(tenant_id)));
+create policy sites_insert on public.sites for insert to authenticated
+  with check((select public.can_manage_tenant_work(tenant_id)));
+create policy sites_update on public.sites for update to authenticated
+  using((select public.can_manage_tenant_work(tenant_id)))
+  with check((select public.can_manage_tenant_work(tenant_id)));
+revoke all on public.sites from anon, authenticated;
+grant select, insert, update on public.sites to authenticated;
+
+-- Administration support tables used by the current technician dashboard.
+-- These legacy records are not tenant-owned yet; Phase 2's remaining
+-- technician-directory work will move them onto tenant_members.
+create table if not exists public.technicians(
+  id uuid primary key default gen_random_uuid(),
+  name text not null default 'Unknown',
+  email text,
+  phone text,
+  role text not null default 'tech',
+  is_active boolean not null default true,
+  last_activity_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+create index if not exists idx_technicians_active on public.technicians(is_active);
+
+create table if not exists public.role_assignments(
+  id uuid primary key default gen_random_uuid(),
+  technician_id uuid not null references public.technicians(id) on delete cascade,
+  previous_role text not null default '',
+  new_role text not null default '',
+  assigned_by_user_id uuid references auth.users(id) on delete set null,
+  reason text,
+  created_at timestamptz not null default now()
+);
+
+alter table public.technicians enable row level security;
+alter table public.role_assignments enable row level security;
+drop policy if exists technicians_authenticated on public.technicians;
+drop policy if exists role_assignments_authenticated on public.role_assignments;
+create policy technicians_authenticated on public.technicians for all to authenticated
+  using(true) with check(true);
+create policy role_assignments_authenticated on public.role_assignments for all to authenticated
+  using(true) with check(true);
+revoke all on public.technicians, public.role_assignments from anon, authenticated;
+grant select, insert, update, delete on public.technicians, public.role_assignments to authenticated;
+
+-- The RPC preserves the mobile client's text parameter while preventing a
+-- caller from requesting another user's workload. SECURITY DEFINER is needed
+-- to aggregate work rows; the auth.uid() comparison keeps the result scoped to
+-- the authenticated technician and tenant-membership checks prevent bypassing
+-- row ownership via the function.
+create or replace function public.get_tech_dashboard_stats(technician_id text)
+returns json
+language sql stable security definer set search_path=public, pg_catalog as $$
+  select json_build_object(
+    'my_open_inspections', (select count(*)::int from public.inspections
+      where technician_id = (select auth.uid()::text)
+        and assigned_technician_user_id::text = technician_id
+        and status not in ('completed','archived','cancelled')
+        and public.is_tenant_member(tenant_id)),
+    'my_completed_inspections', (select count(*)::int from public.inspections
+      where technician_id = (select auth.uid()::text)
+        and assigned_technician_user_id::text = technician_id
+        and status = 'completed' and public.is_tenant_member(tenant_id)),
+    'my_open_maintenance_jobs', (select count(*)::int from public.maintenance_jobs
+      where technician_id = (select auth.uid()::text)
+        and assigned_technician_user_id::text = technician_id
+        and not is_completed and public.is_tenant_member(tenant_id)),
+    'my_completed_maintenance_jobs', (select count(*)::int from public.maintenance_jobs
+      where technician_id = (select auth.uid()::text)
+        and assigned_technician_user_id::text = technician_id
+        and is_completed and public.is_tenant_member(tenant_id)),
+    'upcoming_tasks', (select count(*)::int from public.schedule_tasks
+      where technician_id = (select auth.uid()::text)
+        and (assigned_to_user_id = technician_id or assigned_to_user_id is null)
+        and scheduled_date >= now() and status in ('scheduled','overdue')
+        and tenant_id ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+        and public.is_tenant_member(tenant_id::uuid))
+  );
+$$;
+revoke all on function public.get_tech_dashboard_stats(text) from public, anon;
+grant execute on function public.get_tech_dashboard_stats(text) to authenticated;
 
 commit;
 

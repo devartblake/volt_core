@@ -136,6 +136,19 @@ const List<NavSection> _navSections = [
 
   // Equipment Group
   NavSection(
+    title: 'Directory',
+    items: [
+      NavItem(
+        'Customers & Sites',
+        Icons.business_outlined,
+        RoutePaths.customerSites,
+        routeName: RouteNames.customerSites,
+        description: 'Customer contacts and service locations',
+      ),
+    ],
+  ),
+
+  NavSection(
     title: 'Equipment',
     items: [
       NavItem(

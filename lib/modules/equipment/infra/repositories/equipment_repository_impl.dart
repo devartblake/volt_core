@@ -108,6 +108,7 @@ class EquipmentRepositoryImpl implements EquipmentRepository {
     required String voltage,
     required String location,
     required String siteCode,
+    String? siteId,
     String notes = '',
   }) async {
     final tenantId = SyncContext.tenantId;
@@ -139,6 +140,9 @@ class EquipmentRepositoryImpl implements EquipmentRepository {
       voltage: voltage.trim(),
       location: location.trim(),
       siteCode: siteCode.trim(),
+      siteId: siteId,
+      registryId: rowId,
+      registryIdentityKey: identityKey,
       metadata: notes.trim().isEmpty ? const {} : {'notes': notes.trim()},
       hasInspectionLink: false,
       status: EquipmentStatus.inactive,
@@ -158,6 +162,39 @@ class EquipmentRepositoryImpl implements EquipmentRepository {
       unit: asset,
     );
     return asset;
+  }
+
+  @override
+  Future<void> updateManualAssetSite({
+    required EquipmentEntity asset,
+    String? siteId,
+    required String siteCode,
+    required String location,
+  }) async {
+    final tenantId = SyncContext.tenantId;
+    final rowId = asset.registryId;
+    final identityKey = asset.registryIdentityKey;
+    if (tenantId == null || rowId == null || identityKey == null || asset.hasInspectionLink) {
+      throw StateError('Only manually registered assets can be reassigned.');
+    }
+    final updated = asset.copyWith(
+      siteId: siteId,
+      clearSiteId: siteId == null,
+      siteCode: siteCode.trim(),
+      location: location.trim(),
+    );
+    await SyncService.instance.enqueueUpsert(
+      table: kEquipmentTable,
+      id: rowId,
+      payload: equipmentToSupabaseJson(
+        updated,
+        identityKey: identityKey,
+        tenantId: tenantId,
+        rowId: rowId,
+        includeSiteAssignment: true,
+      ),
+    );
+    _registered[identityKey] = _KeyedUnit(identityKey: identityKey, unit: updated);
   }
 
   // ---------------------------------------------------------------------------
