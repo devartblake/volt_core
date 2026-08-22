@@ -3,12 +3,14 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive/hive.dart';
+import 'package:uuid/uuid.dart';
 
 import '../../../../core/services/hive/hive_boxes.dart';
 import '../../../../core/services/sync/sync_context.dart';
 import '../../../../core/services/sync/sync_service.dart';
 import '../../../inspections/infra/models/inspection.dart';
 import '../../../inspections/infra/models/nameplate_data.dart';
+import '../../../inspections/domain/entities/inspection_entity.dart';
 import '../../domain/entities/equipment_entity.dart';
 import '../datasources/equipment_remote_datasource.dart';
 import '../mappers/equipment_supabase_mapper.dart';
@@ -30,18 +32,31 @@ import 'equipment_repository.dart';
 /// tenant + identity key, which is what makes a plain upsert merge rather than
 /// duplicate.
 class EquipmentRepositoryImpl implements EquipmentRepository {
-  const EquipmentRepositoryImpl({EquipmentRemoteDatasource? remote})
-      : _remote = remote;
+  EquipmentRepositoryImpl({EquipmentRemoteDatasource? remote})
+    : _remote = remote;
 
   final EquipmentRemoteDatasource? _remote;
 
+  /// Manual assets are held in-memory until the next remote read sees the
+  /// queued upsert. This makes registration immediately visible offline
+  /// without introducing a second local source of truth for the registry.
+  final Map<String, _KeyedUnit> _registered = {};
+
   @override
   Future<List<EquipmentEntity>> listEquipment() async {
-    final local = _deriveFromInspections();
+    final derived = _deriveFromInspections();
 
     // Push what we derived so other devices see it. Best-effort and
     // non-blocking: the queue handles retries.
-    unawaited(_publish(local));
+    unawaited(_publish(derived));
+
+    // Locally derived inspection records take precedence over a manual asset
+    // with the same identity; a freshly collected inspection is the richer
+    // source of truth for the displayed registry item.
+    final local = <String, _KeyedUnit>{
+      for (final unit in _registered.values) unit.identityKey: unit,
+      for (final unit in derived) unit.identityKey: unit,
+    }.values.toList(growable: false);
 
     // Copy before sorting: the no-inspections path yields a const list, and
     // sorting that throws.
@@ -60,17 +75,43 @@ class EquipmentRepositoryImpl implements EquipmentRepository {
   }
 
   @override
+  Future<List<InspectionEntity>> listInspectionHistory(
+    EquipmentEntity asset,
+  ) async {
+    if (!Hive.isBoxOpen(HiveBoxes.inspectionsBoxName)) return const [];
+
+    final nameplates = _nameplatesByInspection();
+    final targetKey = EquipmentEntity.identityKey(
+      serialNumber: asset.serialNumber,
+      siteCode: asset.siteCode,
+      make: asset.make,
+      model: asset.model,
+      fallbackId: asset.id,
+    );
+
+    final history = HiveBoxes.inspections.values.where((inspection) {
+      return _identityForInspection(inspection, nameplates[inspection.id]) ==
+          targetKey;
+    }).toList()..sort((a, b) => b.serviceDate.compareTo(a.serviceDate));
+
+    return history.map((inspection) => inspection.toEntity()).toList(
+      growable: false,
+    );
+  }
+
+  @override
   Future<EquipmentFacets> facets() async {
     final all = await listEquipment();
 
     List<String> distinct(String Function(EquipmentEntity) get) {
-      final values = all
-          .map(get)
-          .map((v) => v.trim())
-          .where((v) => v.isNotEmpty)
-          .toSet()
-          .toList()
-        ..sort();
+      final values =
+          all
+              .map(get)
+              .map((v) => v.trim())
+              .where((v) => v.isNotEmpty)
+              .toSet()
+              .toList()
+            ..sort();
       return values;
     }
 
@@ -78,7 +119,108 @@ class EquipmentRepositoryImpl implements EquipmentRepository {
       makes: distinct((e) => e.make),
       voltages: distinct((e) => e.voltage),
       locations: distinct((e) => e.location),
+      assetTypes: all.map((e) => e.assetType).toSet().toList()
+        ..sort((a, b) => a.name.compareTo(b.name)),
     );
+  }
+
+  @override
+  Future<EquipmentEntity> registerAsset({
+    required String name,
+    required AssetType assetType,
+    required String make,
+    required String model,
+    required String serialNumber,
+    required String voltage,
+    required String location,
+    required String siteCode,
+    String? siteId,
+    String notes = '',
+  }) async {
+    final tenantId = SyncContext.tenantId;
+    if (tenantId == null) {
+      throw StateError('Select an active tenant before registering an asset.');
+    }
+
+    final normalizedName = name.trim();
+    if (normalizedName.isEmpty) {
+      throw ArgumentError.value(name, 'name', 'Asset name cannot be blank.');
+    }
+
+    final fallbackId = const Uuid().v4();
+    final identityKey = EquipmentEntity.identityKey(
+      serialNumber: serialNumber,
+      siteCode: siteCode,
+      make: make,
+      model: model,
+      fallbackId: fallbackId,
+    );
+    final rowId = equipmentIdFor(tenantId: tenantId, identityKey: identityKey);
+    final asset = EquipmentEntity(
+      id: rowId,
+      name: normalizedName,
+      assetType: assetType,
+      make: make.trim(),
+      model: model.trim(),
+      serialNumber: serialNumber.trim(),
+      voltage: voltage.trim(),
+      location: location.trim(),
+      siteCode: siteCode.trim(),
+      siteId: siteId,
+      registryId: rowId,
+      registryIdentityKey: identityKey,
+      metadata: notes.trim().isEmpty ? const {} : {'notes': notes.trim()},
+      hasInspectionLink: false,
+      status: EquipmentStatus.inactive,
+    );
+
+    await SyncService.instance.enqueueUpsert(
+      table: kEquipmentTable,
+      id: rowId,
+      payload: equipmentToSupabaseJson(
+        asset,
+        identityKey: identityKey,
+        tenantId: tenantId,
+      ),
+    );
+    _registered[identityKey] = _KeyedUnit(
+      identityKey: identityKey,
+      unit: asset,
+    );
+    return asset;
+  }
+
+  @override
+  Future<void> updateManualAssetSite({
+    required EquipmentEntity asset,
+    String? siteId,
+    required String siteCode,
+    required String location,
+  }) async {
+    final tenantId = SyncContext.tenantId;
+    final rowId = asset.registryId;
+    final identityKey = asset.registryIdentityKey;
+    if (tenantId == null || rowId == null || identityKey == null || asset.hasInspectionLink) {
+      throw StateError('Only manually registered assets can be reassigned.');
+    }
+    final updated = asset.copyWith(
+      siteId: siteId,
+      clearSiteId: siteId == null,
+      siteCode: siteCode.trim(),
+      location: location.trim(),
+    );
+    await SyncService.instance.enqueueUpsert(
+      table: kEquipmentTable,
+      id: rowId,
+      payload: equipmentToSupabaseJson(
+        updated,
+        identityKey: identityKey,
+        tenantId: tenantId,
+        rowId: rowId,
+        includeSiteAssignment: true,
+      ),
+    );
+    _registered[identityKey] = _KeyedUnit(identityKey: identityKey, unit: updated);
   }
 
   // ---------------------------------------------------------------------------
@@ -91,24 +233,12 @@ class EquipmentRepositoryImpl implements EquipmentRepository {
     final inspections = HiveBoxes.inspections.values.toList();
     if (inspections.isEmpty) return const [];
 
-    // Nameplates keyed by the inspection they belong to.
-    final nameplates = <String, NameplateData>{};
-    if (Hive.isBoxOpen(HiveBoxes.nameplatesBoxName)) {
-      for (final np in HiveBoxes.nameplates.values) {
-        nameplates[np.inspectionId] = np;
-      }
-    }
+    final nameplates = _nameplatesByInspection();
 
     final grouped = <String, List<Inspection>>{};
     for (final ins in inspections) {
       final np = nameplates[ins.id];
-      final key = EquipmentEntity.identityKey(
-        serialNumber: _pick(np?.generatorSn, ins.generatorSerial),
-        siteCode: ins.siteCode,
-        make: _pick(np?.generatorMfr, ins.generatorMake),
-        model: _pick(np?.generatorModel, ins.generatorModel),
-        fallbackId: ins.id,
-      );
+      final key = _identityForInspection(ins, np);
       grouped.putIfAbsent(key, () => []).add(ins);
     }
 
@@ -144,6 +274,7 @@ class EquipmentRepositoryImpl implements EquipmentRepository {
             siteCode: latest.siteCode,
             siteGrade: latest.siteGrade,
             lastInspection: latest.serviceDate,
+            hasInspectionLink: true,
             inspectionCount: history.length,
             status: _statusFor(latest),
           ),
@@ -225,6 +356,27 @@ class EquipmentRepositoryImpl implements EquipmentRepository {
     return fallback.trim();
   }
 
+  static Map<String, NameplateData> _nameplatesByInspection() {
+    if (!Hive.isBoxOpen(HiveBoxes.nameplatesBoxName)) return const {};
+    return {
+      for (final nameplate in HiveBoxes.nameplates.values)
+        nameplate.inspectionId: nameplate,
+    };
+  }
+
+  static String _identityForInspection(
+    Inspection inspection,
+    NameplateData? nameplate,
+  ) {
+    return EquipmentEntity.identityKey(
+      serialNumber: _pick(nameplate?.generatorSn, inspection.generatorSerial),
+      siteCode: inspection.siteCode,
+      make: _pick(nameplate?.generatorMfr, inspection.generatorMake),
+      model: _pick(nameplate?.generatorModel, inspection.generatorModel),
+      fallbackId: inspection.id,
+    );
+  }
+
   static String _displayName({
     required String make,
     required String model,
@@ -235,7 +387,7 @@ class EquipmentRepositoryImpl implements EquipmentRepository {
     if (label.isNotEmpty) return label;
     if (siteCode.trim().isNotEmpty) return siteCode.trim();
     if (address.trim().isNotEmpty) return address.trim();
-    return 'Unidentified generator';
+    return 'Unidentified asset';
   }
 
   /// Service state from the latest inspection.

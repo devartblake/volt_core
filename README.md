@@ -167,3 +167,4 @@ Deeper notes live in [`docs/`](docs/):
 | `photos_reminders_and_reliability.md` | Photo attachments, reminders, path handling |
 | `email_and_documents.md` | Report email and the PDF library |
 | `routing_audit.md` | Route table review (partly superseded by the audit doc) |
+| `voltcore_fieldops_roadmap.md` | Expansion from generator compliance to field-service asset operations |

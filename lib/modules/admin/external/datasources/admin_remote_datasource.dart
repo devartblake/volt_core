@@ -24,7 +24,7 @@ class AdminRemoteDatasource {
   final SupabaseClient _client;
 
   AdminRemoteDatasource({SupabaseClient? client})
-      : _client = client ?? Supabase.instance.client;
+    : _client = client ?? Supabase.instance.client;
 
   /// ORIGINAL: Raw technician rows as `Map<String, dynamic>`.
   ///
@@ -37,9 +37,7 @@ class AdminRemoteDatasource {
         .order('name', ascending: true);
 
     // Supabase dart returns dynamic; cast to List<Map<String,dynamic>>
-    return (response as List)
-        .map((e) => e as Map<String, dynamic>)
-        .toList();
+    return (response as List).map((e) => e as Map<String, dynamic>).toList();
   }
 
   /// NEW: Strongly-typed technicians as [TechnicianModel].
@@ -104,19 +102,19 @@ class AdminRemoteDatasource {
   /// domain entity up through the repository/usecase/controller.
   Future<AdminDashboardStatsEntity> fetchDashboardStats() async {
     // Total inspections
-    final inspectionsData =
-    await _client.from(inspectionsTable).select('id');
+    final inspectionsData = await _client.from(inspectionsTable).select('id');
     final totalInspections = inspectionsData.length;
 
-    // Open maintenance jobs (status == 'open')
-    //
-    // NOTE: call `.select()` first so the builder type becomes
-    // PostgrestFilterBuilder/PostgrestTransformBuilder, which *has* `eq`.
+    // A work_status enum has no `open` member. Treat unfinished lifecycle
+    // states as open work for the dashboard; completed, cancelled and archived
+    // jobs are deliberately excluded.
     final maintenanceOpenData = await _client
         .from(maintenanceJobsTable)
-        .select('id')
-        .eq('status', 'open');
-    final openMaintenanceJobs = maintenanceOpenData.length;
+        .select('id, status');
+    const openStatuses = {'draft', 'scheduled', 'in_progress'};
+    final openMaintenanceJobs = maintenanceOpenData
+        .where((row) => openStatuses.contains(row['status']))
+        .length;
 
     // Active technicians (is_active == true)
     final activeTechsData = await _client

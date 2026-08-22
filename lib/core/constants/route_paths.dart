@@ -20,6 +20,7 @@ class RoutePaths {
   // Inspections
   static const String inspections = '/inspections';
   static const String inspectionNew = '/inspections/new';
+  static const String inspectionEdit = '/inspections/edit/:id';
   static const String inspectionDetail = '/inspections/detail/:id';
   static const String inspectionsPending = '/inspections/pending';
 
@@ -40,6 +41,10 @@ class RoutePaths {
   static const String nameplateList = '/nameplate-list';
   static const String nameplateIntervals = '/nameplate/:inspectionId';
   static const String equipmentSearch = '/equipment/search';
+  static const String equipmentHistory = '/equipment/history/:id';
+
+  // Customer / service-site directory
+  static const String customerSites = '/customers-sites';
 
   // Documents
   static const String documents = '/documents';
@@ -70,6 +75,7 @@ class RouteNames {
 
   static const String inspections = 'inspections';
   static const String inspectionNew = 'inspection_new';
+  static const String inspectionEdit = 'inspection_edit';
   static const String inspectionDetail = 'inspection_detail';
   static const String inspectionsPending = 'inspections_pending';
 
@@ -84,6 +90,8 @@ class RouteNames {
   static const String nameplateList = 'nameplate_list';
   static const String nameplateIntervals = 'nameplate_intervals';
   static const String equipmentSearch = 'equipment_search';
+  static const String equipmentHistory = 'equipment_history';
+  static const String customerSites = 'customer_sites';
 
   static const String documents = 'documents';
 

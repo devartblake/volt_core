@@ -5,6 +5,8 @@ import 'package:hive/hive.dart';
 import 'package:voltcore/modules/maintenance/infra/datasources/hive_boxes_maintenance.dart';
 import 'package:voltcore/modules/maintenance/infra/models/maintenance_record.dart';
 import 'package:voltcore/modules/settings/selection_options_service.dart';
+import 'package:voltcore/modules/work_orders/infra/datasources/work_orders_box.dart';
+import 'package:voltcore/modules/work_orders/infra/models/work_order_record.dart';
 
 /// Reproduces what the debug menu's "clear data" does to a running app:
 /// every box is closed and reopened as a *new* instance. Anything holding the
@@ -21,6 +23,10 @@ void main() {
   setUpAll(() {
     if (!Hive.isAdapterRegistered(40)) {
       Hive.registerAdapter(MaintenanceRecordAdapter());
+    }
+    final workOrderAdapter = WorkOrderRecordAdapter();
+    if (!Hive.isAdapterRegistered(workOrderAdapter.typeId)) {
+      Hive.registerAdapter(workOrderAdapter);
     }
   });
 
@@ -85,5 +91,17 @@ void main() {
     // Honest about the state rather than claiming ready and throwing on read.
     expect(service.isReady, isFalse);
     expect(service.techs, isEmpty);
+  });
+
+  test('WorkOrdersBox re-resolves after a close/reopen cycle', () async {
+    // Work orders arrived after this class of bug was fixed elsewhere and
+    // shipped with the same shape: a cached handle and a plain non-null check.
+    await WorkOrdersBox.init();
+    expect(WorkOrdersBox.box.isOpen, isTrue);
+
+    await Hive.close();
+    await Hive.openBox<WorkOrderRecord>(WorkOrdersBox.boxName);
+
+    expect(WorkOrdersBox.box.isOpen, isTrue);
   });
 }

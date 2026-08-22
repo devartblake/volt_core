@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import '../../../modules/maintenance/infra/datasources/hive_boxes_maintenance.dart';
+import '../../../modules/work_orders/infra/datasources/work_orders_box.dart';
 import '../storage/file_storage_service.dart';
 import 'hive_adapters.dart';
 import 'hive_boxes.dart';
@@ -43,6 +44,7 @@ class HiveService {
 
     await HiveBoxes.init();
     await MaintenanceBoxes.init();
+    await WorkOrdersBox.init();
 
     // Repair local data written by older builds (e.g. records stored under
     // auto-integer keys instead of their string id). Idempotent and non-fatal.
@@ -148,6 +150,7 @@ class HiveService {
     // the cached instance is fine — and the maintenance form throws
     // "Box has already been closed" for the rest of the session.
     MaintenanceBoxes.invalidate();
+    WorkOrdersBox.invalidate();
 
     _initialized = false;
 

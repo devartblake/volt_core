@@ -1,5 +1,5 @@
 -- ---------------------------------------------------------------------------
--- 0005_tenant_bootstrap.sql
+-- tenant_bootstrap.sql (manual operator runbook; not a database migration)
 --
 -- Fixes: POST /rest/v1/inspections -> 403
 --   "new row violates row-level security policy for table \"inspections\"" (42501)
@@ -9,9 +9,11 @@
 -- `inspections` (and `maintenance_records`, `equipment`) are tenant-scoped:
 -- their policies call `public.is_tenant_member(tenant_id)`, which is true only
 -- when an *active* `tenant_members` row pairs the signed-in user with that
--- tenant. `schedule_tasks` is NOT tenant-scoped — migration 0003 gates it on
--- `authenticated` alone — which is why scheduling returns 201 while saving an
--- inspection returns 403 in the same session. That asymmetry is the diagnosis.
+-- tenant. Before Phase 1 is deployed, `schedule_tasks` may still use its older
+-- authenticated-only policy. After `0006_phase1_asset_foundation.sql` is
+-- deployed, it is tenant-scoped too. In either case, an inspection 403 is
+-- resolved by configuring an active tenant membership rather than weakening
+-- RLS.
 --
 -- The app stamps `tenant_id` from SUPABASE_TENANT_ID in assets/env/.env.*.
 -- If that value names a tenant that does not exist, or one this user has no
@@ -47,7 +49,7 @@ select
   count(tm.*) filter (where tm.is_active)  as active_memberships
 from auth.users u
 left join public.tenant_members tm on tm.user_id = u.id
-where u.email = 'you@example.com'          -- <<< EDIT
+where u.email = 'aselectricnyc@gmail.com'          -- <<< EDIT
 group by u.id;
 
 -- Reading the result:
@@ -63,7 +65,7 @@ group by u.id;
 -- ===========================================================================
 do $$
 declare
-  v_email  text := 'you@example.com';      -- <<< EDIT (same address)
+  v_email  text := 'aselectricnyc@gmail.com';      -- <<< EDIT (same address)
   v_user   uuid;
   v_tenant uuid;
 begin

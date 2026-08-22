@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart';
 
-/// Service state of a generator, derived from its most recent inspection.
+/// Service state of an asset, derived from its most recent inspection.
 enum EquipmentStatus {
   /// Passing its last inspection.
   active,
@@ -15,13 +15,28 @@ enum EquipmentStatus {
   retired,
 }
 
-/// A generator the company inspects.
+/// Supported field-service asset categories.
 ///
-/// Equipment isn't a table the user maintains by hand — it is *derived* from
-/// the inspection history: every inspection names a generator (make, model,
-/// serial), and the nameplate record attached to it carries the plate details.
-/// Grouping that history by serial number gives one row per physical unit,
-/// showing its latest known state.
+/// The database persists the stable [name], allowing additional categories to
+/// be introduced later without a destructive schema migration.
+enum AssetType {
+  generator,
+  transferSwitch,
+  switchgear,
+  panelboard,
+  transformer,
+  emergencyLighting,
+  ups,
+  evCharger,
+  batteryEnergyStorage,
+  other,
+}
+
+/// A physical asset the company inspects or maintains.
+///
+/// Assets may be derived from inspection history or entered into the shared
+/// registry before their first inspection. Generator inspections remain the
+/// first source, but the entity is intentionally not generator-specific.
 @immutable
 class EquipmentEntity {
   const EquipmentEntity({
@@ -32,9 +47,15 @@ class EquipmentEntity {
     required this.serialNumber,
     required this.voltage,
     required this.location,
+    this.assetType = AssetType.generator,
+    this.metadata = const {},
+    this.siteId,
+    this.registryId,
+    this.registryIdentityKey,
     this.siteCode = '',
     this.siteGrade = '',
     this.lastInspection,
+    this.hasInspectionLink = true,
     this.inspectionCount = 0,
     this.status = EquipmentStatus.active,
   });
@@ -55,12 +76,33 @@ class EquipmentEntity {
   /// Where it lives — the address from the latest inspection.
   final String location;
 
+  /// Broad asset category. Existing records default to [AssetType.generator].
+  final AssetType assetType;
+
+  /// Asset-type-specific values, such as generator kW or charger connector
+  /// count. Generic identity and lifecycle fields remain first-class fields.
+  final Map<String, dynamic> metadata;
+
+  /// Tenant-owned service site selected for this asset, when it is known.
+  final String? siteId;
+
+  /// Shared registry row identity. Inspection-derived entities use a separate
+  /// inspection id for navigation, so this is retained for safe edits.
+  final String? registryId;
+
+  /// Stable registry merge key, supplied by the remote equipment row.
+  final String? registryIdentityKey;
+
   final String siteCode;
 
   /// 'Green' | 'Amber' | 'Red' from the latest inspection, when graded.
   final String siteGrade;
 
   final DateTime? lastInspection;
+
+  /// Whether [id] points to an inspection/nameplate record that can be opened.
+  /// Manually registered assets have no inspection until field work is done.
+  final bool hasInspectionLink;
 
   /// How many inspections contributed to this record.
   final int inspectionCount;
@@ -99,9 +141,16 @@ class EquipmentEntity {
     String? serialNumber,
     String? voltage,
     String? location,
+    AssetType? assetType,
+    Map<String, dynamic>? metadata,
+    String? siteId,
+    bool clearSiteId = false,
+    String? registryId,
+    String? registryIdentityKey,
     String? siteCode,
     String? siteGrade,
     DateTime? lastInspection,
+    bool? hasInspectionLink,
     int? inspectionCount,
     EquipmentStatus? status,
   }) {
@@ -113,9 +162,15 @@ class EquipmentEntity {
       serialNumber: serialNumber ?? this.serialNumber,
       voltage: voltage ?? this.voltage,
       location: location ?? this.location,
+      assetType: assetType ?? this.assetType,
+      metadata: metadata ?? this.metadata,
+      siteId: clearSiteId ? null : (siteId ?? this.siteId),
+      registryId: registryId ?? this.registryId,
+      registryIdentityKey: registryIdentityKey ?? this.registryIdentityKey,
       siteCode: siteCode ?? this.siteCode,
       siteGrade: siteGrade ?? this.siteGrade,
       lastInspection: lastInspection ?? this.lastInspection,
+      hasInspectionLink: hasInspectionLink ?? this.hasInspectionLink,
       inspectionCount: inspectionCount ?? this.inspectionCount,
       status: status ?? this.status,
     );

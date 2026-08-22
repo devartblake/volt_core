@@ -8,6 +8,7 @@ import 'package:path/path.dart' as p;
 import 'package:share_plus/share_plus.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
+
 //
 // import '../../features/inspections/data/models/inspection.dart';
 // import '../../features/inspections/data/models/load_test_record.dart';
@@ -25,6 +26,7 @@ import '../../services/hive/hive_boxes.dart';
 import '../photos/photo_attachment.dart';
 import '../photos/photo_service.dart';
 import '../storage/file_storage_service.dart';
+import '../storage/web_file_store.dart';
 import '../sync/sync_service.dart';
 
 /// User-level preferences for how PDFs should be exported.
@@ -58,10 +60,7 @@ class PdfExportResult {
   final String? filePath;
   final bool emailed;
 
-  const PdfExportResult({
-    this.filePath,
-    this.emailed = false,
-  });
+  const PdfExportResult({this.filePath, this.emailed = false});
 }
 
 /// Central service for generating and exporting PDFs.
@@ -81,10 +80,10 @@ class PdfService {
   ///
   /// Returns the local file path (or empty string on web/if failed).
   Future<String> generatePdfForInspection(
-      Inspection ins, {
-        PdfExportPrefs? prefs,
-        String? templateAsset,
-      }) async {
+    Inspection ins, {
+    PdfExportPrefs? prefs,
+    String? templateAsset,
+  }) async {
     final bytes = await _buildInspectionPdfBytes(ins);
 
     // SiteCode_YYYY-MM-DD (same convention you were using)
@@ -110,7 +109,9 @@ class PdfService {
       prefs: prefs ?? const PdfExportPrefs(emailAllowed: false),
     );
 
-    debugPrint('Inspection PDF saved to: ${result.filePath ?? '(no local path)'}');
+    debugPrint(
+      'Inspection PDF saved to: ${result.filePath ?? '(no local path)'}',
+    );
     return result.filePath ?? '';
   }
 
@@ -120,8 +121,12 @@ class PdfService {
   /// directly if you need to do custom storage controllers.
   Future<Uint8List> _buildInspectionPdfBytes(Inspection ins) async {
     // Load fonts
-    final baseFont = await rootBundle.load('assets/fonts/NotoSans/NotoSans-Regular.ttf');
-    final boldFont = await rootBundle.load('assets/fonts/NotoSans/NotoSans-Bold.ttf');
+    final baseFont = await rootBundle.load(
+      'assets/fonts/NotoSans/NotoSans-Regular.ttf',
+    );
+    final boldFont = await rootBundle.load(
+      'assets/fonts/NotoSans/NotoSans-Bold.ttf',
+    );
 
     // Try to load logo each time (in case it wasn't loaded during init)
     pw.MemoryImage? logo;
@@ -169,10 +174,7 @@ class PdfService {
           build: (ctx) => [
             pw.Text(
               'Nameplate Summary',
-              style: pw.TextStyle(
-                fontSize: 16,
-                fontWeight: pw.FontWeight.bold,
-              ),
+              style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold),
             ),
             pw.SizedBox(height: 8),
             _nameplateSummaryTable(nameplate),
@@ -182,11 +184,12 @@ class PdfService {
     }
 
     // TEST READING INTERVALS (tabular across pages)
-    final intervals = HiveBoxes.testIntervals.values
-        .where((r) => r.inspectionId == ins.id)
-        .cast<TestIntervalRecord>()
-        .toList()
-      ..sort((a, b) => a.index.compareTo(b.index));
+    final intervals =
+        HiveBoxes.testIntervals.values
+            .where((r) => r.inspectionId == ins.id)
+            .cast<TestIntervalRecord>()
+            .toList()
+          ..sort((a, b) => a.index.compareTo(b.index));
 
     if (intervals.isNotEmpty) {
       pdf.addPage(
@@ -196,10 +199,7 @@ class PdfService {
           build: (ctx) => [
             pw.Text(
               'Test Reading Intervals',
-              style: pw.TextStyle(
-                fontSize: 16,
-                fontWeight: pw.FontWeight.bold,
-              ),
+              style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold),
             ),
             pw.SizedBox(height: 8),
             _intervalsTable(intervals),
@@ -209,11 +209,12 @@ class PdfService {
     }
 
     // LOAD TEST RESULTS
-    final loadRows = HiveBoxes.loadTests.values
-        .where((r) => r.inspectionId == ins.id)
-        .cast<LoadTestRecord>()
-        .toList()
-      ..sort((a, b) => a.stepIndex.compareTo(b.stepIndex));
+    final loadRows =
+        HiveBoxes.loadTests.values
+            .where((r) => r.inspectionId == ins.id)
+            .cast<LoadTestRecord>()
+            .toList()
+          ..sort((a, b) => a.stepIndex.compareTo(b.stepIndex));
 
     if (loadRows.isNotEmpty) {
       pdf.addPage(
@@ -223,10 +224,7 @@ class PdfService {
           build: (ctx) => [
             pw.Text(
               'Load Test Results',
-              style: pw.TextStyle(
-                fontSize: 16,
-                fontWeight: pw.FontWeight.bold,
-              ),
+              style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold),
             ),
             pw.SizedBox(height: 8),
             _buildLoadTestTable(loadRows),
@@ -356,9 +354,9 @@ class PdfService {
   /// - Optionally opens share/email sheet if [prefs.emailAllowed] is true.
   /// - Copies signature images (if you wire those fields in the model).
   Future<void> generateMaintenancePdf(
-      MaintenanceRecord m, {
-        PdfExportPrefs? prefs,
-      }) async {
+    MaintenanceRecord m, {
+    PdfExportPrefs? prefs,
+  }) async {
     final bytes = await buildMaintenancePdfBytes(m);
     final fileName = p.join('maintenance', _buildMaintenanceFileName(m));
     final effectivePrefs = prefs ?? const PdfExportPrefs(emailAllowed: false);
@@ -371,16 +369,13 @@ class PdfService {
 
     if (result.filePath != null) {
       final folder = p.dirname(result.filePath!);
-      await _copySignaturesIfAny(
-        maintenance: m,
-        folderPath: folder,
-      );
+      await _copySignaturesIfAny(maintenance: m, folderPath: folder);
     }
   }
 
   String _buildMaintenanceFileName(MaintenanceRecord m) {
-    final site =
-    (m.siteCode.isNotEmpty ? m.siteCode : 'maintenance').replaceAll(' ', '_');
+    final site = (m.siteCode.isNotEmpty ? m.siteCode : 'maintenance')
+        .replaceAll(' ', '_');
     final date = _fmtDate(m.dateOfService ?? m.createdAt);
     return 'Maintenance_${site}_$date.pdf';
   }
@@ -413,9 +408,15 @@ class PdfService {
                     fontWeight: pw.FontWeight.bold,
                   ),
                 ),
-                PdfTemplate.checkboxWithLabel('Green', ins.siteGrade == 'Green'),
+                PdfTemplate.checkboxWithLabel(
+                  'Green',
+                  ins.siteGrade == 'Green',
+                ),
                 pw.SizedBox(width: 12),
-                PdfTemplate.checkboxWithLabel('Amber', ins.siteGrade == 'Amber'),
+                PdfTemplate.checkboxWithLabel(
+                  'Amber',
+                  ins.siteGrade == 'Amber',
+                ),
                 pw.SizedBox(width: 12),
                 PdfTemplate.checkboxWithLabel('Red', ins.siteGrade == 'Red'),
               ],
@@ -545,10 +546,7 @@ class PdfService {
                     ),
                     PdfTemplate.inputField(ins.fuelQtyGallons, width: 50),
                     pw.SizedBox(width: 4),
-                    pw.Text(
-                      'gallons',
-                      style: const pw.TextStyle(fontSize: 9),
-                    ),
+                    pw.Text('gallons', style: const pw.TextStyle(fontSize: 9)),
                   ],
                 ),
                 pw.SizedBox(height: 12),
@@ -882,20 +880,14 @@ class PdfService {
           pw.SizedBox(height: 8),
           pw.Row(
             children: [
-              pw.Text(
-                'ATS Location: ',
-                style: const pw.TextStyle(fontSize: 9),
-              ),
+              pw.Text('ATS Location: ', style: const pw.TextStyle(fontSize: 9)),
               PdfTemplate.checkboxWithLabel('Rooftop', false),
               pw.SizedBox(width: 8),
               PdfTemplate.checkboxWithLabel('Basement', false),
               pw.SizedBox(width: 8),
               PdfTemplate.checkboxWithLabel('Electrical Room', false),
               pw.SizedBox(width: 8),
-              pw.Text(
-                'Other: _______',
-                style: const pw.TextStyle(fontSize: 9),
-              ),
+              pw.Text('Other: _______', style: const pw.TextStyle(fontSize: 9)),
             ],
           ),
           pw.SizedBox(height: 16),
@@ -903,10 +895,7 @@ class PdfService {
           // Nameplate Data
           pw.Text(
             'Nameplate Data',
-            style: pw.TextStyle(
-              fontSize: 10,
-              fontWeight: pw.FontWeight.bold,
-            ),
+            style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold),
             textAlign: pw.TextAlign.right,
           ),
           pw.SizedBox(height: 8),
@@ -957,10 +946,7 @@ class PdfService {
           // Fuel Monitoring Data
           pw.Text(
             'Fuel Monitoring Data',
-            style: pw.TextStyle(
-              fontSize: 10,
-              fontWeight: pw.FontWeight.bold,
-            ),
+            style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold),
             textAlign: pw.TextAlign.right,
           ),
           pw.SizedBox(height: 8),
@@ -1079,8 +1065,10 @@ class PdfService {
                 children: [
                   pw.Row(
                     children: [
-                      pw.Text('EQPT. INVENTORY NO. ',
-                          style: const pw.TextStyle(fontSize: 9)),
+                      pw.Text(
+                        'EQPT. INVENTORY NO. ',
+                        style: const pw.TextStyle(fontSize: 9),
+                      ),
                       PdfTemplate.inputField('', width: 120),
                     ],
                   ),
@@ -1091,12 +1079,11 @@ class PdfService {
                 children: [
                   pw.Row(
                     children: [
-                      pw.Text('TESTED BY: ',
-                          style: const pw.TextStyle(fontSize: 9)),
-                      PdfTemplate.inputField(
-                        ins.technicianName,
-                        width: 120,
+                      pw.Text(
+                        'TESTED BY: ',
+                        style: const pw.TextStyle(fontSize: 9),
                       ),
+                      PdfTemplate.inputField(ins.technicianName, width: 120),
                     ],
                   ),
                 ],
@@ -1173,11 +1160,7 @@ class PdfService {
     );
   }
 
-  pw.Widget _labelValueRow(
-      String label,
-      String value, {
-        double width = 100,
-      }) {
+  pw.Widget _labelValueRow(String label, String value, {double width = 100}) {
     return pw.Row(
       children: [
         pw.Text('$label: ', style: const pw.TextStyle(fontSize: 9)),
@@ -1187,13 +1170,13 @@ class PdfService {
   }
 
   pw.Widget _nameplateRow(
-      String label1,
-      String value1,
-      String label2,
-      String value2,
-      String label3,
-      String value3,
-      ) {
+    String label1,
+    String value1,
+    String label2,
+    String value2,
+    String label3,
+    String value3,
+  ) {
     return pw.Row(
       children: [
         pw.Text('$label1 ', style: const pw.TextStyle(fontSize: 8)),
@@ -1208,8 +1191,7 @@ class PdfService {
     );
   }
 
-  String _formatDate(DateTime date) =>
-      date.toIso8601String().split('T').first;
+  String _formatDate(DateTime date) => date.toIso8601String().split('T').first;
 
   pw.Widget _nameplateSummaryTable(NameplateData m) {
     final rows = <List<String>>[
@@ -1251,15 +1233,14 @@ class PdfService {
       (i % 2 == 0 ? left : right).add(rows[i]);
     }
 
-    pw.Widget kv(List<List<String>> kv) =>
-        pw.TableHelper.fromTextArray(
-          headers: const ['Field', 'Value'],
-          headerDecoration: const pw.BoxDecoration(color: PdfColors.grey300),
-          headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold),
-          data: kv,
-          border: null,
-          cellAlignment: pw.Alignment.centerLeft,
-        );
+    pw.Widget kv(List<List<String>> kv) => pw.TableHelper.fromTextArray(
+      headers: const ['Field', 'Value'],
+      headerDecoration: const pw.BoxDecoration(color: PdfColors.grey300),
+      headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+      data: kv,
+      border: null,
+      cellAlignment: pw.Alignment.centerLeft,
+    );
 
     return pw.Row(
       crossAxisAlignment: pw.CrossAxisAlignment.start,
@@ -1393,10 +1374,7 @@ class PdfService {
       children: [
         pw.Text(
           'Generator Maintenance & Repair Checklist',
-          style: pw.TextStyle(
-            fontSize: 18,
-            fontWeight: pw.FontWeight.bold,
-          ),
+          style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold),
         ),
         pw.SizedBox(height: 4),
         pw.Text(
@@ -1418,11 +1396,11 @@ class PdfService {
   String _yesNo(bool value) => value ? 'Yes' : 'No';
 
   pw.Widget _maintLabelValueRow(
-      String label,
-      String value, {
-        bool wrap = false,
-        double labelWidth = 120,
-      }) {
+    String label,
+    String value, {
+    bool wrap = false,
+    double labelWidth = 120,
+  }) {
     return pw.Row(
       crossAxisAlignment: pw.CrossAxisAlignment.start,
       children: [
@@ -1430,10 +1408,7 @@ class PdfService {
           width: labelWidth,
           child: pw.Text(
             label,
-            style: pw.TextStyle(
-              fontWeight: pw.FontWeight.bold,
-              fontSize: 9,
-            ),
+            style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 9),
           ),
         ),
         pw.SizedBox(width: 4),
@@ -1451,15 +1426,9 @@ class PdfService {
   pw.Widget _bulletRow(String label, bool value) {
     return pw.Row(
       children: [
-        pw.Text(
-          value ? '• ' : '○ ',
-          style: const pw.TextStyle(fontSize: 9),
-        ),
+        pw.Text(value ? '• ' : '○ ', style: const pw.TextStyle(fontSize: 9)),
         pw.Expanded(
-          child: pw.Text(
-            label,
-            style: const pw.TextStyle(fontSize: 9),
-          ),
+          child: pw.Text(label, style: const pw.TextStyle(fontSize: 9)),
         ),
       ],
     );
@@ -1471,10 +1440,7 @@ class PdfService {
       children: [
         pw.Text(
           'Site & Generator Information',
-          style: pw.TextStyle(
-            fontSize: 12,
-            fontWeight: pw.FontWeight.bold,
-          ),
+          style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold),
         ),
         pw.SizedBox(height: 4),
         _maintLabelValueRow('Site Code:', m.siteCode),
@@ -1506,10 +1472,7 @@ class PdfService {
         pw.SizedBox(height: 4),
         pw.Text(
           'Initial Walkthrough & Location',
-          style: pw.TextStyle(
-            fontSize: 12,
-            fontWeight: pw.FontWeight.bold,
-          ),
+          style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold),
         ),
         pw.SizedBox(height: 4),
         _maintLabelValueRow(
@@ -1519,10 +1482,7 @@ class PdfService {
         pw.SizedBox(height: 4),
         pw.Text(
           'Enclosure Condition:',
-          style: pw.TextStyle(
-            fontWeight: pw.FontWeight.bold,
-            fontSize: 9,
-          ),
+          style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 9),
         ),
         pw.SizedBox(height: 2),
         _bulletRow('Enclosure intact', m.enclosureIntact),
@@ -1531,10 +1491,7 @@ class PdfService {
         pw.SizedBox(height: 4),
         pw.Text(
           'Safety & Hazards:',
-          style: pw.TextStyle(
-            fontWeight: pw.FontWeight.bold,
-            fontSize: 9,
-          ),
+          style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 9),
         ),
         pw.SizedBox(height: 2),
         _bulletRow('Visible damage or leaks', m.visibleDamageOrLeaks),
@@ -1542,10 +1499,7 @@ class PdfService {
           'Area clear of debris / tripping hazards',
           m.areaClearOfHazards,
         ),
-        _bulletRow(
-          'Warning / safety labels visible',
-          m.warningLabelsVisible,
-        ),
+        _bulletRow('Warning / safety labels visible', m.warningLabelsVisible),
         _bulletRow(
           'Fire extinguisher present & accessible',
           m.fireExtinguisherPresent,
@@ -1561,18 +1515,12 @@ class PdfService {
         pw.SizedBox(height: 4),
         pw.Text(
           'General Maintenance',
-          style: pw.TextStyle(
-            fontSize: 12,
-            fontWeight: pw.FontWeight.bold,
-          ),
+          style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold),
         ),
         pw.SizedBox(height: 4),
         pw.Text(
           'Battery',
-          style: pw.TextStyle(
-            fontWeight: pw.FontWeight.bold,
-            fontSize: 9,
-          ),
+          style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 9),
         ),
         _maintLabelValueRow(
           'Needs replacement:',
@@ -1588,10 +1536,7 @@ class PdfService {
         pw.SizedBox(height: 4),
         pw.Text(
           'Air Filter',
-          style: pw.TextStyle(
-            fontWeight: pw.FontWeight.bold,
-            fontSize: 9,
-          ),
+          style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 9),
         ),
         _maintLabelValueRow(
           'Needs replacement:',
@@ -1601,28 +1546,19 @@ class PdfService {
           'Recently replaced:',
           _yesNo(m.airFilterRecentlyReplaced),
         ),
-        _maintLabelValueRow(
-          'Last replaced:',
-          m.airFilterLastReplacedDate,
-        ),
+        _maintLabelValueRow('Last replaced:', m.airFilterLastReplacedDate),
         _maintLabelValueRow('Part No.:', m.airFilterPartNo),
         pw.SizedBox(height: 4),
         pw.Text(
           'Coolant',
-          style: pw.TextStyle(
-            fontWeight: pw.FontWeight.bold,
-            fontSize: 9,
-          ),
+          style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 9),
         ),
         _maintLabelValueRow('Level:', m.coolantLevel),
         _maintLabelValueRow('Color:', m.coolantColor),
         pw.SizedBox(height: 4),
         pw.Text(
           'Hoses',
-          style: pw.TextStyle(
-            fontWeight: pw.FontWeight.bold,
-            fontSize: 9,
-          ),
+          style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 9),
         ),
         _buildHoseRow(
           'Coolant hoses',
@@ -1657,10 +1593,7 @@ class PdfService {
         pw.SizedBox(height: 4),
         pw.Text(
           'Cannisters / Filters Needed',
-          style: pw.TextStyle(
-            fontWeight: pw.FontWeight.bold,
-            fontSize: 9,
-          ),
+          style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 9),
         ),
         _buildCanRow('Lube filter', m.canLube, m.canLubePartNo),
         _buildCanRow('Fuel filter', m.canFuel, m.canFuelPartNo),
@@ -1681,18 +1614,15 @@ class PdfService {
   }
 
   pw.Widget _buildHoseRow(
-      String label, {
-        required bool compromised,
-        required bool recommendChange,
-        required String notes,
-      }) {
+    String label, {
+    required bool compromised,
+    required bool recommendChange,
+    required String notes,
+  }) {
     return pw.Column(
       crossAxisAlignment: pw.CrossAxisAlignment.start,
       children: [
-        pw.Text(
-          label,
-          style: const pw.TextStyle(fontSize: 9),
-        ),
+        pw.Text(label, style: const pw.TextStyle(fontSize: 9)),
         _maintLabelValueRow(
           'Compromised:',
           _yesNo(compromised),
@@ -1704,12 +1634,7 @@ class PdfService {
           labelWidth: 80,
         ),
         if (notes.isNotEmpty)
-          _maintLabelValueRow(
-            'Notes:',
-            notes,
-            labelWidth: 80,
-            wrap: true,
-          ),
+          _maintLabelValueRow('Notes:', notes, labelWidth: 80, wrap: true),
         pw.SizedBox(height: 2),
       ],
     );
@@ -1721,10 +1646,7 @@ class PdfService {
       children: [
         pw.Container(
           width: 120,
-          child: pw.Text(
-            label,
-            style: const pw.TextStyle(fontSize: 9),
-          ),
+          child: pw.Text(label, style: const pw.TextStyle(fontSize: 9)),
         ),
         pw.SizedBox(width: 4),
         pw.Text(
@@ -1732,10 +1654,7 @@ class PdfService {
           style: const pw.TextStyle(fontSize: 9),
         ),
         pw.SizedBox(width: 8),
-        pw.Text(
-          'Part No: $partNo',
-          style: const pw.TextStyle(fontSize: 9),
-        ),
+        pw.Text('Part No: $partNo', style: const pw.TextStyle(fontSize: 9)),
       ],
     );
   }
@@ -1752,10 +1671,7 @@ class PdfService {
                 style: const pw.TextStyle(fontSize: 9),
               ),
               pw.Expanded(
-                child: pw.Text(
-                  label,
-                  style: const pw.TextStyle(fontSize: 9),
-                ),
+                child: pw.Text(label, style: const pw.TextStyle(fontSize: 9)),
               ),
             ],
           ),
@@ -1777,18 +1693,11 @@ class PdfService {
         pw.SizedBox(height: 4),
         pw.Text(
           'Maintenance Actions Performed',
-          style: pw.TextStyle(
-            fontSize: 12,
-            fontWeight: pw.FontWeight.bold,
-          ),
+          style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold),
         ),
         pw.SizedBox(height: 4),
         action('Oil filter changed', m.oilFilterChanged, m.oilFilterNotes),
-        action(
-          'Fuel filter replaced',
-          m.fuelFilterReplaced,
-          m.fuelFilterNotes,
-        ),
+        action('Fuel filter replaced', m.fuelFilterReplaced, m.fuelFilterNotes),
         action(
           'Coolant flushed / topped off',
           m.coolantFlushed,
@@ -1799,11 +1708,7 @@ class PdfService {
           m.batteryReplaced,
           m.batteryNotes,
         ),
-        action(
-          'Air filter replaced',
-          m.airFilterReplaced,
-          m.airFilterNotes,
-        ),
+        action('Air filter replaced', m.airFilterReplaced, m.airFilterNotes),
         action(
           'Belts / hoses replaced',
           m.beltsHosesReplaced,
@@ -1824,11 +1729,7 @@ class PdfService {
           m.atsControllerInspected,
           m.atsControllerNotes,
         ),
-        action(
-          'CDVR programmed / calibrated',
-          m.cdvrProgrammed,
-          m.cdvrNotes,
-        ),
+        action('CDVR programmed / calibrated', m.cdvrProgrammed, m.cdvrNotes),
         action(
           'Under-voltage issue repaired',
           m.undervoltageRepaired,
@@ -1842,10 +1743,7 @@ class PdfService {
         pw.SizedBox(height: 4),
         pw.Text(
           'Service Observations / Notes:',
-          style: pw.TextStyle(
-            fontWeight: pw.FontWeight.bold,
-            fontSize: 9,
-          ),
+          style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 9),
         ),
         if (m.serviceObservations.isNotEmpty)
           pw.Text(
@@ -1863,32 +1761,17 @@ class PdfService {
         pw.SizedBox(height: 4),
         pw.Text(
           'Post-Service Checklist',
-          style: pw.TextStyle(
-            fontSize: 12,
-            fontWeight: pw.FontWeight.bold,
-          ),
+          style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold),
         ),
         pw.SizedBox(height: 4),
         _bulletRow(
           'Verified generator runs under load',
           m.postVerifyRunsUnderLoad,
         ),
-        _bulletRow(
-          'Checked voltage & frequency',
-          m.postCheckVoltFreq,
-        ),
-        _bulletRow(
-          'Inspected exhaust system',
-          m.postInspectExhaust,
-        ),
-        _bulletRow(
-          'Verified grounding & bonding',
-          m.postVerifyGrounding,
-        ),
-        _bulletRow(
-          'Checked control panel operation',
-          m.postCheckControlPanel,
-        ),
+        _bulletRow('Checked voltage & frequency', m.postCheckVoltFreq),
+        _bulletRow('Inspected exhaust system', m.postInspectExhaust),
+        _bulletRow('Verified grounding & bonding', m.postVerifyGrounding),
+        _bulletRow('Checked control panel operation', m.postCheckControlPanel),
         _bulletRow(
           'Ensured safety devices are in place & functional',
           m.postEnsureSafetyDevices,
@@ -1901,17 +1784,11 @@ class PdfService {
           'Performed load-bank test (if applicable)',
           m.postLoadbankTest,
         ),
-        _bulletRow(
-          'Verified ATS functionality',
-          m.postAtsFunctionality,
-        ),
+        _bulletRow('Verified ATS functionality', m.postAtsFunctionality),
         pw.SizedBox(height: 4),
         pw.Text(
           'Fuel Storage',
-          style: pw.TextStyle(
-            fontWeight: pw.FontWeight.bold,
-            fontSize: 9,
-          ),
+          style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 9),
         ),
         _bulletRow(
           'Fuel stored longer than recommended (consider testing / conditioning)',
@@ -1928,10 +1805,7 @@ class PdfService {
         pw.SizedBox(height: 4),
         pw.Text(
           'Parts & Materials Used',
-          style: pw.TextStyle(
-            fontSize: 12,
-            fontWeight: pw.FontWeight.bold,
-          ),
+          style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold),
         ),
         pw.SizedBox(height: 4),
         _maintLabelValueRow(
@@ -1987,10 +1861,7 @@ class PdfService {
         pw.SizedBox(height: 4),
         pw.Text(
           'Signatures',
-          style: pw.TextStyle(
-            fontSize: 12,
-            fontWeight: pw.FontWeight.bold,
-          ),
+          style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold),
         ),
         pw.SizedBox(height: 4),
         pw.Row(
@@ -2015,10 +1886,7 @@ class PdfService {
                   ),
                   _maintLabelValueRow('Date:', techDate, labelWidth: 40),
                   pw.SizedBox(height: 16),
-                  pw.Container(
-                    height: 0.5,
-                    color: PdfColors.grey600,
-                  ),
+                  pw.Container(height: 0.5, color: PdfColors.grey600),
                   pw.Text(
                     'Technician Signature',
                     style: const pw.TextStyle(fontSize: 7),
@@ -2046,10 +1914,7 @@ class PdfService {
                   ),
                   _maintLabelValueRow('Date:', custDate, labelWidth: 40),
                   pw.SizedBox(height: 16),
-                  pw.Container(
-                    height: 0.5,
-                    color: PdfColors.grey600,
-                  ),
+                  pw.Container(height: 0.5, color: PdfColors.grey600),
                   pw.Text(
                     'Customer Signature',
                     style: const pw.TextStyle(fontSize: 7),
@@ -2078,9 +1943,23 @@ class PdfService {
     String? savePath;
 
     if (kIsWeb) {
-      // On web you’ll typically trigger a download from the UI.
-      // We just return here without a concrete path.
-      return const PdfExportResult(filePath: null, emailed: false);
+      // Browser builds have no writable filesystem path. Persist the document
+      // in IndexedDB under a logical path so the inspection detail page can
+      // recognize and preview it just like native builds do.
+      final logicalPath = 'pdfs/${fileName.replaceAll(r'\', '/')}';
+      await WebFileStore.instance.put(logicalPath, Uint8List.fromList(bytes));
+
+      try {
+        await SyncService.instance.enqueueBytesUpload(
+          storePath: logicalPath,
+          remotePath: logicalPath,
+          contentType: 'application/pdf',
+        );
+      } catch (e) {
+        debugPrint('[PdfService] Could not queue web PDF backup: $e');
+      }
+
+      return PdfExportResult(filePath: logicalPath, emailed: false);
     }
 
     // MOBILE / DESKTOP
@@ -2097,9 +1976,7 @@ class PdfService {
       baseDir = await FileStorageService.instance.getPdfsDirectory();
     }
 
-    final appDir = io.Directory(
-      p.join(baseDir.path, prefs.appSubfolder),
-    );
+    final appDir = io.Directory(p.join(baseDir.path, prefs.appSubfolder));
     if (!appDir.existsSync()) {
       appDir.createSync(recursive: true);
     }
@@ -2167,21 +2044,24 @@ class PdfService {
     final customerSigPath = maintenance.customerSignaturePath;
 
     if (techSigPath != null && io.File(techSigPath).existsSync()) {
-      final dest =
-          p.join(folderPath, 'tech_signature_${maintenance.id}.png');
+      final dest = p.join(folderPath, 'tech_signature_${maintenance.id}.png');
       await io.File(techSigPath).copy(dest);
     }
 
     if (customerSigPath != null && io.File(customerSigPath).existsSync()) {
-      final dest =
-          p.join(folderPath, 'customer_signature_${maintenance.id}.png');
+      final dest = p.join(
+        folderPath,
+        'customer_signature_${maintenance.id}.png',
+      );
       await io.File(customerSigPath).copy(dest);
     }
   }
 
-
-// Save inspection signature
-  Future<void> saveSignature(String inspectionId, Uint8List signatureBytes) async {
+  // Save inspection signature
+  Future<void> saveSignature(
+    String inspectionId,
+    Uint8List signatureBytes,
+  ) async {
     final path = await FileStorageService.instance.saveInspectionSignature(
       inspectionId: inspectionId,
       signatureBytes: signatureBytes,
@@ -2190,9 +2070,11 @@ class PdfService {
     debugPrint('Signature saved: $path');
   }
 
-// Load signature
+  // Load signature
   Future<Uint8List?> loadSignature(String inspectionId) async {
-    final file = await FileStorageService.instance.getInspectionSignature(inspectionId);
+    final file = await FileStorageService.instance.getInspectionSignature(
+      inspectionId,
+    );
 
     if (file != null) {
       return await file.readAsBytes();

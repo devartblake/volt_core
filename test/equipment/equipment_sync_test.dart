@@ -39,6 +39,8 @@ Map<String, dynamic> _remoteRow({
     'id': '11111111-1111-1111-1111-111111111111',
     'identity_key': identityKey,
     'name': name,
+    'asset_type': 'transferSwitch',
+    'metadata': {'amp_rating': 400},
     'make': make,
     'model': 'KD500',
     'serial_number': serial,
@@ -97,9 +99,10 @@ void main() {
     test('produces a well-formed uuid', () {
       final id = equipmentIdFor(tenantId: 't1', identityKey: 'sn:cat-001');
       expect(
-        RegExp(r'^[0-9a-f]{8}-[0-9a-f]{4}-5[0-9a-f]{3}-[89ab][0-9a-f]{3}-'
-                r'[0-9a-f]{12}$')
-            .hasMatch(id),
+        RegExp(
+          r'^[0-9a-f]{8}-[0-9a-f]{4}-5[0-9a-f]{3}-[89ab][0-9a-f]{3}-'
+          r'[0-9a-f]{12}$',
+        ).hasMatch(id),
         isTrue,
         reason: 'expected a v5 uuid, got $id',
       );
@@ -116,6 +119,9 @@ void main() {
         serialNumber: 'CUM-99',
         voltage: '208V',
         location: '9 Wall St',
+        assetType: AssetType.transferSwitch,
+        metadata: {'amp_rating': 400},
+        siteId: 'site-9',
         siteCode: 'AS-9',
         siteGrade: 'Amber',
         inspectionCount: 2,
@@ -131,23 +137,70 @@ void main() {
       expect(row['identity_key'], 'sn:cum-99');
       expect(row['tenant_id'], 'tenant-1');
       expect(row['status'], 'maintenance');
+      expect(row['asset_type'], 'transferSwitch');
+      expect(row['metadata'], {'amp_rating': 400});
+      expect(row['site_id'], 'site-9');
       // The deep-link target travels separately from the row id.
       expect(row['latest_inspection_id'], 'insp-9');
-      expect(row['id'],
-          equipmentIdFor(tenantId: 'tenant-1', identityKey: 'sn:cum-99'));
+      expect(
+        row['id'],
+        equipmentIdFor(tenantId: 'tenant-1', identityKey: 'sn:cum-99'),
+      );
 
       final back = equipmentFromSupabaseJson(row);
       expect(back.serialNumber, 'CUM-99');
       expect(back.status, EquipmentStatus.maintenance);
+      expect(back.assetType, AssetType.transferSwitch);
+      expect(back.metadata, {'amp_rating': 400});
       expect(back.id, 'insp-9');
+      expect(back.siteId, 'site-9');
     });
 
-    test('a row never inspected here falls back to the row id for navigation',
-        () {
+    test(
+      'a row never inspected here keeps its row id but cannot open a nameplate',
+      () {
+        final unit = equipmentFromSupabaseJson(
+          _remoteRow(identityKey: 'sn:rem-1', latestInspectionId: null),
+        );
+        expect(unit.id, '11111111-1111-1111-1111-111111111111');
+        expect(unit.hasInspectionLink, isFalse);
+      },
+    );
+
+    test('a row with an inspection id can open its nameplate record', () {
       final unit = equipmentFromSupabaseJson(
-        _remoteRow(identityKey: 'sn:rem-1', latestInspectionId: null),
+        _remoteRow(identityKey: 'sn:inspected', latestInspectionId: 'insp-7'),
       );
-      expect(unit.id, '11111111-1111-1111-1111-111111111111');
+
+      expect(unit.id, 'insp-7');
+      expect(unit.hasInspectionLink, isTrue);
+    });
+
+    test('a manually registered asset has no inspection deep link', () {
+      const unit = EquipmentEntity(
+        id: '22222222-2222-2222-2222-222222222222',
+        name: 'Main ATS',
+        make: 'ASCO',
+        model: '7000',
+        serialNumber: 'ATS-9',
+        voltage: '480V',
+        location: 'Electrical room',
+        assetType: AssetType.transferSwitch,
+        metadata: {'notes': 'Annual service due'},
+        hasInspectionLink: false,
+        status: EquipmentStatus.inactive,
+      );
+
+      final row = equipmentToSupabaseJson(
+        unit,
+        identityKey: 'sn:ats-9',
+        tenantId: 'tenant-1',
+      );
+
+      expect(row['latest_inspection_id'], isNull);
+      expect(row['is_manual'], isTrue);
+      expect(row['notes'], 'Annual service due');
+      expect(equipmentFromSupabaseJson(row).hasInspectionLink, isFalse);
     });
 
     test('an unknown status degrades to active rather than throwing', () {
@@ -169,10 +222,12 @@ void main() {
     setUp(() async {
       tempDir = Directory.systemTemp.createTempSync('voltcore_eq_sync_test');
       Hive.init(tempDir.path);
-      HiveBoxes.inspections =
-          await Hive.openBox<Inspection>(HiveBoxes.inspectionsBoxName);
-      HiveBoxes.nameplates =
-          await Hive.openBox<NameplateData>(HiveBoxes.nameplatesBoxName);
+      HiveBoxes.inspections = await Hive.openBox<Inspection>(
+        HiveBoxes.inspectionsBoxName,
+      );
+      HiveBoxes.nameplates = await Hive.openBox<NameplateData>(
+        HiveBoxes.nameplatesBoxName,
+      );
     });
 
     tearDown(() async {
@@ -183,15 +238,18 @@ void main() {
     });
 
     test('surfaces units this device has never inspected', () async {
-      await HiveBoxes.inspections
-          .put('i1', _inspection(id: 'i1', serial: 'LOCAL-1'));
+      await HiveBoxes.inspections.put(
+        'i1',
+        _inspection(id: 'i1', serial: 'LOCAL-1'),
+      );
 
       final repo = EquipmentRepositoryImpl(
         remote: _FakeRemote([_remoteRow(identityKey: 'sn:rem-1')]),
       );
 
-      final serials =
-          (await repo.listEquipment()).map((e) => e.serialNumber).toSet();
+      final serials = (await repo.listEquipment())
+          .map((e) => e.serialNumber)
+          .toSet();
       expect(serials, containsAll(['LOCAL-1', 'REM-1']));
     });
 
@@ -223,31 +281,38 @@ void main() {
       expect((await repo.listEquipment()).length, 2);
     });
 
-    test('a remote failure degrades to local data instead of erroring',
-        () async {
-      await HiveBoxes.inspections
-          .put('i1', _inspection(id: 'i1', serial: 'LOCAL-1'));
+    test(
+      'a remote failure degrades to local data instead of erroring',
+      () async {
+        await HiveBoxes.inspections.put(
+          'i1',
+          _inspection(id: 'i1', serial: 'LOCAL-1'),
+        );
 
-      final remote = _FakeRemote([])..throwOnList = true;
-      final repo = EquipmentRepositoryImpl(remote: remote);
+        final remote = _FakeRemote([])..throwOnList = true;
+        final repo = EquipmentRepositoryImpl(remote: remote);
 
-      final units = await repo.listEquipment();
-      expect(units.single.serialNumber, 'LOCAL-1');
-    });
+        final units = await repo.listEquipment();
+        expect(units.single.serialNumber, 'LOCAL-1');
+      },
+    );
 
-    test('rows with no identity key are skipped rather than merged blindly',
-        () async {
-      final repo = EquipmentRepositoryImpl(
-        remote: _FakeRemote([
-          _remoteRow(identityKey: '', serial: 'ORPHAN'),
-          _remoteRow(identityKey: 'sn:ok', serial: 'OK'),
-        ]),
-      );
+    test(
+      'rows with no identity key are skipped rather than merged blindly',
+      () async {
+        final repo = EquipmentRepositoryImpl(
+          remote: _FakeRemote([
+            _remoteRow(identityKey: '', serial: 'ORPHAN'),
+            _remoteRow(identityKey: 'sn:ok', serial: 'OK'),
+          ]),
+        );
 
-      final serials =
-          (await repo.listEquipment()).map((e) => e.serialNumber).toList();
-      expect(serials, ['OK']);
-    });
+        final serials = (await repo.listEquipment())
+            .map((e) => e.serialNumber)
+            .toList();
+        expect(serials, ['OK']);
+      },
+    );
 
     test('facets include remote-only units', () async {
       final repo = EquipmentRepositoryImpl(
@@ -256,7 +321,9 @@ void main() {
         ]),
       );
 
-      expect((await repo.facets()).makes, contains('Kohler'));
+      final facets = await repo.facets();
+      expect(facets.makes, contains('Kohler'));
+      expect(facets.assetTypes, contains(AssetType.transferSwitch));
     });
   });
 }

@@ -42,8 +42,9 @@ class _RebuildableState extends State<_Rebuildable> {
 
 void main() {
   group('LabeledField', () {
-    testWidgets('required marks the label and validates as empty',
-        (tester) async {
+    testWidgets('required marks the label and validates as empty', (
+      tester,
+    ) async {
       final formKey = GlobalKey<FormState>();
       await tester.pumpWidget(
         MaterialApp(
@@ -86,8 +87,9 @@ void main() {
       expect(taps, 1);
     });
 
-    testWidgets('a keyed field shows a new value after rebuild',
-        (tester) async {
+    testWidgets('a keyed field shows a new value after rebuild', (
+      tester,
+    ) async {
       await tester.pumpWidget(const _Rebuildable(keyed: true));
       expect(find.text('2026-01-31'), findsNothing);
 
@@ -111,66 +113,71 @@ void main() {
       await tester.pumpWidget(const _Rebuildable(keyed: false));
 
       await tester.tap(find.text('set'));
+      // Updating a TextEditingController inside didUpdateWidget used to mark
+      // the enclosing Form dirty while it was building. The update now lands
+      // post-frame, so the rebuild stays exception-free.
+      await tester.pump();
+      expect(tester.takeException(), isNull);
       await tester.pumpAndSettle();
 
       expect(find.text('2026-01-31'), findsOneWidget);
     });
 
-    testWidgets('typing is not disturbed by the parent echoing the value back',
-        (tester) async {
-      // The guard on the sync above: while the user types, onChanged has
-      // already told the parent, so the value coming back equals the field's
-      // text and didUpdateWidget must leave the selection alone.
-      final controller = TextEditingController();
-      addTearDown(controller.dispose);
+    testWidgets(
+      'typing is not disturbed by the parent echoing the value back',
+      (tester) async {
+        // The guard on the sync above: while the user types, onChanged has
+        // already told the parent, so the value coming back equals the field's
+        // text and didUpdateWidget must leave the selection alone.
+        final controller = TextEditingController();
+        addTearDown(controller.dispose);
 
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(
-          body: LabeledField(label: 'Site code', controller: controller),
-        ),
-      ));
-
-      await tester.enterText(find.byType(TextFormField), 'SITE-42');
-      await tester.pump();
-
-      expect(controller.text, 'SITE-42');
-      expect(controller.selection.baseOffset, 'SITE-42'.length);
-    });
-
-    testWidgets('dense drops the outer padding used by the standalone variant',
-        (tester) async {
-      await tester.pumpWidget(
-        const MaterialApp(
-          home: Scaffold(
-            body: Column(
-              children: [
-                LabeledField(label: 'Roomy'),
-                LabeledField(label: 'Tight', dense: true),
-              ],
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: LabeledField(label: 'Site code', controller: controller),
             ),
           ),
-        ),
-      );
-
-      Padding outerPadding(String label) {
-        return tester.widget<Padding>(
-          find
-              .ancestor(
-                of: find.text(label),
-                matching: find.byType(Padding),
-              )
-              .last,
         );
-      }
 
-      expect(
-        outerPadding('Roomy').padding,
-        const EdgeInsets.symmetric(vertical: 8),
-      );
-      expect(
-        outerPadding('Tight').padding,
-        EdgeInsets.zero,
-      );
-    });
+        await tester.enterText(find.byType(TextFormField), 'SITE-42');
+        await tester.pump();
+
+        expect(controller.text, 'SITE-42');
+        expect(controller.selection.baseOffset, 'SITE-42'.length);
+      },
+    );
+
+    testWidgets(
+      'dense drops the outer padding used by the standalone variant',
+      (tester) async {
+        await tester.pumpWidget(
+          const MaterialApp(
+            home: Scaffold(
+              body: Column(
+                children: [
+                  LabeledField(label: 'Roomy'),
+                  LabeledField(label: 'Tight', dense: true),
+                ],
+              ),
+            ),
+          ),
+        );
+
+        Padding outerPadding(String label) {
+          return tester.widget<Padding>(
+            find
+                .ancestor(of: find.text(label), matching: find.byType(Padding))
+                .last,
+          );
+        }
+
+        expect(
+          outerPadding('Roomy').padding,
+          const EdgeInsets.symmetric(vertical: 8),
+        );
+        expect(outerPadding('Tight').padding, EdgeInsets.zero);
+      },
+    );
   });
 }
