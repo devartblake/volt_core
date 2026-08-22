@@ -7,6 +7,8 @@ WorkOrderEntity _order(WorkOrderStatus status) => WorkOrderEntity(
   title: 'Test transfer switch',
   status: status,
   priority: WorkOrderPriority.normal,
+  createdAt: DateTime(2026, 8, 22),
+  updatedAt: DateTime(2026, 8, 22),
 );
 
 void main() {
