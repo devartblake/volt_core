@@ -49,7 +49,7 @@ select
   count(tm.*) filter (where tm.is_active)  as active_memberships
 from auth.users u
 left join public.tenant_members tm on tm.user_id = u.id
-where u.email = 'you@example.com'          -- <<< EDIT
+where u.email = 'aselectricnyc@gmail.com'          -- <<< EDIT
 group by u.id;
 
 -- Reading the result:
