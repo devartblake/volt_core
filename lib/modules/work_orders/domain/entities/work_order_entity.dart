@@ -98,7 +98,7 @@ class WorkOrderEntity {
     assignedToUserId: assignedToUserId ?? this.assignedToUserId,
     scheduledFor: scheduledFor ?? this.scheduledFor,
     description: description ?? this.description,
-    createdAt: this.createdAt,
+    createdAt: createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
   );
 }
