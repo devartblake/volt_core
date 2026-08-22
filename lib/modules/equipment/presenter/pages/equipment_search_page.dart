@@ -7,6 +7,7 @@ import '../../infra/repositories/equipment_repository.dart';
 import '../../../../core/theme/status_colors.dart';
 import '../../../../shared/widgets/widgets.dart';
 import '../../domain/entities/equipment_entity.dart' show AssetType;
+import '../../domain/asset_lookup.dart';
 import '../widgets/asset_registration_sheet.dart';
 
 /// Equipment search page
@@ -59,22 +60,10 @@ class _EquipmentSearchPageState extends ConsumerState<EquipmentSearchPage> {
     return allEquipment.where((equipment) {
       // Text search
       if (_searchQuery.isNotEmpty) {
-        final query = _searchQuery.toLowerCase();
-        final matchesName = equipment.name.toLowerCase().contains(query);
-        final matchesMake = equipment.make.toLowerCase().contains(query);
-        final matchesModel = equipment.model.toLowerCase().contains(query);
-        final matchesSerial = equipment.serialNumber.toLowerCase().contains(
-          query,
-        );
-        final matchesLocation = equipment.location.toLowerCase().contains(
-          query,
-        );
-
-        if (!matchesName &&
-            !matchesMake &&
-            !matchesModel &&
-            !matchesSerial &&
-            !matchesLocation) {
+        if (!assetMatchesLookup(
+          equipment.toEntity(),
+          _searchQuery,
+        )) {
           return false;
         }
       }
@@ -142,7 +131,7 @@ class _EquipmentSearchPageState extends ConsumerState<EquipmentSearchPage> {
                       focusNode: _searchFocus,
                       decoration: InputDecoration(
                         hintText:
-                            'Search by name, make, model, serial, or location',
+                            'Scan or search asset ID, serial, site, or location',
                         prefixIcon: const Icon(Icons.search),
                         suffixIcon: _searchQuery.isNotEmpty
                             ? IconButton(
@@ -580,12 +569,29 @@ class _EquipmentCard extends StatelessWidget {
                 label: 'Location',
                 value: equipment.location,
               ),
+              if (equipment.siteCode.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                _DetailItem(
+                  icon: Icons.location_city_outlined,
+                  label: 'Site code',
+                  value: equipment.siteCode,
+                ),
+              ],
               if (equipment.lastInspection != null) ...[
                 const SizedBox(height: 12),
                 _DetailItem(
                   icon: Icons.calendar_today_outlined,
                   label: 'Last Inspection',
                   value: _formatDate(equipment.lastInspection!),
+                ),
+              ],
+              if (equipment.inspectionCount > 0) ...[
+                const SizedBox(height: 12),
+                _DetailItem(
+                  icon: Icons.history_outlined,
+                  label: 'History',
+                  value:
+                      '${equipment.inspectionCount} ${equipment.inspectionCount == 1 ? 'inspection' : 'inspections'}',
                 ),
               ],
               if (!equipment.hasInspectionLink) ...[

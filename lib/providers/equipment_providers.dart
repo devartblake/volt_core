@@ -14,9 +14,11 @@ class Equipment {
   final String serialNumber;
   final String voltage;
   final String location;
+  final String siteCode;
   final domain.AssetType assetType;
   final DateTime? lastInspection;
   final bool hasInspectionLink;
+  final int inspectionCount;
   final EquipmentStatus status;
 
   const Equipment({
@@ -27,9 +29,11 @@ class Equipment {
     required this.serialNumber,
     required this.voltage,
     required this.location,
+    this.siteCode = '',
     this.assetType = domain.AssetType.generator,
     this.lastInspection,
     this.hasInspectionLink = true,
+    this.inspectionCount = 0,
     this.status = EquipmentStatus.active,
   });
 
@@ -45,10 +49,33 @@ class Equipment {
       serialNumber: e.serialNumber,
       voltage: e.voltage,
       location: e.location,
+      siteCode: e.siteCode,
       assetType: e.assetType,
       lastInspection: e.lastInspection,
       hasInspectionLink: e.hasInspectionLink,
+      inspectionCount: e.inspectionCount,
       status: EquipmentStatus.values.byName(e.status.name),
+    );
+  }
+
+  /// Reconstructs the domain model for shared registry behaviors such as
+  /// scanner lookup. The search UI intentionally keeps a small view model,
+  /// while matching rules live with the asset domain.
+  domain.EquipmentEntity toEntity() {
+    return domain.EquipmentEntity(
+      id: id,
+      name: name,
+      make: make,
+      model: model,
+      serialNumber: serialNumber,
+      voltage: voltage,
+      location: location,
+      siteCode: siteCode,
+      assetType: assetType,
+      lastInspection: lastInspection,
+      hasInspectionLink: hasInspectionLink,
+      inspectionCount: inspectionCount,
+      status: domain.EquipmentStatus.values.byName(status.name),
     );
   }
 
