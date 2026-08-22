@@ -1,11 +1,13 @@
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:open_filex/open_filex.dart'; // NEW: open with system viewer
 import 'package:voltcore/core/services/hive/hive_boxes.dart';
 import 'package:voltcore/core/services/storage/path_resolver.dart';
+import 'package:voltcore/core/services/storage/web_file_store.dart';
 import 'package:voltcore/core/theme/status_colors.dart';
 
 import '../../../schedule/presenter/pages/schedule_task_page.dart';
@@ -14,6 +16,7 @@ import '../../domain/entities/inspection_entity.dart';
 import '../../infra/models/inspection.dart';
 import '../../infra/repositories/inspection_repository_impl.dart';
 import '../../../../shared/widgets/widgets.dart';
+import '../../../documents/presenter/pages/pdf_viewer_page.dart';
 
 class InspectionDetailPage extends ConsumerWidget {
   final String id;
@@ -32,7 +35,10 @@ class InspectionDetailPage extends ConsumerWidget {
   }
 
   Widget _buildContent(
-      BuildContext context, WidgetRef ref, Box<Inspection> box) {
+    BuildContext context,
+    WidgetRef ref,
+    Box<Inspection> box,
+  ) {
     // Lookup by string-id key first; fall back to scanning values for records
     // stored under legacy auto-int keys (older saves used box.add()).
     Inspection? found = box.get(id);
@@ -48,8 +54,8 @@ class InspectionDetailPage extends ConsumerWidget {
 
     if (found == null) {
       return AppPage(
-      title: 'Inspection Detail',
-      body: Center(
+        title: 'Inspection Detail',
+        body: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -68,7 +74,7 @@ class InspectionDetailPage extends ConsumerWidget {
             ],
           ),
         ),
-    );
+      );
     }
 
     // Effectively-final binding so closures below can use it non-nullably.
@@ -78,31 +84,34 @@ class InspectionDetailPage extends ConsumerWidget {
     // change across updates), then check existence.
     final resolvedPdfPath = PathResolver.resolveSync(ins.pdfPath);
     final hasPdf =
-        ins.pdfPath.isNotEmpty && File(resolvedPdfPath).existsSync();
+        ins.pdfPath.isNotEmpty &&
+        (kIsWeb
+            ? WebFileStore.instance.existsSync(ins.pdfPath)
+            : File(resolvedPdfPath).existsSync());
 
     return AppPage(
       title: 'Inspection Detail',
       actions: [
-          // ⭐ NEW: Schedule button in app bar
-          IconButton(
-            icon: const Icon(Icons.calendar_today),
-            tooltip: 'Schedule',
-            onPressed: () async {
-              final scheduled = await showScheduleDialog(
-                context: context,
-                taskType: TaskType.inspection,
-                siteCode: ins.siteCode,
-                address: ins.address,
-                inspectionId: ins.id,
-                siteGrade: ins.siteGrade,
-              );
+        // ⭐ NEW: Schedule button in app bar
+        IconButton(
+          icon: const Icon(Icons.calendar_today),
+          tooltip: 'Schedule',
+          onPressed: () async {
+            final scheduled = await showScheduleDialog(
+              context: context,
+              taskType: TaskType.inspection,
+              siteCode: ins.siteCode,
+              address: ins.address,
+              inspectionId: ins.id,
+              siteGrade: ins.siteGrade,
+            );
 
-              if (scheduled == true && context.mounted) {
-                AppSnackBar.success(context, 'Inspection scheduled successfully');
-              }
-            },
-          ),
-        ],
+            if (scheduled == true && context.mounted) {
+              AppSnackBar.success(context, 'Inspection scheduled successfully');
+            }
+          },
+        ),
+      ],
       body: Column(
         children: [
           // Header Card
@@ -169,8 +178,12 @@ class InspectionDetailPage extends ConsumerWidget {
                           vertical: 6,
                         ),
                         decoration: BoxDecoration(
-                          color:
-                          theme.gradeColor(ins.siteGrade, fallback: theme.colorScheme.primary).withValues(alpha: 0.15),
+                          color: theme
+                              .gradeColor(
+                                ins.siteGrade,
+                                fallback: theme.colorScheme.primary,
+                              )
+                              .withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Row(
@@ -179,13 +192,19 @@ class InspectionDetailPage extends ConsumerWidget {
                             Icon(
                               Icons.circle,
                               size: 8,
-                              color: theme.gradeColor(ins.siteGrade, fallback: theme.colorScheme.primary),
+                              color: theme.gradeColor(
+                                ins.siteGrade,
+                                fallback: theme.colorScheme.primary,
+                              ),
                             ),
                             const SizedBox(width: 6),
                             Text(
                               'Grade: ${ins.siteGrade}',
                               style: theme.textTheme.labelMedium?.copyWith(
-                                color: theme.gradeColor(ins.siteGrade, fallback: theme.colorScheme.primary),
+                                color: theme.gradeColor(
+                                  ins.siteGrade,
+                                  fallback: theme.colorScheme.primary,
+                                ),
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
@@ -232,91 +251,93 @@ class InspectionDetailPage extends ConsumerWidget {
           Expanded(
             child: hasPdf
                 ? Container(
-              margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: theme.colorScheme.outlineVariant,
-                  width: 1,
-                ),
-              ),
-              child: Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      Icons.picture_as_pdf_outlined,
-                      size: 80,
-                      color:
-                      theme.colorScheme.primary.withValues(alpha: 0.4),
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      'PDF ready',
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        color: theme.colorScheme.onSurface
-                            .withValues(alpha: 0.7),
+                    margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: theme.colorScheme.outlineVariant,
+                        width: 1,
                       ),
                     ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Tap the button below to open in your system PDF viewer.',
-                      textAlign: TextAlign.center,
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: theme.colorScheme.onSurface
-                            .withValues(alpha: 0.6),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    FilledButton.icon(
-                      onPressed: () async {
-                        final result = await OpenFilex.open(resolvedPdfPath);
-                        if (result.type != ResultType.done &&
-                            context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(
-                                'Could not open PDF: ${result.message}',
+                    child: Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.picture_as_pdf_outlined,
+                            size: 80,
+                            color: theme.colorScheme.primary.withValues(
+                              alpha: 0.4,
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            'PDF ready',
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              color: theme.colorScheme.onSurface.withValues(
+                                alpha: 0.7,
                               ),
                             ),
-                          );
-                        }
-                      },
-                      icon: const Icon(Icons.open_in_new),
-                      label: const Text('Open PDF'),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            kIsWeb
+                                ? 'Tap below to preview, print, or download the report.'
+                                : 'Tap the button below to open in your system PDF viewer.',
+                            textAlign: TextAlign.center,
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              color: theme.colorScheme.onSurface.withValues(
+                                alpha: 0.6,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          FilledButton.icon(
+                            onPressed: () => _openPdf(
+                              context,
+                              pdfPath: ins.pdfPath,
+                              resolvedPdfPath: resolvedPdfPath,
+                              title: ins.toEntity().displayTitle,
+                            ),
+                            icon: const Icon(Icons.open_in_new),
+                            label: Text(kIsWeb ? 'Preview PDF' : 'Open PDF'),
+                          ),
+                        ],
+                      ),
                     ),
-                  ],
-                ),
-              ),
-            )
+                  )
                 : Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.picture_as_pdf_outlined,
-                    size: 80,
-                    color: theme.colorScheme.primary.withValues(alpha: 0.3),
-                  ),
-                  const SizedBox(height: 24),
-                  Text(
-                    'No PDF file available',
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      color: theme.colorScheme.onSurface
-                          .withValues(alpha: 0.6),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.picture_as_pdf_outlined,
+                          size: 80,
+                          color: theme.colorScheme.primary.withValues(
+                            alpha: 0.3,
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                        Text(
+                          'No PDF file available',
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            color: theme.colorScheme.onSurface.withValues(
+                              alpha: 0.6,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Generate a PDF to view it here',
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: theme.colorScheme.onSurface.withValues(
+                              alpha: 0.5,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Generate a PDF to view it here',
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: theme.colorScheme.onSurface
-                          .withValues(alpha: 0.5),
-                    ),
-                  ),
-                ],
-              ),
-            ),
           ),
         ],
       ),
@@ -342,7 +363,33 @@ class InspectionDetailPage extends ConsumerWidget {
       ),
     );
   }
+}
 
+Future<void> _openPdf(
+  BuildContext context, {
+  required String pdfPath,
+  required String resolvedPdfPath,
+  required String title,
+}) async {
+  if (kIsWeb) {
+    final bytes = WebFileStore.instance.getSync(pdfPath);
+    if (bytes == null) {
+      if (context.mounted)
+        AppSnackBar.error(context, 'PDF data is unavailable.');
+      return;
+    }
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => PdfViewerPage(bytes: bytes, title: title),
+      ),
+    );
+    return;
+  }
+
+  final result = await OpenFilex.open(resolvedPdfPath);
+  if (result.type != ResultType.done && context.mounted) {
+    AppSnackBar.error(context, 'Could not open PDF: ${result.message}');
+  }
 }
 
 /// Opens the inspection's PDF, or renders one when it has none.
@@ -370,6 +417,16 @@ class _PdfActionButtonState extends ConsumerState<_PdfActionButton> {
   bool _generating = false;
 
   Future<void> _open() async {
+    if (kIsWeb) {
+      await _openPdf(
+        context,
+        pdfPath: widget.inspection.pdfPath,
+        resolvedPdfPath: widget.resolvedPdfPath,
+        title: widget.inspection.toEntity().displayTitle,
+      );
+      return;
+    }
+
     final file = File(widget.resolvedPdfPath);
     if (!await file.exists()) {
       if (mounted) {
@@ -388,8 +445,7 @@ class _PdfActionButtonState extends ConsumerState<_PdfActionButton> {
     setState(() => _generating = true);
     final repo = ref.read(inspectionRepositoryProvider);
 
-    final result =
-        await repo.generatePdf(widget.inspection.toEntity());
+    final result = await repo.generatePdf(widget.inspection.toEntity());
 
     if (!mounted) return;
     setState(() => _generating = false);
