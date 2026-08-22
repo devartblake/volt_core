@@ -7,6 +7,9 @@ import '../controllers/app_badges_controller.dart';
 import '../controllers/user_profile_controller.dart';
 import '../../../../shared/widgets/widgets.dart';
 import '../../../../core/theme/status_colors.dart';
+import '../../../../core/constants/route_paths.dart';
+import '../../../schedule/presenter/pages/schedule_task_page.dart';
+import '../../../schedule/presenter/widgets/dialogs/schedule_dialog.dart';
 
 class InspectionListPage extends ConsumerStatefulWidget {
   final String? filterStatus;
@@ -59,17 +62,14 @@ class _InspectionListPageState
             ? 'Pending Inspections'
             : 'Inspections'),
       actions: [
-          IconButton(
-            icon: const Icon(Icons.edit_outlined),
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                    content:
-                    Text('Edit mode - Coming soon')),
-              );
-            },
-          ),
-        ],
+        IconButton(
+          icon: const Icon(Icons.edit_outlined),
+          tooltip: 'Edit inspection',
+          onPressed: items.isEmpty
+              ? null
+              : () => _selectInspectionToEdit(context, items),
+        ),
+      ],
       body: Column(
         children: [
           if (items.isNotEmpty)
@@ -316,10 +316,35 @@ class _InspectionListPageState
                   ],
                 ),
               ),
-              Icon(
-                Icons.chevron_right,
-                color: theme
-                    .colorScheme.onSurfaceVariant,
+              PopupMenuButton<_InspectionAction>(
+                tooltip: 'Inspection actions',
+                onSelected: (action) {
+                  switch (action) {
+                    case _InspectionAction.edit:
+                      GoRouter.of(ctx).goNamed(
+                        RouteNames.inspectionEdit,
+                        pathParameters: {'id': ins.id},
+                      );
+                    case _InspectionAction.scheduleMaintenance:
+                      _scheduleMaintenance(ctx, ins);
+                  }
+                },
+                itemBuilder: (_) => const [
+                  PopupMenuItem(
+                    value: _InspectionAction.edit,
+                    child: ListTile(
+                      leading: Icon(Icons.edit_outlined),
+                      title: Text('Edit inspection'),
+                    ),
+                  ),
+                  PopupMenuItem(
+                    value: _InspectionAction.scheduleMaintenance,
+                    child: ListTile(
+                      leading: Icon(Icons.build_circle_outlined),
+                      title: Text('Schedule maintenance'),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
@@ -328,7 +353,65 @@ class _InspectionListPageState
     );
   }
 
+  Future<void> _selectInspectionToEdit(
+    BuildContext context,
+    List<InspectionEntity> items,
+  ) async {
+    final selected = await showModalBottomSheet<InspectionEntity>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetContext) => SafeArea(
+        child: ListView(
+          shrinkWrap: true,
+          children: [
+            const ListTile(
+              title: Text('Edit inspection'),
+              subtitle: Text('Choose an inspection to edit'),
+            ),
+            for (final inspection in items)
+              ListTile(
+                leading: const Icon(Icons.description_outlined),
+                title: Text(inspection.displayTitle),
+                subtitle: Text(
+                  inspection.siteCode.isEmpty
+                      ? inspection.serviceDate.toIso8601String().split('T').first
+                      : inspection.siteCode,
+                ),
+                onTap: () => Navigator.of(sheetContext).pop(inspection),
+              ),
+          ],
+        ),
+      ),
+    );
+
+    if (selected != null && context.mounted) {
+      GoRouter.of(context).goNamed(
+        RouteNames.inspectionEdit,
+        pathParameters: {'id': selected.id},
+      );
+    }
+  }
+
+  Future<void> _scheduleMaintenance(
+    BuildContext context,
+    InspectionEntity inspection,
+  ) async {
+    final scheduled = await showScheduleDialog(
+      context: context,
+      taskType: TaskType.maintenance,
+      siteCode: inspection.siteCode,
+      address: inspection.address,
+      inspectionId: inspection.id,
+      siteGrade: inspection.siteGrade,
+    );
+    if (scheduled == true && context.mounted) {
+      AppSnackBar.success(context, 'Maintenance scheduled');
+    }
+  }
+
 }
+
+enum _InspectionAction { edit, scheduleMaintenance }
 
 class _InfoChip extends StatelessWidget {
   final IconData icon;

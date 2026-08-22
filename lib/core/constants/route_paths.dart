@@ -20,6 +20,7 @@ class RoutePaths {
   // Inspections
   static const String inspections = '/inspections';
   static const String inspectionNew = '/inspections/new';
+  static const String inspectionEdit = '/inspections/edit/:id';
   static const String inspectionDetail = '/inspections/detail/:id';
   static const String inspectionsPending = '/inspections/pending';
 
@@ -70,6 +71,7 @@ class RouteNames {
 
   static const String inspections = 'inspections';
   static const String inspectionNew = 'inspection_new';
+  static const String inspectionEdit = 'inspection_edit';
   static const String inspectionDetail = 'inspection_detail';
   static const String inspectionsPending = 'inspections_pending';
 
