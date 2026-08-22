@@ -27,14 +27,17 @@ Map<String, dynamic> equipmentToSupabaseJson(
   EquipmentEntity e, {
   required String identityKey,
   required String tenantId,
+  String? rowId,
+  bool includeSiteAssignment = false,
 }) {
   return {
-    'id': equipmentIdFor(tenantId: tenantId, identityKey: identityKey),
+    'id': rowId ?? equipmentIdFor(tenantId: tenantId, identityKey: identityKey),
     'tenant_id': tenantId,
     'identity_key': identityKey,
     'name': e.name,
     'asset_type': e.assetType.name,
     'metadata': e.metadata,
+    if (e.siteId != null || includeSiteAssignment) 'site_id': e.siteId,
     'make': e.make,
     'model': e.model,
     'serial_number': e.serialNumber,
@@ -71,6 +74,9 @@ EquipmentEntity equipmentFromSupabaseJson(Map<String, dynamic> row) {
     // Keep a stable row id for rendering keys. The flag prevents the UI from
     // treating a registry id as an inspection route for pre-inspection assets.
     id: hasInspectionLink ? latestInspectionId : (row['id'] ?? '').toString(),
+    registryId: row['id']?.toString(),
+    registryIdentityKey: identityKeyOf(row),
+    siteId: row['site_id']?.toString(),
     name: (row['name'] ?? '').toString(),
     assetType: _assetTypeFromName((row['asset_type'] ?? '').toString()),
     metadata: Map<String, dynamic>.from(row['metadata'] as Map? ?? const {}),

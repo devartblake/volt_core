@@ -108,6 +108,15 @@ an ATS or another supported asset type.
 - Introduce work-order lifecycle, assignments, priorities, and asset links.
 - Add QR/barcode lookup and asset history.
 
+**Customer/site foundation:**
+`supabase/migrations/20260822205219_phase2_customer_sites.sql`
+adds a tenant-owned customer directory and an optional customer link on the
+existing service-site table. It does not guess customer ownership for legacy
+sites. `20260822205311_phase2_customer_site_grants.sql` brings already-deployed tables
+to the same authenticated-only, no-delete grant policy used by fresh installs.
+Customer and site creation/editing is restricted to dispatch, supervisory, and
+administrator tenant roles; all active tenant members may read the directory.
+
 ### Phase 3 — Template engine and generator migration
 
 - Add template definitions, revisions, fields, validation, and structured

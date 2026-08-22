@@ -49,6 +49,9 @@ class EquipmentEntity {
     required this.location,
     this.assetType = AssetType.generator,
     this.metadata = const {},
+    this.siteId,
+    this.registryId,
+    this.registryIdentityKey,
     this.siteCode = '',
     this.siteGrade = '',
     this.lastInspection,
@@ -79,6 +82,16 @@ class EquipmentEntity {
   /// Asset-type-specific values, such as generator kW or charger connector
   /// count. Generic identity and lifecycle fields remain first-class fields.
   final Map<String, dynamic> metadata;
+
+  /// Tenant-owned service site selected for this asset, when it is known.
+  final String? siteId;
+
+  /// Shared registry row identity. Inspection-derived entities use a separate
+  /// inspection id for navigation, so this is retained for safe edits.
+  final String? registryId;
+
+  /// Stable registry merge key, supplied by the remote equipment row.
+  final String? registryIdentityKey;
 
   final String siteCode;
 
@@ -130,6 +143,10 @@ class EquipmentEntity {
     String? location,
     AssetType? assetType,
     Map<String, dynamic>? metadata,
+    String? siteId,
+    bool clearSiteId = false,
+    String? registryId,
+    String? registryIdentityKey,
     String? siteCode,
     String? siteGrade,
     DateTime? lastInspection,
@@ -147,6 +164,9 @@ class EquipmentEntity {
       location: location ?? this.location,
       assetType: assetType ?? this.assetType,
       metadata: metadata ?? this.metadata,
+      siteId: clearSiteId ? null : (siteId ?? this.siteId),
+      registryId: registryId ?? this.registryId,
+      registryIdentityKey: registryIdentityKey ?? this.registryIdentityKey,
       siteCode: siteCode ?? this.siteCode,
       siteGrade: siteGrade ?? this.siteGrade,
       lastInspection: lastInspection ?? this.lastInspection,

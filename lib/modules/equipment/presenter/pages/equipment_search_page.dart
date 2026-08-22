@@ -9,6 +9,7 @@ import '../../../../shared/widgets/widgets.dart';
 import '../../domain/entities/equipment_entity.dart' show AssetType;
 import '../../domain/asset_lookup.dart';
 import '../widgets/asset_registration_sheet.dart';
+import '../widgets/asset_site_assignment_sheet.dart';
 
 /// Equipment search page
 class EquipmentSearchPage extends ConsumerStatefulWidget {
@@ -358,6 +359,9 @@ class _EquipmentSearchPageState extends ConsumerState<EquipmentSearchPage> {
               return _EquipmentCard(
                 equipment: equipment[index],
                 searchQuery: _searchQuery,
+                onEditAssignment: equipment[index].hasInspectionLink
+                    ? null
+                    : () => _showAssignmentSheet(equipment[index]),
               );
             },
           ),
@@ -429,6 +433,14 @@ class _EquipmentSearchPageState extends ConsumerState<EquipmentSearchPage> {
     );
   }
 
+  void _showAssignmentSheet(Equipment equipment) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (_) => AssetSiteAssignmentSheet(asset: equipment.toEntity()),
+    );
+  }
+
   IconData _getStatusIcon(EquipmentStatus status) {
     switch (status) {
       case EquipmentStatus.active:
@@ -458,10 +470,11 @@ class _EquipmentSearchPageState extends ConsumerState<EquipmentSearchPage> {
 
 /// Equipment card widget
 class _EquipmentCard extends StatelessWidget {
-  const _EquipmentCard({required this.equipment, required this.searchQuery});
+  const _EquipmentCard({required this.equipment, required this.searchQuery, this.onEditAssignment});
 
   final Equipment equipment;
   final String searchQuery;
+  final VoidCallback? onEditAssignment;
 
   @override
   Widget build(BuildContext context) {
@@ -538,7 +551,18 @@ class _EquipmentCard extends StatelessWidget {
                   ),
 
                   // Status chip
-                  _StatusChip(status: equipment.status),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      _StatusChip(status: equipment.status),
+                      if (onEditAssignment != null)
+                        IconButton(
+                          tooltip: 'Edit site assignment',
+                          onPressed: onEditAssignment,
+                          icon: const Icon(Icons.edit_location_alt_outlined),
+                        ),
+                    ],
+                  ),
                 ],
               ),
 
