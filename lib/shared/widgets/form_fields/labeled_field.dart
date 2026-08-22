@@ -39,9 +39,9 @@ class LabeledField extends StatefulWidget {
     this.dense = false,
     this.filled,
   }) : assert(
-          value == null || controller == null,
-          'Provide either value or controller, not both.',
-        );
+         value == null || controller == null,
+         'Provide either value or controller, not both.',
+       );
 
   final String label;
 
@@ -92,6 +92,8 @@ class _LabeledFieldState extends State<LabeledField> {
 
   TextEditingController? get _controller => widget.controller ?? _owned;
 
+  bool _syncQueued = false;
+
   @override
   void initState() {
     super.initState();
@@ -113,11 +115,33 @@ class _LabeledFieldState extends State<LabeledField> {
     // this does nothing, leaving the cursor alone.
     final incoming = widget.value ?? '';
     if (incoming != oldWidget.value && incoming != owned.text) {
+      _queueOwnedValueSync();
+    }
+  }
+
+  /// [TextFormField] listens to its controller and asks its enclosing [Form]
+  /// to rebuild. Updating that controller from [didUpdateWidget] can therefore
+  /// mark the Form dirty while it is itself building. Apply external values at
+  /// the end of the frame instead (draft restores, picker results, clears).
+  void _queueOwnedValueSync() {
+    if (_syncQueued) return;
+    _syncQueued = true;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _syncQueued = false;
+      if (!mounted) return;
+
+      final owned = _owned;
+      if (owned == null) return;
+
+      final incoming = widget.value ?? '';
+      if (incoming == owned.text) return;
+
       owned.value = TextEditingValue(
         text: incoming,
         selection: TextSelection.collapsed(offset: incoming.length),
       );
-    }
+    });
   }
 
   @override
@@ -143,11 +167,12 @@ class _LabeledFieldState extends State<LabeledField> {
         maxLines: widget.maxLines,
         minLines: widget.minLines,
         textCapitalization: widget.textCapitalization,
-        validator: widget.validator ??
+        validator:
+            widget.validator ??
             (widget.required
                 ? (v) => (v == null || v.trim().isEmpty)
-                    ? '${widget.label} is required'
-                    : null
+                      ? '${widget.label} is required'
+                      : null
                 : null),
         decoration: InputDecoration(
           labelText: widget.required ? '${widget.label} *' : widget.label,
@@ -156,8 +181,9 @@ class _LabeledFieldState extends State<LabeledField> {
           helperMaxLines: 2,
           isDense: widget.dense,
           filled: widget.filled,
-          prefixIcon:
-              widget.prefixIcon == null ? null : Icon(widget.prefixIcon),
+          prefixIcon: widget.prefixIcon == null
+              ? null
+              : Icon(widget.prefixIcon),
           suffixIcon: widget.suffix,
           suffixText: widget.suffixText,
           labelStyle: theme.textTheme.bodyMedium,
