@@ -21,6 +21,7 @@ import '../modules/documents/presenter/pages/document_library_page.dart';
 import '../modules/debug/pages/debug_menu_page.dart';
 import '../modules/debug/pages/hive_debug_page.dart';
 import '../modules/debug/pages/network_debug_page.dart';
+import '../modules/customers/presenter/pages/customer_site_directory_page.dart';
 import '../modules/equipment/presenter/pages/equipment_search_page.dart';
 import '../modules/inspections/presenter/pages/inspection_detail_page.dart';
 import '../modules/inspections/presenter/pages/inspection_form_page.dart';
@@ -267,6 +268,13 @@ final goRouterProvider = Provider<GoRouter>((ref) {
             child: EquipmentSearchPage(),
           ),
         ),
+      GoRoute(
+        path: RoutePaths.customerSites,
+        name: RouteNames.customerSites,
+        builder: (_, __) => const DefaultShell(
+          child: CustomerSiteDirectoryPage(),
+        ),
+      ),
 
       // ========== DOCUMENTS ==========
       GoRoute(

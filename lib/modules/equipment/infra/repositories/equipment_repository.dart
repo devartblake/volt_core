@@ -23,7 +23,17 @@ abstract class EquipmentRepository {
     required String voltage,
     required String location,
     required String siteCode,
+    String? siteId,
     String notes = '',
+  });
+
+  /// Changes the customer/site assignment of a manually registered asset.
+  /// Inspection-derived assets remain source-of-truth from inspection history.
+  Future<void> updateManualAssetSite({
+    required EquipmentEntity asset,
+    String? siteId,
+    required String siteCode,
+    required String location,
   });
 }
 

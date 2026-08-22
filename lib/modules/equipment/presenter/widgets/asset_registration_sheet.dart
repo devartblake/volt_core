@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../providers/equipment_providers.dart';
+import '../../../customers/customer_site_repository.dart';
 import '../../domain/entities/equipment_entity.dart';
 import '../../infra/repositories/equipment_repository_impl.dart';
 
@@ -29,6 +30,7 @@ class _AssetRegistrationSheetState
   final _siteCode = TextEditingController();
   final _notes = TextEditingController();
   AssetType _assetType = AssetType.generator;
+  String? _siteId;
   bool _saving = false;
 
   @override
@@ -59,6 +61,7 @@ class _AssetRegistrationSheetState
             voltage: _voltage.text,
             location: _location.text,
             siteCode: _siteCode.text,
+            siteId: _siteId,
             notes: _notes.text,
           );
       ref.invalidate(equipmentListProvider);
@@ -81,6 +84,7 @@ class _AssetRegistrationSheetState
   @override
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
+    final directory = ref.watch(customerSiteDirectoryProvider);
     return SafeArea(
       child: Padding(
         padding: EdgeInsets.fromLTRB(20, 12, 20, bottomInset + 20),
@@ -117,6 +121,54 @@ class _AssetRegistrationSheetState
                   onChanged: _saving
                       ? null
                       : (value) => setState(() => _assetType = value!),
+                ),
+                const SizedBox(height: 12),
+                directory.when(
+                  loading: () => const LinearProgressIndicator(),
+                  error: (_, __) => Text(
+                    'Customer/site directory unavailable. You can still register without a selected site.',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                  data: (data) => DropdownButtonFormField<String?>(
+                    value: _siteId,
+                    decoration: const InputDecoration(
+                      labelText: 'Customer / service site',
+                      helperText: 'Optional — links this asset to the selected service site.',
+                    ),
+                    items: [
+                      const DropdownMenuItem<String?>(
+                        value: null,
+                        child: Text('No site selected'),
+                      ),
+                      ...data.sites.where((site) => site.isActive).map(
+                        (site) => DropdownMenuItem<String?>(
+                          value: site.id,
+                          child: Text(
+                            '${data.customerNameFor(site.customerId)} — ${site.siteCode.isEmpty ? site.address : site.siteCode}',
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ),
+                    ],
+                    onChanged: _saving
+                        ? null
+                        : (siteId) {
+                            SiteRecord? selected;
+                            for (final site in data.sites) {
+                              if (site.id == siteId) {
+                                selected = site;
+                                break;
+                              }
+                            }
+                            setState(() {
+                              _siteId = siteId;
+                              if (selected != null) {
+                                _siteCode.text = selected.siteCode;
+                                _location.text = selected.address;
+                              }
+                            });
+                          },
+                  ),
                 ),
                 const SizedBox(height: 12),
                 Row(
