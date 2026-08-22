@@ -9,9 +9,11 @@
 -- `inspections` (and `maintenance_records`, `equipment`) are tenant-scoped:
 -- their policies call `public.is_tenant_member(tenant_id)`, which is true only
 -- when an *active* `tenant_members` row pairs the signed-in user with that
--- tenant. `schedule_tasks` is NOT tenant-scoped — migration 0003 gates it on
--- `authenticated` alone — which is why scheduling returns 201 while saving an
--- inspection returns 403 in the same session. That asymmetry is the diagnosis.
+-- tenant. Before Phase 1 is deployed, `schedule_tasks` may still use its older
+-- authenticated-only policy. After `0006_phase1_asset_foundation.sql` is
+-- deployed, it is tenant-scoped too. In either case, an inspection 403 is
+-- resolved by configuring an active tenant membership rather than weakening
+-- RLS.
 --
 -- The app stamps `tenant_id` from SUPABASE_TENANT_ID in assets/env/.env.*.
 -- If that value names a tenant that does not exist, or one this user has no
