@@ -26,6 +26,7 @@ import '../../services/hive/hive_boxes.dart';
 import '../photos/photo_attachment.dart';
 import '../photos/photo_service.dart';
 import '../storage/file_storage_service.dart';
+import '../storage/web_file_store.dart';
 import '../sync/sync_service.dart';
 
 /// User-level preferences for how PDFs should be exported.
@@ -1942,9 +1943,23 @@ class PdfService {
     String? savePath;
 
     if (kIsWeb) {
-      // On web you’ll typically trigger a download from the UI.
-      // We just return here without a concrete path.
-      return const PdfExportResult(filePath: null, emailed: false);
+      // Browser builds have no writable filesystem path. Persist the document
+      // in IndexedDB under a logical path so the inspection detail page can
+      // recognize and preview it just like native builds do.
+      final logicalPath = 'pdfs/${fileName.replaceAll(r'\', '/')}';
+      await WebFileStore.instance.put(logicalPath, Uint8List.fromList(bytes));
+
+      try {
+        await SyncService.instance.enqueueBytesUpload(
+          storePath: logicalPath,
+          remotePath: logicalPath,
+          contentType: 'application/pdf',
+        );
+      } catch (e) {
+        debugPrint('[PdfService] Could not queue web PDF backup: $e');
+      }
+
+      return PdfExportResult(filePath: logicalPath, emailed: false);
     }
 
     // MOBILE / DESKTOP

@@ -4,7 +4,9 @@
 import 'package:flutter/material.dart';
 
 class AppTypography {
-  static const String primaryFontFamily = 'Roboto'; // change if needed
+  /// The primary interface font. Faustina is bundled in `assets/fonts` and
+  /// declared in pubspec, so it remains available offline on every platform.
+  static const String primaryFontFamily = 'Faustina';
   static const String? secondaryFontFamily = null;
 
   /// Build a customized TextTheme from a base theme.
@@ -23,12 +25,8 @@ class AppTypography {
         fontFamily: primaryFontFamily,
         fontWeight: FontWeight.w600,
       ),
-      bodyLarge: base.bodyLarge?.copyWith(
-        fontFamily: primaryFontFamily,
-      ),
-      bodyMedium: base.bodyMedium?.copyWith(
-        fontFamily: primaryFontFamily,
-      ),
+      bodyLarge: base.bodyLarge?.copyWith(fontFamily: primaryFontFamily),
+      bodyMedium: base.bodyMedium?.copyWith(fontFamily: primaryFontFamily),
       labelLarge: base.labelLarge?.copyWith(
         fontFamily: primaryFontFamily,
         letterSpacing: 0.1,

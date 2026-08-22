@@ -91,6 +91,7 @@ flutter:
   assets:
     - assets/env/
     - assets/fonts/NotoSans/
+    - assets/fonts/Faustina/
     - assets/pdf/Modified Comp Checklist With Load Test.pdf
     - assets/images/company_logo.png
   #   - images/a_dot_ham.jpeg
@@ -107,6 +108,25 @@ flutter:
   # list giving the asset and other descriptors for the font. For
   # example:
   fonts:
+    - family: Faustina
+      fonts:
+        - asset: assets/fonts/Faustina/Faustina-Light.ttf
+          weight: 300
+        - asset: assets/fonts/Faustina/Faustina-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/Faustina/Faustina-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/Faustina/Faustina-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/Faustina/Faustina-Bold.ttf
+          weight: 700
+        - asset: assets/fonts/Faustina/Faustina-ExtraBold.ttf
+          weight: 800
+        - asset: assets/fonts/Faustina/Faustina-Italic.ttf
+          style: italic
+        - asset: assets/fonts/Faustina/Faustina-BoldItalic.ttf
+          weight: 700
+          style: italic
     - family: NotoSans
       fonts:
         - asset: assets/fonts/NotoSans/NotoSans-Regular.ttf
