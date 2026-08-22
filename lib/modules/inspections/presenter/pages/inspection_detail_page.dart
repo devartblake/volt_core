@@ -455,6 +455,17 @@ class _PdfActionButtonState extends ConsumerState<_PdfActionButton> {
       AppSnackBar.error(context, 'Could not generate the PDF.');
       return;
     }
+
+    if (kIsWeb) {
+      await _openPdf(
+        context,
+        pdfPath: result.pdfPath,
+        resolvedPdfPath: PathResolver.resolveSync(result.pdfPath),
+        title: widget.inspection.toEntity().displayTitle,
+      );
+      return;
+    }
+
     // The Hive write from generatePdf rebuilds the page around us, so there is
     // nothing to refresh here.
     AppSnackBar.success(context, 'PDF ready');
