@@ -1,4 +1,4 @@
-import 'equipment_entity.dart';
+import 'entities/equipment_entity.dart';
 
 /// Normalizes text produced by a keyboard-wedge barcode/QR scanner.
 ///
