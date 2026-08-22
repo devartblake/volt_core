@@ -8,6 +8,23 @@ abstract class EquipmentRepository {
 
   /// The distinct makes / voltages / locations present, for filter chips.
   Future<EquipmentFacets> facets();
+
+  /// Registers an asset that has not yet been inspected.
+  ///
+  /// The write uses the durable sync queue, so field teams can register an
+  /// asset before they regain connectivity. A later inspection will merge into
+  /// this row through its stable identity key.
+  Future<EquipmentEntity> registerAsset({
+    required String name,
+    required AssetType assetType,
+    required String make,
+    required String model,
+    required String serialNumber,
+    required String voltage,
+    required String location,
+    required String siteCode,
+    String notes = '',
+  });
 }
 
 /// Filter values actually present in the data, so the UI never offers a filter
