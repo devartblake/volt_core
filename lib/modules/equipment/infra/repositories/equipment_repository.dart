@@ -1,10 +1,18 @@
 import '../../domain/entities/equipment_entity.dart';
+import '../../../inspections/domain/entities/inspection_entity.dart';
 
 /// Read model for the equipment registry.
 abstract class EquipmentRepository {
   /// Every known asset, newest inspection first when one exists. One entry per
   /// physical unit, not per inspection.
   Future<List<EquipmentEntity>> listEquipment();
+
+  /// Inspections recorded locally for one physical asset, newest first.
+  ///
+  /// The asset registry is intentionally derived from inspection records so a
+  /// technician can review the history while offline. A future shared-history
+  /// read can be merged here without changing the presentation layer.
+  Future<List<InspectionEntity>> listInspectionHistory(EquipmentEntity asset);
 
   /// The distinct makes / voltages / locations present, for filter chips.
   Future<EquipmentFacets> facets();

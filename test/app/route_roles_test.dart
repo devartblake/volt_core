@@ -28,6 +28,7 @@ const _allRouteNames = <String>{
   RouteNames.nameplateList,
   RouteNames.nameplateIntervals,
   RouteNames.equipmentSearch,
+  RouteNames.equipmentHistory,
   RouteNames.customerSites,
   RouteNames.documents,
   RouteNames.selectionManagement,
