@@ -10,6 +10,7 @@ import '../../../../core/services/sync/sync_context.dart';
 import '../../../../core/services/sync/sync_service.dart';
 import '../../../inspections/infra/models/inspection.dart';
 import '../../../inspections/infra/models/nameplate_data.dart';
+import '../../../inspections/domain/entities/inspection_entity.dart';
 import '../../domain/entities/equipment_entity.dart';
 import '../datasources/equipment_remote_datasource.dart';
 import '../mappers/equipment_supabase_mapper.dart';
@@ -71,6 +72,31 @@ class EquipmentRepositoryImpl implements EquipmentRepository {
     });
 
     return merged.map((e) => e.unit).toList(growable: false);
+  }
+
+  @override
+  Future<List<InspectionEntity>> listInspectionHistory(
+    EquipmentEntity asset,
+  ) async {
+    if (!Hive.isBoxOpen(HiveBoxes.inspectionsBoxName)) return const [];
+
+    final nameplates = _nameplatesByInspection();
+    final targetKey = EquipmentEntity.identityKey(
+      serialNumber: asset.serialNumber,
+      siteCode: asset.siteCode,
+      make: asset.make,
+      model: asset.model,
+      fallbackId: asset.id,
+    );
+
+    final history = HiveBoxes.inspections.values.where((inspection) {
+      return _identityForInspection(inspection, nameplates[inspection.id]) ==
+          targetKey;
+    }).toList()..sort((a, b) => b.serviceDate.compareTo(a.serviceDate));
+
+    return history.map((inspection) => inspection.toEntity()).toList(
+      growable: false,
+    );
   }
 
   @override
@@ -170,24 +196,12 @@ class EquipmentRepositoryImpl implements EquipmentRepository {
     final inspections = HiveBoxes.inspections.values.toList();
     if (inspections.isEmpty) return const [];
 
-    // Nameplates keyed by the inspection they belong to.
-    final nameplates = <String, NameplateData>{};
-    if (Hive.isBoxOpen(HiveBoxes.nameplatesBoxName)) {
-      for (final np in HiveBoxes.nameplates.values) {
-        nameplates[np.inspectionId] = np;
-      }
-    }
+    final nameplates = _nameplatesByInspection();
 
     final grouped = <String, List<Inspection>>{};
     for (final ins in inspections) {
       final np = nameplates[ins.id];
-      final key = EquipmentEntity.identityKey(
-        serialNumber: _pick(np?.generatorSn, ins.generatorSerial),
-        siteCode: ins.siteCode,
-        make: _pick(np?.generatorMfr, ins.generatorMake),
-        model: _pick(np?.generatorModel, ins.generatorModel),
-        fallbackId: ins.id,
-      );
+      final key = _identityForInspection(ins, np);
       grouped.putIfAbsent(key, () => []).add(ins);
     }
 
@@ -303,6 +317,27 @@ class EquipmentRepositoryImpl implements EquipmentRepository {
     final p = preferred?.trim() ?? '';
     if (p.isNotEmpty) return p;
     return fallback.trim();
+  }
+
+  static Map<String, NameplateData> _nameplatesByInspection() {
+    if (!Hive.isBoxOpen(HiveBoxes.nameplatesBoxName)) return const {};
+    return {
+      for (final nameplate in HiveBoxes.nameplates.values)
+        nameplate.inspectionId: nameplate,
+    };
+  }
+
+  static String _identityForInspection(
+    Inspection inspection,
+    NameplateData? nameplate,
+  ) {
+    return EquipmentEntity.identityKey(
+      serialNumber: _pick(nameplate?.generatorSn, inspection.generatorSerial),
+      siteCode: inspection.siteCode,
+      make: _pick(nameplate?.generatorMfr, inspection.generatorMake),
+      model: _pick(nameplate?.generatorModel, inspection.generatorModel),
+      fallbackId: inspection.id,
+    );
   }
 
   static String _displayName({
