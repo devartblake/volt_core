@@ -29,6 +29,8 @@ class WorkOrderEntity {
     this.assignedToUserId,
     this.scheduledFor,
     this.description = '',
+    required this.createdAt,
+    required this.updatedAt,
   });
 
   final String id;
@@ -42,6 +44,8 @@ class WorkOrderEntity {
   final String? assignedToUserId;
   final DateTime? scheduledFor;
   final String description;
+  final DateTime createdAt;
+  final DateTime updatedAt;
 
   /// Valid next states. Invalid moves are rejected before they can be queued
   /// for offline sync or sent to the database.
@@ -81,6 +85,7 @@ class WorkOrderEntity {
     String? assignedToUserId,
     DateTime? scheduledFor,
     String? description,
+    DateTime? updatedAt,
   }) => WorkOrderEntity(
     id: id,
     tenantId: tenantId,
@@ -93,5 +98,7 @@ class WorkOrderEntity {
     assignedToUserId: assignedToUserId ?? this.assignedToUserId,
     scheduledFor: scheduledFor ?? this.scheduledFor,
     description: description ?? this.description,
+    createdAt: createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
   );
 }
