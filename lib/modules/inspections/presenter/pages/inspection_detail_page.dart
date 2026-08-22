@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:open_filex/open_filex.dart'; // NEW: open with system viewer
+import 'package:printing/printing.dart';
 import 'package:voltcore/core/services/hive/hive_boxes.dart';
 import 'package:voltcore/core/services/storage/path_resolver.dart';
 import 'package:voltcore/core/services/storage/web_file_store.dart';
@@ -108,6 +109,23 @@ class InspectionDetailPage extends ConsumerWidget {
 
             if (scheduled == true && context.mounted) {
               AppSnackBar.success(context, 'Inspection scheduled successfully');
+            }
+          },
+        ),
+        IconButton(
+          icon: const Icon(Icons.build_circle_outlined),
+          tooltip: 'Schedule maintenance',
+          onPressed: () async {
+            final scheduled = await showScheduleDialog(
+              context: context,
+              taskType: TaskType.maintenance,
+              siteCode: ins.siteCode,
+              address: ins.address,
+              inspectionId: ins.id,
+              siteGrade: ins.siteGrade,
+            );
+            if (scheduled == true && context.mounted) {
+              AppSnackBar.success(context, 'Maintenance scheduled');
             }
           },
         ),
@@ -241,13 +259,44 @@ class InspectionDetailPage extends ConsumerWidget {
                         },
                       ),
                     ),
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      width: double.infinity,
+                      child: FilledButton.icon(
+                        icon: const Icon(Icons.build_circle_outlined),
+                        label: const Text('Schedule Maintenance'),
+                        style: FilledButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        onPressed: () async {
+                          final scheduled = await showScheduleDialog(
+                            context: context,
+                            taskType: TaskType.maintenance,
+                            siteCode: ins.siteCode,
+                            address: ins.address,
+                            inspectionId: ins.id,
+                            siteGrade: ins.siteGrade,
+                          );
+                          if (scheduled == true && context.mounted) {
+                            AppSnackBar.success(
+                              context,
+                              'Maintenance scheduled',
+                            );
+                          }
+                        },
+                      ),
+                    ),
                   ],
                 ),
               ),
             ),
           ),
 
-          // PDF area (no more PdfPreview)
+          // The report renders in place so it can be reviewed, printed, or
+          // downloaded without leaving the inspection.
           Expanded(
             child: hasPdf
                 ? Container(
@@ -259,50 +308,20 @@ class InspectionDetailPage extends ConsumerWidget {
                         width: 1,
                       ),
                     ),
-                    child: Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.picture_as_pdf_outlined,
-                            size: 80,
-                            color: theme.colorScheme.primary.withValues(
-                              alpha: 0.4,
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                          Text(
-                            'PDF ready',
-                            style: theme.textTheme.titleMedium?.copyWith(
-                              color: theme.colorScheme.onSurface.withValues(
-                                alpha: 0.7,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            kIsWeb
-                                ? 'Tap below to preview, print, or download the report.'
-                                : 'Tap the button below to open in your system PDF viewer.',
-                            textAlign: TextAlign.center,
-                            style: theme.textTheme.bodyMedium?.copyWith(
-                              color: theme.colorScheme.onSurface.withValues(
-                                alpha: 0.6,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                          FilledButton.icon(
-                            onPressed: () => _openPdf(
-                              context,
-                              pdfPath: ins.pdfPath,
-                              resolvedPdfPath: resolvedPdfPath,
-                              title: ins.toEntity().displayTitle,
-                            ),
-                            icon: const Icon(Icons.open_in_new),
-                            label: Text(kIsWeb ? 'Preview PDF' : 'Open PDF'),
-                          ),
-                        ],
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(16),
+                      child: PdfPreview(
+                        build: (_) => _readPdfBytes(
+                          pdfPath: ins.pdfPath,
+                          resolvedPdfPath: resolvedPdfPath,
+                        ),
+                        canChangePageFormat: false,
+                        canChangeOrientation: false,
+                        canDebug: false,
+                        pdfFileName: '${ins.siteCode}_inspection.pdf',
+                        loadingWidget: const Center(
+                          child: CircularProgressIndicator(),
+                        ),
                       ),
                     ),
                   )
@@ -391,6 +410,20 @@ Future<void> _openPdf(
   if (result.type != ResultType.done && context.mounted) {
     AppSnackBar.error(context, 'Could not open PDF: ${result.message}');
   }
+}
+
+Future<Uint8List> _readPdfBytes({
+  required String pdfPath,
+  required String resolvedPdfPath,
+}) async {
+  if (kIsWeb) {
+    final bytes = WebFileStore.instance.getSync(pdfPath);
+    if (bytes == null) {
+      throw StateError('PDF data is unavailable.');
+    }
+    return bytes;
+  }
+  return File(resolvedPdfPath).readAsBytes();
 }
 
 /// Opens the inspection's PDF, or renders one when it has none.

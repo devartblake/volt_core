@@ -128,6 +128,12 @@ class RouteRoles {
       UserRole.dispatcher,
       UserRole.admin,
     },
+    'inspection_edit': {
+      UserRole.tech,
+      UserRole.supervisor,
+      UserRole.dispatcher,
+      UserRole.admin,
+    },
 
     // ----- Documents -----
     'documents': {
