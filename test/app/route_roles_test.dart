@@ -16,6 +16,7 @@ const _allRouteNames = <String>{
   RouteNames.analytics,
   RouteNames.inspections,
   RouteNames.inspectionNew,
+  RouteNames.inspectionEdit,
   RouteNames.inspectionDetail,
   RouteNames.inspectionsPending,
   RouteNames.maintenance,

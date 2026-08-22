@@ -124,13 +124,14 @@ class PdfTemplate {
         child: pw.CustomPaint(
           size: const PdfPoint(8, 8),
           painter: (canvas, size) {
-            // Draw checkmark (correct orientation)
+            // PDF canvas coordinates increase upward. The prior points used
+            // screen coordinates, which rendered the selected tick as a ^.
             canvas
               ..setStrokeColor(PdfColors.white)
               ..setLineWidth(1.5)
               ..moveTo(1, 4)
-              ..lineTo(3, 6.5)
-              ..lineTo(7, 1.5)
+              ..lineTo(3, 1.5)
+              ..lineTo(7, 6.5)
               ..strokePath();
           },
         ),

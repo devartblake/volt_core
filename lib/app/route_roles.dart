@@ -129,6 +129,8 @@ class RouteRoles {
       UserRole.admin,
     },
     'equipment_history': {
+    },
+    'inspection_edit': {
       UserRole.tech,
       UserRole.supervisor,
       UserRole.dispatcher,

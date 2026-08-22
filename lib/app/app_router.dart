@@ -158,6 +158,15 @@ final goRouterProvider = Provider<GoRouter>((ref) {
             ),
           ),
           GoRoute(
+            path: 'edit/:id',
+            name: RouteNames.inspectionEdit,
+            builder: (_, state) => TechShell(
+              child: InspectionFormPage(
+                inspectionId: state.pathParameters['id']!,
+              ),
+            ),
+          ),
+          GoRoute(
             path: 'detail/:id',
             name: RouteNames.inspectionDetail,
             builder: (_, state) => TechShell(
