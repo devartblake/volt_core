@@ -44,7 +44,7 @@ class _AssetSiteAssignmentSheetState extends ConsumerState<AssetSiteAssignmentSh
               Text(widget.asset.name, style: Theme.of(context).textTheme.bodyMedium),
               const SizedBox(height: 20),
               DropdownButtonFormField<String?>(
-                value: _siteId,
+                initialValue: _siteId,
                 decoration: const InputDecoration(labelText: 'Customer / service site'),
                 items: [
                   const DropdownMenuItem<String?>(value: null, child: Text('No site selected')),

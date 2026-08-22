@@ -130,7 +130,7 @@ class _AssetRegistrationSheetState
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
                   data: (data) => DropdownButtonFormField<String?>(
-                    value: _siteId,
+                    initialValue: _siteId,
                     decoration: const InputDecoration(
                       labelText: 'Customer / service site',
                       helperText: 'Optional — links this asset to the selected service site.',

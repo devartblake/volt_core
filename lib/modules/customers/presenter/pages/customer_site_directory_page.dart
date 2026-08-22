@@ -50,9 +50,7 @@ class _DirectoryBody extends ConsumerWidget {
       (sitesByCustomer[site.customerId] ??= []).add(site);
     }
     return RefreshIndicator(
-      onRefresh: () async {
-        await ref.refresh(customerSiteDirectoryProvider.future);
-      },
+      onRefresh: () => ref.refresh(customerSiteDirectoryProvider.future).then<void>((_) {}),
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
@@ -236,7 +234,7 @@ class _SiteEditorState extends ConsumerState<_SiteEditor> {
   Widget build(BuildContext context) => AlertDialog(
     title: Text(widget.site == null ? 'Add site' : 'Edit site'),
     content: SizedBox(width: 480, child: Form(key: _form, child: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, children: [
-      DropdownButtonFormField<String?>(value: _customerId, decoration: const InputDecoration(labelText: 'Customer'), items: [const DropdownMenuItem<String?>(value: null, child: Text('No customer assigned')), ...widget.directory.customers.where((customer) => customer.isActive).map((customer) => DropdownMenuItem(value: customer.id, child: Text(customer.name)))], onChanged: _saving ? null : (value) => setState(() => _customerId = value)),
+      DropdownButtonFormField<String?>(initialValue: _customerId, decoration: const InputDecoration(labelText: 'Customer'), items: [const DropdownMenuItem<String?>(value: null, child: Text('No customer assigned')), ...widget.directory.customers.where((customer) => customer.isActive).map((customer) => DropdownMenuItem(value: customer.id, child: Text(customer.name)))], onChanged: _saving ? null : (value) => setState(() => _customerId = value)),
       TextFormField(controller: _code, decoration: const InputDecoration(labelText: 'Site code'), validator: (value) => value == null || value.trim().isEmpty ? 'Site code is required.' : null),
       TextFormField(controller: _address, maxLines: 2, decoration: const InputDecoration(labelText: 'Service address'), validator: (value) => value == null || value.trim().isEmpty ? 'Address is required.' : null),
     ])))),

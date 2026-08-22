@@ -17,7 +17,7 @@ class Equipment {
   final String siteCode;
   final String? siteId;
   final String? registryId;
-  final String? identityKey;
+  final String? registryIdentityKey;
   final Map<String, dynamic> metadata;
   final domain.AssetType assetType;
   final DateTime? lastInspection;
@@ -36,7 +36,7 @@ class Equipment {
     this.siteCode = '',
     this.siteId,
     this.registryId,
-    this.identityKey,
+    this.registryIdentityKey,
     this.metadata = const {},
     this.assetType = domain.AssetType.generator,
     this.lastInspection,
@@ -60,7 +60,7 @@ class Equipment {
       siteCode: e.siteCode,
       siteId: e.siteId,
       registryId: e.registryId,
-      identityKey: e.identityKey,
+      registryIdentityKey: e.registryIdentityKey,
       metadata: e.metadata,
       assetType: e.assetType,
       lastInspection: e.lastInspection,
@@ -85,7 +85,7 @@ class Equipment {
       siteCode: siteCode,
       siteId: siteId,
       registryId: registryId,
-      identityKey: identityKey,
+      registryIdentityKey: registryIdentityKey,
       metadata: metadata,
       assetType: assetType,
       lastInspection: lastInspection,

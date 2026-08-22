@@ -141,9 +141,8 @@ class EquipmentRepositoryImpl implements EquipmentRepository {
       location: location.trim(),
       siteCode: siteCode.trim(),
       siteId: siteId,
-      clearSiteId: siteId == null,
       registryId: rowId,
-      identityKey: identityKey,
+      registryIdentityKey: identityKey,
       metadata: notes.trim().isEmpty ? const {} : {'notes': notes.trim()},
       hasInspectionLink: false,
       status: EquipmentStatus.inactive,
@@ -174,12 +173,13 @@ class EquipmentRepositoryImpl implements EquipmentRepository {
   }) async {
     final tenantId = SyncContext.tenantId;
     final rowId = asset.registryId;
-    final identityKey = asset.identityKey;
+    final identityKey = asset.registryIdentityKey;
     if (tenantId == null || rowId == null || identityKey == null || asset.hasInspectionLink) {
       throw StateError('Only manually registered assets can be reassigned.');
     }
     final updated = asset.copyWith(
       siteId: siteId,
+      clearSiteId: siteId == null,
       siteCode: siteCode.trim(),
       location: location.trim(),
     );

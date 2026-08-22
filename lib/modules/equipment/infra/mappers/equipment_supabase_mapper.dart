@@ -75,7 +75,7 @@ EquipmentEntity equipmentFromSupabaseJson(Map<String, dynamic> row) {
     // treating a registry id as an inspection route for pre-inspection assets.
     id: hasInspectionLink ? latestInspectionId : (row['id'] ?? '').toString(),
     registryId: row['id']?.toString(),
-    identityKey: identityKeyOf(row),
+    registryIdentityKey: identityKeyOf(row),
     siteId: row['site_id']?.toString(),
     name: (row['name'] ?? '').toString(),
     assetType: _assetTypeFromName((row['asset_type'] ?? '').toString()),

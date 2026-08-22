@@ -51,7 +51,7 @@ class EquipmentEntity {
     this.metadata = const {},
     this.siteId,
     this.registryId,
-    this.identityKey,
+    this.registryIdentityKey,
     this.siteCode = '',
     this.siteGrade = '',
     this.lastInspection,
@@ -91,7 +91,7 @@ class EquipmentEntity {
   final String? registryId;
 
   /// Stable registry merge key, supplied by the remote equipment row.
-  final String? identityKey;
+  final String? registryIdentityKey;
 
   final String siteCode;
 
@@ -146,7 +146,7 @@ class EquipmentEntity {
     String? siteId,
     bool clearSiteId = false,
     String? registryId,
-    String? identityKey,
+    String? registryIdentityKey,
     String? siteCode,
     String? siteGrade,
     DateTime? lastInspection,
@@ -166,7 +166,7 @@ class EquipmentEntity {
       metadata: metadata ?? this.metadata,
       siteId: clearSiteId ? null : (siteId ?? this.siteId),
       registryId: registryId ?? this.registryId,
-      identityKey: identityKey ?? this.identityKey,
+      registryIdentityKey: registryIdentityKey ?? this.registryIdentityKey,
       siteCode: siteCode ?? this.siteCode,
       siteGrade: siteGrade ?? this.siteGrade,
       lastInspection: lastInspection ?? this.lastInspection,
