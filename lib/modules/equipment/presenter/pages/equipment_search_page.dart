@@ -593,6 +593,17 @@ class _EquipmentCard extends StatelessWidget {
                   value:
                       '${equipment.inspectionCount} ${equipment.inspectionCount == 1 ? 'inspection' : 'inspections'}',
                 ),
+                const SizedBox(height: 4),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton.icon(
+                    onPressed: () => context.push(
+                      '/equipment/history/${equipment.id}',
+                    ),
+                    icon: const Icon(Icons.history, size: 18),
+                    label: const Text('View history'),
+                  ),
+                ),
               ],
               if (!equipment.hasInspectionLink) ...[
                 const SizedBox(height: 12),

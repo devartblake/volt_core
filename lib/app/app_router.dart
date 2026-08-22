@@ -22,6 +22,7 @@ import '../modules/debug/pages/debug_menu_page.dart';
 import '../modules/debug/pages/hive_debug_page.dart';
 import '../modules/debug/pages/network_debug_page.dart';
 import '../modules/equipment/presenter/pages/equipment_search_page.dart';
+import '../modules/equipment/presenter/pages/asset_history_page.dart';
 import '../modules/inspections/presenter/pages/inspection_detail_page.dart';
 import '../modules/inspections/presenter/pages/inspection_form_page.dart';
 import '../modules/inspections/presenter/pages/inspection_list_page.dart';
@@ -256,6 +257,14 @@ final goRouterProvider = Provider<GoRouter>((ref) {
           name: RouteNames.equipmentSearch,
           builder: (_, __) => const TechShell(
             child: EquipmentSearchPage(),
+          ),
+        ),
+      if (FeatureFlags.equipmentSearchEnabled)
+        GoRoute(
+          path: RoutePaths.equipmentHistory,
+          name: RouteNames.equipmentHistory,
+          builder: (_, state) => TechShell(
+            child: AssetHistoryPage(assetId: state.pathParameters['id']!),
           ),
         ),
 

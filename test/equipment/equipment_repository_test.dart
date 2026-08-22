@@ -106,6 +106,35 @@ void main() {
       },
     );
 
+    test('returns an asset inspection history newest first', () async {
+      await HiveBoxes.inspections.put(
+        'old',
+        _inspection(
+          id: 'old',
+          serial: 'CAT-001',
+          serviceDate: DateTime(2025, 1, 1),
+        ),
+      );
+      await HiveBoxes.inspections.put(
+        'new',
+        _inspection(
+          id: 'new',
+          serial: 'CAT-001',
+          serviceDate: DateTime(2026, 6, 1),
+        ),
+      );
+      await HiveBoxes.inspections.put(
+        'other',
+        _inspection(id: 'other', serial: 'OTHER-100'),
+      );
+
+      final asset = (await repo.listEquipment())
+          .firstWhere((equipment) => equipment.serialNumber == 'CAT-001');
+      final history = await repo.listInspectionHistory(asset);
+
+      expect(history.map((inspection) => inspection.id), ['new', 'old']);
+    });
+
     test('serial matching ignores case and surrounding whitespace', () async {
       await HiveBoxes.inspections.put(
         'i1',
