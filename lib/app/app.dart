@@ -36,10 +36,12 @@ class VoltcoreApp extends ConsumerWidget {
 
 class StorageCleanupService {
   static Future<void> performMaintenance() async {
+    // Browser builds use Hive/WebFileStore rather than filesystem directories.
+    // `path_provider` has no web implementation for these APIs.
+    if (kIsWeb) return;
+
     // Clean temp files older than 7 days
-    await FileStorageService.instance.cleanTempFiles(
-      maxAge: Duration(days: 7),
-    );
+    await FileStorageService.instance.cleanTempFiles(maxAge: Duration(days: 7));
 
     // Optionally clean cache
     await FileStorageService.instance.cleanCache();
