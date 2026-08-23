@@ -155,6 +155,19 @@ flutter build web   # or apk / ipa
 CI (`.github/workflows/ci.yml`) runs analyze and the test suite on every push
 and pull request.
 
+## FieldOps delivery status
+
+- **Phase 1 — complete:** tenant-safe scheduling and generic, site-aware asset
+  foundation.
+- **Phase 2 — core complete:** customer/site directory, site-aware asset
+  registration and reassignment, QR lookup, asset history, and durable
+  work-order lifecycle core. The dedicated work-order operations UI and
+  production migration/RLS verification remain.
+
+See [`docs/voltcore_fieldops_roadmap.md`](docs/voltcore_fieldops_roadmap.md)
+for the completed-task record, deployment verification, and the remaining
+Phase 2 gates.
+
 ## Documentation
 
 Deeper notes live in [`docs/`](docs/):
