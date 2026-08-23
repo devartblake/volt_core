@@ -87,7 +87,7 @@ and PDF as a template-specific payload during the migration.
 | Phase | Status | Delivered scope | Remaining gate |
 | --- | --- | --- | --- |
 | Phase 1 | ✅ Complete | Tenant-safe schedule foundation, generic asset vocabulary, equipment mapper/repository support, and asset registration. | Apply and verify the migration in each Supabase environment. |
-| Phase 2 | 🟡 Rollout validation | Customer/site directory, site-aware asset registration and reassignment, QR lookup, asset history, work-order operations UI, database sync, and database-owned audit events. | Complete staging/production migration and tenant/RLS verification, then add end-to-end coverage. |
+| Phase 2 | 🟡 Rollout validation | Customer/site directory, site-aware asset registration and reassignment, QR lookup, asset history, work-order operations UI, dispatch workload summary, database sync, and database-owned audit events. | Complete staging/production migration and tenant/RLS verification, then add end-to-end coverage. |
 | Phase 3 | ⏳ Not started | — | Template definitions, responses, renderer, and generator migration. |
 
 ### Phase 1 — Secure foundation and generic asset vocabulary — ✅ Complete
@@ -127,22 +127,26 @@ an ATS or another supported asset type.
   trigger-owned creation/status/assignment audit events.
 - ✅ Existing jobs show their synchronized, database-owned activity timeline;
   focused mapper and widget coverage protects the audit-history rendering.
+- ✅ All Jobs includes an operational queue summary for open, due-today,
+  overdue, and unassigned work. Its calculation is unit-tested so terminal
+  records cannot inflate active dispatch metrics.
 - ✅ Inspection workflows can initiate maintenance scheduling after completion.
 - ✅ Customer/site migrations and their grants are included in the consolidated
   `supabase/schema/voltcore_complete_schema.sql` setup script.
 
 **Remaining Phase 2 tasks:**
 
-1. Apply the Phase 1 and Phase 2 migrations in staging and production; verify
-   tenant-isolated RLS for customers, sites, equipment, work orders, and
-   read-only audit events.
+1. Apply the Phase 1 and Phase 2 migrations in staging and production; run
+   `supabase/manual/verify_phase2_tenant_rls.sql` with real member and
+   cross-tenant UUIDs to verify tenant-isolated RLS for customers, sites,
+   equipment, work orders, and read-only audit events.
 2. Verify with real tenant users that work-order creation, status/assignee
    changes, offline re-sync, and audit triggers produce the expected rows.
 3. Add end-to-end widget/integration coverage for customer/site selection,
    asset reassignment, work-order dispatch, schedule task details, and remote
    conflict handling.
-4. Add an operational workload view once dispatch usage data confirms the
-   required queue, technician, and overdue metrics.
+4. Review real dispatch usage to determine whether the current queue summary
+   needs per-technician capacity, SLA, or additional overdue metrics.
 
 **Customer/site foundation:**
 `supabase/migrations/20260822205219_phase2_customer_sites.sql`
