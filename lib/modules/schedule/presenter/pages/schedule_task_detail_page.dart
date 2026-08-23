@@ -6,6 +6,7 @@ import '../../../../core/constants/route_paths.dart';
 import '../../../../shared/widgets/widgets.dart';
 import '../../domain/entities/task_schedule_entity.dart';
 import '../../../maintenance/presenter/controllers/maintenance_providers.dart';
+import '../../../maintenance/infra/datasources/maintenance_remote_datasource.dart';
 import '../controllers/schedule_controller.dart';
 import '../../infra/repositories/schedule_repository_impl.dart';
 
@@ -202,11 +203,11 @@ bool _hasSource(TaskScheduleEntity item) =>
 bool _canComplete(String status) => status == 'scheduled' || status == 'in_progress';
 bool _canCancel(String status) => status == 'scheduled' || status == 'in_progress' || status == 'pending';
 
-void _openSource(
+Future<void> _openSource(
   BuildContext context,
   WidgetRef ref,
   TaskScheduleEntity item,
-) {
+) async {
   if (item.inspectionId?.isNotEmpty ?? false) {
     context.pushNamed(
       RouteNames.inspectionDetail,
@@ -218,13 +219,26 @@ void _openSource(
     // This is expected after clearing device storage, and legacy `maintenance`
     // rows may also refer to a source that was later removed. Do not route to
     // an empty detail page and make it look like the scheduled task is broken.
-    final record = ref.read(maintenanceRepoProvider).getById(item.sourceId!);
+    final repository = ref.read(maintenanceRepoProvider);
+    var record = repository.getById(item.sourceId!);
+    if (record == null) {
+      try {
+        record = await ref
+            .read(maintenanceRemoteDatasourceProvider)
+            .getById(item.sourceId!);
+        if (record != null) await repository.cacheRemote(record);
+      } catch (_) {
+        // The clear message below covers offline, RLS, and missing-row cases
+        // without exposing transport details to field technicians.
+      }
+    }
+    if (!context.mounted) return;
     if (record == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
-            'The linked maintenance record is unavailable on this device. '
-            'It may have been deleted or has not synced yet.',
+            'The linked maintenance record could not be restored. It may have '
+            'been deleted, or this device may be offline or not authorized.',
           ),
         ),
       );
