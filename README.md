@@ -170,8 +170,10 @@ and pull request.
   definition, generic validation, authenticated definition retrieval, and
   Hive-backed offline revision caching are in place before the renderer, PDFs,
   template-management UI, and generator-form migration. The revision lifecycle
-  service now plans draft/clone/publish/archive transitions; database-backed
-  atomic management writes are next.
+  service now plans draft/clone/publish/archive transitions. The Phase 3
+  foundation and its analyzer repair are published in
+  [PR #44](https://github.com/devartblake/volt_core/pull/44); database-backed
+  atomic management writes and the role-gated management UI are next.
 
 See [`docs/voltcore_fieldops_roadmap.md`](docs/voltcore_fieldops_roadmap.md)
 for the completed-task record, deployment verification, the remaining Phase 2
