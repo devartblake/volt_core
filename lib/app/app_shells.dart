@@ -11,7 +11,7 @@ import '../shared/widgets/app_page.dart';
 /// Generic shell that wraps a page with navigation + responsive layout.
 ///
 /// - On narrow screens: publishes an [AppDrawer] for the page's Scaffold.
-/// - On wide screens: shows the NavigationRail (from AppDrawer) on the left,
+/// - On wide screens: shows grouped persistent navigation on the left,
 ///   with the page content on the right.
 /// - It builds an AppUserProfile from the current AuthState so the drawer shows
 ///   user info, the active tenant, and role.
@@ -50,13 +50,13 @@ class DefaultShell extends ConsumerWidget {
       );
     }
 
-    // Wide screens → persistent NavigationRail beside the page.
+    // Wide screens → persistent grouped navigation beside the page.
     return AppShellScope(
       isCompact: false,
       drawer: null,
       child: Row(
         children: [
-          // AppDrawer renders as a NavigationRail + divider at this width.
+          // AppDrawer renders as a grouped navigation sidebar at this width.
           AppDrawer(userProfile: profile),
           Expanded(child: child),
         ],
