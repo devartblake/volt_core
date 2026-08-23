@@ -30,6 +30,11 @@ class RoutePaths {
   static const String maintenanceDetail = '/maintenance/detail/:id';
   static const String maintenanceArchive = '/maintenance/archive';
 
+  // Work orders
+  static const String workOrders = '/work-orders';
+  static const String workOrderNew = '/work-orders/new';
+  static const String workOrderEdit = '/work-orders/edit/:id';
+
   // Schedule
   static const String schedule = '/schedule';
 
@@ -83,6 +88,10 @@ class RouteNames {
   static const String maintenanceNew = 'maintenance_new';
   static const String maintenanceDetail = 'maintenance_detail';
   static const String maintenanceArchive = 'maintenance_archive';
+
+  static const String workOrders = 'work_orders';
+  static const String workOrderNew = 'work_order_new';
+  static const String workOrderEdit = 'work_order_edit';
 
   static const String schedule = 'schedule';
   static const String scheduleTask = 'schedule_task';
