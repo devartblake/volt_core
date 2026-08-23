@@ -1,6 +1,6 @@
 # Voltcore
 
-Field inspection and maintenance app for standby generator compliance work â
+Field inspection and maintenance app for standby generator compliance work —
 FDNY/DEP inspections, maintenance records, load tests, scheduling, and the PDF
 reports that come out of them.
 
@@ -33,7 +33,7 @@ Hive database, and sync operations queue up until credentials exist.
 ## Configuration
 
 Environment files live in `assets/env/` and are **bundled as assets**, so a
-change to one requires a rebuild â a hot reload or browser refresh keeps serving
+change to one requires a rebuild — a hot reload or browser refresh keeps serving
 the previous values.
 
 | File | Used when |
@@ -58,13 +58,13 @@ user isn't a member of.
 
 Run these in the SQL editor of your project, in order:
 
-1. `supabase/schema/voltcore_complete_schema.sql` â tables, RLS policies, helpers.
+1. `supabase/schema/voltcore_complete_schema.sql` — tables, RLS policies, helpers.
 2. `supabase/migrations/0002_align_app_sync_columns.sql`
-3. `supabase/migrations/0003_missing_tables.sql` â `schedule_tasks`,
+3. `supabase/migrations/0003_missing_tables.sql` — `schedule_tasks`,
    `technicians`, `role_assignments`, and the dashboard RPC.
-4. `supabase/migrations/0004_equipment.sql` â the shared equipment registry.
+4. `supabase/migrations/0004_equipment.sql` — the shared equipment registry.
 
-Then create a tenant and grant yourself membership â **roles come from the
+Then create a tenant and grant yourself membership — **roles come from the
 database**, so without a `tenant_members` row the app treats you as a technician
 regardless of what you pick at sign-in:
 
@@ -111,18 +111,18 @@ Feature-first, with clean-architecture layers inside each module:
 
 ```
 lib/
-âââ app/            # router, shells, drawer, RBAC route table
-âââ core/
-â   âââ services/   # hive, sync, storage, photos, pdf, notifications, forms
-â   âââ theme/      # ColorScheme + StatusColors extension
-â   âââ constants/  # routes, feature flags
-âââ modules/        # inspections, maintenance, schedule, admin, auth, â¦
-â   âââ <feature>/
-â       âââ domain/     # entities, usecases
-â       âââ infra/      # models, mappers, repositories, datasources
-â       âââ external/   # Supabase-facing implementations
-â       âââ presenter/  # pages, widgets, controllers
-âââ shared/widgets/ # AppPage + the component kit
+├── app/            # router, shells, drawer, RBAC route table
+├── core/
+│   ├── services/   # hive, sync, storage, photos, pdf, notifications, forms
+│   ├── theme/      # ColorScheme + StatusColors extension
+│   └── constants/  # routes, feature flags
+├── modules/        # inspections, maintenance, schedule, admin, auth, …
+│   └── <feature>/
+│       ├── domain/     # entities, usecases
+│       ├── infra/      # models, mappers, repositories, datasources
+│       ├── external/   # Supabase-facing implementations
+│       └── presenter/  # pages, widgets, controllers
+└── shared/widgets/ # AppPage + the component kit
 ```
 
 Points worth knowing before changing things:
@@ -131,17 +131,17 @@ Points worth knowing before changing things:
   `SyncOperation`. `SyncService` drains that durable outbox with exponential
   backoff whenever connectivity allows; the UI never blocks on the network.
 - **One page chrome.** Screens return `AppPage`, never their own
-  `Scaffold`/`AppBar` â the shell owns navigation and the app bar. Adding a
+  `Scaffold`/`AppBar` — the shell owns navigation and the app bar. Adding a
   second `AppBar` reintroduces the doubled-header bug.
 - **RBAC is default-deny.** Every route needs an entry in
   `lib/app/route_roles.dart`; unlisted routes are refused for all roles, and
   `test/app/route_roles_test.dart` fails if a `RouteNames` constant has no
-  decision. Roles are read from `tenant_members` â the sign-in selector is only a
+  decision. Roles are read from `tenant_members` — the sign-in selector is only a
   preference and cannot escalate.
 - **Web has no filesystem.** Signature and photo bytes go to `WebFileStore`
   (Hive/IndexedDB) instead of `dart:io`. Guard any new file work with `kIsWeb`.
 - **Status colours** (`success` / `warning` / `info`) come from the
-  `StatusColors` theme extension, not raw `Colors.green` â those don't adapt to
+  `StatusColors` theme extension, not raw `Colors.green` — those don't adapt to
   dark mode.
 
 ## Testing
@@ -157,18 +157,21 @@ and pull request.
 
 ## FieldOps delivery status
 
-- **Phase 1 â complete:** tenant-safe scheduling and generic, site-aware asset
+- **Phase 1 — complete:** tenant-safe scheduling and generic, site-aware asset
   foundation.
-- **Phase 2 â merge and rollout validation:** customer/site directory,
+- **Phase 2 — merge and rollout validation:** customer/site directory,
   site-aware asset registration and reassignment, QR lookup, asset history,
   work-order operations UI, Supabase merge/sync, trigger-owned audit history,
   scheduled-task details, and grouped navigation are complete in
   [PR #41](https://github.com/devartblake/volt_core/pull/41). Merge it, then
   run the staged tenant/RLS and real-user workflow checks.
-- **Phase 3 â foundation in progress:** versioned, tenant-safe template and
+- **Phase 3 — foundation in progress:** versioned, tenant-safe template and
   response contracts, local-first response persistence, a pinned runtime
-  definition, and generic validation are in place before the renderer, PDFs,
-  template management, and generator-form migration.
+  definition, generic validation, authenticated definition retrieval, and
+  Hive-backed offline revision caching are in place before the renderer, PDFs,
+  template-management UI, and generator-form migration. The revision lifecycle
+  service now plans draft/clone/publish/archive transitions; database-backed
+  atomic management writes are next.
 
 See [`docs/voltcore_fieldops_roadmap.md`](docs/voltcore_fieldops_roadmap.md)
 for the completed-task record, deployment verification, the remaining Phase 2
