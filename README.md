@@ -159,15 +159,18 @@ and pull request.
 
 - **Phase 1 — complete:** tenant-safe scheduling and generic, site-aware asset
   foundation.
-- **Phase 2 — rollout validation:** customer/site directory, site-aware asset
-  registration and reassignment, QR lookup, asset history, work-order
-  operations UI, Supabase merge/sync, and trigger-owned audit history are
-  complete in source. Staging/production migration and tenant/RLS verification
-  remain.
+- **Phase 2 — merge and rollout validation:** customer/site directory,
+  site-aware asset registration and reassignment, QR lookup, asset history,
+  work-order operations UI, Supabase merge/sync, trigger-owned audit history,
+  scheduled-task details, and grouped navigation are complete in
+  [PR #41](https://github.com/devartblake/volt_core/pull/41). Merge it, then
+  run the staged tenant/RLS and real-user workflow checks.
+- **Phase 3 — planned:** versioned, tenant-safe inspection templates; generic
+  response rendering and PDFs; then an incremental generator-form migration.
 
 See [`docs/voltcore_fieldops_roadmap.md`](docs/voltcore_fieldops_roadmap.md)
-for the completed-task record, deployment verification, and the remaining
-Phase 2 gates.
+for the completed-task record, deployment verification, the remaining Phase 2
+gates, and the ordered Phase 3 backlog.
 
 ## Documentation
 
