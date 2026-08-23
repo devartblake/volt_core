@@ -61,6 +61,10 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Reschedule task'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('Delete task permanently'),
+      200,
+    );
     expect(find.text('Delete task permanently'), findsOneWidget);
     expect(find.text('Cancel task'), findsNothing);
   });
