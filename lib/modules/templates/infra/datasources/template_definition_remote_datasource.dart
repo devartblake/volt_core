@@ -104,7 +104,7 @@ class TemplateDefinitionRemoteDatasourceImpl
       sections: (sectionsRows as List)
           .map((row) => formTemplateSectionFromSupabaseJson(_row(row))),
       fields: fields,
-      options: (optionsRows as List)
+      options: optionsRows
           .map((row) => formTemplateFieldOptionFromSupabaseJson(_row(row))),
     );
   }
