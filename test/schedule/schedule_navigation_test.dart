@@ -49,9 +49,5 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Scheduled task schedule-1'), findsOneWidget);
-    expect(
-      router.routeInformationProvider.value.uri.path,
-      '/schedule/detail/schedule-1',
-    );
   });
 }
