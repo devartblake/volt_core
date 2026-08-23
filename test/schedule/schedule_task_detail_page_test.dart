@@ -20,6 +20,8 @@ TaskScheduleEntity _task() => TaskScheduleEntity(
   status: 'scheduled',
 );
 
+TaskScheduleEntity _cancelledTask() => _task().copyWith(status: 'cancelled');
+
 void main() {
   testWidgets('displays the scheduled record before offering its source link', (
     tester,
@@ -41,5 +43,25 @@ void main() {
     expect(find.text('Scheduled for'), findsOneWidget);
     expect(find.text('Quarterly load test'), findsOneWidget);
     expect(find.text('Open source record'), findsOneWidget);
+  });
+
+  testWidgets('offers a cancelled task a reschedule and permanent-delete path',
+      (tester) async {
+    final task = _cancelledTask();
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          scheduleTaskProvider(task.id).overrideWith((ref) async => task),
+        ],
+        child: const MaterialApp(
+          home: ScheduleTaskDetailPage(id: 'schedule-1'),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Reschedule task'), findsOneWidget);
+    expect(find.text('Delete task permanently'), findsOneWidget);
+    expect(find.text('Cancel task'), findsNothing);
   });
 }
