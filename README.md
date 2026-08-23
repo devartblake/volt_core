@@ -166,9 +166,9 @@ and pull request.
   [PR #41](https://github.com/devartblake/volt_core/pull/41). Merge it, then
   run the staged tenant/RLS and real-user workflow checks.
 - **Phase 3 â foundation in progress:** versioned, tenant-safe template and
-  response contracts, local-first response persistence, and durable sync are
-  being established before the generic renderer, PDFs, and generator-form
-  migration.
+  response contracts, local-first response persistence, a pinned runtime
+  definition, and generic validation are in place before the renderer, PDFs,
+  template management, and generator-form migration.
 
 See [`docs/voltcore_fieldops_roadmap.md`](docs/voltcore_fieldops_roadmap.md)
 for the completed-task record, deployment verification, the remaining Phase 2
