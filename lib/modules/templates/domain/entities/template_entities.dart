@@ -181,6 +181,14 @@ class FormTemplateDefinition {
         fields.any((field) => field.revisionId != revision.id)) {
       throw ArgumentError('Sections and fields must belong to the revision.');
     }
+    final sectionIds = sections.map((section) => section.id).toSet();
+    final fieldIds = fields.map((field) => field.id).toSet();
+    if (fields.any((field) => !sectionIds.contains(field.sectionId)) ||
+        options.any((option) => !fieldIds.contains(option.fieldId))) {
+      throw ArgumentError(
+        'Fields and options must belong to a section and field in the definition.',
+      );
+    }
   }
 
   final FormTemplate template;
