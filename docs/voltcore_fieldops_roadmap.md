@@ -122,6 +122,9 @@ an ATS or another supported asset type.
 - ✅ The All Jobs list, details, create/edit, dispatch assignment, lifecycle
   transitions, inspection handoff, and schedule task detail flow are usable
   without developer tooling.
+- ✅ Selecting any schedule row now opens its scheduled-task detail first;
+  maintenance and inspection source records remain explicit secondary links,
+  preventing a scheduled-task ID from being treated as a maintenance-record ID.
 - ✅ `20260823162511_phase2_work_orders.sql` defines tenant-scoped work orders,
   composite customer/site/asset links, least-privilege RLS, sync indexes, and
   trigger-owned creation/status/assignment audit events.
@@ -142,9 +145,10 @@ an ATS or another supported asset type.
    equipment, work orders, and read-only audit events.
 2. Verify with real tenant users that work-order creation, status/assignee
    changes, offline re-sync, and audit triggers produce the expected rows.
-3. Add end-to-end widget/integration coverage for customer/site selection,
-   asset reassignment, work-order dispatch, schedule task details, and remote
-   conflict handling.
+3. ✅ Focused widget coverage now protects scheduled-task routing and the
+   details screen. Run the full staging workflow for customer/site selection,
+   asset reassignment, work-order dispatch, and remote conflict handling with
+   real authenticated accounts before declaring rollout complete.
 4. Review real dispatch usage to determine whether the current queue summary
    needs per-technician capacity, SLA, or additional overdue metrics.
 
