@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:uuid/uuid.dart';
 
 import '../../../../shared/widgets/app_page.dart';
 import '../../domain/entities/template_entities.dart';
@@ -27,6 +28,8 @@ class TemplateDraftEditorPage extends ConsumerStatefulWidget {
 
 class _TemplateDraftEditorPageState
     extends ConsumerState<TemplateDraftEditorPage> {
+  static const _uuid = Uuid();
+
   final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
   final _instructionsController = TextEditingController();
@@ -312,15 +315,15 @@ class _TemplateDraftEditorPageState
 
   void _addSection() {
     final definition = _definition!;
-    final stamp = DateTime.now().microsecondsSinceEpoch;
+    final id = _uuid.v4();
     setState(() {
       _sections.add(
         _SectionDraft(
           section: FormTemplateSection(
-            id: 'section-$stamp',
+            id: id,
             tenantId: definition.template.tenantId,
             revisionId: definition.revision.id,
-            key: 'section_$stamp',
+            key: 'section_${id.replaceAll('-', '')}',
             title: 'New section',
             position: _sections.length,
           ),
@@ -353,6 +356,8 @@ class _SectionEditorCard extends StatelessWidget {
     required this.onRemove,
     required this.onChanged,
   });
+
+  static const _uuid = Uuid();
 
   final _SectionDraft draft;
   final bool canMoveUp;
@@ -404,15 +409,15 @@ class _SectionEditorCard extends StatelessWidget {
               const Expanded(child: Text('Fields')),
               TextButton.icon(
                 onPressed: () {
-                  final stamp = DateTime.now().microsecondsSinceEpoch;
+                  final id = _uuid.v4();
                   draft.fields.add(
                     _FieldDraft(
                       field: FormTemplateField(
-                        id: 'field-$stamp',
+                        id: id,
                         tenantId: draft.section.tenantId,
                         revisionId: draft.section.revisionId,
                         sectionId: draft.section.id,
-                        key: 'field_$stamp',
+                        key: 'field_${id.replaceAll('-', '')}',
                         label: 'New field',
                         type: TemplateFieldType.text,
                         position: draft.fields.length,
@@ -607,6 +612,8 @@ class _FieldDraft {
         visibility = Map<String, dynamic>.from(field.visibilityRule),
         options = List<FormTemplateFieldOption>.from(options);
 
+  static const _uuid = Uuid();
+
   final FormTemplateField field;
   String label;
   String helpText;
@@ -628,7 +635,7 @@ class _FieldDraft {
       if (value.isEmpty || label.isEmpty) continue;
       parsed.add(
         FormTemplateFieldOption(
-          id: index < options.length ? options[index].id : '${field.id}-option-$index',
+          id: index < options.length ? options[index].id : _uuid.v4(),
           tenantId: field.tenantId,
           fieldId: field.id,
           value: value,
