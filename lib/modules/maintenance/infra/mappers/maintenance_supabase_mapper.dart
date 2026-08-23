@@ -54,7 +54,7 @@ Map<String, dynamic> maintenanceRecordRow(MaintenanceRecord r) {
 
 /// The full maintenance detail, stored in `maintenance_records.data` (jsonb).
 ///
-/// Transient fields (signature bytes) are intentionally omitted — the images
+/// Transient fields (signature bytes) are intentionally omitted â the images
 /// themselves are backed up to Supabase Storage via the file backup queue.
 Map<String, dynamic> maintenanceRecordData(MaintenanceRecord r) {
   return {
@@ -174,6 +174,151 @@ Map<String, dynamic> maintenanceRecordData(MaintenanceRecord r) {
     'customer_signature_path': r.customerSignaturePath,
   };
 }
+
+/// Restores a full Hive record from the two Supabase rows used by maintenance
+/// sync. Keeping this inverse alongside [maintenanceRecordData] prevents a
+/// cache reset from turning a valid cloud record into a blank detail page.
+MaintenanceRecord maintenanceRecordFromSupabaseRows({
+  required Map<String, dynamic> job,
+  Map<String, dynamic>? details,
+}) {
+  final data = details?['data'] is Map
+      ? Map<String, dynamic>.from(details!['data'] as Map)
+      : const <String, dynamic>{};
+  final record = MaintenanceRecord(
+    id: _text(job['id']),
+    createdAt: _date(job['created_at']) ?? DateTime.now(),
+    updatedAt: _date(job['updated_at']) ?? DateTime.now(),
+  )
+  ..inspectionId = _nullableText(data['inspection_id'])
+  ..siteCode = _text(data['site_code'])
+  ..address = _text(data['address'])
+  ..dateOfService = _date(data['date_of_service'])
+  ..technicianName = _text(data['technician_name'])
+  ..generatorMake = _text(data['generator_make'])
+  ..generatorModel = _text(data['generator_model'])
+  ..generatorSerial = _text(data['generator_serial'])
+  ..generatorKw = _text(data['generator_kw'])
+  ..engineHours = _text(data['engine_hours'])
+  ..fuelType = _text(data['fuel_type'])
+  ..lastFuelDeliveryDate = _text(data['last_fuel_delivery_date'])
+  ..voltageRating = _text(data['voltage_rating'])
+  ..generatorLocation = _text(data['generator_location'])
+  ..generatorLocationOther = _text(data['generator_location_other'])
+  ..enclosureDamaged = _bool(data['enclosure_damaged'])
+  ..enclosureIntact = _bool(data['enclosure_intact'])
+  ..noEnclosure = _bool(data['no_enclosure'])
+  ..visibleDamageOrLeaks = _bool(data['visible_damage_or_leaks'])
+  ..areaClearOfHazards = _bool(data['area_clear_of_hazards'])
+  ..warningLabelsVisible = _bool(data['warning_labels_visible'])
+  ..fireExtinguisherPresent = _bool(data['fire_extinguisher_present'])
+  ..batteryNeedsReplace = _bool(data['battery_needs_replace'])
+  ..batteryRecentlyReplaced = _bool(data['battery_recently_replaced'])
+  ..batteryMfgDate = _text(data['battery_mfg_date'])
+  ..batteryPartNo = _text(data['battery_part_no'])
+  ..batteryType = _text(data['battery_type'])
+  ..airFilterNeedsReplace = _bool(data['air_filter_needs_replace'])
+  ..airFilterRecentlyReplaced = _bool(data['air_filter_recently_replaced'])
+  ..airFilterLastReplacedDate = _text(data['air_filter_last_replaced_date'])
+  ..airFilterPartNo = _text(data['air_filter_part_no'])
+  ..coolantLevel = _text(data['coolant_level'])
+  ..coolantColor = _text(data['coolant_color'])
+  ..coolantHosesCompromised = _bool(data['coolant_hoses_compromised'])
+  ..coolantHosesRecommendChange = _bool(data['coolant_hoses_recommend_change'])
+  ..coolantHosesInfo = _text(data['coolant_hoses_info'])
+  ..fuelHosesCompromised = _bool(data['fuel_hoses_compromised'])
+  ..fuelHosesRecommendChange = _bool(data['fuel_hoses_recommend_change'])
+  ..fuelHosesInfo = _text(data['fuel_hoses_info'])
+  ..airIntakeHosesCompromised = _bool(data['air_intake_hoses_compromised'])
+  ..airIntakeHosesRecommendChange = _bool(data['air_intake_hoses_recommend_change'])
+  ..airIntakeHosesInfo = _text(data['air_intake_hoses_info'])
+  ..oilHosesCompromised = _bool(data['oil_hoses_compromised'])
+  ..oilHosesRecommendChange = _bool(data['oil_hoses_recommend_change'])
+  ..oilHosesInfo = _text(data['oil_hoses_info'])
+  ..additionalHosesCompromised = _bool(data['additional_hoses_compromised'])
+  ..additionalHosesRecommendChange = _bool(data['additional_hoses_recommend_change'])
+  ..additionalHosesInfo = _text(data['additional_hoses_info'])
+  ..canLube = _bool(data['can_lube'])
+  ..canLubePartNo = _text(data['can_lube_part_no'])
+  ..canFuel = _bool(data['can_fuel'])
+  ..canFuelPartNo = _text(data['can_fuel_part_no'])
+  ..canWaterSep = _bool(data['can_water_sep'])
+  ..canWaterSepPartNo = _text(data['can_water_sep_part_no'])
+  ..canOil = _bool(data['can_oil'])
+  ..canOilPartNo = _text(data['can_oil_part_no'])
+  ..canOther1 = _bool(data['can_other1'])
+  ..canOther1Label = _text(data['can_other1_label'])
+  ..canOther1PartNo = _text(data['can_other1_part_no'])
+  ..canOther2 = _bool(data['can_other2'])
+  ..canOther2Label = _text(data['can_other2_label'])
+  ..canOther2PartNo = _text(data['can_other2_part_no'])
+  ..oilFilterChanged = _bool(data['oil_filter_changed'])
+  ..oilFilterNotes = _text(data['oil_filter_notes'])
+  ..fuelFilterReplaced = _bool(data['fuel_filter_replaced'])
+  ..fuelFilterNotes = _text(data['fuel_filter_notes'])
+  ..coolantFlushed = _bool(data['coolant_flushed'])
+  ..coolantNotes = _text(data['coolant_notes'])
+  ..batteryReplaced = _bool(data['battery_replaced'])
+  ..batteryNotes = _text(data['battery_notes'])
+  ..airFilterReplaced = _bool(data['air_filter_replaced'])
+  ..airFilterNotes = _text(data['air_filter_notes'])
+  ..beltsHosesReplaced = _bool(data['belts_hoses_replaced'])
+  ..beltsHosesNotes = _text(data['belts_hoses_notes'])
+  ..blockHeaterTested = _bool(data['block_heater_tested'])
+  ..blockHeaterNotes = _text(data['block_heater_notes'])
+  ..racorServiced = _bool(data['racor_serviced'])
+  ..racorNotes = _text(data['racor_notes'])
+  ..atsControllerInspected = _bool(data['ats_controller_inspected'])
+  ..atsControllerNotes = _text(data['ats_controller_notes'])
+  ..cdvrProgrammed = _bool(data['cdvr_programmed'])
+  ..cdvrNotes = _text(data['cdvr_notes'])
+  ..undervoltageRepaired = _bool(data['undervoltage_repaired'])
+  ..undervoltageNotes = _text(data['undervoltage_notes'])
+  ..hazmatRemoved = _bool(data['hazmat_removed'])
+  ..hazmatNotes = _text(data['hazmat_notes'])
+  ..serviceObservations = _text(data['service_observations'])
+  ..postVerifyRunsUnderLoad = _bool(data['post_verify_runs_under_load'])
+  ..postCheckVoltFreq = _bool(data['post_check_volt_freq'])
+  ..postInspectExhaust = _bool(data['post_inspect_exhaust'])
+  ..postVerifyGrounding = _bool(data['post_verify_grounding'])
+  ..postCheckControlPanel = _bool(data['post_check_control_panel'])
+  ..postEnsureSafetyDevices = _bool(data['post_ensure_safety_devices'])
+  ..postDocumentDeficiencies = _bool(data['post_document_deficiencies'])
+  ..postLoadbankTest = _bool(data['post_loadbank_test'])
+  ..postAtsFunctionality = _bool(data['post_ats_functionality'])
+  ..fuelStoredLong = _bool(data['fuel_stored_long'])
+  ..partsOilTypeQty = _text(data['parts_oil_type_qty'])
+  ..partsCoolantTypeQty = _text(data['parts_coolant_type_qty'])
+  ..partsFilterTypes = _text(data['parts_filter_types'])
+  ..partsBatteryTypeDate = _text(data['parts_battery_type_date'])
+  ..partsBeltsHosesReplaced = _text(data['parts_belts_hoses_replaced'])
+  ..partsBlockHeaterWattage = _text(data['parts_block_heater_wattage'])
+  ..partsCdvrSerial = _text(data['parts_cdvr_serial'])
+  ..technicianSignatureName = _text(data['technician_signature_name'])
+  ..technicianSignatureDate = _date(data['technician_signature_date'])
+  ..customerSignatureName = _text(data['customer_signature_name'])
+  ..customerSignatureDate = _date(data['customer_signature_date'])
+  ..generalNotes = _nullableText(data['general_notes'])
+  ..completed = _bool(data['completed'])
+  ..requiresFollowUp = _bool(data['requires_follow_up'])
+  ..followUpNotes = _nullableText(data['follow_up_notes'])
+  ..technicianSignaturePath = _nullableText(data['technician_signature_path'])
+  ..customerSignaturePath = _nullableText(data['customer_signature_path']);
+  return record;
+}
+
+String _text(Object? value) => value?.toString() ?? '';
+
+String? _nullableText(Object? value) => value?.toString();
+
+bool _bool(Object? value) =>
+    value is bool ? value : value?.toString().toLowerCase() == 'true';
+
+DateTime? _date(Object? value) => switch (value) {
+  DateTime value => value,
+  String value => DateTime.tryParse(value),
+  _ => null,
+};
 
 /// Queue the two upserts (job identity + detail) for cloud sync. The job row is
 /// enqueued first so it exists before the FK-linked detail row is pushed.

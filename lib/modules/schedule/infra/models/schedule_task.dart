@@ -34,10 +34,10 @@ class ScheduledTask {
   final DateTime updatedAt;
 
   @HiveField(9)
-  final String sourceType; // inspection, maintenance, manual, etc.
+  final String sourceType; // inspection, maintenance_record, manual, etc.
 
   @HiveField(10)
-  final String? sourceId; // inspectionId / maintenanceJobId
+  final String? sourceId; // inspectionId / maintenanceRecordId
 
   @HiveField(11)
   final DateTime scheduledDate;

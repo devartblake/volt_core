@@ -5,6 +5,8 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/constants/route_paths.dart';
 import '../../../../shared/widgets/widgets.dart';
 import '../../domain/entities/task_schedule_entity.dart';
+import '../../../maintenance/presenter/controllers/maintenance_providers.dart';
+import '../../../maintenance/infra/datasources/maintenance_remote_datasource.dart';
 import '../controllers/schedule_controller.dart';
 import '../../infra/repositories/schedule_repository_impl.dart';
 
@@ -101,7 +103,7 @@ class _TaskDetail extends ConsumerWidget {
           const SizedBox(height: 24),
           if (_hasSource(item))
             OutlinedButton.icon(
-              onPressed: () => _openSource(context, item),
+              onPressed: () => _openSource(context, ref, item),
               icon: const Icon(Icons.open_in_new),
               label: const Text('Open source record'),
             ),
@@ -119,6 +121,25 @@ class _TaskDetail extends ConsumerWidget {
               onPressed: () => _setStatus(context, ref, item, 'cancelled'),
               icon: const Icon(Icons.cancel_outlined),
               label: const Text('Cancel task'),
+            ),
+          ],
+          if (_canReschedule(item.status)) ...[
+            const SizedBox(height: 12),
+            OutlinedButton.icon(
+              onPressed: () => _reschedule(context, ref, item),
+              icon: const Icon(Icons.edit_calendar_outlined),
+              label: const Text('Reschedule task'),
+            ),
+          ],
+          if (_canDelete(item.status)) ...[
+            const SizedBox(height: 12),
+            TextButton.icon(
+              onPressed: () => _delete(context, ref, item),
+              icon: const Icon(Icons.delete_forever_outlined),
+              style: TextButton.styleFrom(
+                foregroundColor: theme.colorScheme.error,
+              ),
+              label: const Text('Delete task permanently'),
             ),
           ],
         ],
@@ -145,6 +166,111 @@ class _TaskDetail extends ConsumerWidget {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Could not update task: $error')),
+        );
+      }
+    }
+  }
+
+  Future<void> _reschedule(
+    BuildContext context,
+    WidgetRef ref,
+    TaskScheduleEntity item,
+  ) async {
+    final selectedDate = await showDatePicker(
+      context: context,
+      initialDate: item.scheduledAt.isBefore(DateTime.now())
+          ? DateTime.now()
+          : item.scheduledAt,
+      firstDate: DateTime.now(),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
+    );
+    if (selectedDate == null || !context.mounted) return;
+
+    final selectedTime = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(item.scheduledAt),
+    );
+    if (selectedTime == null || !context.mounted) return;
+
+    final scheduledAt = DateTime(
+      selectedDate.year,
+      selectedDate.month,
+      selectedDate.day,
+      selectedTime.hour,
+      selectedTime.minute,
+    );
+    try {
+      await ref.read(scheduleRepositoryProvider).update(
+            item.copyWith(
+              scheduledDate: selectedDate,
+              scheduledAt: scheduledAt,
+              status: 'scheduled',
+            ),
+          );
+      ref.invalidate(scheduleTaskProvider(item.id));
+      await ref.read(scheduleControllerProvider.notifier).load();
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Task rescheduled for ${_dateTimeLabel(scheduledAt)}.',
+            ),
+          ),
+        );
+      }
+    } catch (error) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not reschedule task: $error')),
+        );
+      }
+    }
+  }
+
+  Future<void> _delete(
+    BuildContext context,
+    WidgetRef ref,
+    TaskScheduleEntity item,
+  ) async {
+    final shouldDelete = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Delete scheduled task?'),
+        content: const Text(
+          'This permanently removes the task from this device and from '
+          'Supabase when sync is available. The linked inspection or '
+          'maintenance record will not be deleted.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Keep task'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(dialogContext).colorScheme.error,
+            ),
+            child: const Text('Delete permanently'),
+          ),
+        ],
+      ),
+    );
+    if (shouldDelete != true || !context.mounted) return;
+
+    try {
+      await ref.read(scheduleRepositoryProvider).deleteTask(item.id);
+      ref.invalidate(scheduleTaskProvider(item.id));
+      await ref.read(scheduleControllerProvider.notifier).load();
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Scheduled task deleted.')),
+      );
+      context.pop();
+    } catch (error) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not delete task: $error')),
         );
       }
     }
@@ -195,18 +321,57 @@ class _StatusChip extends StatelessWidget {
 
 bool _hasSource(TaskScheduleEntity item) =>
     (item.inspectionId?.isNotEmpty ?? false) ||
-    (item.sourceType == 'maintenance' && (item.sourceId?.isNotEmpty ?? false));
+    (_isMaintenanceRecordSource(item) &&
+        (item.sourceId?.isNotEmpty ?? false));
 
-bool _canComplete(String status) => status == 'scheduled' || status == 'in_progress';
-bool _canCancel(String status) => status == 'scheduled' || status == 'in_progress' || status == 'pending';
+bool _canComplete(String status) =>
+    status == 'scheduled' || status == 'in_progress';
+bool _canCancel(String status) =>
+    status == 'scheduled' || status == 'in_progress' || status == 'pending';
+bool _canReschedule(String status) => status == 'cancelled';
+bool _canDelete(String status) => status == 'completed' || status == 'cancelled';
 
-void _openSource(BuildContext context, TaskScheduleEntity item) {
+Future<void> _openSource(
+  BuildContext context,
+  WidgetRef ref,
+  TaskScheduleEntity item,
+) async {
   if (item.inspectionId?.isNotEmpty ?? false) {
     context.pushNamed(
       RouteNames.inspectionDetail,
       pathParameters: {'id': item.inspectionId!},
     );
-  } else if (item.sourceType == 'maintenance' && (item.sourceId?.isNotEmpty ?? false)) {
+  } else if (_isMaintenanceRecordSource(item) &&
+      (item.sourceId?.isNotEmpty ?? false)) {
+    // Schedule rows can outlive the local Hive copy of their source record.
+    // This is expected after clearing device storage, and legacy `maintenance`
+    // rows may also refer to a source that was later removed. Do not route to
+    // an empty detail page and make it look like the scheduled task is broken.
+    final repository = ref.read(maintenanceRepoProvider);
+    var record = repository.getById(item.sourceId!);
+    if (record == null) {
+      try {
+        record = await ref
+            .read(maintenanceRemoteDatasourceProvider)
+            .getById(item.sourceId!);
+        if (record != null) await repository.cacheRemote(record);
+      } catch (_) {
+        // The clear message below covers offline, RLS, and missing-row cases
+        // without exposing transport details to field technicians.
+      }
+    }
+    if (!context.mounted) return;
+    if (record == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'The linked maintenance record could not be restored. It may have '
+            'been deleted, or this device may be offline or not authorized.',
+          ),
+        ),
+      );
+      return;
+    }
     context.pushNamed(
       RouteNames.maintenanceDetail,
       pathParameters: {'id': item.sourceId!},
@@ -214,10 +379,16 @@ void _openSource(BuildContext context, TaskScheduleEntity item) {
   }
 }
 
-String _labelFor(String value) => value
-    .split('_')
-    .map((word) => word.isEmpty ? word : '${word[0].toUpperCase()}${word.substring(1)}')
-    .join(' ');
+bool _isMaintenanceRecordSource(TaskScheduleEntity item) =>
+    item.sourceType == 'maintenance_record' || item.sourceType == 'maintenance';
+
+String _labelFor(String value) {
+  if (value == 'maintenance_record') return 'Maintenance';
+  return value
+      .split('_')
+      .map((word) => word.isEmpty ? word : '${word[0].toUpperCase()}${word.substring(1)}')
+      .join(' ');
+}
 
 String _dateTimeLabel(DateTime value) {
   final hour = value.hour == 0 ? 12 : (value.hour > 12 ? value.hour - 12 : value.hour);

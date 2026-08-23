@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:hive/hive.dart';
 
-// 📁 Adjust these imports to match your actual model paths & names.
+// ð Adjust these imports to match your actual model paths & names.
 // These are based on the hive_boxes.dart you shared earlier.
 import '../../../modules/inspections/infra/models/inspection.dart';
 import '../../../modules/inspections/infra/models/nameplate_data.dart';
@@ -9,6 +9,7 @@ import '../../../modules/load_test/infra/models/load_test_record.dart';
 import '../../../modules/load_test/infra/models/test_interval_record.dart';
 import '../../../modules/maintenance/infra/models/maintenance_record.dart';
 import '../../../modules/schedule/infra/models/schedule_task.dart';
+import '../../../modules/templates/infra/models/form_response_record.dart';
 import '../../../modules/work_orders/infra/models/work_order_record.dart';
 
 /// Central place to register **all** Hive adapters used by the app.
@@ -19,7 +20,7 @@ class HiveAdapters {
 
   /// Register all adapters used in the app.
   ///
-  /// Safe to call multiple times – subsequent calls will be ignored.
+  /// Safe to call multiple times â subsequent calls will be ignored.
   static void registerAll() {
     if (_registered) return;
 
@@ -33,6 +34,7 @@ class HiveAdapters {
     // "HiveError: Cannot write, unknown type".
     _safeRegister<ScheduledTask>(ScheduledTaskAdapter());
     _safeRegister<WorkOrderRecord>(WorkOrderRecordAdapter());
+    _safeRegister<FormResponseRecord>(FormResponseRecordAdapter());
 
     _registered = true;
 

@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import '../../../modules/maintenance/infra/datasources/hive_boxes_maintenance.dart';
 import '../../../modules/work_orders/infra/datasources/work_orders_box.dart';
+import '../../../modules/templates/infra/datasources/form_responses_box.dart';
 import '../storage/file_storage_service.dart';
 import 'hive_adapters.dart';
 import 'hive_boxes.dart';
@@ -45,6 +46,7 @@ class HiveService {
     await HiveBoxes.init();
     await MaintenanceBoxes.init();
     await WorkOrdersBox.init();
+    await FormResponsesBox.init();
 
     // Repair local data written by older builds (e.g. records stored under
     // auto-integer keys instead of their string id). Idempotent and non-fatal.
@@ -74,7 +76,7 @@ class HiveService {
 
   /// Delete ALL Hive data from disk.
   ///
-  /// ⚠️ WARNING: This is destructive! All local data will be permanently lost.
+  /// â ï¸ WARNING: This is destructive! All local data will be permanently lost.
   ///
   /// Use cases:
   /// - Development: Clear corrupted data during testing
@@ -93,7 +95,7 @@ class HiveService {
   /// ```
   static Future<void> deleteAllData() async {
     if (kDebugMode) {
-      debugPrint('[HiveService] ⚠️  Deleting ALL Hive data from disk...');
+      debugPrint('[HiveService] â ï¸  Deleting ALL Hive data from disk...');
     }
 
     // Close all boxes first
@@ -106,8 +108,8 @@ class HiveService {
     _initialized = false;
 
     if (kDebugMode) {
-      debugPrint('[HiveService] ✅ All Hive data deleted');
-      debugPrint('[HiveService] ℹ️  Call init() again to reinitialize');
+      debugPrint('[HiveService] â All Hive data deleted');
+      debugPrint('[HiveService] â¹ï¸  Call init() again to reinitialize');
     }
   }
 
@@ -146,8 +148,8 @@ class HiveService {
     await Hive.close();
 
     // Drop handles cached elsewhere. Without this, MaintenanceBoxes keeps
-    // handing out the box it closed above — its own `_initialized` flag says
-    // the cached instance is fine — and the maintenance form throws
+    // handing out the box it closed above â its own `_initialized` flag says
+    // the cached instance is fine â and the maintenance form throws
     // "Box has already been closed" for the rest of the session.
     MaintenanceBoxes.invalidate();
     WorkOrdersBox.invalidate();
@@ -155,7 +157,7 @@ class HiveService {
     _initialized = false;
 
     if (kDebugMode) {
-      debugPrint('[HiveService] ✅ All boxes closed');
+      debugPrint('[HiveService] â All boxes closed');
     }
   }
 
@@ -197,7 +199,7 @@ class HiveService {
     if (deleteData) {
       await Hive.deleteFromDisk();
       if (kDebugMode) {
-        debugPrint('[HiveService] ✅ Data deleted');
+        debugPrint('[HiveService] â Data deleted');
       }
     }
 
@@ -208,12 +210,12 @@ class HiveService {
     if (reinitialize) {
       await init();
       if (kDebugMode) {
-        debugPrint('[HiveService] ✅ Reinitialized');
+        debugPrint('[HiveService] â Reinitialized');
       }
     }
 
     if (kDebugMode) {
-      debugPrint('[HiveService] ✅ Reset complete');
+      debugPrint('[HiveService] â Reset complete');
     }
   }
 
@@ -262,9 +264,9 @@ class HiveService {
   static void printDebugInfo() {
     if (!kDebugMode) return;
 
-    debugPrint('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    debugPrint('ââââââââââââââââââââââââââââââââââââââââ');
     debugPrint('HIVE SERVICE DEBUG INFO');
-    debugPrint('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    debugPrint('ââââââââââââââââââââââââââââââââââââââââ');
     debugPrint('Initialized: $_initialized');
     debugPrint('');
 
@@ -280,6 +282,6 @@ class HiveService {
       }
     }
 
-    debugPrint('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    debugPrint('ââââââââââââââââââââââââââââââââââââââââ');
   }
 }
