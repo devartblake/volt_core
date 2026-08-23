@@ -46,10 +46,10 @@ class TemplateResponseValidator {
       final rangeMessage = _rangeMessage(value, validation);
       if (rangeMessage != null) issues.add(_issue(field, rangeMessage));
 
-      final allowed = <Object?>[
+      final allowed = <Object?>{
         ..._list(validation['allowed']),
         ...definition.optionsForField(field.id).map((option) => option.value),
-      ].toSet();
+      };
       if (allowed.isNotEmpty && !allowed.contains(value)) {
         issues.add(_issue(field, 'Select one of the allowed values.'));
       }
