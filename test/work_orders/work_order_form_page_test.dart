@@ -48,10 +48,12 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.scrollUntilVisible(
-      find.text('Activity history'),
-      300,
-    );
+    // The form has dropdowns as well as its main list. Scroll the main form
+    // explicitly so the test does not pick an unrelated scrollable.
+    final formList = find.byType(ListView);
+    expect(formList, findsOneWidget);
+    await tester.drag(formList, const Offset(0, -800));
+    await tester.pumpAndSettle();
 
     expect(find.text('Activity history'), findsOneWidget);
     expect(
