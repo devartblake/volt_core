@@ -36,6 +36,7 @@ import '../modules/maintenance/presenter/pages/maintenance_list_page.dart';
 import '../modules/work_orders/presenter/pages/work_order_form_page.dart';
 import '../modules/work_orders/presenter/pages/work_order_list_page.dart';
 import '../modules/schedule/presenter/pages/schedule_page.dart';
+import '../modules/schedule/presenter/pages/schedule_task_detail_page.dart';
 import '../modules/schedule/presenter/pages/schedule_task_page.dart';
 import '../modules/settings/presenter/pages/about_page.dart';
 import '../modules/settings/presenter/pages/selection_options_page.dart';
@@ -261,6 +262,15 @@ final goRouterProvider = Provider<GoRouter>((ref) {
             name: RouteNames.scheduleTask,
             builder: (_, __) => const TechShell(
               child: ScheduleTaskPage(),
+            ),
+          ),
+          GoRoute(
+            path: RoutePaths.scheduleTaskDetail,
+            name: RouteNames.scheduleTaskDetail,
+            builder: (_, state) => TechShell(
+              child: ScheduleTaskDetailPage(
+                id: state.pathParameters['id']!,
+              ),
             ),
           ),
         ],
