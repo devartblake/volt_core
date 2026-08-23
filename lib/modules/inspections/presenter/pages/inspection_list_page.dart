@@ -8,8 +8,7 @@ import '../controllers/user_profile_controller.dart';
 import '../../../../shared/widgets/widgets.dart';
 import '../../../../core/theme/status_colors.dart';
 import '../../../../core/constants/route_paths.dart';
-import '../../../schedule/presenter/pages/schedule_task_page.dart';
-import '../../../schedule/presenter/widgets/dialogs/schedule_dialog.dart';
+import '../../../work_orders/presenter/inspection_maintenance_scheduler.dart';
 
 class InspectionListPage extends ConsumerStatefulWidget {
   final String? filterStatus;
@@ -326,7 +325,7 @@ class _InspectionListPageState
                         pathParameters: {'id': ins.id},
                       );
                     case _InspectionAction.scheduleMaintenance:
-                      _scheduleMaintenance(ctx, ins);
+                      scheduleMaintenanceFromInspection(ctx, ref, ins);
                   }
                 },
                 itemBuilder: (_) => const [
@@ -389,23 +388,6 @@ class _InspectionListPageState
         RouteNames.inspectionEdit,
         pathParameters: {'id': selected.id},
       );
-    }
-  }
-
-  Future<void> _scheduleMaintenance(
-    BuildContext context,
-    InspectionEntity inspection,
-  ) async {
-    final scheduled = await showScheduleDialog(
-      context: context,
-      taskType: TaskType.maintenance,
-      siteCode: inspection.siteCode,
-      address: inspection.address,
-      inspectionId: inspection.id,
-      siteGrade: inspection.siteGrade,
-    );
-    if (scheduled == true && context.mounted) {
-      AppSnackBar.success(context, 'Maintenance scheduled');
     }
   }
 
