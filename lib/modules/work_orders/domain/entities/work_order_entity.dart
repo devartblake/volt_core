@@ -80,10 +80,15 @@ class WorkOrderEntity {
     WorkOrderStatus? status,
     WorkOrderPriority? priority,
     String? customerId,
+    bool clearCustomerId = false,
     String? siteId,
+    bool clearSiteId = false,
     String? assetId,
+    bool clearAssetId = false,
     String? assignedToUserId,
+    bool clearAssignedToUserId = false,
     DateTime? scheduledFor,
+    bool clearScheduledFor = false,
     String? description,
     DateTime? updatedAt,
   }) => WorkOrderEntity(
@@ -92,11 +97,15 @@ class WorkOrderEntity {
     title: title ?? this.title,
     status: status ?? this.status,
     priority: priority ?? this.priority,
-    customerId: customerId ?? this.customerId,
-    siteId: siteId ?? this.siteId,
-    assetId: assetId ?? this.assetId,
-    assignedToUserId: assignedToUserId ?? this.assignedToUserId,
-    scheduledFor: scheduledFor ?? this.scheduledFor,
+    customerId: clearCustomerId ? null : (customerId ?? this.customerId),
+    siteId: clearSiteId ? null : (siteId ?? this.siteId),
+    assetId: clearAssetId ? null : (assetId ?? this.assetId),
+    assignedToUserId: clearAssignedToUserId
+        ? null
+        : (assignedToUserId ?? this.assignedToUserId),
+    scheduledFor: clearScheduledFor
+        ? null
+        : (scheduledFor ?? this.scheduledFor),
     description: description ?? this.description,
     createdAt: createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
