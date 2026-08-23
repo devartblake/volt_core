@@ -87,8 +87,8 @@ and PDF as a template-specific payload during the migration.
 | Phase | Status | Delivered scope | Remaining gate |
 | --- | --- | --- | --- |
 | Phase 1 | ✅ Complete | Tenant-safe schedule foundation, generic asset vocabulary, equipment mapper/repository support, and asset registration. | Apply and verify the migration in each Supabase environment. |
-| Phase 2 | 🟡 Rollout validation | Customer/site directory, site-aware asset registration and reassignment, QR lookup, asset history, work-order operations UI, dispatch workload summary, database sync, and database-owned audit events. | Complete staging/production migration and tenant/RLS verification, then add end-to-end coverage. |
-| Phase 3 | ⏳ Not started | — | Template definitions, responses, renderer, and generator migration. |
+| Phase 2 | 🟡 Merge and rollout validation | Source implementation is complete in PR #41: customer/site directory, site-aware asset registration and reassignment, QR lookup, asset history, work-order operations UI, dispatch workload summary, database sync, and database-owned audit events. | Merge PR #41; complete staging/production migration, tenant/RLS, and real-user workflow verification. |
+| Phase 3 | ⏳ Planned | — | Versioned template definitions, responses, renderer, PDF output, and generator migration. |
 
 ### Phase 1 — Secure foundation and generic asset vocabulary — ✅ Complete
 
@@ -137,19 +137,21 @@ an ATS or another supported asset type.
 - ✅ Customer/site migrations and their grants are included in the consolidated
   `supabase/schema/voltcore_complete_schema.sql` setup script.
 
-**Remaining Phase 2 tasks:**
+**Remaining Phase 2 gates (not additional feature work):**
 
-1. Apply the Phase 1 and Phase 2 migrations in staging and production; run
+1. Merge [PR #41](https://github.com/devartblake/volt_core/pull/41) after its
+   CI checks pass.
+2. Apply the Phase 1 and Phase 2 migrations in staging and production; run
    `supabase/manual/verify_phase2_tenant_rls.sql` with real member and
    cross-tenant UUIDs to verify tenant-isolated RLS for customers, sites,
    equipment, work orders, and read-only audit events.
-2. Verify with real tenant users that work-order creation, status/assignee
+3. Verify with real tenant users that work-order creation, status/assignee
    changes, offline re-sync, and audit triggers produce the expected rows.
-3. ✅ Focused widget coverage now protects scheduled-task routing and the
+4. ✅ Focused widget coverage now protects scheduled-task routing and the
    details screen. Run the full staging workflow for customer/site selection,
    asset reassignment, work-order dispatch, and remote conflict handling with
    real authenticated accounts before declaring rollout complete.
-4. Review real dispatch usage to determine whether the current queue summary
+5. Review real dispatch usage to determine whether the current queue summary
    needs per-technician capacity, SLA, or additional overdue metrics.
 
 **Customer/site foundation:**
@@ -177,12 +179,49 @@ Records**, and their completed records are nested under **Archived
 Maintenance**. Scheduled tasks have their own selectable detail view and may
 link back to an inspection or maintenance source record.
 
-### Phase 3 — Template engine and generator migration
+### Phase 3 — Template engine and generator migration — ⏳ Planned
 
-- Add template definitions, revisions, fields, validation, and structured
-  responses.
-- Render generator inspection/maintenance forms and reports from the engine
-  while retaining legacy report compatibility.
+**Objective:** replace generator-specific form and PDF branching with a
+versioned, tenant-safe template engine, while preserving every existing
+generator record and report during a gradual cutover.
+
+1. **Template contract and schema.** Define template, revision, section,
+   field, option, and validation contracts; add tenant-scoped Supabase tables,
+   migration, indexes, grants, and RLS. A completed response must point to the
+   immutable revision used to create it.
+2. **Dart domain and persistence boundary.** Add template/revision/response
+   entities, Supabase mappers, Hive adapters, repository interfaces, remote
+   merge behavior, and durable-outbox operations. Keep generic response data
+   structured rather than embedding renderer-specific values in the UI.
+3. **Template management workflow.** Build role-gated create, draft, clone,
+   publish, archive, and revision views. Publishing is append-only: an active
+   revision cannot be edited in place once a response exists.
+4. **Runtime form renderer.** Render sections and standard field types
+   (text, number, date, select, boolean, checklist, reading, photo, and
+   signature) from a revision. Add conditional visibility, required-field and
+   range validation, autosave, offline drafts, and completion locking.
+5. **Generator template pack and migration adapter.** Encode the current
+   generator inspection and maintenance forms as the first published template
+   pack. Map legacy generator records into template responses without guessing
+   missing data; retain the legacy payload and template/revision provenance.
+6. **Generic report/PDF renderer.** Generate reports from template metadata and
+   response snapshots, including current grading, deficiencies, photos,
+   signatures, pagination, and Faustina/Noto fallback fonts. Preserve the
+   existing generator PDF as a regression baseline during the transition.
+7. **Response lifecycle and downstream links.** Link template responses to
+   customers, sites, assets, inspections, work orders, maintenance schedules,
+   and documents. Ensure completed responses remain readable after a later
+   template revision is published.
+8. **Quality, rollout, and rollback.** Add unit, mapper, widget, PDF-golden,
+   offline-restart, RLS, and migration-parity coverage. Pilot the generator
+   pack with a small tenant, compare legacy and template PDFs, then enable the
+   new path behind a feature flag with a documented rollback plan.
+
+**Phase 3 exit criteria:** a technician can complete a generator inspection
+offline from a published revision, synchronize it safely, produce a
+customer-ready PDF, and open the same immutable response after the template
+has been revised; legacy generator reports remain available throughout the
+pilot.
 
 ### Phase 4 — First electrical template packs
 
