@@ -43,7 +43,7 @@ class TaskScheduleEntity extends Equatable {
   final String status;
 
   /// Source linkage.
-  /// inspection | maintenance | manual | other
+  /// inspection | maintenance_record | work_order | manual | other
   final String sourceType;
 
   /// ID of the source record (inspection id, maintenance id, etc.), when applicable.
