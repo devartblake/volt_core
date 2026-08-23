@@ -106,9 +106,9 @@ const List<NavSection> _navSections = [
       NavItem(
         'All Jobs',
         Icons.work_outline,
-        RoutePaths.maintenance,
-        routeName: 'maintenance',
-        description: 'View all maintenance jobs',
+        RoutePaths.workOrders,
+        routeName: RouteNames.workOrders,
+        description: 'View and manage field work orders',
       ),
       NavItem(
         'Schedule',
@@ -120,9 +120,9 @@ const List<NavSection> _navSections = [
       NavItem(
         'Create Job',
         Icons.add_task_outlined,
-        RoutePaths.maintenanceNew,
-        routeName: 'maintenance_new',
-        description: 'Schedule new maintenance',
+        RoutePaths.workOrderNew,
+        routeName: RouteNames.workOrderNew,
+        description: 'Create a field work order',
       ),
       NavItem(
         'Archive',
@@ -253,8 +253,8 @@ const List<NavItem> _quickActions = [
   NavItem(
     'Create Job',
     Icons.add_task,
-    RoutePaths.maintenanceNew,
-    routeName: 'maintenance_new',
+    RoutePaths.workOrderNew,
+    routeName: RouteNames.workOrderNew,
   ),
 ];
 

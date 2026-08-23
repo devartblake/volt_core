@@ -13,6 +13,30 @@ WorkOrderEntity _order(WorkOrderStatus status) => WorkOrderEntity(
 
 void main() {
   group('WorkOrderEntity lifecycle', () {
+    test('copyWith can clear optional operational links', () {
+      final linked = _order(WorkOrderStatus.draft).copyWith(
+        customerId: 'customer-1',
+        siteId: 'site-1',
+        assetId: 'asset-1',
+        assignedToUserId: 'tech-1',
+        scheduledFor: DateTime.utc(2026, 8, 23),
+      );
+
+      final cleared = linked.copyWith(
+        clearCustomerId: true,
+        clearSiteId: true,
+        clearAssetId: true,
+        clearAssignedToUserId: true,
+        clearScheduledFor: true,
+      );
+
+      expect(cleared.customerId, isNull);
+      expect(cleared.siteId, isNull);
+      expect(cleared.assetId, isNull);
+      expect(cleared.assignedToUserId, isNull);
+      expect(cleared.scheduledFor, isNull);
+    });
+
     test('moves through dispatch lifecycle in order', () {
       final scheduled = _order(WorkOrderStatus.draft)
           .transitionTo(WorkOrderStatus.scheduled);
