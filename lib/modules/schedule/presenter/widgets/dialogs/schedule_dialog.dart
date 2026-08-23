@@ -145,7 +145,12 @@ class _ScheduleTaskDialogState extends ConsumerState<ScheduleTaskDialog> {
         status: 'scheduled',
         sourceType: widget.taskType == TaskType.inspection
             ? 'inspection'
-            : 'maintenance',
+            // A scheduled task created from the maintenance list links to the
+            // legacy detailed MaintenanceRecord, not a generic maintenance
+            // workflow or a work order. Keeping this precise prevents the
+            // schedule detail page from resolving the ID against the wrong
+            // feature as more maintenance workflows are added.
+            : 'maintenance_record',
         sourceId: widget.inspectionId ?? widget.maintenanceId,
         inspectionId: widget.inspectionId,
         siteCode: widget.siteCode,

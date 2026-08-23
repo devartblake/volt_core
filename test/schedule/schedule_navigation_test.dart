@@ -12,12 +12,12 @@ TaskScheduleEntity _task() => TaskScheduleEntity(
   createdAt: DateTime.utc(2026, 8, 20),
   updatedAt: DateTime.utc(2026, 8, 20),
   title: 'Generator maintenance',
-  sourceType: 'maintenance',
+  sourceType: 'maintenance_record',
   sourceId: 'maintenance-record-1',
 );
 
 void main() {
-  testWidgets('maintenance-origin schedule rows open scheduled-task detail', (
+  testWidgets('maintenance-record schedule rows open scheduled-task detail', (
     tester,
   ) async {
     final task = _task();
