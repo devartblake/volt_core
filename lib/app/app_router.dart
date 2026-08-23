@@ -33,6 +33,8 @@ import '../modules/maintenance/presenter/pages/maintenance_archive_page.dart';
 import '../modules/maintenance/presenter/pages/maintenance_detail_page.dart';
 import '../modules/maintenance/presenter/pages/maintenance_form_page.dart';
 import '../modules/maintenance/presenter/pages/maintenance_list_page.dart';
+import '../modules/work_orders/presenter/pages/work_order_form_page.dart';
+import '../modules/work_orders/presenter/pages/work_order_list_page.dart';
 import '../modules/schedule/presenter/pages/schedule_page.dart';
 import '../modules/schedule/presenter/pages/schedule_task_page.dart';
 import '../modules/settings/presenter/pages/about_page.dart';
@@ -219,6 +221,27 @@ final goRouterProvider = Provider<GoRouter>((ref) {
             name: RouteNames.maintenanceArchive,
             builder: (_, __) => const TechShell(
               child: MaintenanceArchivePage(),
+            ),
+          ),
+        ],
+      ),
+
+      // ========== WORK ORDERS ==========
+      GoRoute(
+        path: RoutePaths.workOrders,
+        name: RouteNames.workOrders,
+        builder: (_, __) => const TechShell(child: WorkOrderListPage()),
+        routes: [
+          GoRoute(
+            path: 'new',
+            name: RouteNames.workOrderNew,
+            builder: (_, __) => const TechShell(child: WorkOrderFormPage()),
+          ),
+          GoRoute(
+            path: 'edit/:id',
+            name: RouteNames.workOrderEdit,
+            builder: (_, state) => TechShell(
+              child: WorkOrderFormPage(id: state.pathParameters['id']!),
             ),
           ),
         ],
