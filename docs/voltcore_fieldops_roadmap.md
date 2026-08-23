@@ -88,7 +88,7 @@ and PDF as a template-specific payload during the migration.
 | --- | --- | --- | --- |
 | Phase 1 | ✅ Complete | Tenant-safe schedule foundation, generic asset vocabulary, equipment mapper/repository support, and asset registration. | Apply and verify the migration in each Supabase environment. |
 | Phase 2 | 🟡 Merge and rollout validation | Source implementation is complete in PR #41: customer/site directory, site-aware asset registration and reassignment, QR lookup, asset history, work-order operations UI, dispatch workload summary, database sync, and database-owned audit events. | Merge PR #41; complete staging/production migration, tenant/RLS, and real-user workflow verification. |
-| Phase 3 | 🟡 Foundation in progress | Versioned template/revision/field/response contract, tenant-safe migration, local response persistence, durable sync enqueue, and mapper coverage are being implemented in the Phase 3 foundation branch. | Merge Phase 2 lifecycle work, apply and verify the new migration, then deliver template management, runtime renderer, generator pack, and generic PDF output. |
+| Phase 3 | 🟡 Foundation in progress | Versioned template/revision/field/response contracts, tenant-safe migration, local response persistence, durable sync enqueue, generic validation, revision-pinned Hive definition cache, and lifecycle planning are implemented in [PR #44](https://github.com/devartblake/volt_core/pull/44). | Complete PR #44 CI/merge, apply and verify the migration, then deliver atomic template management, runtime renderer, generator pack, and generic PDF output. |
 
 ### Phase 1 — Secure foundation and generic asset vocabulary — ✅ Complete
 
@@ -238,6 +238,13 @@ affordances and clone/draft/publish/archive transition planning, including the
 replacement archive required by the single-published-revision constraint. The
 role-gated management screens and their atomic remote-write repository remain
 the next implementation slice.
+
+**Verification update:** PR #44 includes repository and lifecycle tests. Its
+follow-up analyzer repair removes a misplaced `dart:math` directive and an
+unnecessary Supabase result cast. The required merge gate remains
+`dart format .`, `flutter analyze --fatal-infos --fatal-warnings`, and
+`flutter test`; no Phase 3 migration has been applied to Supabase from this
+repository.
 
 **Phase 3 exit criteria:** a technician can complete a generator inspection
 offline from a published revision, synchronize it safely, produce a
