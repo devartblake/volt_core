@@ -39,6 +39,11 @@ class MaintenanceRepo {
 
   MaintenanceRecord? getById(String id) => _box.get(id);
 
+  /// Cache a record retrieved from Supabase without changing timestamps or
+  /// enqueueing another write. This is used for schedule-source recovery.
+  Future<void> cacheRemote(MaintenanceRecord record) =>
+      _box.put(record.id, record);
+
   Future<void> save(MaintenanceRecord rec) async {
     rec.updatedAt = DateTime.now();
     await rec.save();
