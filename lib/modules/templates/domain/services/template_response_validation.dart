@@ -47,8 +47,12 @@ class TemplateResponseValidator {
   bool isVisible({
     required FormTemplateField field,
     required Map<String, dynamic> values,
+  }) => isRuleVisible(rule: field.visibilityRule, values: values);
+
+  bool isRuleVisible({
+    required Map<String, dynamic> rule,
+    required Map<String, dynamic> values,
   }) {
-    final rule = field.visibilityRule;
     if (rule.isEmpty) return true;
     final sourceKey = rule['field'];
     if (sourceKey is! String || sourceKey.isEmpty) return true;
