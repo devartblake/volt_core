@@ -309,7 +309,7 @@ MaintenanceRecord maintenanceRecordFromSupabaseRows({
 
 String _text(Object? value) => value?.toString() ?? '';
 
-String? _nullableText(Object? value) => value == null ? null : value.toString();
+String? _nullableText(Object? value) => value?.toString();
 
 bool _bool(Object? value) =>
     value is bool ? value : value?.toString().toLowerCase() == 'true';
