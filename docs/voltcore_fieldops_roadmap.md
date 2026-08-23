@@ -87,7 +87,7 @@ and PDF as a template-specific payload during the migration.
 | Phase | Status | Delivered scope | Remaining gate |
 | --- | --- | --- | --- |
 | Phase 1 | ✅ Complete | Tenant-safe schedule foundation, generic asset vocabulary, equipment mapper/repository support, and asset registration. | Apply and verify the migration in each Supabase environment. |
-| Phase 2 | 🟡 Core complete | Customer/site directory, site-aware asset registration and reassignment, QR lookup, asset history, and durable work-order lifecycle core. | Finish the work-order operations UI and complete production migration/RLS verification. |
+| Phase 2 | 🟡 Rollout validation | Customer/site directory, site-aware asset registration and reassignment, QR lookup, asset history, work-order operations UI, database sync, and database-owned audit events. | Complete staging/production migration and tenant/RLS verification, then add end-to-end coverage. |
 | Phase 3 | ⏳ Not started | — | Template definitions, responses, renderer, and generator migration. |
 
 ### Phase 1 — Secure foundation and generic asset vocabulary — ✅ Complete
@@ -108,7 +108,7 @@ records.
 new schedule writes carry a real tenant ID; a remote registry row can describe
 an ATS or another supported asset type.
 
-### Phase 2 — Sites, assets, and work orders — 🟡 Core complete
+### Phase 2 — Sites, assets, and work orders — 🟡 Rollout validation
 
 - ✅ Customer-to-site ownership with tenant-scoped RLS and a customer/site
   directory UI.
@@ -117,22 +117,30 @@ an ATS or another supported asset type.
 - ✅ QR/barcode lookup and asset inspection history are available from Asset
   Search, with named-route and RBAC coverage.
 - ✅ Work-order domain, status-transition rules, priority, customer, site,
-  asset, and assignee fields are persisted locally and synchronized through
-  the repository boundary.
+  asset, and assignee fields are persisted locally, merged from Supabase, and
+  synchronized through the durable outbox.
+- ✅ The All Jobs list, details, create/edit, dispatch assignment, lifecycle
+  transitions, inspection handoff, and schedule task detail flow are usable
+  without developer tooling.
+- ✅ `20260823162511_phase2_work_orders.sql` defines tenant-scoped work orders,
+  composite customer/site/asset links, least-privilege RLS, sync indexes, and
+  trigger-owned creation/status/assignment audit events.
 - ✅ Inspection workflows can initiate maintenance scheduling after completion.
 - ✅ Customer/site migrations and their grants are included in the consolidated
   `supabase/schema/voltcore_complete_schema.sql` setup script.
 
 **Remaining Phase 2 tasks:**
 
-1. Build the dedicated work-order list, detail, create/edit, assignment, and
-   transition UI on top of the completed repository lifecycle.
-2. Wire the work-order screens to maintenance scheduling so staff can create,
-   assign, and complete the lifecycle without developer tooling.
-3. Apply the Phase 1 and Phase 2 migrations in staging and production; verify
-   tenant-isolated RLS for customers, sites, equipment, and work orders.
-4. Add end-to-end widget/integration coverage for customer/site selection,
-   asset reassignment, and the work-order UI once it lands.
+1. Apply the Phase 1 and Phase 2 migrations in staging and production; verify
+   tenant-isolated RLS for customers, sites, equipment, work orders, and
+   read-only audit events.
+2. Verify with real tenant users that work-order creation, status/assignee
+   changes, offline re-sync, and audit triggers produce the expected rows.
+3. Add end-to-end widget/integration coverage for customer/site selection,
+   asset reassignment, work-order dispatch, schedule task details, and remote
+   conflict handling.
+4. Add an operational workload view once dispatch usage data confirms the
+   required queue, technician, and overdue metrics.
 
 **Customer/site foundation:**
 `supabase/migrations/20260822205219_phase2_customer_sites.sql`
@@ -150,8 +158,8 @@ asset, schedule, priority, and notes. Increment 2 adds active-technician
 assignment, one-way lifecycle controls (`draft → scheduled → in progress →
 completed`, with cancellation), and an inspection-to-maintenance handoff that
 creates a scheduled work order from inspection evidence. The remaining Phase 2
-work is database-backed work-order rollout, transition/audit history, and
-operational dashboards.
+work is staging/production verification, end-to-end coverage, and an
+evidence-driven operational dashboard.
 
 **Navigation clarification:** “All Jobs” is the new work-order lifecycle. The
 existing generator maintenance forms and reports remain under **Maintenance
@@ -185,8 +193,9 @@ link back to an inspection or maintenance source record.
 Phase 1 is implemented through
 `supabase/migrations/0006_phase1_asset_foundation.sql` and the
 equipment/schedule mapping layer. Phase 2 adds
-`20260822205219_phase2_customer_sites.sql` and
-`20260822205311_phase2_customer_site_grants.sql`; fresh environments can use
+`20260822205219_phase2_customer_sites.sql`,
+`20260822205311_phase2_customer_site_grants.sql`, and
+`20260823162511_phase2_work_orders.sql`; fresh environments can use
 `supabase/schema/voltcore_complete_schema.sql` as the consolidated setup
 script. Apply the tenant bootstrap (`supabase/manual/tenant_bootstrap.sql`)
 before operational migrations. Legacy schedule rows whose tenant membership
@@ -205,7 +214,7 @@ After migration:
 
 ## Phase 2 rollout notes
 
-1. Run the two Phase 2 customer/site migrations after Phase 1 (or run the
+1. Run the three Phase 2 migrations after Phase 1 (or run the
    consolidated schema for a fresh installation).
 2. Verify that an administrator, dispatcher, or supervisor can create and edit
    customers and sites, while a technician can read but cannot change them.
@@ -213,6 +222,8 @@ After migration:
    confirm its history remains tenant-scoped.
 4. Confirm work-order rows retain their customer, site, asset, priority, and
    assignee links through offline restart and synchronization.
+5. Confirm direct event inserts are rejected, tenant members can only read
+   their own audit rows, and status/assignee updates create audit events.
 
 ## Guardrails
 
