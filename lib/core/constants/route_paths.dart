@@ -41,6 +41,7 @@ class RoutePaths {
   /// Relative sub-route path under [schedule] (full path: `/schedule/task`).
   /// GoRouter sub-route paths must NOT start with '/'.
   static const String scheduleTask = 'task';
+  static const String scheduleTaskDetail = 'detail/:id';
 
   // Equipment / Nameplate
   static const String nameplateList = '/nameplate-list';
@@ -95,6 +96,7 @@ class RouteNames {
 
   static const String schedule = 'schedule';
   static const String scheduleTask = 'schedule_task';
+  static const String scheduleTaskDetail = 'schedule_task_detail';
 
   static const String nameplateList = 'nameplate_list';
   static const String nameplateIntervals = 'nameplate_intervals';
