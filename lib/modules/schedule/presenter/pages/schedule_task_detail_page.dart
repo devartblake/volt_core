@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/constants/route_paths.dart';
 import '../../../../shared/widgets/widgets.dart';
 import '../../domain/entities/task_schedule_entity.dart';
+import '../../../maintenance/presenter/controllers/maintenance_providers.dart';
 import '../controllers/schedule_controller.dart';
 import '../../infra/repositories/schedule_repository_impl.dart';
 
@@ -101,7 +102,7 @@ class _TaskDetail extends ConsumerWidget {
           const SizedBox(height: 24),
           if (_hasSource(item))
             OutlinedButton.icon(
-              onPressed: () => _openSource(context, item),
+              onPressed: () => _openSource(context, ref, item),
               icon: const Icon(Icons.open_in_new),
               label: const Text('Open source record'),
             ),
@@ -195,18 +196,40 @@ class _StatusChip extends StatelessWidget {
 
 bool _hasSource(TaskScheduleEntity item) =>
     (item.inspectionId?.isNotEmpty ?? false) ||
-    (item.sourceType == 'maintenance' && (item.sourceId?.isNotEmpty ?? false));
+    (_isMaintenanceRecordSource(item) &&
+        (item.sourceId?.isNotEmpty ?? false));
 
 bool _canComplete(String status) => status == 'scheduled' || status == 'in_progress';
 bool _canCancel(String status) => status == 'scheduled' || status == 'in_progress' || status == 'pending';
 
-void _openSource(BuildContext context, TaskScheduleEntity item) {
+void _openSource(
+  BuildContext context,
+  WidgetRef ref,
+  TaskScheduleEntity item,
+) {
   if (item.inspectionId?.isNotEmpty ?? false) {
     context.pushNamed(
       RouteNames.inspectionDetail,
       pathParameters: {'id': item.inspectionId!},
     );
-  } else if (item.sourceType == 'maintenance' && (item.sourceId?.isNotEmpty ?? false)) {
+  } else if (_isMaintenanceRecordSource(item) &&
+      (item.sourceId?.isNotEmpty ?? false)) {
+    // Schedule rows can outlive the local Hive copy of their source record.
+    // This is expected after clearing device storage, and legacy `maintenance`
+    // rows may also refer to a source that was later removed. Do not route to
+    // an empty detail page and make it look like the scheduled task is broken.
+    final record = ref.read(maintenanceRepoProvider).getById(item.sourceId!);
+    if (record == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'The linked maintenance record is unavailable on this device. '
+            'It may have been deleted or has not synced yet.',
+          ),
+        ),
+      );
+      return;
+    }
     context.pushNamed(
       RouteNames.maintenanceDetail,
       pathParameters: {'id': item.sourceId!},
@@ -214,10 +237,16 @@ void _openSource(BuildContext context, TaskScheduleEntity item) {
   }
 }
 
-String _labelFor(String value) => value
-    .split('_')
-    .map((word) => word.isEmpty ? word : '${word[0].toUpperCase()}${word.substring(1)}')
-    .join(' ');
+bool _isMaintenanceRecordSource(TaskScheduleEntity item) =>
+    item.sourceType == 'maintenance_record' || item.sourceType == 'maintenance';
+
+String _labelFor(String value) {
+  if (value == 'maintenance_record') return 'Maintenance';
+  return value
+      .split('_')
+      .map((word) => word.isEmpty ? word : '${word[0].toUpperCase()}${word.substring(1)}')
+      .join(' ');
+}
 
 String _dateTimeLabel(DateTime value) {
   final hour = value.hour == 0 ? 12 : (value.hour > 12 ? value.hour - 12 : value.hour);
