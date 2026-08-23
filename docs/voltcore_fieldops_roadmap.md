@@ -153,6 +153,12 @@ creates a scheduled work order from inspection evidence. The remaining Phase 2
 work is database-backed work-order rollout, transition/audit history, and
 operational dashboards.
 
+**Navigation clarification:** “All Jobs” is the new work-order lifecycle. The
+existing generator maintenance forms and reports remain under **Maintenance
+Records**, and their completed records are nested under **Archived
+Maintenance**. Scheduled tasks have their own selectable detail view and may
+link back to an inspection or maintenance source record.
+
 ### Phase 3 — Template engine and generator migration
 
 - Add template definitions, revisions, fields, validation, and structured
