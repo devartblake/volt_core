@@ -26,6 +26,7 @@ const _allRouteNames = <String>{
   RouteNames.workOrders,
   RouteNames.workOrderNew,
   RouteNames.workOrderEdit,
+  RouteNames.templates,
   RouteNames.schedule,
   RouteNames.scheduleTask,
   RouteNames.scheduleTaskDetail,
@@ -42,7 +43,6 @@ const _allRouteNames = <String>{
   RouteNames.adminDashboard,
   RouteNames.adminSettings,
   RouteNames.adminTechnicians,
-  // Debug routes are only registered under kDebugMode, but still need entries.
   'debug_menu',
   'hive_debug',
   'network_debug',
@@ -157,9 +157,28 @@ void main() {
       }
     });
 
+    test('template management rejects technicians and permits managers', () {
+      expect(
+        RouteRoles.isAllowedByName(
+          name: RouteNames.templates,
+          role: UserRole.tech,
+        ),
+        isFalse,
+      );
+      for (final role in [
+        UserRole.supervisor,
+        UserRole.dispatcher,
+        UserRole.admin,
+      ]) {
+        expect(
+          RouteRoles.isAllowedByName(name: RouteNames.templates, role: role),
+          isTrue,
+          reason: '$role should reach template management',
+        );
+      }
+    });
+
     test('the workload dashboard is reachable by every role', () {
-      // The dashboard offers "My Workload" to all roles, so the route must
-      // accept all of them — otherwise the tile leads straight to /403.
       for (final role in UserRole.values) {
         expect(
           RouteRoles.isAllowedByName(

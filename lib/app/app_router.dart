@@ -42,6 +42,7 @@ import '../modules/settings/presenter/pages/about_page.dart';
 import '../modules/settings/presenter/pages/selection_options_page.dart';
 import '../modules/settings/presenter/pages/settings_page.dart';
 import '../modules/settings/presenter/pages/tenants_settings_page.dart';
+import '../modules/templates/presenter/pages/template_management_page.dart';
 
 /// Exposed router provider used by `app.dart`:
 ///
@@ -248,6 +249,15 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         ],
       ),
 
+      // ========== TEMPLATE MANAGEMENT ==========
+      GoRoute(
+        path: RoutePaths.templates,
+        name: RouteNames.templates,
+        builder: (_, __) => const DefaultShell(
+          child: TemplateManagementPage(),
+        ),
+      ),
+
       // ========== SCHEDULE ==========
       GoRoute(
         path: RoutePaths.schedule,
@@ -256,7 +266,6 @@ final goRouterProvider = Provider<GoRouter>((ref) {
           child: SchedulePage(),
         ),
         routes: [
-          // NEW: Schedule task creation page
           GoRoute(
             path: RoutePaths.scheduleTask,
             name: RouteNames.scheduleTask,
@@ -293,7 +302,6 @@ final goRouterProvider = Provider<GoRouter>((ref) {
           ),
         ),
       ),
-      // Hidden until backed by real data — see FeatureFlags.equipmentSearchEnabled.
       if (FeatureFlags.equipmentSearchEnabled)
         GoRoute(
           path: RoutePaths.equipmentSearch,

@@ -25,9 +25,6 @@ class RouteRoles {
       UserRole.dispatcher,
       UserRole.admin,
     },
-    // "My Workload" — personal inspection/maintenance counts. Every role has
-    // their own workload, and the dashboard offers the tile to all of them, so
-    // restricting the route to techs only sent everyone else to /403.
     'tech_dashboard': {
       UserRole.tech,
       UserRole.supervisor,
@@ -42,7 +39,6 @@ class RouteRoles {
     },
     'admin_dashboard': {UserRole.admin},
     'admin_settings': {UserRole.admin},
-    // Technician management edits other users' roles — admin only.
     'admin_technicians': {UserRole.admin},
 
     // ----- Inspections -----
@@ -110,6 +106,15 @@ class RouteRoles {
     },
     'work_order_edit': {
       UserRole.tech,
+      UserRole.supervisor,
+      UserRole.dispatcher,
+      UserRole.admin,
+    },
+
+    // ----- Templates -----
+    // UI affordance only; Supabase RLS and can_manage_tenant_work remain the
+    // authoritative write boundary.
+    'templates': {
       UserRole.supervisor,
       UserRole.dispatcher,
       UserRole.admin,
@@ -199,28 +204,19 @@ class RouteRoles {
       UserRole.dispatcher,
       UserRole.admin,
     },
-    // Tenant configuration affects every user in the tenant — admin only.
     'tenants_settings': {UserRole.admin},
 
     // ----- Debug tooling -----
-    // Only registered in debug builds (see app_router.dart), and restricted to
-    // admins even there: these expose the raw local database and request log.
     'debug_menu': {UserRole.admin},
     'hive_debug': {UserRole.admin},
     'network_debug': {UserRole.admin},
   };
 
-  /// Returns true if this [role] may open the route named [name].
-  ///
-  /// Fails closed: an unnamed route, an unknown route name, or a route with an
-  /// empty role set is **denied**. Only [_publicRouteNames] bypass the check.
   static bool isAllowedByName({
     required String? name,
     required UserRole? role,
   }) {
     if (name != null && _publicRouteNames.contains(name)) return true;
-
-    // Anything else needs both a resolvable route name and a role.
     if (name == null || role == null) return false;
 
     final allowed = _rolesByRouteName[name];
@@ -229,14 +225,10 @@ class RouteRoles {
     return allowed.contains(role);
   }
 
-  /// Route names carrying an explicit role set. Exposed for tests and for
-  /// role-aware navigation filtering.
   static Set<String> get configuredRouteNames => _rolesByRouteName.keys.toSet();
 
-  /// Route names reachable without a role (auth flow).
   static Set<String> get publicRouteNames => _publicRouteNames;
 
-  /// Roles permitted on [name], or an empty set when the route is unknown.
   static Set<UserRole> rolesFor(String name) =>
       _rolesByRouteName[name] ?? const {};
 }
