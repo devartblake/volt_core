@@ -7,6 +7,7 @@ import '../../../../shared/widgets/widgets.dart';
 import '../../../schedule/presenter/controllers/schedule_controller.dart';
 import '../../domain/entities/work_order_entity.dart';
 import '../work_order_providers.dart';
+import '../work_order_workload.dart';
 
 class WorkOrderListPage extends ConsumerStatefulWidget {
   const WorkOrderListPage({super.key});
@@ -81,11 +82,17 @@ class _WorkOrderListPageState extends ConsumerState<WorkOrderListPage> {
         ),
         data: (all) {
           final visible = _filtered(all);
+          final workload = WorkOrderWorkload.fromOrders(
+            all,
+            today: DateTime.now(),
+          );
           return RefreshIndicator(
             onRefresh: () => ref.refresh(workOrderListProvider.future).then<void>((_) {}),
             child: ListView(
               padding: const EdgeInsets.all(16),
               children: [
+                _WorkloadSummary(workload: workload),
+                const SizedBox(height: 16),
                 TextField(
                   controller: _search,
                   decoration: InputDecoration(
@@ -182,6 +189,72 @@ class _WorkOrderListPageState extends ConsumerState<WorkOrderListPage> {
     );
     if (result != null && mounted) setState(() => _dueRange = result);
   }
+}
+
+class _WorkloadSummary extends StatelessWidget {
+  const _WorkloadSummary({required this.workload});
+
+  final WorkOrderWorkload workload;
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+    label: 'Dispatch workload summary',
+    child: Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: [
+        _WorkloadMetric(
+          label: 'Open',
+          value: workload.open,
+          icon: Icons.work_outline,
+        ),
+        _WorkloadMetric(
+          label: 'Due today',
+          value: workload.dueToday,
+          icon: Icons.today_outlined,
+        ),
+        _WorkloadMetric(
+          label: 'Overdue',
+          value: workload.overdue,
+          icon: Icons.warning_amber_outlined,
+        ),
+        _WorkloadMetric(
+          label: 'Unassigned',
+          value: workload.unassigned,
+          icon: Icons.person_off_outlined,
+        ),
+      ],
+    ),
+  );
+}
+
+class _WorkloadMetric extends StatelessWidget {
+  const _WorkloadMetric({
+    required this.label,
+    required this.value,
+    required this.icon,
+  });
+
+  final String label;
+  final int value;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) => SizedBox(
+    width: 150,
+    child: Card(
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Row(
+          children: [
+            Icon(icon, size: 20),
+            const SizedBox(width: 8),
+            Expanded(child: Text('$value\n$label')),
+          ],
+        ),
+      ),
+    ),
+  );
 }
 
 class _EnumFilter<T> extends StatelessWidget {

@@ -87,8 +87,8 @@ and PDF as a template-specific payload during the migration.
 | Phase | Status | Delivered scope | Remaining gate |
 | --- | --- | --- | --- |
 | Phase 1 | ✅ Complete | Tenant-safe schedule foundation, generic asset vocabulary, equipment mapper/repository support, and asset registration. | Apply and verify the migration in each Supabase environment. |
-| Phase 2 | 🟡 Core complete | Customer/site directory, site-aware asset registration and reassignment, QR lookup, asset history, and durable work-order lifecycle core. | Finish the work-order operations UI and complete production migration/RLS verification. |
-| Phase 3 | ⏳ Not started | — | Template definitions, responses, renderer, and generator migration. |
+| Phase 2 | 🟡 Merge and rollout validation | Source implementation is complete in PR #41: customer/site directory, site-aware asset registration and reassignment, QR lookup, asset history, work-order operations UI, dispatch workload summary, database sync, and database-owned audit events. | Merge PR #41; complete staging/production migration, tenant/RLS, and real-user workflow verification. |
+| Phase 3 | ⏳ Planned | — | Versioned template definitions, responses, renderer, PDF output, and generator migration. |
 
 ### Phase 1 — Secure foundation and generic asset vocabulary — ✅ Complete
 
@@ -108,7 +108,7 @@ records.
 new schedule writes carry a real tenant ID; a remote registry row can describe
 an ATS or another supported asset type.
 
-### Phase 2 — Sites, assets, and work orders — 🟡 Core complete
+### Phase 2 — Sites, assets, and work orders — 🟡 Rollout validation
 
 - ✅ Customer-to-site ownership with tenant-scoped RLS and a customer/site
   directory UI.
@@ -117,22 +117,42 @@ an ATS or another supported asset type.
 - ✅ QR/barcode lookup and asset inspection history are available from Asset
   Search, with named-route and RBAC coverage.
 - ✅ Work-order domain, status-transition rules, priority, customer, site,
-  asset, and assignee fields are persisted locally and synchronized through
-  the repository boundary.
+  asset, and assignee fields are persisted locally, merged from Supabase, and
+  synchronized through the durable outbox.
+- ✅ The All Jobs list, details, create/edit, dispatch assignment, lifecycle
+  transitions, inspection handoff, and schedule task detail flow are usable
+  without developer tooling.
+- ✅ Selecting any schedule row now opens its scheduled-task detail first;
+  maintenance and inspection source records remain explicit secondary links,
+  preventing a scheduled-task ID from being treated as a maintenance-record ID.
+- ✅ `20260823162511_phase2_work_orders.sql` defines tenant-scoped work orders,
+  composite customer/site/asset links, least-privilege RLS, sync indexes, and
+  trigger-owned creation/status/assignment audit events.
+- ✅ Existing jobs show their synchronized, database-owned activity timeline;
+  focused mapper and widget coverage protects the audit-history rendering.
+- ✅ All Jobs includes an operational queue summary for open, due-today,
+  overdue, and unassigned work. Its calculation is unit-tested so terminal
+  records cannot inflate active dispatch metrics.
 - ✅ Inspection workflows can initiate maintenance scheduling after completion.
 - ✅ Customer/site migrations and their grants are included in the consolidated
   `supabase/schema/voltcore_complete_schema.sql` setup script.
 
-**Remaining Phase 2 tasks:**
+**Remaining Phase 2 gates (not additional feature work):**
 
-1. Build the dedicated work-order list, detail, create/edit, assignment, and
-   transition UI on top of the completed repository lifecycle.
-2. Wire the work-order screens to maintenance scheduling so staff can create,
-   assign, and complete the lifecycle without developer tooling.
-3. Apply the Phase 1 and Phase 2 migrations in staging and production; verify
-   tenant-isolated RLS for customers, sites, equipment, and work orders.
-4. Add end-to-end widget/integration coverage for customer/site selection,
-   asset reassignment, and the work-order UI once it lands.
+1. Merge [PR #41](https://github.com/devartblake/volt_core/pull/41) after its
+   CI checks pass.
+2. Apply the Phase 1 and Phase 2 migrations in staging and production; run
+   `supabase/manual/verify_phase2_tenant_rls.sql` with real member and
+   cross-tenant UUIDs to verify tenant-isolated RLS for customers, sites,
+   equipment, work orders, and read-only audit events.
+3. Verify with real tenant users that work-order creation, status/assignee
+   changes, offline re-sync, and audit triggers produce the expected rows.
+4. ✅ Focused widget coverage now protects scheduled-task routing and the
+   details screen. Run the full staging workflow for customer/site selection,
+   asset reassignment, work-order dispatch, and remote conflict handling with
+   real authenticated accounts before declaring rollout complete.
+5. Review real dispatch usage to determine whether the current queue summary
+   needs per-technician capacity, SLA, or additional overdue metrics.
 
 **Customer/site foundation:**
 `supabase/migrations/20260822205219_phase2_customer_sites.sql`
@@ -150,8 +170,8 @@ asset, schedule, priority, and notes. Increment 2 adds active-technician
 assignment, one-way lifecycle controls (`draft → scheduled → in progress →
 completed`, with cancellation), and an inspection-to-maintenance handoff that
 creates a scheduled work order from inspection evidence. The remaining Phase 2
-work is database-backed work-order rollout, transition/audit history, and
-operational dashboards.
+work is staging/production verification, end-to-end coverage, and an
+evidence-driven operational dashboard.
 
 **Navigation clarification:** “All Jobs” is the new work-order lifecycle. The
 existing generator maintenance forms and reports remain under **Maintenance
@@ -159,12 +179,49 @@ Records**, and their completed records are nested under **Archived
 Maintenance**. Scheduled tasks have their own selectable detail view and may
 link back to an inspection or maintenance source record.
 
-### Phase 3 — Template engine and generator migration
+### Phase 3 — Template engine and generator migration — ⏳ Planned
 
-- Add template definitions, revisions, fields, validation, and structured
-  responses.
-- Render generator inspection/maintenance forms and reports from the engine
-  while retaining legacy report compatibility.
+**Objective:** replace generator-specific form and PDF branching with a
+versioned, tenant-safe template engine, while preserving every existing
+generator record and report during a gradual cutover.
+
+1. **Template contract and schema.** Define template, revision, section,
+   field, option, and validation contracts; add tenant-scoped Supabase tables,
+   migration, indexes, grants, and RLS. A completed response must point to the
+   immutable revision used to create it.
+2. **Dart domain and persistence boundary.** Add template/revision/response
+   entities, Supabase mappers, Hive adapters, repository interfaces, remote
+   merge behavior, and durable-outbox operations. Keep generic response data
+   structured rather than embedding renderer-specific values in the UI.
+3. **Template management workflow.** Build role-gated create, draft, clone,
+   publish, archive, and revision views. Publishing is append-only: an active
+   revision cannot be edited in place once a response exists.
+4. **Runtime form renderer.** Render sections and standard field types
+   (text, number, date, select, boolean, checklist, reading, photo, and
+   signature) from a revision. Add conditional visibility, required-field and
+   range validation, autosave, offline drafts, and completion locking.
+5. **Generator template pack and migration adapter.** Encode the current
+   generator inspection and maintenance forms as the first published template
+   pack. Map legacy generator records into template responses without guessing
+   missing data; retain the legacy payload and template/revision provenance.
+6. **Generic report/PDF renderer.** Generate reports from template metadata and
+   response snapshots, including current grading, deficiencies, photos,
+   signatures, pagination, and Faustina/Noto fallback fonts. Preserve the
+   existing generator PDF as a regression baseline during the transition.
+7. **Response lifecycle and downstream links.** Link template responses to
+   customers, sites, assets, inspections, work orders, maintenance schedules,
+   and documents. Ensure completed responses remain readable after a later
+   template revision is published.
+8. **Quality, rollout, and rollback.** Add unit, mapper, widget, PDF-golden,
+   offline-restart, RLS, and migration-parity coverage. Pilot the generator
+   pack with a small tenant, compare legacy and template PDFs, then enable the
+   new path behind a feature flag with a documented rollback plan.
+
+**Phase 3 exit criteria:** a technician can complete a generator inspection
+offline from a published revision, synchronize it safely, produce a
+customer-ready PDF, and open the same immutable response after the template
+has been revised; legacy generator reports remain available throughout the
+pilot.
 
 ### Phase 4 — First electrical template packs
 
@@ -185,8 +242,9 @@ link back to an inspection or maintenance source record.
 Phase 1 is implemented through
 `supabase/migrations/0006_phase1_asset_foundation.sql` and the
 equipment/schedule mapping layer. Phase 2 adds
-`20260822205219_phase2_customer_sites.sql` and
-`20260822205311_phase2_customer_site_grants.sql`; fresh environments can use
+`20260822205219_phase2_customer_sites.sql`,
+`20260822205311_phase2_customer_site_grants.sql`, and
+`20260823162511_phase2_work_orders.sql`; fresh environments can use
 `supabase/schema/voltcore_complete_schema.sql` as the consolidated setup
 script. Apply the tenant bootstrap (`supabase/manual/tenant_bootstrap.sql`)
 before operational migrations. Legacy schedule rows whose tenant membership
@@ -205,7 +263,7 @@ After migration:
 
 ## Phase 2 rollout notes
 
-1. Run the two Phase 2 customer/site migrations after Phase 1 (or run the
+1. Run the three Phase 2 migrations after Phase 1 (or run the
    consolidated schema for a fresh installation).
 2. Verify that an administrator, dispatcher, or supervisor can create and edit
    customers and sites, while a technician can read but cannot change them.
@@ -213,6 +271,8 @@ After migration:
    confirm its history remains tenant-scoped.
 4. Confirm work-order rows retain their customer, site, asset, priority, and
    assignee links through offline restart and synchronization.
+5. Confirm direct event inserts are rejected, tenant members can only read
+   their own audit rows, and status/assignee updates create audit events.
 
 ## Guardrails
 

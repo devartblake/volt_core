@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hive/hive.dart';
 import 'package:voltcore/modules/work_orders/domain/entities/work_order_entity.dart';
+import 'package:voltcore/modules/work_orders/infra/datasources/work_order_remote_datasource.dart';
 import 'package:voltcore/modules/work_orders/infra/models/work_order_record.dart';
 import 'package:voltcore/modules/work_orders/infra/repositories/work_order_repository_impl.dart';
 
@@ -80,4 +81,70 @@ void main() {
 
     expect(await repository.list(), isEmpty);
   });
+
+  test('merges a newer remote work order into the local list', () async {
+    final remoteOrder = WorkOrderEntity(
+      id: 'remote-order',
+      tenantId: tenantId,
+      title: 'Remote dispatched job',
+      status: WorkOrderStatus.scheduled,
+      priority: WorkOrderPriority.normal,
+      scheduledFor: DateTime.utc(2026, 8, 26),
+      createdAt: DateTime.utc(2026, 8, 20),
+      updatedAt: DateTime.utc(2026, 8, 22),
+    );
+    repository = WorkOrderRepositoryImpl(
+      box: box,
+      queueWriter: (_) async {},
+      tenantIdReader: () => tenantId,
+      remote: _FakeWorkOrderRemoteDatasource([remoteOrder]),
+    );
+
+    expect((await repository.list()).single.title, 'Remote dispatched job');
+  });
+
+  test('keeps a newer local work order when the remote copy is stale', () async {
+    final local = await repository.create(title: 'Local unsynced job');
+    final staleRemote = local.copyWith(
+      title: 'Stale remote title',
+      updatedAt: local.updatedAt.subtract(const Duration(minutes: 1)),
+    );
+    repository = WorkOrderRepositoryImpl(
+      box: box,
+      queueWriter: (_) async {},
+      tenantIdReader: () => tenantId,
+      remote: _FakeWorkOrderRemoteDatasource([staleRemote]),
+    );
+
+    expect((await repository.list()).single.title, 'Local unsynced job');
+  });
+
+  test('uses local work orders when a remote refresh fails', () async {
+    await repository.create(title: 'Available offline');
+    repository = WorkOrderRepositoryImpl(
+      box: box,
+      queueWriter: (_) async {},
+      tenantIdReader: () => tenantId,
+      remote: const _FailingWorkOrderRemoteDatasource(),
+    );
+
+    expect((await repository.list()).single.title, 'Available offline');
+  });
+}
+
+class _FakeWorkOrderRemoteDatasource implements WorkOrderRemoteDatasource {
+  const _FakeWorkOrderRemoteDatasource(this.orders);
+
+  final List<WorkOrderEntity> orders;
+
+  @override
+  Future<List<WorkOrderEntity>> list() async => orders;
+}
+
+class _FailingWorkOrderRemoteDatasource implements WorkOrderRemoteDatasource {
+  const _FailingWorkOrderRemoteDatasource();
+
+  @override
+  Future<List<WorkOrderEntity>> list() =>
+      Future.error(StateError('network unavailable'));
 }
