@@ -45,7 +45,7 @@ class TemplateResponseSessionController extends ChangeNotifier {
   final TemplateResponseValidator _validator;
 
   FormResponse _response;
-  Map<String, dynamic> _values;
+  final Map<String, dynamic> _values;
   Timer? _autosaveTimer;
   Future<void> _saveTail = Future<void>.value();
   bool _dirty = false;
