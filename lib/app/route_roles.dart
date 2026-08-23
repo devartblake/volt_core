@@ -128,6 +128,12 @@ class RouteRoles {
       UserRole.dispatcher,
       UserRole.admin,
     },
+    'schedule_task_detail': {
+      UserRole.tech,
+      UserRole.supervisor,
+      UserRole.dispatcher,
+      UserRole.admin,
+    },
 
     // ----- Equipment / Nameplate -----
     'nameplate_list': {
