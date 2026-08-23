@@ -225,7 +225,7 @@ class _TemplateFieldControl extends StatelessWidget {
       );
 
   Widget _dateField(BuildContext context) {
-    final parsed = value is String ? DateTime.tryParse(value! as String) : null;
+    final parsed = value is String ? DateTime.tryParse(value) : null;
     return TextFormField(
       key: ValueKey('${field.id}:${value ?? ''}'),
       initialValue: parsed == null
@@ -257,7 +257,7 @@ class _TemplateFieldControl extends StatelessWidget {
 
   Widget _selectField() {
     final optionValues = options.map((option) => option.value).toSet();
-    final selected = value is String && optionValues.contains(value) ? value as String : null;
+    final selected = value is String && optionValues.contains(value) ? value : null;
     return DropdownButtonFormField<String>(
       key: ValueKey('${field.id}:${selected ?? ''}'),
       initialValue: selected,
@@ -271,7 +271,7 @@ class _TemplateFieldControl extends StatelessWidget {
   }
 
   Widget _booleanField() {
-    final selected = value is bool ? <bool>{value! as bool} : <bool>{};
+    final selected = value is bool ? <bool>{value} : <bool>{};
     return InputDecorator(
       decoration: InputDecoration(labelText: _label),
       child: SegmentedButton<bool>(
@@ -291,7 +291,7 @@ class _TemplateFieldControl extends StatelessWidget {
 
   Widget _checklistField() {
     final selected = value is List
-        ? value!.map((item) => item.toString()).toSet()
+        ? value.map((item) => item.toString()).toSet()
         : <String>{};
     return InputDecorator(
       decoration: InputDecoration(labelText: _label),
