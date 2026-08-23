@@ -82,31 +82,57 @@ and PDF as a template-specific payload during the migration.
 
 ## Delivery sequence
 
-### Phase 1 — Secure foundation and generic asset vocabulary
+### Delivery status — 23 August 2026
+
+| Phase | Status | Delivered scope | Remaining gate |
+| --- | --- | --- | --- |
+| Phase 1 | ✅ Complete | Tenant-safe schedule foundation, generic asset vocabulary, equipment mapper/repository support, and asset registration. | Apply and verify the migration in each Supabase environment. |
+| Phase 2 | 🟡 Core complete | Customer/site directory, site-aware asset registration and reassignment, QR lookup, asset history, and durable work-order lifecycle core. | Finish the work-order operations UI and complete production migration/RLS verification. |
+| Phase 3 | ⏳ Not started | — | Template definitions, responses, renderer, and generator migration. |
+
+### Phase 1 — Secure foundation and generic asset vocabulary — ✅ Complete
 
 **Objective:** make scheduling tenant-safe and make the shared equipment table
 able to represent non-generator assets without disrupting existing generator
 records.
 
-- Convert scheduling from authenticated-wide access to tenant-membership RLS.
-- Require a UUID-shaped tenant ID for new or updated scheduled tasks; preserve
-  legacy rows without guessing their owner, and re-home them explicitly.
-- Ensure `authenticated` receives explicit Data API grants because newer
-  Supabase projects can opt out of automatic public-schema exposure.
-- Add `asset_type`, `metadata`, and optional `site_id` to the equipment
-  registry. Existing rows default to `generator`.
-- Add Dart `AssetType` support and mapper coverage while retaining the present
-  generator-derived registry and UI.
+- ✅ Scheduling uses tenant-membership RLS; new writes require a valid tenant
+  UUID and legacy tenantless rows remain inaccessible until explicitly re-homed.
+- ✅ The migration grants `authenticated` the required Data API access.
+- ✅ `equipment` supports `asset_type`, structured `metadata`, and optional
+  `site_id`; existing records default to `generator`.
+- ✅ Dart `AssetType`, Supabase mapping, repository synchronization, and
+  generic asset registration are in place while preserving generator records.
 
 **Exit criteria:** no tenant can read or write another tenant's scheduled task;
 new schedule writes carry a real tenant ID; a remote registry row can describe
 an ATS or another supported asset type.
 
-### Phase 2 — Sites, assets, and work orders
+### Phase 2 — Sites, assets, and work orders — 🟡 Core complete
 
-- Add customer-to-site ownership and a dedicated asset creation/edit path.
-- Introduce work-order lifecycle, assignments, priorities, and asset links.
-- Add QR/barcode lookup and asset history.
+- ✅ Customer-to-site ownership with tenant-scoped RLS and a customer/site
+  directory UI.
+- ✅ Asset registration now supports generic asset types and selection of a
+  customer/service site; existing assets can be reassigned to a site.
+- ✅ QR/barcode lookup and asset inspection history are available from Asset
+  Search, with named-route and RBAC coverage.
+- ✅ Work-order domain, status-transition rules, priority, customer, site,
+  asset, and assignee fields are persisted locally and synchronized through
+  the repository boundary.
+- ✅ Inspection workflows can initiate maintenance scheduling after completion.
+- ✅ Customer/site migrations and their grants are included in the consolidated
+  `supabase/schema/voltcore_complete_schema.sql` setup script.
+
+**Remaining Phase 2 tasks:**
+
+1. Build the dedicated work-order list, detail, create/edit, assignment, and
+   transition UI on top of the completed repository lifecycle.
+2. Wire the work-order screens to maintenance scheduling so staff can create,
+   assign, and complete the lifecycle without developer tooling.
+3. Apply the Phase 1 and Phase 2 migrations in staging and production; verify
+   tenant-isolated RLS for customers, sites, equipment, and work orders.
+4. Add end-to-end widget/integration coverage for customer/site selection,
+   asset reassignment, and the work-order UI once it lands.
 
 **Customer/site foundation:**
 `supabase/migrations/20260822205219_phase2_customer_sites.sql`
@@ -138,14 +164,18 @@ administrator tenant roles; all active tenant members may read the directory.
 
 - UPS, EV charging, energy storage, solar, and selected facilities categories.
 
-## Phase 1 implementation notes
+## Phase 1 implementation and rollout notes
 
-The phase is implemented through `supabase/migrations/0006_phase1_asset_foundation.sql`
-and the equipment/schedule mapping layer. Apply the migration only after the
-tenant bootstrap (`supabase/manual/tenant_bootstrap.sql`) is complete. The database currently contains a legacy schedule
-row whose tenant membership cannot be verified; the migration intentionally
-keeps it inaccessible until an administrator re-homes it rather than assigning
-it to a guessed tenant.
+Phase 1 is implemented through
+`supabase/migrations/0006_phase1_asset_foundation.sql` and the
+equipment/schedule mapping layer. Phase 2 adds
+`20260822205219_phase2_customer_sites.sql` and
+`20260822205311_phase2_customer_site_grants.sql`; fresh environments can use
+`supabase/schema/voltcore_complete_schema.sql` as the consolidated setup
+script. Apply the tenant bootstrap (`supabase/manual/tenant_bootstrap.sql`)
+before operational migrations. Legacy schedule rows whose tenant membership
+cannot be verified remain inaccessible until an administrator re-homes them;
+the application never guesses an owner.
 
 After migration:
 
@@ -154,7 +184,19 @@ After migration:
    has an active `tenant_members` row.
 3. Re-home legacy schedule rows with the commented SQL in the migration.
 4. Confirm an authenticated user can read and write only their tenant's task.
-5. Run the Flutter mapper and repository tests before production rollout.
+5. Run Flutter analyzer, mapper/repository tests, and the customer/site and
+   work-order tests before production rollout.
+
+## Phase 2 rollout notes
+
+1. Run the two Phase 2 customer/site migrations after Phase 1 (or run the
+   consolidated schema for a fresh installation).
+2. Verify that an administrator, dispatcher, or supervisor can create and edit
+   customers and sites, while a technician can read but cannot change them.
+3. Register an asset with a selected site, reassign it, scan or search it, and
+   confirm its history remains tenant-scoped.
+4. Confirm work-order rows retain their customer, site, asset, priority, and
+   assignee links through offline restart and synchronization.
 
 ## Guardrails
 
