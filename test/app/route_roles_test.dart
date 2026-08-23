@@ -28,6 +28,7 @@ const _allRouteNames = <String>{
   RouteNames.workOrderEdit,
   RouteNames.schedule,
   RouteNames.scheduleTask,
+  RouteNames.scheduleTaskDetail,
   RouteNames.nameplateList,
   RouteNames.nameplateIntervals,
   RouteNames.equipmentSearch,
@@ -185,6 +186,7 @@ void main() {
         RouteNames.workOrderEdit,
         RouteNames.schedule,
         RouteNames.scheduleTask,
+        RouteNames.scheduleTaskDetail,
         RouteNames.documents,
         RouteNames.settings,
       ];

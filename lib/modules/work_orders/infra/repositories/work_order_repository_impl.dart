@@ -148,6 +148,11 @@ class WorkOrderRepositoryImpl implements WorkOrderRepository {
           !previous.canTransitionTo(order.status)) {
         throw StateError('Invalid work-order lifecycle transition.');
       }
+      if (previous.status != order.status &&
+          order.status == WorkOrderStatus.scheduled &&
+          order.scheduledFor == null) {
+        throw StateError('A work order needs a scheduled date before dispatch.');
+      }
     }
     final updated = order.copyWith(updatedAt: DateTime.now().toUtc());
     await _box.put(updated.id, _toRecord(updated));

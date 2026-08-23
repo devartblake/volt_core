@@ -26,12 +26,16 @@ class NavItem {
   /// Optional tooltip / description
   final String? description;
 
+  /// Visually nest an item below its operational parent in the drawer.
+  final bool isSubItem;
+
   const NavItem(
       this.label,
       this.icon,
       this.route, {
         this.routeName,
         this.description,
+        this.isSubItem = false,
       });
 }
 
@@ -111,6 +115,13 @@ const List<NavSection> _navSections = [
         description: 'View and manage field work orders',
       ),
       NavItem(
+        'Maintenance Records',
+        Icons.build_circle_outlined,
+        RoutePaths.maintenance,
+        routeName: RouteNames.maintenance,
+        description: 'Generator maintenance records and reports',
+      ),
+      NavItem(
         'Schedule',
         Icons.calendar_month_outlined,
         RoutePaths.schedule,
@@ -125,11 +136,12 @@ const List<NavSection> _navSections = [
         description: 'Create a field work order',
       ),
       NavItem(
-        'Archive',
+        'Archived Maintenance',
         Icons.archive_outlined,
-        '/maintenance/archive',
-        routeName: 'maintenance_archive',
+        RoutePaths.maintenanceArchive,
+        routeName: RouteNames.maintenanceArchive,
         description: 'View & export previous maintenance',
+        isSubItem: true,
       ),
     ],
   ),
@@ -340,6 +352,7 @@ class AppDrawer extends ConsumerWidget {
       List<NavSection> sections,
       List<NavItem> quickActions,
       ) {
+    final selectedItem = _selectedItemForRoute(current, sections);
     return Drawer(
       child: SafeArea(
         child: Column(
@@ -369,7 +382,7 @@ class AppDrawer extends ConsumerWidget {
                     for (final item in section.items)
                       _ModernDrawerTile(
                         item: item,
-                        selected: _routeEquals(current, item.route),
+                        selected: selectedItem?.route == item.route,
                         count: (badges ?? const {})[item.route] ?? 0,
                         onTap: () {
                           _goTo(context, item.route);
@@ -646,7 +659,12 @@ class _ModernDrawerTile extends StatelessWidget {
         : null;
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+      padding: EdgeInsets.only(
+        left: item.isSubItem ? 28 : 12,
+        right: 12,
+        top: 2,
+        bottom: 2,
+      ),
       child: ListTile(
         leading: Icon(
           item.icon,
@@ -1236,10 +1254,28 @@ List<NavItem> _visibleQuickActionsForRole(UserRole? role) {
 }
 
 int _indexForRoute(String location, List<NavItem> items) {
-  for (var i = 0; i < items.length; i++) {
-    if (_routeEquals(location, items[i].route)) return i;
+  final selected = _selectedItemForRoute(
+    location,
+    [NavSection(items: items)],
+  );
+  return selected == null ? 0 : items.indexOf(selected);
+}
+
+/// A nested detail route must select its most specific destination. For
+/// example, `/maintenance/archive` selects Archive rather than its broader
+/// `/maintenance` parent, and `/inspections/pending` selects Pending Reviews.
+NavItem? _selectedItemForRoute(
+  String location,
+  List<NavSection> sections,
+) {
+  NavItem? selected;
+  for (final item in sections.expand((section) => section.items)) {
+    if (_routeEquals(location, item.route) &&
+        (selected == null || item.route.length > selected.route.length)) {
+      selected = item;
+    }
   }
-  return 0;
+  return selected;
 }
 
 bool _routeEquals(String location, String route) =>
@@ -1247,7 +1283,7 @@ bool _routeEquals(String location, String route) =>
 
 String _currentLocation(BuildContext context) {
   try {
-    return GoRouterState.of(context).uri.toString();
+    return GoRouterState.of(context).uri.path;
   } catch (_) {
     return '/';
   }

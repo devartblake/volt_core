@@ -43,3 +43,9 @@ final scheduleControllerProvider = StateNotifierProvider<ScheduleController,
   final usecase = ref.watch(loadScheduleUseCaseProvider);
   return ScheduleController(usecase);
 });
+
+/// A single scheduled task for the detail screen. Keeping this separate from
+/// the list controller lets a user open a task directly from a calendar card.
+final scheduleTaskProvider = FutureProvider.family<TaskScheduleEntity?, String>(
+  (ref, id) => ref.watch(scheduleRepositoryProvider).getById(id),
+);

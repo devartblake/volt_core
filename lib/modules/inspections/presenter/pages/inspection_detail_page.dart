@@ -18,6 +18,7 @@ import '../../infra/models/inspection.dart';
 import '../../infra/repositories/inspection_repository_impl.dart';
 import '../../../../shared/widgets/widgets.dart';
 import '../../../documents/presenter/pages/pdf_viewer_page.dart';
+import '../../../work_orders/presenter/inspection_maintenance_scheduler.dart';
 
 class InspectionDetailPage extends ConsumerWidget {
   final String id;
@@ -115,19 +116,11 @@ class InspectionDetailPage extends ConsumerWidget {
         IconButton(
           icon: const Icon(Icons.build_circle_outlined),
           tooltip: 'Schedule maintenance',
-          onPressed: () async {
-            final scheduled = await showScheduleDialog(
-              context: context,
-              taskType: TaskType.maintenance,
-              siteCode: ins.siteCode,
-              address: ins.address,
-              inspectionId: ins.id,
-              siteGrade: ins.siteGrade,
-            );
-            if (scheduled == true && context.mounted) {
-              AppSnackBar.success(context, 'Maintenance scheduled');
-            }
-          },
+          onPressed: () => scheduleMaintenanceFromInspection(
+            context,
+            ref,
+            ins.toEntity(),
+          ),
         ),
       ],
       body: Column(
@@ -271,22 +264,11 @@ class InspectionDetailPage extends ConsumerWidget {
                             borderRadius: BorderRadius.circular(12),
                           ),
                         ),
-                        onPressed: () async {
-                          final scheduled = await showScheduleDialog(
-                            context: context,
-                            taskType: TaskType.maintenance,
-                            siteCode: ins.siteCode,
-                            address: ins.address,
-                            inspectionId: ins.id,
-                            siteGrade: ins.siteGrade,
-                          );
-                          if (scheduled == true && context.mounted) {
-                            AppSnackBar.success(
-                              context,
-                              'Maintenance scheduled',
-                            );
-                          }
-                        },
+                        onPressed: () => scheduleMaintenanceFromInspection(
+                          context,
+                          ref,
+                          ins.toEntity(),
+                        ),
                       ),
                     ),
                   ],

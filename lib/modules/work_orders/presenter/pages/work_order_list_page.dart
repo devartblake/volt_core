@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/constants/route_paths.dart';
 import '../../../../shared/widgets/widgets.dart';
+import '../../../schedule/presenter/controllers/schedule_controller.dart';
 import '../../domain/entities/work_order_entity.dart';
 import '../work_order_providers.dart';
 
@@ -56,6 +57,12 @@ class _WorkOrderListPageState extends ConsumerState<WorkOrderListPage> {
   @override
   Widget build(BuildContext context) {
     final orders = ref.watch(workOrderListProvider);
+    final scheduledTaskCount = ref.watch(scheduleControllerProvider).maybeWhen(
+          data: (tasks) => tasks
+              .where((task) => task.status == 'scheduled' || task.status == 'pending')
+              .length,
+          orElse: () => 0,
+        );
     return AppPage(
       title: 'All Jobs',
       fab: FloatingActionButton.extended(
@@ -129,8 +136,31 @@ class _WorkOrderListPageState extends ConsumerState<WorkOrderListPage> {
                   EmptyState(
                     icon: Icons.work_outline,
                     title: all.isEmpty ? 'No jobs yet' : 'No jobs match these filters',
-                    message: all.isEmpty ? 'Create a work order to plan, assign, and track field work.' : 'Adjust or clear a filter to see more jobs.',
-                    action: all.isEmpty ? FilledButton.icon(onPressed: () => context.goNamed(RouteNames.workOrderNew), icon: const Icon(Icons.add), label: const Text('Create job')) : null,
+                    message: all.isEmpty
+                        ? scheduledTaskCount == 0
+                            ? 'Work orders are created from Create Job or an inspection maintenance handoff.'
+                            : 'Scheduled tasks are shown on Schedule until they become work orders. You have $scheduledTaskCount scheduled task${scheduledTaskCount == 1 ? '' : 's'}.'
+                        : 'Adjust or clear a filter to see more jobs.',
+                    action: all.isEmpty
+                        ? Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            alignment: WrapAlignment.center,
+                            children: [
+                              FilledButton.icon(
+                                onPressed: () => context.goNamed(RouteNames.workOrderNew),
+                                icon: const Icon(Icons.add),
+                                label: const Text('Create job'),
+                              ),
+                              if (scheduledTaskCount > 0)
+                                OutlinedButton.icon(
+                                  onPressed: () => context.goNamed(RouteNames.schedule),
+                                  icon: const Icon(Icons.calendar_month_outlined),
+                                  label: const Text('View schedule'),
+                                ),
+                            ],
+                          )
+                        : null,
                   )
                 else
                   ...visible.map((order) => _WorkOrderCard(order: order)),
