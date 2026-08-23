@@ -374,26 +374,29 @@ class _CheckboxTile extends StatelessWidget {
     final effectiveColor = warningColor ??
         (value ? colorScheme.primary : colorScheme.onSurfaceVariant);
 
-    return CheckboxListTile(
-      value: value,
-      onChanged: readOnly ? null : onChanged,
-      title: Row(
-        children: [
-          Icon(icon, size: 18, color: effectiveColor),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              label,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: value ? colorScheme.onSurface : null,
+    return Material(
+      color: Colors.transparent,
+      child: CheckboxListTile(
+        value: value,
+        onChanged: readOnly ? null : onChanged,
+        title: Row(
+          children: [
+            Icon(icon, size: 18, color: effectiveColor),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                label,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: value ? colorScheme.onSurface : null,
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+        dense: true,
+        controlAffinity: ListTileControlAffinity.leading,
       ),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      dense: true,
-      controlAffinity: ListTileControlAffinity.leading,
     );
   }
 }
