@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../providers/equipment_providers.dart';
 import '../../../../shared/widgets/widgets.dart';
+import '../../../admin/domain/entities/technician_entity.dart';
 import '../../../customers/customer_site_repository.dart';
 import '../../domain/entities/work_order_entity.dart';
 import '../../infra/repositories/work_order_repository_impl.dart';
@@ -25,6 +26,7 @@ class _WorkOrderFormPageState extends ConsumerState<WorkOrderFormPage> {
   String? _customerId;
   String? _siteId;
   String? _assetId;
+  String? _assignedToUserId;
   DateTime? _scheduledFor;
   bool _initialized = false;
   bool _saving = false;
@@ -41,6 +43,7 @@ class _WorkOrderFormPageState extends ConsumerState<WorkOrderFormPage> {
     _customerId = order.customerId;
     _siteId = order.siteId;
     _assetId = order.assetId;
+    _assignedToUserId = order.assignedToUserId;
     _scheduledFor = order.scheduledFor;
   }
 
@@ -64,6 +67,7 @@ class _WorkOrderFormPageState extends ConsumerState<WorkOrderFormPage> {
   Widget _page(BuildContext context, WorkOrderEntity? existing) {
     final directory = ref.watch(customerSiteDirectoryProvider);
     final equipment = ref.watch(equipmentListProvider);
+    final assignees = ref.watch(workOrderAssigneesProvider);
     return AppPage(
       title: existing == null ? 'Create job' : 'Edit job',
       leading: IconButton(
@@ -101,6 +105,12 @@ class _WorkOrderFormPageState extends ConsumerState<WorkOrderFormPage> {
               onAssetChanged: (value) => setState(() => _assetId = value),
             ),
             const SizedBox(height: 16),
+            _AssigneeSelector(
+              assignees: assignees,
+              assignedToUserId: _assignedToUserId,
+              onChanged: (value) => setState(() => _assignedToUserId = value),
+            ),
+            const SizedBox(height: 16),
             ListTile(
               contentPadding: EdgeInsets.zero,
               title: const Text('Scheduled for'),
@@ -118,6 +128,13 @@ class _WorkOrderFormPageState extends ConsumerState<WorkOrderFormPage> {
               maxLines: 6,
               textCapitalization: TextCapitalization.sentences,
             ),
+            if (existing != null) ...[
+              const SizedBox(height: 24),
+              _LifecycleActions(
+                order: existing,
+                onTransition: _transition,
+              ),
+            ],
             const SizedBox(height: 24),
             FilledButton.icon(
               onPressed: _saving ? null : () => _save(existing),
@@ -142,13 +159,15 @@ class _WorkOrderFormPageState extends ConsumerState<WorkOrderFormPage> {
     try {
       final repo = ref.read(workOrderRepositoryProvider);
       if (existing == null) {
-        await repo.create(title: _title.text, priority: _priority, customerId: _customerId, siteId: _siteId, assetId: _assetId, scheduledFor: _scheduledFor, description: _description.text);
+        await repo.create(title: _title.text, priority: _priority, customerId: _customerId, siteId: _siteId, assetId: _assetId, assignedToUserId: _assignedToUserId, scheduledFor: _scheduledFor, description: _description.text);
       } else {
         await repo.save(existing.copyWith(
           title: _title.text.trim(), priority: _priority,
           customerId: _customerId, clearCustomerId: _customerId == null,
           siteId: _siteId, clearSiteId: _siteId == null,
           assetId: _assetId, clearAssetId: _assetId == null,
+          assignedToUserId: _assignedToUserId,
+          clearAssignedToUserId: _assignedToUserId == null,
           scheduledFor: _scheduledFor, clearScheduledFor: _scheduledFor == null,
           description: _description.text.trim(),
         ));
@@ -158,6 +177,34 @@ class _WorkOrderFormPageState extends ConsumerState<WorkOrderFormPage> {
     } catch (error) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not save job: $error')));
     } finally { if (mounted) setState(() => _saving = false); }
+  }
+
+  Future<void> _transition(WorkOrderEntity order, WorkOrderStatus next) async {
+    if (next == WorkOrderStatus.scheduled && order.scheduledFor == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Select a scheduled date before dispatching this job.')),
+      );
+      return;
+    }
+    setState(() => _saving = true);
+    try {
+      await ref.read(workOrderRepositoryProvider).transition(order.id, next);
+      ref.invalidate(workOrderProvider(order.id));
+      ref.invalidate(workOrderListProvider);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Job marked ${_statusLabel(next)}.')),
+        );
+      }
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not update job status: $error')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
   }
 }
 
@@ -192,3 +239,130 @@ class _DirectorySelectors extends StatelessWidget {
     ]);
   }
 }
+
+class _AssigneeSelector extends StatelessWidget {
+  const _AssigneeSelector({
+    required this.assignees,
+    required this.assignedToUserId,
+    required this.onChanged,
+  });
+
+  final AsyncValue<List<TechnicianEntity>> assignees;
+  final String? assignedToUserId;
+  final ValueChanged<String?> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return assignees.when(
+      loading: () => const Padding(
+        padding: EdgeInsets.symmetric(vertical: 8),
+        child: LoadingIndicator.inline(),
+      ),
+      error: (_, __) => Text(
+        'Technician roster is unavailable. You can assign this job later.',
+        style: TextStyle(color: Theme.of(context).colorScheme.error),
+      ),
+      data: (users) => DropdownButtonFormField<String?>(
+        key: ValueKey('assignee-$assignedToUserId'),
+        initialValue: assignedToUserId,
+        decoration: const InputDecoration(labelText: 'Assigned technician'),
+        items: [
+          const DropdownMenuItem<String?>(
+            value: null,
+            child: Text('Unassigned'),
+          ),
+          ...users.map(
+            (user) => DropdownMenuItem<String?>(
+              value: user.id,
+              child: Text(user.name),
+            ),
+          ),
+        ],
+        onChanged: onChanged,
+      ),
+    );
+  }
+}
+
+class _LifecycleActions extends StatelessWidget {
+  const _LifecycleActions({
+    required this.order,
+    required this.onTransition,
+  });
+
+  final WorkOrderEntity order;
+  final Future<void> Function(WorkOrderEntity, WorkOrderStatus) onTransition;
+
+  @override
+  Widget build(BuildContext context) {
+    final next = order.allowedNextStatuses.toList()
+      ..sort((a, b) => a.index.compareTo(b.index));
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Job status', style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 4),
+            Text('Current: ${_statusLabel(order.status)}'),
+            if (next.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  for (final status in next)
+                    FilledButton.tonalIcon(
+                      onPressed: status == WorkOrderStatus.scheduled &&
+                              order.scheduledFor == null
+                          ? null
+                          : () => onTransition(order, status),
+                      icon: Icon(_statusIcon(status)),
+                      label: Text(_transitionLabel(status)),
+                    ),
+                ],
+              ),
+              if (order.status == WorkOrderStatus.draft &&
+                  order.scheduledFor == null)
+                const Padding(
+                  padding: EdgeInsets.only(top: 8),
+                  child: Text(
+                    'Choose a scheduled date, save the job, then dispatch it.',
+                  ),
+                ),
+            ] else
+              const Padding(
+                padding: EdgeInsets.only(top: 8),
+                child: Text('This job is closed and cannot be reopened.'),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+String _statusLabel(WorkOrderStatus value) => switch (value) {
+      WorkOrderStatus.draft => 'Draft',
+      WorkOrderStatus.scheduled => 'Scheduled',
+      WorkOrderStatus.inProgress => 'In progress',
+      WorkOrderStatus.completed => 'Completed',
+      WorkOrderStatus.cancelled => 'Cancelled',
+    };
+
+String _transitionLabel(WorkOrderStatus value) => switch (value) {
+      WorkOrderStatus.scheduled => 'Dispatch',
+      WorkOrderStatus.inProgress => 'Start work',
+      WorkOrderStatus.completed => 'Complete',
+      WorkOrderStatus.cancelled => 'Cancel job',
+      WorkOrderStatus.draft => 'Draft',
+    };
+
+IconData _statusIcon(WorkOrderStatus value) => switch (value) {
+      WorkOrderStatus.draft => Icons.edit_note_outlined,
+      WorkOrderStatus.scheduled => Icons.event_available_outlined,
+      WorkOrderStatus.inProgress => Icons.play_circle_outline,
+      WorkOrderStatus.completed => Icons.task_alt_outlined,
+      WorkOrderStatus.cancelled => Icons.cancel_outlined,
+    };
