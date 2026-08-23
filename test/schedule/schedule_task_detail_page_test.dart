@@ -13,7 +13,7 @@ TaskScheduleEntity _task() => TaskScheduleEntity(
   updatedAt: DateTime.utc(2026, 8, 20),
   title: 'Generator maintenance',
   description: 'Quarterly load test',
-  sourceType: 'maintenance',
+  sourceType: 'maintenance_record',
   sourceId: 'maintenance-record-1',
   siteCode: 'Q844',
   address: '952 Flushing Ave, Brooklyn NY 11206',
