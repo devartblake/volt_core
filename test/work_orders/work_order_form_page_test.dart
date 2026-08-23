@@ -48,6 +48,11 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    await tester.scrollUntilVisible(
+      find.text('Activity history'),
+      300,
+    );
+
     expect(find.text('Activity history'), findsOneWidget);
     expect(
       find.text('Status changed from Draft to Scheduled'),
