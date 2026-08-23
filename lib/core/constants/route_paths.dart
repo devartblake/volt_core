@@ -35,6 +35,9 @@ class RoutePaths {
   static const String workOrderNew = '/work-orders/new';
   static const String workOrderEdit = '/work-orders/edit/:id';
 
+  // Template management
+  static const String templates = '/templates';
+
   // Schedule
   static const String schedule = '/schedule';
 
@@ -93,6 +96,8 @@ class RouteNames {
   static const String workOrders = 'work_orders';
   static const String workOrderNew = 'work_order_new';
   static const String workOrderEdit = 'work_order_edit';
+
+  static const String templates = 'templates';
 
   static const String schedule = 'schedule';
   static const String scheduleTask = 'schedule_task';
