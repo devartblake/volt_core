@@ -123,6 +123,25 @@ class _TaskDetail extends ConsumerWidget {
               label: const Text('Cancel task'),
             ),
           ],
+          if (_canReschedule(item.status)) ...[
+            const SizedBox(height: 12),
+            OutlinedButton.icon(
+              onPressed: () => _reschedule(context, ref, item),
+              icon: const Icon(Icons.edit_calendar_outlined),
+              label: const Text('Reschedule task'),
+            ),
+          ],
+          if (_canDelete(item.status)) ...[
+            const SizedBox(height: 12),
+            TextButton.icon(
+              onPressed: () => _delete(context, ref, item),
+              icon: const Icon(Icons.delete_forever_outlined),
+              style: TextButton.styleFrom(
+                foregroundColor: theme.colorScheme.error,
+              ),
+              label: const Text('Delete task permanently'),
+            ),
+          ],
         ],
       ),
     );
@@ -147,6 +166,111 @@ class _TaskDetail extends ConsumerWidget {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Could not update task: $error')),
+        );
+      }
+    }
+  }
+
+  Future<void> _reschedule(
+    BuildContext context,
+    WidgetRef ref,
+    TaskScheduleEntity item,
+  ) async {
+    final selectedDate = await showDatePicker(
+      context: context,
+      initialDate: item.scheduledAt.isBefore(DateTime.now())
+          ? DateTime.now()
+          : item.scheduledAt,
+      firstDate: DateTime.now(),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
+    );
+    if (selectedDate == null || !context.mounted) return;
+
+    final selectedTime = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(item.scheduledAt),
+    );
+    if (selectedTime == null || !context.mounted) return;
+
+    final scheduledAt = DateTime(
+      selectedDate.year,
+      selectedDate.month,
+      selectedDate.day,
+      selectedTime.hour,
+      selectedTime.minute,
+    );
+    try {
+      await ref.read(scheduleRepositoryProvider).update(
+            item.copyWith(
+              scheduledDate: selectedDate,
+              scheduledAt: scheduledAt,
+              status: 'scheduled',
+            ),
+          );
+      ref.invalidate(scheduleTaskProvider(item.id));
+      await ref.read(scheduleControllerProvider.notifier).load();
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Task rescheduled for ${_dateTimeLabel(scheduledAt)}.',
+            ),
+          ),
+        );
+      }
+    } catch (error) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not reschedule task: $error')),
+        );
+      }
+    }
+  }
+
+  Future<void> _delete(
+    BuildContext context,
+    WidgetRef ref,
+    TaskScheduleEntity item,
+  ) async {
+    final shouldDelete = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Delete scheduled task?'),
+        content: const Text(
+          'This permanently removes the task from this device and from '
+          'Supabase when sync is available. The linked inspection or '
+          'maintenance record will not be deleted.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Keep task'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(dialogContext).colorScheme.error,
+            ),
+            child: const Text('Delete permanently'),
+          ),
+        ],
+      ),
+    );
+    if (shouldDelete != true || !context.mounted) return;
+
+    try {
+      await ref.read(scheduleRepositoryProvider).deleteTask(item.id);
+      ref.invalidate(scheduleTaskProvider(item.id));
+      await ref.read(scheduleControllerProvider.notifier).load();
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Scheduled task deleted.')),
+      );
+      context.pop();
+    } catch (error) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not delete task: $error')),
         );
       }
     }
@@ -200,8 +324,12 @@ bool _hasSource(TaskScheduleEntity item) =>
     (_isMaintenanceRecordSource(item) &&
         (item.sourceId?.isNotEmpty ?? false));
 
-bool _canComplete(String status) => status == 'scheduled' || status == 'in_progress';
-bool _canCancel(String status) => status == 'scheduled' || status == 'in_progress' || status == 'pending';
+bool _canComplete(String status) =>
+    status == 'scheduled' || status == 'in_progress';
+bool _canCancel(String status) =>
+    status == 'scheduled' || status == 'in_progress' || status == 'pending';
+bool _canReschedule(String status) => status == 'cancelled';
+bool _canDelete(String status) => status == 'completed' || status == 'cancelled';
 
 Future<void> _openSource(
   BuildContext context,
