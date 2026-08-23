@@ -143,6 +143,16 @@ to the same authenticated-only, no-delete grant policy used by fresh installs.
 Customer and site creation/editing is restricted to dispatch, supervisory, and
 administrator tenant roles; all active tenant members may read the directory.
 
+**Implementation status:** the customer/site directory, asset registration and
+site assignment, QR/barcode lookup, and asset history are complete. Work-order
+Increment 1 adds the All Jobs list plus create/edit fields for customer, site,
+asset, schedule, priority, and notes. Increment 2 adds active-technician
+assignment, one-way lifecycle controls (`draft → scheduled → in progress →
+completed`, with cancellation), and an inspection-to-maintenance handoff that
+creates a scheduled work order from inspection evidence. The remaining Phase 2
+work is database-backed work-order rollout, transition/audit history, and
+operational dashboards.
+
 ### Phase 3 — Template engine and generator migration
 
 - Add template definitions, revisions, fields, validation, and structured
