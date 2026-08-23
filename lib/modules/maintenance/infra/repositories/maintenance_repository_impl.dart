@@ -14,14 +14,19 @@ import '../../domain/repositories/maintenance_repository.dart';
 /// This bridges your detailed [MaintenanceRecord] Hive model
 /// and the lighter [MaintenanceJobEntity] used by the domain/UI.
 class MaintenanceRepositoryImpl implements MaintenanceRepository {
-  final Box<MaintenanceRecord> _box;
+  /// Only set when a box is injected (tests). Otherwise resolved per use — see
+  /// HiveBoxRef for why caching the instance is a trap here.
+  final Box<MaintenanceRecord>? _injectedBox;
+
+  Box<MaintenanceRecord> get _box =>
+      _injectedBox ?? MaintenanceBoxes.maintenance;
   final PdfService _pdfService;
   final _uuid = const Uuid();
 
   MaintenanceRepositoryImpl({
     Box<MaintenanceRecord>? box,
     PdfService? pdfService,
-  })  : _box = box ?? MaintenanceBoxes.maintenance,
+  })  : _injectedBox = box,
         _pdfService = pdfService ?? PdfService.instance;
 
   // ---------------------------------------------------------------------------

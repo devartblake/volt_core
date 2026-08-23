@@ -7,13 +7,19 @@ class MaintenanceBoxes {
   static Box<MaintenanceRecord>? _maintenance;
   static bool _initialized = false;
 
-  /// Safe getter – throws a clear error if init() wasn't called
+  /// Safe getter – throws a clear error if init() wasn't called.
+  ///
+  /// The cached instance is only trusted while it is still open. HiveService's
+  /// reset closes every box and reopens new instances, and this used to keep
+  /// handing out the dead one.
   static Box<MaintenanceRecord> get maintenance {
-    if (_initialized && _maintenance != null) {
-      return _maintenance!;
+    final cached = _maintenance;
+    if (_initialized && cached != null && cached.isOpen) {
+      return cached;
     }
 
-    // Try to recover if box is already open but _initialized wasn't set
+    // Re-resolve after a reset, or recover if the box is open but
+    // _initialized was never set.
     if (Hive.isBoxOpen(maintenanceBoxName)) {
       _maintenance = Hive.box<MaintenanceRecord>(maintenanceBoxName);
       _initialized = true;
@@ -28,7 +34,8 @@ class MaintenanceBoxes {
 
   /// Call this once during app startup, after Hive.initFlutter
   static Future<void> init() async {
-    if (_initialized && _maintenance != null) {
+    final cached = _maintenance;
+    if (_initialized && cached != null && cached.isOpen) {
       return;
     }
 
@@ -51,4 +58,13 @@ class MaintenanceBoxes {
   /// Check if the box is initialized
   static bool get isInitialized =>
       _initialized && _maintenance != null && Hive.isBoxOpen(maintenanceBoxName);
+
+  /// Drop the cached handle so the next access re-resolves.
+  ///
+  /// Called by HiveService.reset, which would otherwise leave this class
+  /// holding a closed box that its own `_initialized` flag says is fine.
+  static void invalidate() {
+    _maintenance = null;
+    _initialized = false;
+  }
 }

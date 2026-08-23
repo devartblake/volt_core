@@ -19,11 +19,15 @@ class WorkOrderRepositoryImpl implements WorkOrderRepository {
     Box<WorkOrderRecord>? box,
     WorkOrderQueueWriter? queueWriter,
     TenantIdReader? tenantIdReader,
-  }) : _box = box ?? WorkOrdersBox.box,
+  }) : _injectedBox = box,
        _queueWriter = queueWriter ?? _enqueueToSync,
        _tenantIdReader = tenantIdReader ?? _readActiveTenantId;
 
-  final Box<WorkOrderRecord> _box;
+  /// Only set when a box is injected (tests). Otherwise resolved per use, so a
+  /// HiveService reset cannot leave this repository holding a closed one.
+  final Box<WorkOrderRecord>? _injectedBox;
+
+  Box<WorkOrderRecord> get _box => _injectedBox ?? WorkOrdersBox.box;
   final WorkOrderQueueWriter _queueWriter;
   final TenantIdReader _tenantIdReader;
 

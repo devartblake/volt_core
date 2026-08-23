@@ -23,14 +23,18 @@ class TenantsService {
   static const String _keyCurrentTenant = 'current_tenant';
   static const String _keyTenants = 'tenants';
 
-  final Box _box;
+  /// Resolved per use rather than captured in [create].
+  ///
+  /// HiveService.reset closes every box and reopens new instances; a handle
+  /// taken at construction is dead for the rest of the session.
+  Box get _box => Hive.box<dynamic>(_boxName);
 
-  TenantsService._(this._box);
+  TenantsService._();
 
   /// Factory that makes sure the box is opened via HiveService.
   static Future<TenantsService> create() async {
-    final box = await HiveService.openBox<dynamic>(_boxName);
-    return TenantsService._(box);
+    await HiveService.openBox<dynamic>(_boxName);
+    return TenantsService._();
   }
 
   /// Last selected tenant, if any.

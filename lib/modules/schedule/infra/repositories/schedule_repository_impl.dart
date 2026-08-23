@@ -14,7 +14,12 @@ import '../models/schedule_task.dart';
 import 'schedule_repository.dart';
 
 class ScheduleRepositoryImpl implements ScheduleRepository {
-  final Box<ScheduledTask> _box;
+  /// Only set when a box is injected (tests). Otherwise resolved per use: a
+  /// box captured at construction is dead after HiveService.reset closes and
+  /// reopens everything, and this repository outlives that.
+  final Box<ScheduledTask>? _injectedBox;
+
+  Box<ScheduledTask> get _box => _injectedBox ?? ScheduledTasksBox.box;
 
   /// Optional cloud source. When provided, [loadSchedule] merges server rows
   /// into the local box so tasks created on another device show up here.
@@ -23,7 +28,7 @@ class ScheduleRepositoryImpl implements ScheduleRepository {
   ScheduleRepositoryImpl({
     Box<ScheduledTask>? box,
     ScheduleRemoteDatasource? remote,
-  }) : _box = box ?? ScheduledTasksBox.box,
+  }) : _injectedBox = box,
        _remote = remote;
 
   // ---------------------------
