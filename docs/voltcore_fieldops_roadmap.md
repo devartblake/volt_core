@@ -221,8 +221,11 @@ generator record and report during a gradual cutover.
 tenant-scoped template definitions, a template revision pinned by each
 response, explicit Data API grants, RLS, indexes, and a database trigger that
 rejects edits to completed responses. The Dart layer has matching immutable
-entities, Supabase mappers, a Hive response record, and a local-first response
-repository that queues writes to the durable sync outbox. The migration is not
+entities, a pinned revision-definition aggregate, Supabase mappers, a Hive
+response record, and a local-first response repository that queues writes to
+the durable sync outbox. The runtime core now evaluates documented
+field-visibility rules and generic required/type/range/option validation,
+keeping these rules out of generator-specific widgets. The migration is not
 applied to a Supabase environment yet; it must be reviewed and deployed after
 the Phase 2 lifecycle branch is merged.
 
