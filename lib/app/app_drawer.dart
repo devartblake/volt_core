@@ -92,6 +92,7 @@ const List<NavSection> _navSections = [
         RoutePaths.inspectionNew,
         routeName: 'inspection_new',
         description: 'Start a new inspection',
+        isSubItem: true,
       ),
       NavItem(
         'Pending Reviews',
@@ -99,6 +100,7 @@ const List<NavSection> _navSections = [
         RoutePaths.inspectionsPending,
         routeName: 'inspections_pending',
         description: 'Items awaiting review',
+        isSubItem: true,
       ),
     ],
   ),
@@ -120,6 +122,7 @@ const List<NavSection> _navSections = [
         RoutePaths.maintenance,
         routeName: RouteNames.maintenance,
         description: 'Generator maintenance records and reports',
+        isSubItem: true,
       ),
       NavItem(
         'Schedule',
@@ -134,6 +137,7 @@ const List<NavSection> _navSections = [
         RoutePaths.workOrderNew,
         routeName: RouteNames.workOrderNew,
         description: 'Create a field work order',
+        isSubItem: true,
       ),
       NavItem(
         'Archived Maintenance',
@@ -178,6 +182,7 @@ const List<NavSection> _navSections = [
           RoutePaths.equipmentSearch,
           routeName: 'equipment_search',
           description: 'Find equipment',
+          isSubItem: true,
         ),
     ],
   ),
@@ -199,6 +204,7 @@ const List<NavSection> _navSections = [
         RoutePaths.selectionManagement,
         routeName: 'selection_management',
         description: 'System configuration',
+        isSubItem: true,
       ),
       NavItem(
         'Settings',
@@ -213,6 +219,7 @@ const List<NavSection> _navSections = [
         RoutePaths.about,
         routeName: 'about',
         description: 'App information',
+        isSubItem: true,
       ),
     ],
   ),
@@ -377,20 +384,16 @@ class AppDrawer extends ConsumerWidget {
                 padding: const EdgeInsets.symmetric(vertical: 8),
                 children: [
                   for (final section in sections) ...[
-                    if (section.title != null)
-                      _SectionHeader(title: section.title!),
-                    for (final item in section.items)
-                      _ModernDrawerTile(
-                        item: item,
-                        selected: selectedItem?.route == item.route,
-                        count: (badges ?? const {})[item.route] ?? 0,
-                        onTap: () {
-                          _goTo(context, item.route);
-                          (onTapAny ?? () => Navigator.of(context).maybePop())
-                              .call();
-                        },
-                      ),
-                    if (section.title != null) const SizedBox(height: 8),
+                    _DrawerSection(
+                      section: section,
+                      selectedItem: selectedItem,
+                      badges: badges ?? const {},
+                      onTap: (item) {
+                        _goTo(context, item.route);
+                        (onTapAny ?? () => Navigator.of(context).maybePop())
+                            .call();
+                      },
+                    ),
                   ],
                 ],
               ),
@@ -413,6 +416,10 @@ class AppDrawer extends ConsumerWidget {
       bool isExtended,
       List<NavSection> sections,
       ) {
+    if (isExtended) {
+      return _buildExpandedNavigation(context, current, sections);
+    }
+
     // Flatten all items for rail
     final allItems = sections.expand((s) => s.items).toList();
     final selectedIndex = _indexForRoute(current, allItems);
@@ -484,31 +491,143 @@ class AppDrawer extends ConsumerWidget {
       ),
     );
   }
-}
 
-/// Section header for grouped navigation
-class _SectionHeader extends StatelessWidget {
-  const _SectionHeader({required this.title});
-
-  final String title;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(28, 16, 16, 8),
-      child: Text(
-        title.toUpperCase(),
-        style: theme.textTheme.labelSmall?.copyWith(
-          color: colorScheme.onSurfaceVariant,
-          fontWeight: FontWeight.w600,
-          letterSpacing: 1.2,
+  /// Wide layouts use the same labelled, grouped navigation as the drawer.
+  /// This keeps operations separate from directories and system controls,
+  /// instead of flattening every destination into a long rail.
+  Widget _buildExpandedNavigation(
+    BuildContext context,
+    String current,
+    List<NavSection> sections,
+  ) {
+    final selectedItem = _selectedItemForRoute(current, sections);
+    return SafeArea(
+      child: SizedBox(
+        width: 304,
+        child: Material(
+          color: Theme.of(context).colorScheme.surface,
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
+                child: _AppBrand(isExtended: true, companyName: companyName),
+              ),
+              const Divider(height: 1),
+              Expanded(
+                child: ListView(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  children: [
+                    for (final section in sections)
+                      _DrawerSection(
+                        section: section,
+                        selectedItem: selectedItem,
+                        badges: badges ?? const {},
+                        onTap: (item) => _goTo(context, item.route),
+                      ),
+                  ],
+                ),
+              ),
+              if (userProfile != null)
+                _ProfileFooter(userProfile!, onSwitchTenant),
+            ],
+          ),
         ),
       ),
     );
   }
+}
+
+/// Section header for grouped navigation
+class _DrawerSection extends StatefulWidget {
+  const _DrawerSection({
+    required this.section,
+    required this.selectedItem,
+    required this.badges,
+    required this.onTap,
+  });
+
+  final NavSection section;
+  final NavItem? selectedItem;
+  final Map<String, int> badges;
+  final ValueChanged<NavItem> onTap;
+
+  @override
+  State<_DrawerSection> createState() => _DrawerSectionState();
+}
+
+class _DrawerSectionState extends State<_DrawerSection> {
+  late bool _expanded = _hasSelectedItem;
+
+  bool get _hasSelectedItem => widget.section.items.any(
+    (item) => item.route == widget.selectedItem?.route,
+  );
+
+  @override
+  void didUpdateWidget(covariant _DrawerSection oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (_hasSelectedItem && !_expanded) _expanded = true;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final title = widget.section.title;
+    if (title == null) {
+      return Column(
+        children: [
+          _items(),
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 16),
+            child: Divider(height: 16),
+          ),
+        ],
+      );
+    }
+
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+    return Column(
+      children: [
+        ListTile(
+          dense: true,
+          contentPadding: const EdgeInsets.only(left: 20, right: 12),
+          title: Text(
+            title.toUpperCase(),
+            style: theme.textTheme.labelSmall?.copyWith(
+              color: colors.onSurfaceVariant,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 1.1,
+            ),
+          ),
+          trailing: Icon(_expanded ? Icons.expand_less : Icons.expand_more),
+          onTap: () => setState(() => _expanded = !_expanded),
+        ),
+        AnimatedCrossFade(
+          firstChild: _items(),
+          secondChild: const SizedBox.shrink(),
+          crossFadeState: _expanded
+              ? CrossFadeState.showFirst
+              : CrossFadeState.showSecond,
+          duration: const Duration(milliseconds: 160),
+        ),
+        const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 16),
+          child: Divider(height: 16),
+        ),
+      ],
+    );
+  }
+
+  Widget _items() => Column(
+    children: [
+      for (final item in widget.section.items)
+        _ModernDrawerTile(
+          item: item,
+          selected: widget.selectedItem?.route == item.route,
+          count: widget.badges[item.route] ?? 0,
+          onTap: () => widget.onTap(item),
+        ),
+    ],
+  );
 }
 
 /// Quick action buttons bar

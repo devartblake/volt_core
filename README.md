@@ -159,10 +159,11 @@ and pull request.
 
 - **Phase 1 — complete:** tenant-safe scheduling and generic, site-aware asset
   foundation.
-- **Phase 2 — core complete:** customer/site directory, site-aware asset
-  registration and reassignment, QR lookup, asset history, and durable
-  work-order lifecycle core. The dedicated work-order operations UI and
-  production migration/RLS verification remain.
+- **Phase 2 — rollout validation:** customer/site directory, site-aware asset
+  registration and reassignment, QR lookup, asset history, work-order
+  operations UI, Supabase merge/sync, and trigger-owned audit history are
+  complete in source. Staging/production migration and tenant/RLS verification
+  remain.
 
 See [`docs/voltcore_fieldops_roadmap.md`](docs/voltcore_fieldops_roadmap.md)
 for the completed-task record, deployment verification, and the remaining

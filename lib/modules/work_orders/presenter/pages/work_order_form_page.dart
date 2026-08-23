@@ -7,6 +7,7 @@ import '../../../../shared/widgets/widgets.dart';
 import '../../../admin/domain/entities/technician_entity.dart';
 import '../../../customers/customer_site_repository.dart';
 import '../../domain/entities/work_order_entity.dart';
+import '../../domain/entities/work_order_event.dart';
 import '../../infra/repositories/work_order_repository_impl.dart';
 import '../work_order_providers.dart';
 import 'work_order_list_page.dart' show priorityLabel;
@@ -134,6 +135,8 @@ class _WorkOrderFormPageState extends ConsumerState<WorkOrderFormPage> {
                 order: existing,
                 onTransition: _transition,
               ),
+              const SizedBox(height: 24),
+              _AuditTimeline(orderId: existing.id),
             ],
             const SizedBox(height: 24),
             FilledButton.icon(
@@ -191,6 +194,7 @@ class _WorkOrderFormPageState extends ConsumerState<WorkOrderFormPage> {
       await ref.read(workOrderRepositoryProvider).transition(order.id, next);
       ref.invalidate(workOrderProvider(order.id));
       ref.invalidate(workOrderListProvider);
+      ref.invalidate(workOrderEventsProvider(order.id));
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Job marked ${_statusLabel(next)}.')),
@@ -342,6 +346,92 @@ class _LifecycleActions extends StatelessWidget {
     );
   }
 }
+
+class _AuditTimeline extends ConsumerWidget {
+  const _AuditTimeline({required this.orderId});
+
+  final String orderId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final events = ref.watch(workOrderEventsProvider(orderId));
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Activity history', style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 4),
+            const Text('Recorded by the database after synchronization.'),
+            const SizedBox(height: 12),
+            events.when(
+              loading: () => const LoadingIndicator.inline(),
+              error: (_, __) => Align(
+                alignment: Alignment.centerLeft,
+                child: TextButton.icon(
+                  onPressed: () => ref.invalidate(workOrderEventsProvider(orderId)),
+                  icon: const Icon(Icons.refresh),
+                  label: const Text('Retry activity history'),
+                ),
+              ),
+              data: (items) {
+                if (items.isEmpty) {
+                  return const Text(
+                    'No synchronized activity yet. Offline changes appear here after sync.',
+                  );
+                }
+                return Column(
+                  children: [
+                    for (final event in items)
+                      ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        leading: Icon(_eventIcon(event.type)),
+                        title: Text(_eventLabel(event)),
+                        subtitle: Text(_eventDateLabel(event.createdAt)),
+                      ),
+                  ],
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+String _eventLabel(WorkOrderEvent event) => switch (event.type) {
+      WorkOrderEventType.created => 'Job created',
+      WorkOrderEventType.statusChanged =>
+        'Status changed from ${_statusName(event.fromStatus)} to ${_statusName(event.toStatus)}',
+      WorkOrderEventType.assignmentChanged =>
+        event.assignedToUserId == null
+            ? 'Technician unassigned'
+            : 'Technician assignment changed',
+    };
+
+String _statusName(String? value) {
+  if (value == null || value.isEmpty) return 'unknown';
+  return switch (value) {
+    'inProgress' => 'In progress',
+    _ => '${value[0].toUpperCase()}${value.substring(1)}',
+  };
+}
+
+String _eventDateLabel(DateTime value) {
+  final local = value.toLocal();
+  final hour = local.hour == 0 ? 12 : (local.hour > 12 ? local.hour - 12 : local.hour);
+  final suffix = local.hour >= 12 ? 'PM' : 'AM';
+  return '${local.month}/${local.day}/${local.year} '
+      '$hour:${local.minute.toString().padLeft(2, '0')} $suffix';
+}
+
+IconData _eventIcon(WorkOrderEventType type) => switch (type) {
+      WorkOrderEventType.created => Icons.add_task_outlined,
+      WorkOrderEventType.statusChanged => Icons.sync_alt_outlined,
+      WorkOrderEventType.assignmentChanged => Icons.person_outline,
+    };
 
 String _statusLabel(WorkOrderStatus value) => switch (value) {
       WorkOrderStatus.draft => 'Draft',
