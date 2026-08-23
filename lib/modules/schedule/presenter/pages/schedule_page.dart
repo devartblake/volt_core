@@ -11,6 +11,7 @@ import '../widgets/schedule_calendar_daily_agenda.dart';
 import '../widgets/schedule_calendar_timeline.dart';
 import '../../../../shared/widgets/widgets.dart';
 import '../../../../core/theme/status_colors.dart';
+import '../../../../core/constants/route_paths.dart';
 
 /// Schedule view mode enum
 enum ScheduleView { list, calendar }
@@ -335,9 +336,7 @@ class _SchedulePageState extends ConsumerState<SchedulePage> {
             });
           },
           onTaskTap: (task) {
-            if (task.inspectionId != null && task.inspectionId!.isNotEmpty) {
-              context.push('/inspections/detail/${task.inspectionId}');
-            }
+            openScheduledTask(context, task);
           },
         );
 
@@ -364,9 +363,7 @@ class _SchedulePageState extends ConsumerState<SchedulePage> {
             });
           },
           onTaskTap: (task) {
-            if (task.inspectionId != null && task.inspectionId!.isNotEmpty) {
-              context.push('/inspections/detail/${task.inspectionId}');
-            }
+            openScheduledTask(context, task);
           },
         );
 
@@ -393,9 +390,7 @@ class _SchedulePageState extends ConsumerState<SchedulePage> {
             });
           },
           onTaskTap: (task) {
-            if (task.inspectionId != null && task.inspectionId!.isNotEmpty) {
-              context.push('/inspections/detail/${task.inspectionId}');
-            }
+            openScheduledTask(context, task);
           },
         );
     }
@@ -691,10 +686,7 @@ class _ScheduleCard extends StatelessWidget {
       ),
       child: InkWell(
         onTap: () {
-          // If linked to an inspection, navigate to its detail page.
-          if (item.inspectionId != null && item.inspectionId!.isNotEmpty) {
-            context.push('/inspections/detail/${item.inspectionId}');
-          }
+          openScheduledTask(context, item);
         },
         borderRadius: BorderRadius.circular(12),
         child: Padding(
@@ -812,6 +804,30 @@ class _ScheduleCard extends StatelessWidget {
     return '${months[date.month - 1]} ${date.day}';
   }
 
+}
+
+/// Opens the most relevant detail page for a scheduled task. This preserves
+/// direct access to an inspection or maintenance record while still giving
+/// manually created tasks a dedicated detail screen.
+void openScheduledTask(BuildContext context, TaskScheduleEntity task) {
+  if (task.inspectionId?.isNotEmpty ?? false) {
+    context.pushNamed(
+      RouteNames.inspectionDetail,
+      pathParameters: {'id': task.inspectionId!},
+    );
+    return;
+  }
+  if (task.sourceType == 'maintenance' && (task.sourceId?.isNotEmpty ?? false)) {
+    context.pushNamed(
+      RouteNames.maintenanceDetail,
+      pathParameters: {'id': task.sourceId!},
+    );
+    return;
+  }
+  context.pushNamed(
+    RouteNames.scheduleTaskDetail,
+    pathParameters: {'id': task.id},
+  );
 }
 
 class _InfoChip extends StatelessWidget {
