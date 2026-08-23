@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
-import 'package:go_router/go_router.dart';
 import 'package:table_calendar/table_calendar.dart';
 import '../../domain/entities/task_schedule_entity.dart';
 import '../controllers/schedule_controller.dart';
@@ -11,7 +10,7 @@ import '../widgets/schedule_calendar_daily_agenda.dart';
 import '../widgets/schedule_calendar_timeline.dart';
 import '../../../../shared/widgets/widgets.dart';
 import '../../../../core/theme/status_colors.dart';
-import '../../../../core/constants/route_paths.dart';
+import '../schedule_navigation.dart';
 
 /// Schedule view mode enum
 enum ScheduleView { list, calendar }
@@ -804,30 +803,6 @@ class _ScheduleCard extends StatelessWidget {
     return '${months[date.month - 1]} ${date.day}';
   }
 
-}
-
-/// Opens the most relevant detail page for a scheduled task. This preserves
-/// direct access to an inspection or maintenance record while still giving
-/// manually created tasks a dedicated detail screen.
-void openScheduledTask(BuildContext context, TaskScheduleEntity task) {
-  if (task.inspectionId?.isNotEmpty ?? false) {
-    context.pushNamed(
-      RouteNames.inspectionDetail,
-      pathParameters: {'id': task.inspectionId!},
-    );
-    return;
-  }
-  if (task.sourceType == 'maintenance' && (task.sourceId?.isNotEmpty ?? false)) {
-    context.pushNamed(
-      RouteNames.maintenanceDetail,
-      pathParameters: {'id': task.sourceId!},
-    );
-    return;
-  }
-  context.pushNamed(
-    RouteNames.scheduleTaskDetail,
-    pathParameters: {'id': task.id},
-  );
 }
 
 class _InfoChip extends StatelessWidget {
