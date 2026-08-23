@@ -56,6 +56,24 @@ void main() {
     );
   });
 
+  test('requires a scheduled date before dispatching a draft', () async {
+    final order = await repository.create(title: 'Inspect panel');
+
+    await expectLater(
+      repository.transition(order.id, WorkOrderStatus.scheduled),
+      throwsStateError,
+    );
+  });
+
+  test('persists an assigned technician with the work order', () async {
+    final order = await repository.create(
+      title: 'Test emergency lighting',
+      assignedToUserId: 'technician-1',
+    );
+
+    expect((await repository.getById(order.id))?.assignedToUserId, 'technician-1');
+  });
+
   test('does not leak another tenant work order', () async {
     await repository.create(title: 'Tenant A order');
     tenantId = 'tenant-b';
