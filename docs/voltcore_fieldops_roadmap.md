@@ -125,6 +125,8 @@ an ATS or another supported asset type.
 - ✅ `20260823162511_phase2_work_orders.sql` defines tenant-scoped work orders,
   composite customer/site/asset links, least-privilege RLS, sync indexes, and
   trigger-owned creation/status/assignment audit events.
+- ✅ Existing jobs show their synchronized, database-owned activity timeline;
+  focused mapper and widget coverage protects the audit-history rendering.
 - ✅ Inspection workflows can initiate maintenance scheduling after completion.
 - ✅ Customer/site migrations and their grants are included in the consolidated
   `supabase/schema/voltcore_complete_schema.sql` setup script.
