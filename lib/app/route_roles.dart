@@ -95,6 +95,26 @@ class RouteRoles {
       UserRole.admin,
     },
 
+    // ----- Work orders -----
+    'work_orders': {
+      UserRole.tech,
+      UserRole.supervisor,
+      UserRole.dispatcher,
+      UserRole.admin,
+    },
+    'work_order_new': {
+      UserRole.tech,
+      UserRole.supervisor,
+      UserRole.dispatcher,
+      UserRole.admin,
+    },
+    'work_order_edit': {
+      UserRole.tech,
+      UserRole.supervisor,
+      UserRole.dispatcher,
+      UserRole.admin,
+    },
+
     // ----- Schedule -----
     'schedule': {
       UserRole.tech,
