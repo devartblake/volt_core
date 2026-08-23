@@ -9,6 +9,7 @@ import '../../infra/repositories/template_definition_repository.dart';
 import '../../infra/repositories/template_definition_repository_impl.dart';
 import '../../infra/repositories/template_management_repository.dart';
 import '../../infra/repositories/template_management_repository_impl.dart';
+import 'template_draft_editor_page.dart';
 
 class TemplateManagementPage extends ConsumerStatefulWidget {
   const TemplateManagementPage({super.key});
@@ -101,6 +102,21 @@ class _TemplateManagementPageState
     if (!mounted) return;
     _showMessage('Draft revision ${draft.revision.revisionNumber} created.');
     await _loadRevisions(definition.template);
+    if (!mounted) return;
+    await _openDraftEditor(draft.revision);
+  }
+
+  Future<void> _openDraftEditor(FormTemplateRevision revision) async {
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute(
+        builder: (_) => TemplateDraftEditorPage(
+          templateId: revision.templateId,
+          revisionId: revision.id,
+        ),
+      ),
+    );
+    if (!mounted || _selectedTemplate == null) return;
+    await _loadRevisions(_selectedTemplate!);
   }
 
   Future<void> _publish(FormTemplateRevision revision) async {
@@ -191,6 +207,7 @@ class _TemplateManagementPageState
           loading: _loading,
           error: _error,
           onClone: _cloneRevision,
+          onEdit: _openDraftEditor,
           onPublish: _publish,
           onArchive: _archive,
         );
@@ -258,6 +275,7 @@ class _RevisionList extends StatelessWidget {
     required this.loading,
     required this.error,
     required this.onClone,
+    required this.onEdit,
     required this.onPublish,
     required this.onArchive,
   });
@@ -267,6 +285,7 @@ class _RevisionList extends StatelessWidget {
   final bool loading;
   final String? error;
   final Future<void> Function(FormTemplateRevision) onClone;
+  final Future<void> Function(FormTemplateRevision) onEdit;
   final Future<void> Function(FormTemplateRevision) onPublish;
   final Future<void> Function(FormTemplateRevision) onArchive;
 
@@ -313,6 +332,12 @@ class _RevisionList extends StatelessWidget {
                     onPressed: () => onClone(revision),
                     icon: const Icon(Icons.copy_outlined),
                   ),
+                  if (revision.status == TemplateRevisionStatus.draft)
+                    IconButton(
+                      tooltip: 'Edit draft',
+                      onPressed: () => onEdit(revision),
+                      icon: const Icon(Icons.edit_outlined),
+                    ),
                   if (revision.status == TemplateRevisionStatus.draft)
                     IconButton(
                       tooltip: 'Publish revision',
