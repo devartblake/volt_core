@@ -187,9 +187,8 @@ class _FakeManagement implements TemplateManagementRepository {
   final published = <String>[];
 
   @override
-  Future<FormTemplateDefinition> saveDraft(FormTemplateDefinition definition) async {
+  Future<void> saveDraft(FormTemplateDefinition definition) async {
     saved.add(definition);
-    return definition;
   }
 
   @override
