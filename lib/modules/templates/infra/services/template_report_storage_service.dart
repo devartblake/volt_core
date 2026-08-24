@@ -6,7 +6,9 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import '../../../../core/services/storage/file_storage_service.dart';
 import '../../../../core/services/storage/web_file_store.dart';
 import '../../../../core/services/sync/sync_service.dart';
+import '../../domain/entities/form_response_report_artifact.dart';
 import '../../domain/entities/template_entities.dart';
+import '../repositories/form_response_report_repository.dart';
 import 'template_pdf_report_service.dart';
 
 enum TemplateReportCategory { inspection, maintenance, other }
@@ -17,12 +19,14 @@ class TemplateReportArtifact {
     required this.category,
     required this.responseId,
     required this.bytes,
+    this.link,
   });
 
   final String path;
   final TemplateReportCategory category;
   final String responseId;
   final Uint8List bytes;
+  final FormResponseReportArtifact? link;
 }
 
 /// Renders and persists one completed template response using Voltcore's
@@ -31,12 +35,19 @@ class TemplateReportArtifact {
 /// Native platforms write into the managed `pdfs/` tree consumed by the
 /// Documents library. Web writes the same logical path into [WebFileStore], so
 /// Edge/Chrome users can reopen and share the report without `dart:io`.
+///
+/// When [artifacts] is supplied, the stored report is also registered with the
+/// immutable server-side response-artifact boundary. The database derives all
+/// tenant/customer/site/asset/work-order/inspection/maintenance links from the
+/// completed response rather than trusting client-supplied relationship ids.
 class TemplateReportStorageService {
   const TemplateReportStorageService({
     this.renderer = const TemplatePdfReportService(),
+    this.artifacts,
   });
 
   final TemplatePdfReportService renderer;
+  final FormResponseReportRepository? artifacts;
 
   Future<TemplateReportArtifact> generateAndSave({
     required FormTemplateDefinition definition,
@@ -44,7 +55,9 @@ class TemplateReportStorageService {
     TemplateReportAttachmentResolver? attachmentResolver,
   }) async {
     if (!response.isComplete) {
-      throw StateError('Only completed template responses can be persisted as reports.');
+      throw StateError(
+        'Only completed template responses can be persisted as reports.',
+      );
     }
 
     final bytes = await renderer.build(
@@ -66,11 +79,22 @@ class TemplateReportStorageService {
             bytes: bytes,
           );
 
+    final repository = artifacts;
+    final link = repository == null
+        ? null
+        : await repository.create(
+            responseId: response.id,
+            storagePath: logicalPath,
+            fileName: filename,
+            byteSize: bytes.length,
+          );
+
     return TemplateReportArtifact(
       path: storedPath,
       category: category,
       responseId: response.id,
       bytes: bytes,
+      link: link,
     );
   }
 
@@ -97,21 +121,27 @@ class TemplateReportStorageService {
     switch (category) {
       case TemplateReportCategory.inspection:
         storedPath = await storage.saveInspectionPdf(
-          inspectionId: response.inspectionId ?? response.subjectId ?? response.id,
+          inspectionId:
+              response.inspectionId ?? response.subjectId ?? response.id,
           pdfBytes: bytes,
           filename: filename,
         );
       case TemplateReportCategory.maintenance:
         storedPath = await storage.saveMaintenancePdf(
-          jobId: response.maintenanceRecordId ?? response.subjectId ?? response.id,
+          jobId:
+              response.maintenanceRecordId ?? response.subjectId ?? response.id,
           pdfBytes: bytes,
           filename: filename,
         );
       case TemplateReportCategory.other:
         final root = await storage.getPdfsDirectory();
-        final directory = Directory('${root.path}${Platform.pathSeparator}template-responses');
+        final directory = Directory(
+          '${root.path}${Platform.pathSeparator}template-responses',
+        );
         if (!await directory.exists()) await directory.create(recursive: true);
-        final file = File('${directory.path}${Platform.pathSeparator}$filename');
+        final file = File(
+          '${directory.path}${Platform.pathSeparator}$filename',
+        );
         await file.writeAsBytes(bytes);
         storedPath = file.path;
     }
