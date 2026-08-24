@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
+import '../../../../core/services/sync/sync_context.dart';
 import '../../../../shared/widgets/app_page.dart';
 import '../../domain/entities/template_entities.dart';
 import '../../domain/services/template_revision_lifecycle.dart';
@@ -9,6 +10,7 @@ import '../../infra/repositories/template_definition_repository.dart';
 import '../../infra/repositories/template_definition_repository_impl.dart';
 import '../../infra/repositories/template_management_repository.dart';
 import '../../infra/repositories/template_management_repository_impl.dart';
+import '../../infra/services/generator_template_pack_installer.dart';
 import 'template_draft_editor_page.dart';
 
 class TemplateManagementPage extends ConsumerStatefulWidget {
@@ -19,12 +21,12 @@ class TemplateManagementPage extends ConsumerStatefulWidget {
       _TemplateManagementPageState();
 }
 
-class _TemplateManagementPageState
-    extends ConsumerState<TemplateManagementPage> {
+class _TemplateManagementPageState extends ConsumerState<TemplateManagementPage> {
   static const _lifecycle = TemplateRevisionLifecycle();
   static const _uuid = Uuid();
 
   bool _loading = true;
+  bool _installingPack = false;
   String? _error;
   List<FormTemplate> _templates = const [];
   FormTemplate? _selectedTemplate;
@@ -52,6 +54,7 @@ class _TemplateManagementPageState
       setState(() {
         _templates = templates;
         _selectedTemplate = templates.isEmpty ? null : templates.first;
+        if (templates.isEmpty) _revisions = const [];
       });
       if (_selectedTemplate != null) {
         await _loadRevisions(_selectedTemplate!);
@@ -61,6 +64,34 @@ class _TemplateManagementPageState
       setState(() => _error = error.toString());
     } finally {
       if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _installGeneratorPack() async {
+    final tenantId = SyncContext.tenantId;
+    if (tenantId == null || tenantId.isEmpty) {
+      _showMessage('Select an active tenant before installing templates.');
+      return;
+    }
+
+    setState(() => _installingPack = true);
+    try {
+      final installer = GeneratorTemplatePackInstaller(
+        definitions: _definitions,
+        management: _management,
+      );
+      final installed = await installer.installMissing(tenantId: tenantId);
+      if (!mounted) return;
+      _showMessage(
+        installed.isEmpty
+            ? 'Generator inspection and maintenance templates are already installed.'
+            : 'Installed: ${installed.join(', ')}.',
+      );
+      await _loadTemplates();
+    } catch (error) {
+      if (mounted) _showMessage('Could not install generator templates: $error');
+    } finally {
+      if (mounted) setState(() => _installingPack = false);
     }
   }
 
@@ -165,6 +196,16 @@ class _TemplateManagementPageState
     return AppPage(
       title: 'Template Management',
       actions: [
+        FilledButton.tonalIcon(
+          onPressed: _loading || _installingPack ? null : _installGeneratorPack,
+          icon: _installingPack
+              ? const SizedBox.square(
+                  dimension: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Icon(Icons.download_for_offline_outlined),
+          label: const Text('Install generator templates'),
+        ),
         IconButton(
           tooltip: 'Refresh templates',
           onPressed: _loading ? null : _loadTemplates,
@@ -183,11 +224,31 @@ class _TemplateManagementPageState
       return _ErrorState(message: _error!, onRetry: _loadTemplates);
     }
     if (_templates.isEmpty) {
-      return const Center(
-        child: Text(
-          'No templates are available yet. The generator template pack will be '
-          'added in the next Phase 3 migration slice.',
-          textAlign: TextAlign.center,
+      return Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 520),
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.description_outlined, size: 48),
+                const SizedBox(height: 12),
+                const Text(
+                  'No templates are installed for this tenant. Install the built-in '
+                  'generator inspection and maintenance pack to begin Phase 3 pilot '
+                  'configuration.',
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 16),
+                FilledButton.icon(
+                  onPressed: _installingPack ? null : _installGeneratorPack,
+                  icon: const Icon(Icons.download_for_offline_outlined),
+                  label: const Text('Install generator templates'),
+                ),
+              ],
+            ),
+          ),
         ),
       );
     }
