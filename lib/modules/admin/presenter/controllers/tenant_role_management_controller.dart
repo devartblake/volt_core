@@ -1,8 +1,8 @@
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 
 import '../../../auth/domain/user_role.dart';
 import '../../domain/entities/tenant_member_entity.dart';
+import '../../infra/repositories/admin_repository.dart';
 import '../../infra/repositories/admin_repository_impl.dart';
 
 class TenantRoleManagementState {
@@ -32,15 +32,15 @@ class TenantRoleManagementState {
 
 class TenantRoleManagementController
     extends StateNotifier<TenantRoleManagementState> {
-  TenantRoleManagementController(this._ref)
+  TenantRoleManagementController(this._repository)
       : super(const TenantRoleManagementState());
 
-  final Ref _ref;
+  final AdminRepository _repository;
 
   Future<void> load() async {
     state = state.copyWith(isLoading: true, clearError: true);
     try {
-      final members = await _ref.read(adminRepositoryProvider).listTenantMembers();
+      final members = await _repository.listTenantMembers();
       state = TenantRoleManagementState(members: members);
     } catch (error) {
       state = state.copyWith(isLoading: false, error: error.toString());
@@ -56,11 +56,13 @@ class TenantRoleManagementController
     if (member.role == newRole) return true;
 
     if (member.role == UserRole.admin && newRole != UserRole.admin) {
-      final activeAdmins = state.members.where(
-        (candidate) =>
-            candidate.isActive && candidate.role == UserRole.admin,
-      );
-      if (activeAdmins.length <= 1) {
+      final activeAdminCount = state.members
+          .where(
+            (candidate) =>
+                candidate.isActive && candidate.role == UserRole.admin,
+          )
+          .length;
+      if (activeAdminCount <= 1) {
         state = state.copyWith(
           error: 'At least one active tenant admin must remain.',
         );
@@ -70,12 +72,12 @@ class TenantRoleManagementController
 
     state = state.copyWith(isLoading: true, clearError: true);
     try {
-      await _ref.read(adminRepositoryProvider).assignTenantRole(
-            member: member,
-            newRole: newRole,
-            assignedByUserId: assignedByUserId,
-            reason: reason,
-          );
+      await _repository.assignTenantRole(
+        member: member,
+        newRole: newRole,
+        assignedByUserId: assignedByUserId,
+        reason: reason,
+      );
       final updated = state.members
           .map(
             (candidate) => candidate.userId == member.userId &&
@@ -95,5 +97,5 @@ class TenantRoleManagementController
 
 final tenantRoleManagementControllerProvider = StateNotifierProvider<
     TenantRoleManagementController, TenantRoleManagementState>((ref) {
-  return TenantRoleManagementController(ref);
+  return TenantRoleManagementController(ref.watch(adminRepositoryProvider));
 });
