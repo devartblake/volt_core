@@ -3,6 +3,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 import '../../../modules/maintenance/infra/datasources/hive_boxes_maintenance.dart';
 import '../../../modules/work_orders/infra/datasources/work_orders_box.dart';
 import '../../../modules/templates/infra/datasources/form_responses_box.dart';
+import '../../../modules/templates/infra/datasources/template_definitions_box.dart';
 import '../storage/file_storage_service.dart';
 import 'hive_adapters.dart';
 import 'hive_boxes.dart';
@@ -47,6 +48,7 @@ class HiveService {
     await MaintenanceBoxes.init();
     await WorkOrdersBox.init();
     await FormResponsesBox.init();
+    await TemplateDefinitionsBox.init();
 
     // Repair local data written by older builds (e.g. records stored under
     // auto-integer keys instead of their string id). Idempotent and non-fatal.
@@ -76,7 +78,7 @@ class HiveService {
 
   /// Delete ALL Hive data from disk.
   ///
-  /// â ï¸ WARNING: This is destructive! All local data will be permanently lost.
+  /// WARNING: This is destructive! All local data will be permanently lost.
   ///
   /// Use cases:
   /// - Development: Clear corrupted data during testing
@@ -84,104 +86,45 @@ class HiveService {
   /// - User action: "Clear all app data" feature
   ///
   /// After calling this, you must call [init] again before using Hive.
-  ///
-  /// Example:
-  /// ```dart
-  /// if (kDebugMode) {
-  ///   await HiveService.deleteAllData();
-  ///   await HiveService.init();
-  ///   await MaintenanceBoxes.init();
-  /// }
-  /// ```
   static Future<void> deleteAllData() async {
     if (kDebugMode) {
-      debugPrint('[HiveService] â ï¸  Deleting ALL Hive data from disk...');
+      debugPrint('[HiveService] Deleting ALL Hive data from disk...');
     }
 
-    // Close all boxes first
     await closeAll();
-
-    // Delete everything
     await Hive.deleteFromDisk();
-
-    // Reset state
     _initialized = false;
 
     if (kDebugMode) {
-      debugPrint('[HiveService] â All Hive data deleted');
-      debugPrint('[HiveService] â¹ï¸  Call init() again to reinitialize');
+      debugPrint('[HiveService] All Hive data deleted');
+      debugPrint('[HiveService] Call init() again to reinitialize');
     }
   }
 
-  /// Close all open Hive boxes.
-  ///
-  /// This closes:
-  /// - Core boxes from HiveBoxes
-  /// - Any other boxes opened via openBox()
-  ///
-  /// Note: This does NOT delete data, just closes the boxes.
-  /// Data remains on disk and can be reopened.
-  ///
-  /// Use cases:
-  /// - App shutdown/cleanup
-  /// - Before deleting data
-  /// - Memory management
-  ///
-  /// Example:
-  /// ```dart
-  /// @override
-  /// void dispose() {
-  ///   HiveService.closeAll();
-  ///   super.dispose();
-  /// }
-  /// ```
+  /// Close all open Hive boxes without deleting their contents.
   static Future<void> closeAll() async {
     if (kDebugMode) {
       debugPrint('[HiveService] Closing all Hive boxes...');
     }
 
-    // Close core boxes via HiveBoxes
     await HiveBoxes.closeAll();
-
-    // Close any other boxes that might be open
-    // (This catches boxes opened via openBox() or MaintenanceBoxes)
     await Hive.close();
 
-    // Drop handles cached elsewhere. Without this, MaintenanceBoxes keeps
-    // handing out the box it closed above â its own `_initialized` flag says
-    // the cached instance is fine â and the maintenance form throws
-    // "Box has already been closed" for the rest of the session.
+    // Drop cached handles owned by feature-level box wrappers. This is required
+    // after Hive.close() because those wrappers otherwise retain closed Box
+    // instances and fail on the next read after a reset/reinitialize cycle.
     MaintenanceBoxes.invalidate();
     WorkOrdersBox.invalidate();
+    TemplateDefinitionsBox.invalidate();
 
     _initialized = false;
 
     if (kDebugMode) {
-      debugPrint('[HiveService] â All boxes closed');
+      debugPrint('[HiveService] All boxes closed');
     }
   }
 
   /// Reset Hive state and optionally delete data.
-  ///
-  /// This is a convenience method that combines close + optional delete + reinit.
-  ///
-  /// Parameters:
-  /// - [deleteData]: If true, deletes all data from disk (default: false)
-  /// - [reinitialize]: If true, calls init() after cleanup (default: true)
-  ///
-  /// Use cases:
-  /// - Development: Quick reset during debugging
-  /// - Migration: Clean state for schema changes
-  /// - Testing: Reset between test runs
-  ///
-  /// Example:
-  /// ```dart
-  /// // Reset with fresh data
-  /// await HiveService.reset(deleteData: true);
-  ///
-  /// // Just close and reopen (keeps data)
-  /// await HiveService.reset(deleteData: false);
-  /// ```
   static Future<void> reset({
     bool deleteData = false,
     bool reinitialize = true,
@@ -192,42 +135,33 @@ class HiveService {
       debugPrint('  - Reinitialize: $reinitialize');
     }
 
-    // Close all boxes
     await closeAll();
 
-    // Optionally delete data
     if (deleteData) {
       await Hive.deleteFromDisk();
       if (kDebugMode) {
-        debugPrint('[HiveService] â Data deleted');
+        debugPrint('[HiveService] Data deleted');
       }
     }
 
-    // Reset state
     _initialized = false;
 
-    // Optionally reinitialize
     if (reinitialize) {
       await init();
       if (kDebugMode) {
-        debugPrint('[HiveService] â Reinitialized');
+        debugPrint('[HiveService] Reinitialized');
       }
     }
 
     if (kDebugMode) {
-      debugPrint('[HiveService] â Reset complete');
+      debugPrint('[HiveService] Reset complete');
     }
   }
 
   /// Check if HiveService is initialized.
-  ///
-  /// Use this to verify Hive is ready before accessing boxes.
   static bool get isInitialized => _initialized;
 
   /// Get statistics about open boxes.
-  ///
-  /// Returns a map of box names to entry counts.
-  /// Useful for debugging and monitoring.
   static Map<String, int> getBoxStatistics() {
     final stats = <String, int>{};
 
@@ -238,7 +172,6 @@ class HiveService {
       return stats;
     }
 
-    // Collect stats from all open boxes
     if (Hive.isBoxOpen(HiveBoxes.inspectionsBoxName)) {
       stats[HiveBoxes.inspectionsBoxName] = HiveBoxes.inspections.length;
     }
@@ -251,22 +184,20 @@ class HiveService {
     if (Hive.isBoxOpen(HiveBoxes.testIntervalsBoxName)) {
       stats[HiveBoxes.testIntervalsBoxName] = HiveBoxes.testIntervals.length;
     }
-
-    // Note: MaintenanceBoxes would need to be checked separately
-    // if you want those stats too
+    if (Hive.isBoxOpen(TemplateDefinitionsBox.boxName)) {
+      stats[TemplateDefinitionsBox.boxName] = TemplateDefinitionsBox.box.length;
+    }
 
     return stats;
   }
 
   /// Print debug information about Hive state.
-  ///
-  /// Only works in debug mode.
   static void printDebugInfo() {
     if (!kDebugMode) return;
 
-    debugPrint('ââââââââââââââââââââââââââââââââââââââââ');
+    debugPrint('----------------------------------------');
     debugPrint('HIVE SERVICE DEBUG INFO');
-    debugPrint('ââââââââââââââââââââââââââââââââââââââââ');
+    debugPrint('----------------------------------------');
     debugPrint('Initialized: $_initialized');
     debugPrint('');
 
@@ -282,6 +213,6 @@ class HiveService {
       }
     }
 
-    debugPrint('ââââââââââââââââââââââââââââââââââââââââ');
+    debugPrint('----------------------------------------');
   }
 }
