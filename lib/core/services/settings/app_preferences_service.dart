@@ -17,32 +17,55 @@ class AppPreferencesService {
   static const _dateFormatKey = 'date_format';
   static const _themeModeKey = 'theme_mode';
 
-  Box<dynamic> get _box => Hive.box<dynamic>(_boxName);
+  Box<dynamic>? get _boxIfOpen =>
+      Hive.isBoxOpen(_boxName) ? Hive.box<dynamic>(_boxName) : null;
+
+  Future<Box<dynamic>> _ensureBox() async {
+    final open = _boxIfOpen;
+    if (open != null) return open;
+    return Hive.openBox<dynamic>(_boxName);
+  }
 
   bool get notificationsEnabled =>
-      _box.get(_notificationsKey, defaultValue: true) as bool;
+      _boxIfOpen?.get(_notificationsKey, defaultValue: true) as bool? ?? true;
 
   bool get autoSyncEnabled =>
-      _box.get(_autoSyncKey, defaultValue: true) as bool;
+      _boxIfOpen?.get(_autoSyncKey, defaultValue: true) as bool? ?? true;
 
   String get language =>
-      _box.get(_languageKey, defaultValue: 'English') as String;
+      _boxIfOpen?.get(_languageKey, defaultValue: 'English') as String? ??
+      'English';
 
   String get dateFormat =>
-      _box.get(_dateFormatKey, defaultValue: 'MM/DD/YYYY') as String;
+      _boxIfOpen?.get(_dateFormatKey, defaultValue: 'MM/DD/YYYY') as String? ??
+      'MM/DD/YYYY';
 
   String get themeMode =>
-      _box.get(_themeModeKey, defaultValue: 'system') as String;
+      _boxIfOpen?.get(_themeModeKey, defaultValue: 'system') as String? ??
+      'system';
 
-  Future<void> setNotificationsEnabled(bool value) =>
-      _box.put(_notificationsKey, value);
+  Future<void> setNotificationsEnabled(bool value) async {
+    final box = await _ensureBox();
+    await box.put(_notificationsKey, value);
+  }
 
-  Future<void> setAutoSyncEnabled(bool value) =>
-      _box.put(_autoSyncKey, value);
+  Future<void> setAutoSyncEnabled(bool value) async {
+    final box = await _ensureBox();
+    await box.put(_autoSyncKey, value);
+  }
 
-  Future<void> setLanguage(String value) => _box.put(_languageKey, value);
+  Future<void> setLanguage(String value) async {
+    final box = await _ensureBox();
+    await box.put(_languageKey, value);
+  }
 
-  Future<void> setDateFormat(String value) => _box.put(_dateFormatKey, value);
+  Future<void> setDateFormat(String value) async {
+    final box = await _ensureBox();
+    await box.put(_dateFormatKey, value);
+  }
 
-  Future<void> setThemeMode(String value) => _box.put(_themeModeKey, value);
+  Future<void> setThemeMode(String value) async {
+    final box = await _ensureBox();
+    await box.put(_themeModeKey, value);
+  }
 }
