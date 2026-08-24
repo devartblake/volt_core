@@ -16,6 +16,7 @@ class AppPreferencesService {
   static const _languageKey = 'language';
   static const _dateFormatKey = 'date_format';
   static const _themeModeKey = 'theme_mode';
+  static const _advancedLoggingKey = 'advanced_logging_enabled';
 
   Box<dynamic>? get _boxIfOpen =>
       Hive.isBoxOpen(_boxName) ? Hive.box<dynamic>(_boxName) : null;
@@ -31,6 +32,9 @@ class AppPreferencesService {
 
   bool get autoSyncEnabled =>
       _boxIfOpen?.get(_autoSyncKey, defaultValue: true) as bool? ?? true;
+
+  bool get advancedLoggingEnabled =>
+      _boxIfOpen?.get(_advancedLoggingKey, defaultValue: false) as bool? ?? false;
 
   String get language =>
       _boxIfOpen?.get(_languageKey, defaultValue: 'English') as String? ??
@@ -52,6 +56,11 @@ class AppPreferencesService {
   Future<void> setAutoSyncEnabled(bool value) async {
     final box = await _ensureBox();
     await box.put(_autoSyncKey, value);
+  }
+
+  Future<void> setAdvancedLoggingEnabled(bool value) async {
+    final box = await _ensureBox();
+    await box.put(_advancedLoggingKey, value);
   }
 
   Future<void> setLanguage(String value) async {
