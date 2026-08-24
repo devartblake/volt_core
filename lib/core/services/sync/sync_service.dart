@@ -5,16 +5,15 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
 
 import '../connectivity/connectivity_service.dart';
+import '../settings/app_preferences_service.dart';
 import '../storage/web_file_store.dart';
 import 'file_backup_service.dart';
 import 'sync_context.dart';
 import 'sync_operation.dart';
 import 'sync_queue.dart';
 
-/// High-level state of the sync layer, surfaced to the UI.
 enum SyncState { idle, syncing, offline }
 
-/// Immutable snapshot of sync progress for the UI.
 @immutable
 class SyncStatus {
   const SyncStatus({
@@ -48,12 +47,6 @@ class SyncStatus {
       );
 }
 
-/// Offline-first sync orchestrator.
-///
-/// Repositories enqueue [SyncOperation]s (they never block on the network);
-/// this service drains the queue to Supabase whenever connectivity allows,
-/// with exponential backoff and a bounded retry budget. Records go to Postgres
-/// tables; files go to Supabase Storage.
 class SyncService {
   SyncService._();
 
@@ -63,7 +56,6 @@ class SyncService {
   final ConnectivityService _connectivity = ConnectivityService.instance;
   final Uuid _uuid = const Uuid();
 
-  /// Observable status for the UI (via [ValueListenableBuilder] or a provider).
   final ValueNotifier<SyncStatus> status =
       ValueNotifier<SyncStatus>(SyncStatus.initial);
 
@@ -71,11 +63,10 @@ class SyncService {
   bool _draining = false;
   DateTime? _lastSyncedAt;
 
-  /// Give up automatic retries after this many attempts (op is kept as failed).
   static const int _maxAttempts = 8;
 
-  /// Set up the queue + connectivity listener and kick off an initial drain.
-  /// Never throws — sync must not be able to break app startup.
+  bool get _autoSyncEnabled => AppPreferencesService.instance.autoSyncEnabled;
+
   Future<void> init() async {
     try {
       await _queue.init();
@@ -83,17 +74,21 @@ class SyncService {
 
       _connSub ??= _connectivity.onStatusChange.listen((online) {
         if (online) {
-          if (kDebugMode) {
-            debugPrint('[Sync] Connectivity restored → draining queue');
+          if (_autoSyncEnabled) {
+            if (kDebugMode) {
+              debugPrint('[Sync] Connectivity restored → draining queue');
+            }
+            unawaited(sync());
+          } else if (kDebugMode) {
+            debugPrint('[Sync] Connectivity restored; auto-sync is disabled');
           }
-          unawaited(sync());
         } else {
           _emit(state: SyncState.offline);
         }
       });
 
       await _refreshCounts();
-      unawaited(sync());
+      if (_autoSyncEnabled) unawaited(sync());
     } catch (e) {
       if (kDebugMode) debugPrint('[Sync] init failed (non-fatal): $e');
     }
@@ -107,11 +102,6 @@ class SyncService {
     }
   }
 
-  // ---------------------------------------------------------------------------
-  // Enqueue API (called by repositories / save choke points)
-  // ---------------------------------------------------------------------------
-
-  /// Queue an insert-or-update of [payload] into Supabase table [table].
   Future<void> enqueueUpsert({
     required String table,
     required String id,
@@ -132,7 +122,6 @@ class SyncService {
     await _afterEnqueue();
   }
 
-  /// Queue a delete of row [id] from Supabase table [table].
   Future<void> enqueueDelete({
     required String table,
     required String id,
@@ -152,7 +141,6 @@ class SyncService {
     await _afterEnqueue();
   }
 
-  /// Queue an upload of a local file to Supabase Storage at [remotePath].
   Future<void> enqueueFileUpload({
     required String localPath,
     required String remotePath,
@@ -171,8 +159,6 @@ class SyncService {
     await _afterEnqueue();
   }
 
-  /// Queue an upload of bytes stored in [WebFileStore] (web platforms, where
-  /// there is no local filesystem). [storePath] is the WebFileStore key.
   Future<void> enqueueBytesUpload({
     required String storePath,
     required String remotePath,
@@ -193,15 +179,10 @@ class SyncService {
 
   Future<void> _afterEnqueue() async {
     await _refreshCounts();
-    unawaited(sync());
+    if (_autoSyncEnabled) unawaited(sync());
   }
 
-  // ---------------------------------------------------------------------------
-  // Draining
-  // ---------------------------------------------------------------------------
-
-  /// Attempt to flush the queue. Re-entrant calls are ignored while a drain is
-  /// already running. Never throws.
+  /// Manual sync always attempts a drain, even when automatic sync is disabled.
   Future<void> sync() async {
     if (_draining) return;
     _draining = true;
@@ -214,7 +195,6 @@ class SyncService {
 
       final client = _client;
       if (client == null) {
-        // Supabase not initialised yet; leave everything queued.
         _emit(state: SyncState.idle);
         return;
       }
@@ -224,10 +204,10 @@ class SyncService {
       final ops = await _queue.all();
       for (final op in ops) {
         if (op.status == SyncOpStatus.failed && op.attempts >= _maxAttempts) {
-          continue; // dead-lettered; awaits manual retryFailed()
+          continue;
         }
         if (op.attempts > 0 && !_backoffElapsed(op)) {
-          continue; // still cooling down after a recent failure
+          continue;
         }
 
         try {
@@ -244,7 +224,8 @@ class SyncService {
           await _queue.save(op);
           if (kDebugMode) {
             debugPrint(
-                '[Sync] ${op.type.name} failed (attempt ${op.attempts}): $e');
+              '[Sync] ${op.type.name} failed (attempt ${op.attempts}): $e',
+            );
             _debugExplainIfRlsDenied(e);
           }
         }
@@ -258,14 +239,6 @@ class SyncService {
     }
   }
 
-  /// Exponential backoff capped at 5 minutes between retries of one op.
-  /// Turns Postgres 42501 into the one thing that actually causes it here.
-  ///
-  /// An RLS rejection is a configuration problem, not a transient one, so the
-  /// retry log alone just repeats "Forbidden" until the attempt limit. The
-  /// tenant-scoped tables accept a row only when an active `tenant_members`
-  /// row pairs this user with `tenant_id`; `schedule_tasks` is not
-  /// tenant-scoped, which is why it can succeed in the same session.
   static void _debugExplainIfRlsDenied(Object error) {
     if (!error.toString().contains('42501')) return;
 
@@ -294,9 +267,6 @@ class SyncService {
     );
   }
 
-  /// Identity columns that are `uuid` in Postgres. An empty string is never a
-  /// valid uuid, so we must omit these rather than send '' (which triggers
-  /// `invalid input syntax for type uuid: ""`).
   static const Set<String> _uuidKeys = {
     'id',
     'tenant_id',
@@ -316,10 +286,6 @@ class SyncService {
     switch (op.type) {
       case SyncOpType.upsert:
         final table = op.payload['table'] as String;
-        // Drop nulls (leave those columns to their defaults / existing values)
-        // and blank *uuid* columns, which Postgres rejects. Blank text columns
-        // are sent through: '' is how the user clears a field, and stripping it
-        // silently kept the old value on the server.
         final row = (op.payload['row'] as Map).cast<String, dynamic>()
           ..removeWhere(
             (k, v) => v == null || (_uuidKeys.contains(k) && _isBlank(v)),
@@ -357,7 +323,6 @@ class SyncService {
         final bytes =
             WebFileStore.instance.getSync(op.payload['storePath'] as String);
         if (bytes == null) {
-          // Stored bytes are gone (cleared storage) — drop, don't retry.
           throw const FileBackupSkip('stored bytes missing');
         }
         await FileBackupService.instance.uploadBytes(
@@ -370,7 +335,6 @@ class SyncService {
     }
   }
 
-  /// Reset all dead-lettered ops back to pending and drain again.
   Future<void> retryFailed() async {
     final ops = await _queue.all();
     for (final op in ops) {
