@@ -1,11 +1,16 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../inspections/presenter/controllers/user_profile_controller.dart';
+import '../../../../app/route_roles.dart';
+import '../../../../core/constants/route_paths.dart';
+import '../../../../core/theme/theme_mode_provider.dart';
 import '../../../../shared/widgets/widgets.dart';
+import '../../../auth/presenter/controllers/auth_controller.dart';
+import '../../../inspections/presenter/controllers/user_profile_controller.dart';
 
-/// Settings page for app configuration
+/// Settings page for app configuration.
 class SettingsPage extends ConsumerStatefulWidget {
   const SettingsPage({super.key});
 
@@ -14,7 +19,6 @@ class SettingsPage extends ConsumerStatefulWidget {
 }
 
 class _SettingsPageState extends ConsumerState<SettingsPage> {
-  bool _darkMode = false;
   bool _notifications = true;
   bool _autoSync = true;
   String _language = 'English';
@@ -24,13 +28,23 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final userProfile = ref.watch(userProfileProvider);
+    final auth = ref.watch(authStateProvider);
+    final themeMode = ref.watch(themeModeProvider);
+    final canManageTemplates = RouteRoles.isAllowedByName(
+      name: RouteNames.templates,
+      role: auth.currentRole,
+    );
+    final canOpenDebug = kDebugMode &&
+        RouteRoles.isAllowedByName(
+          name: 'debug_menu',
+          role: auth.currentRole,
+        );
 
     return AppPage(
       title: 'Settings',
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          // Appearance Section
           _SectionHeader(
             icon: Icons.palette_outlined,
             title: 'Appearance',
@@ -42,15 +56,9 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               SwitchListTile(
                 title: const Text('Dark Mode'),
                 subtitle: const Text('Use dark theme throughout the app'),
-                value: _darkMode,
+                value: themeMode == ThemeMode.dark,
                 onChanged: (value) {
-                  setState(() => _darkMode = value);
-                  // TODO: Implement theme switching
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Theme switching - Coming soon'),
-                    ),
-                  );
+                  ref.read(themeModeProvider.notifier).setDarkMode(value);
                 },
               ),
               const Divider(height: 1),
@@ -75,7 +83,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           ),
           const SizedBox(height: 24),
 
-          // Notifications Section
           _SectionHeader(
             icon: Icons.notifications_outlined,
             title: 'Notifications',
@@ -96,7 +103,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           ),
           const SizedBox(height: 24),
 
-          // Data & Sync Section
           _SectionHeader(
             icon: Icons.cloud_outlined,
             title: 'Data & Sync',
@@ -120,7 +126,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                 subtitle: const Text('View, share and email generated reports'),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () {
-                  context.push('/documents');
+                  context.push(RoutePaths.documents);
                 },
               ),
               const Divider(height: 1),
@@ -149,7 +155,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           ),
           const SizedBox(height: 24),
 
-          // Advanced Section
           _SectionHeader(
             icon: Icons.settings_applications_outlined,
             title: 'Advanced',
@@ -158,34 +163,42 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           _SettingCard(
             theme: theme,
             children: [
+              if (canManageTemplates) ...[
+                ListTile(
+                  leading: const Icon(Icons.dynamic_form_outlined),
+                  title: const Text('Template Management'),
+                  subtitle: const Text(
+                    'Install and manage inspection and maintenance templates',
+                  ),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => context.push(RoutePaths.templates),
+                ),
+                const Divider(height: 1),
+              ],
               ListTile(
                 title: const Text('Selection Options'),
                 subtitle: const Text('Manage technicians, makes, and voltages'),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () {
-                  context.push('/selection-management');
+                  context.push(RoutePaths.selectionManagement);
                 },
               ),
-              const Divider(height: 1),
-              ListTile(
-                title: const Text('Debug Mode'),
-                subtitle: const Text('Show debug information'),
-                trailing: Switch(
-                  value: false,
-                  onChanged: (value) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Debug mode - Coming soon'),
-                      ),
-                    );
-                  },
+              if (canOpenDebug) ...[
+                const Divider(height: 1),
+                ListTile(
+                  leading: const Icon(Icons.bug_report_outlined),
+                  title: const Text('Debug Tools'),
+                  subtitle: const Text(
+                    'Inspect local storage and network activity',
+                  ),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => context.push('/debug'),
                 ),
-              ),
+              ],
             ],
           ),
           const SizedBox(height: 24),
 
-          // Account Section
           if (userProfile != null) ...[
             _SectionHeader(
               icon: Icons.person_outline,
@@ -238,7 +251,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             const SizedBox(height: 24),
           ],
 
-          // About Section
           _SectionHeader(
             icon: Icons.info_outline,
             title: 'About',
@@ -251,7 +263,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                 title: const Text('About Voltcore'),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () {
-                  context.push('/about');
+                  context.push(RoutePaths.about);
                 },
               ),
               const Divider(height: 1),
@@ -348,7 +360,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   }
 
   void _showClearCacheDialog(BuildContext context) {
-    showDialog(
+    showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Clear Cache'),
@@ -375,7 +387,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   }
 
   void _showSignOutDialog(BuildContext context) {
-    showDialog(
+    showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Sign Out'),
@@ -386,11 +398,9 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             child: const Text('Cancel'),
           ),
           FilledButton(
-            onPressed: () {
+            onPressed: () async {
               Navigator.pop(ctx);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Sign out - Coming soon')),
-              );
+              await ref.read(authStateProvider.notifier).logout();
             },
             child: const Text('Sign Out'),
           ),
