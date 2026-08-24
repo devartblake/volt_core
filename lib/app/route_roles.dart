@@ -11,11 +11,7 @@ import '../modules/auth/domain/user_role.dart';
 /// listed in [_publicRouteNames]. `test/app/route_roles_test.dart` fails if any
 /// `RouteNames` constant is missing from both.
 class RouteRoles {
-  /// Routes reachable without an authenticated role (the auth flow itself).
-  static const Set<String> _publicRouteNames = {
-    'login',
-    'forbidden',
-  };
+  static const Set<String> _publicRouteNames = {'login', 'forbidden'};
 
   static const Map<String, Set<UserRole>> _rolesByRouteName = {
     // ----- Core shell / dashboards -----
@@ -49,6 +45,12 @@ class RouteRoles {
       UserRole.admin,
     },
     'inspection_new': {
+      UserRole.tech,
+      UserRole.supervisor,
+      UserRole.dispatcher,
+      UserRole.admin,
+    },
+    'inspection_edit': {
       UserRole.tech,
       UserRole.supervisor,
       UserRole.dispatcher,
@@ -112,9 +114,18 @@ class RouteRoles {
     },
 
     // ----- Templates -----
-    // UI affordance only; Supabase RLS and can_manage_tenant_work remain the
-    // authoritative write boundary.
+    // Management is a UI affordance only; Supabase RLS and
+    // can_manage_tenant_work remain the authoritative write boundary.
     'templates': {
+      UserRole.supervisor,
+      UserRole.dispatcher,
+      UserRole.admin,
+    },
+    // Field execution is technician work and is intentionally available to all
+    // operational roles. The pilot feature flag controls whether the route is
+    // registered at all during Phase 3 rollout.
+    'template_response': {
+      UserRole.tech,
       UserRole.supervisor,
       UserRole.dispatcher,
       UserRole.admin,
@@ -166,12 +177,6 @@ class RouteRoles {
       UserRole.admin,
     },
     'customer_sites': {
-      UserRole.tech,
-      UserRole.supervisor,
-      UserRole.dispatcher,
-      UserRole.admin,
-    },
-    'inspection_edit': {
       UserRole.tech,
       UserRole.supervisor,
       UserRole.dispatcher,
