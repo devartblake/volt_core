@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+
+import '../../../../core/constants/route_paths.dart';
 import '../../../../shared/widgets/widgets.dart';
 
 class AdminSettingsPage extends StatelessWidget {
@@ -30,8 +33,8 @@ class AdminSettingsPage extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           Text(
-            'Use this section for system-wide configuration: '
-                'RBAC policies, template settings, infra retention windows, etc.',
+            'Use this section for tenant-wide roles, retention policy, and '
+            'operational troubleshooting controls.',
             style: textTheme.bodyMedium,
           ),
           const SizedBox(height: 24),
@@ -41,7 +44,7 @@ class AdminSettingsPage extends StatelessWidget {
               'Collect more detailed logs for troubleshooting.',
             ),
             value: true,
-            onChanged: (v) {
+            onChanged: (_) {
               _showComingSoon(context, 'Advanced logging toggle');
             },
           ),
@@ -55,14 +58,13 @@ class AdminSettingsPage extends StatelessWidget {
             },
           ),
           ListTile(
-            title: const Text('RBAC roles & permissions'),
+            leading: const Icon(Icons.manage_accounts_outlined),
+            title: const Text('Team roles & permissions'),
             subtitle: const Text(
-              'Fine-tune technician, supervisor, and admin roles.',
+              'Manage tenant-member roles used by authentication and routing.',
             ),
             trailing: const Icon(Icons.chevron_right),
-            onTap: () {
-              _showComingSoon(context, 'RBAC management');
-            },
+            onTap: () => context.push(RoutePaths.adminTechnicians),
           ),
         ],
       ),

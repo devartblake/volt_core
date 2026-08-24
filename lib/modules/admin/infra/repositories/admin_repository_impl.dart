@@ -6,6 +6,7 @@ import 'package:voltcore/modules/admin/external/datasources/admin_remote_datasou
 import 'package:voltcore/modules/auth/domain/user_role.dart';
 
 import '../../domain/entities/admin_dashboard_stats_entity.dart';
+import '../../domain/entities/tenant_member_entity.dart';
 
 final adminRepositoryProvider = Provider<AdminRepository>((ref) {
   final remote = AdminRemoteDatasource();
@@ -18,11 +19,33 @@ class AdminRepositoryImpl implements AdminRepository {
   AdminRepositoryImpl(this._remote);
 
   @override
-  Future<List<TechnicianEntity>> listTechnicians() async {
-    // ✅ Use the *typed* fetchTechnicianModels instead of raw maps
-    final models = await _remote.fetchTechnicianModels();
-    return models.map<TechnicianEntity>((m) => m).toList();
+  Future<List<TenantMemberEntity>> listTenantMembers() {
+    return _remote.fetchTenantMembers();
   }
+
+  @override
+  Future<void> assignTenantRole({
+    required TenantMemberEntity member,
+    required UserRole newRole,
+    required String assignedByUserId,
+    String? reason,
+  }) {
+    return _remote.updateTenantMemberRole(
+      tenantId: member.tenantId,
+      userId: member.userId,
+      previousRole: member.role,
+      newRole: newRole,
+      assignedByUserId: assignedByUserId,
+      reason: reason,
+    );
+  }
+
+  @override
+  Future<List<TechnicianEntity>> listTechnicians() async {
+    final models = await _remote.fetchTechnicianModels();
+    return models.map<TechnicianEntity>((model) => model).toList();
+  }
+
   @override
   Future<AdminDashboardStatsEntity> getDashboardStats() {
     return _remote.fetchDashboardStats();
@@ -36,22 +59,19 @@ class AdminRepositoryImpl implements AdminRepository {
     UserRole? previousRole,
     required String assignedByUserId,
   }) async {
-    // 1) Fetch current technicians so we know the previous role.
     final technicians = await listTechnicians();
     final tech = technicians.firstWhere(
-          (t) => t.id == technicianId,
+      (technician) => technician.id == technicianId,
       orElse: () => throw StateError('Technician not found: $technicianId'),
     );
 
     final previousRole = tech.role;
 
-    // 2) Update technician role row.
     await _remote.updateTechnicianRole(
       technicianId: technicianId,
       role: newRole.name,
     );
 
-    // 3) Insert role assignment audit row.
     final assignmentRow = await _remote.insertRoleAssignment(
       technicianId: technicianId,
       previousRole: previousRole.name,
@@ -60,7 +80,8 @@ class AdminRepositoryImpl implements AdminRepository {
       reason: reason,
     );
 
-    final assignedAtRaw = assignmentRow['created_at'] ?? assignmentRow['assigned_at'];
+    final assignedAtRaw =
+        assignmentRow['created_at'] ?? assignmentRow['assigned_at'];
     final assignedAt = assignedAtRaw != null
         ? DateTime.tryParse(assignedAtRaw.toString()) ?? DateTime.now()
         : DateTime.now();
