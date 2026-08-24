@@ -515,7 +515,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               Navigator.pop(dialogContext);
               final result = await CacheMaintenanceService.instance
                   .clearTemporaryCache();
-              if (!mounted) return;
+              if (!context.mounted) return;
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(content: Text(result.message)),
               );
