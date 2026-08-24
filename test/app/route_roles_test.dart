@@ -4,10 +4,6 @@ import 'package:voltcore/core/constants/route_paths.dart';
 import 'package:voltcore/modules/auth/domain/user_role.dart';
 
 /// Every route name the app can navigate to by name.
-///
-/// Mirrors the `RouteNames` constants. If you add a constant there, add it here
-/// too — the "no unknown names" test below fails otherwise, which is the point:
-/// it forces a deliberate RBAC decision for every new screen.
 const _allRouteNames = <String>{
   RouteNames.login,
   RouteNames.forbidden,
@@ -27,6 +23,7 @@ const _allRouteNames = <String>{
   RouteNames.workOrderNew,
   RouteNames.workOrderEdit,
   RouteNames.templates,
+  RouteNames.templateResponse,
   RouteNames.schedule,
   RouteNames.scheduleTask,
   RouteNames.scheduleTaskDetail,
@@ -86,8 +83,7 @@ void main() {
         expect(
           RouteRoles.rolesFor(name),
           isNotEmpty,
-          reason: '"$name" has an empty role set, which denies everyone. '
-              'Remove the entry or list the allowed roles.',
+          reason: '"$name" has an empty role set, which denies everyone.',
         );
       }
     });
@@ -97,9 +93,11 @@ void main() {
     test('unknown route names are denied for every role (fail closed)', () {
       for (final role in UserRole.values) {
         expect(
-          RouteRoles.isAllowedByName(name: 'route_that_does_not_exist', role: role),
+          RouteRoles.isAllowedByName(
+            name: 'route_that_does_not_exist',
+            role: role,
+          ),
           isFalse,
-          reason: 'Unlisted routes must fail closed for $role',
         );
       }
     });
@@ -141,7 +139,6 @@ void main() {
         expect(
           RouteRoles.isAllowedByName(name: name, role: UserRole.admin),
           isTrue,
-          reason: 'admin should reach $name',
         );
         for (final role in [
           UserRole.tech,
@@ -151,7 +148,6 @@ void main() {
           expect(
             RouteRoles.isAllowedByName(name: name, role: role),
             isFalse,
-            reason: '$role must not reach $name',
           );
         }
       }
@@ -173,7 +169,19 @@ void main() {
         expect(
           RouteRoles.isAllowedByName(name: RouteNames.templates, role: role),
           isTrue,
-          reason: '$role should reach template management',
+        );
+      }
+    });
+
+    test('template field execution is available to every operational role', () {
+      for (final role in UserRole.values) {
+        expect(
+          RouteRoles.isAllowedByName(
+            name: RouteNames.templateResponse,
+            role: role,
+          ),
+          isTrue,
+          reason: '$role should be allowed to execute published field forms',
         );
       }
     });
@@ -186,7 +194,6 @@ void main() {
             role: role,
           ),
           isTrue,
-          reason: '$role should reach the workload dashboard',
         );
       }
     });
@@ -203,6 +210,7 @@ void main() {
         RouteNames.workOrders,
         RouteNames.workOrderNew,
         RouteNames.workOrderEdit,
+        RouteNames.templateResponse,
         RouteNames.schedule,
         RouteNames.scheduleTask,
         RouteNames.scheduleTaskDetail,
@@ -228,12 +236,10 @@ void main() {
         expect(
           RouteRoles.isAllowedByName(name: name, role: UserRole.tech),
           isFalse,
-          reason: 'tech must not reach $name',
         );
         expect(
           RouteRoles.isAllowedByName(name: name, role: UserRole.supervisor),
           isTrue,
-          reason: 'supervisor should reach $name',
         );
       }
     });
