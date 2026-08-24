@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../app/route_roles.dart';
 import '../../../../core/constants/route_paths.dart';
+import '../../../../core/services/settings/app_preferences_provider.dart';
 import '../../../../core/theme/theme_mode_provider.dart';
 import '../../../../shared/widgets/widgets.dart';
 import '../../../auth/presenter/controllers/auth_controller.dart';
@@ -18,17 +19,13 @@ class SettingsPage extends ConsumerStatefulWidget {
 }
 
 class _SettingsPageState extends ConsumerState<SettingsPage> {
-  bool _notifications = true;
-  bool _autoSync = true;
-  String _language = 'English';
-  String _dateFormat = 'MM/DD/YYYY';
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final userProfile = ref.watch(userProfileProvider);
     final auth = ref.watch(authStateProvider);
     final themeMode = ref.watch(themeModeProvider);
+    final prefs = ref.watch(appPreferencesProvider);
     final canManageTemplates = RouteRoles.isAllowedByName(
       name: RouteNames.templates,
       role: auth.currentRole,
@@ -59,27 +56,31 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               const Divider(height: 1),
               ListTile(
                 title: const Text('Language'),
-                subtitle: Text(_language),
+                subtitle: Text(prefs.language),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () => _showChoiceDialog(
                   context: context,
                   title: 'Select Language',
                   options: const ['English', 'Spanish', 'French'],
-                  selected: _language,
-                  onSelected: (value) => setState(() => _language = value),
+                  selected: prefs.language,
+                  onSelected: (value) => ref
+                      .read(appPreferencesProvider.notifier)
+                      .setLanguage(value),
                 ),
               ),
               const Divider(height: 1),
               ListTile(
                 title: const Text('Date Format'),
-                subtitle: Text(_dateFormat),
+                subtitle: Text(prefs.dateFormat),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () => _showChoiceDialog(
                   context: context,
                   title: 'Select Date Format',
                   options: const ['MM/DD/YYYY', 'DD/MM/YYYY', 'YYYY-MM-DD'],
-                  selected: _dateFormat,
-                  onSelected: (value) => setState(() => _dateFormat = value),
+                  selected: prefs.dateFormat,
+                  onSelected: (value) => ref
+                      .read(appPreferencesProvider.notifier)
+                      .setDateFormat(value),
                 ),
               ),
             ],
@@ -95,9 +96,11 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             children: [
               SwitchListTile(
                 title: const Text('Push Notifications'),
-                subtitle: const Text('Receive alerts for important updates'),
-                value: _notifications,
-                onChanged: (value) => setState(() => _notifications = value),
+                subtitle: const Text('Receive reminders for scheduled work'),
+                value: prefs.notificationsEnabled,
+                onChanged: (value) => ref
+                    .read(appPreferencesProvider.notifier)
+                    .setNotificationsEnabled(value),
               ),
             ],
           ),
@@ -112,9 +115,13 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             children: [
               SwitchListTile(
                 title: const Text('Auto-Sync'),
-                subtitle: const Text('Automatically sync data when online'),
-                value: _autoSync,
-                onChanged: (value) => setState(() => _autoSync = value),
+                subtitle: const Text(
+                  'Automatically drain queued changes when online',
+                ),
+                value: prefs.autoSyncEnabled,
+                onChanged: (value) => ref
+                    .read(appPreferencesProvider.notifier)
+                    .setAutoSyncEnabled(value),
               ),
               const Divider(height: 1),
               ListTile(

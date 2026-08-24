@@ -3,9 +3,9 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/data/latest_all.dart' as tzdata;
 import 'package:timezone/timezone.dart' as tz;
 
-/// Local notification reminders for scheduled tasks (upcoming inspections /
-/// maintenance). Uses `flutter_local_notifications` with inexact scheduling so
-/// no exact-alarm permission is required.
+import '../settings/app_preferences_service.dart';
+
+/// Local notification reminders for scheduled tasks.
 class NotificationService {
   NotificationService._();
 
@@ -22,9 +22,6 @@ class NotificationService {
   bool _ready = false;
   bool _permissionRequested = false;
 
-  /// Initialize the plugin and timezone database. Does not prompt for
-  /// permission — that happens the first time a reminder is scheduled, so the
-  /// prompt appears in context rather than at cold start. Never throws.
   Future<void> init() async {
     if (_ready) return;
     try {
@@ -53,9 +50,8 @@ class NotificationService {
     if (_permissionRequested) return;
     _permissionRequested = true;
     try {
-      final android =
-          _plugin.resolvePlatformSpecificImplementation<
-              AndroidFlutterLocalNotificationsPlugin>();
+      final android = _plugin.resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin>();
       await android?.requestNotificationsPermission();
 
       final ios = _plugin.resolvePlatformSpecificImplementation<
@@ -66,26 +62,21 @@ class NotificationService {
     }
   }
 
-  /// Stable non-negative notification id derived from the task id.
   int _idFor(String taskId) => taskId.hashCode & 0x7fffffff;
 
-  /// Schedule (or reschedule) a reminder for a task. A past time is ignored.
   Future<void> scheduleTaskReminder({
     required String taskId,
     required String title,
     required String body,
     required DateTime scheduledAt,
   }) async {
+    if (!AppPreferencesService.instance.notificationsEnabled) return;
     if (!_ready) await init();
     if (!_ready) return;
     if (!scheduledAt.isAfter(DateTime.now())) return;
 
     await _ensurePermission();
 
-    // Express the target instant as a TZDateTime. Using UTC keeps the absolute
-    // instant correct without needing the device's IANA timezone name; the
-    // notification fires at that instant regardless of the zone it's expressed
-    // in.
     final when = tz.TZDateTime.from(scheduledAt, tz.UTC);
 
     final details = NotificationDetails(
@@ -100,7 +91,6 @@ class NotificationService {
     );
 
     try {
-      // Cancel any existing reminder for this task before rescheduling.
       await _plugin.cancel(_idFor(taskId));
       await _plugin.zonedSchedule(
         _idFor(taskId),
@@ -121,13 +111,22 @@ class NotificationService {
     }
   }
 
-  /// Cancel a task's reminder (e.g. when the task is deleted or completed).
   Future<void> cancelTaskReminder(String taskId) async {
     if (!_ready) return;
     try {
       await _plugin.cancel(_idFor(taskId));
     } catch (e) {
       if (kDebugMode) debugPrint('[Notifications] cancel failed: $e');
+    }
+  }
+
+  Future<void> cancelAllTaskReminders() async {
+    if (!_ready) await init();
+    if (!_ready) return;
+    try {
+      await _plugin.cancelAll();
+    } catch (e) {
+      if (kDebugMode) debugPrint('[Notifications] cancel all failed: $e');
     }
   }
 }
