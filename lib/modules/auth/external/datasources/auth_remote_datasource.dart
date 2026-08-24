@@ -56,7 +56,6 @@ class AuthRemoteDataSource {
       throw AuthException('No user returned from Supabase auth.');
     }
 
-    // Try to derive display name from metadata or email.
     final metadata = user.userMetadata ?? <String, dynamic>{};
     final fullName = metadata['full_name'] as String? ??
         metadata['name'] as String? ??
@@ -81,6 +80,13 @@ class AuthRemoteDataSource {
     }
 
     return result;
+  }
+
+  Future<void> changePassword(String newPassword) async {
+    if (_client.auth.currentUser == null) {
+      throw AuthException('No authenticated user is available.');
+    }
+    await _client.auth.updateUser(UserAttributes(password: newPassword));
   }
 
   Future<void> logout() async {
@@ -120,11 +126,6 @@ class AuthRemoteDataSource {
     return result;
   }
 
-  /// Roles this user actually holds, read from `tenant_members` (the server is
-  /// the authority). Scoped to the active tenant when one is configured.
-  ///
-  /// Falls back to the JWT's `app_metadata.role` claim if the table is
-  /// unreachable or has no row — never to a client-supplied value.
   Future<Set<UserRole>> _fetchGrantedRoles(User user) async {
     final roles = <UserRole>{};
 
@@ -133,7 +134,6 @@ class AuthRemoteDataSource {
           .from('tenant_members')
           .select('role')
           .eq('user_id', user.id)
-          // A revoked/suspended membership must not confer a role.
           .eq('is_active', true);
 
       final tenantId = SyncContext.tenantId;
@@ -154,7 +154,6 @@ class AuthRemoteDataSource {
     }
 
     if (roles.isEmpty) {
-      // No membership row (or lookup failed): fall back to the signed JWT claim.
       final claimed = _mapRole((user.appMetadata['role'] as String?)?.toLowerCase());
       if (claimed != null) roles.add(claimed);
     }
@@ -162,12 +161,6 @@ class AuthRemoteDataSource {
     return roles;
   }
 
-  /// Pick the role for this session.
-  ///
-  /// [preferredRole] is only a *hint* from the UI: it is honoured when the user
-  /// genuinely holds it, and ignored otherwise, so the client can never escalate
-  /// its own privileges. With no grants at all we fall back to the least
-  /// privileged role.
   UserRole _resolveRole({
     required Set<UserRole> granted,
     UserRole? preferredRole,
