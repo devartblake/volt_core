@@ -1,17 +1,19 @@
 import 'dart:io';
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:printing/printing.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../../../../shared/widgets/widgets.dart';
 import '../../../../core/services/email/email_service.dart';
 import '../../../../core/services/storage/pdf_library_service.dart';
+import '../../../../core/services/storage/web_file_store.dart';
 import 'pdf_viewer_page.dart';
 
-/// Library of all generated PDF reports (inspection + maintenance) with view,
-/// share, email, and delete. The files already live in one managed tree, so
-/// this simply enumerates it.
+/// Library of all generated PDF reports with view, share, email, and delete.
+/// Native files and web/IndexedDB reports are surfaced through the same model.
 class DocumentLibraryPage extends StatefulWidget {
   const DocumentLibraryPage({super.key});
 
@@ -112,8 +114,7 @@ class _DocumentLibraryPageState extends State<DocumentLibraryPage> {
                   padding: const EdgeInsets.all(16),
                   itemCount: docs.length,
                   separatorBuilder: (_, __) => const SizedBox(height: 8),
-                  itemBuilder: (context, index) =>
-                      _DocumentTile(
+                  itemBuilder: (context, index) => _DocumentTile(
                     doc: docs[index],
                     dateFormat: _dateFormat,
                     onOpen: () => _open(docs[index]),
@@ -131,6 +132,21 @@ class _DocumentLibraryPageState extends State<DocumentLibraryPage> {
   }
 
   void _open(PdfDocumentInfo doc) {
+    if (kIsWeb) {
+      final bytes = WebFileStore.instance.getSync(doc.path);
+      if (bytes == null) {
+        _snack('Report bytes are no longer available');
+        _reload();
+        return;
+      }
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => PdfViewerPage(bytes: bytes, title: doc.name),
+        ),
+      );
+      return;
+    }
+
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => PdfViewerPage(filePath: doc.path, title: doc.name),
@@ -139,6 +155,17 @@ class _DocumentLibraryPageState extends State<DocumentLibraryPage> {
   }
 
   Future<void> _share(PdfDocumentInfo doc) async {
+    if (kIsWeb) {
+      final bytes = WebFileStore.instance.getSync(doc.path);
+      if (bytes == null) {
+        _snack('Report bytes are no longer available');
+        _reload();
+        return;
+      }
+      await Printing.sharePdf(bytes: bytes, filename: doc.name);
+      return;
+    }
+
     if (!await File(doc.path).exists()) {
       _snack('File no longer exists');
       _reload();
@@ -159,11 +186,13 @@ class _DocumentLibraryPageState extends State<DocumentLibraryPage> {
       await EmailService().sendReportEmail(
         recipient: recipient,
         subject: 'Report: ${doc.name}',
-        body: 'Please find the attached report: ${doc.name}.',
+        body: 'Please find the report: ${doc.name}.',
         pdfPath: doc.path,
         fileName: doc.name,
       );
-      _snack('Email sent to $recipient');
+      _snack(kIsWeb
+          ? 'Email draft opened for $recipient'
+          : 'Email sent to $recipient');
     } on EmailException catch (e) {
       _snack(e.message);
     } catch (e) {
@@ -343,4 +372,3 @@ class _DocumentTile extends StatelessWidget {
     );
   }
 }
-
