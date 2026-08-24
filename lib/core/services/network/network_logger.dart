@@ -1,8 +1,10 @@
 import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/legacy.dart';
 
-/// Network log entry
+import '../settings/app_preferences_service.dart';
+
 class NetworkLog {
   final String id;
   final DateTime timestamp;
@@ -45,8 +47,8 @@ class NetworkLog {
       requestHeaders: requestHeaders,
       requestBody: requestBody,
       statusCode: statusCode ?? this.statusCode,
-      responseHeaders: responseHeaders ?? this.responseHeaders,
-      responseBody: responseBody ?? this.responseBody,
+      responseHeaders: responseHeaders,
+      responseBody: responseBody,
       error: error ?? this.error,
       duration: duration ?? this.duration,
     );
@@ -69,18 +71,16 @@ class NetworkLog {
   }
 }
 
-/// Network logger state notifier
 class NetworkLogsNotifier extends StateNotifier<List<NetworkLog>> {
   NetworkLogsNotifier() : super([]);
 
-  /// Add a new request log
   String logRequest({
     required String method,
     required String url,
     Map<String, dynamic>? headers,
     String? body,
   }) {
-    final id = DateTime.now().millisecondsSinceEpoch.toString();
+    final id = DateTime.now().microsecondsSinceEpoch.toString();
     final log = NetworkLog(
       id: id,
       timestamp: DateTime.now(),
@@ -99,7 +99,6 @@ class NetworkLogsNotifier extends StateNotifier<List<NetworkLog>> {
     return id;
   }
 
-  /// Update log with response
   void logResponse({
     required String id,
     required int statusCode,
@@ -121,11 +120,12 @@ class NetworkLogsNotifier extends StateNotifier<List<NetworkLog>> {
     ];
 
     if (kDebugMode) {
-      debugPrint('[Network] Response $statusCode in ${duration.inMilliseconds}ms');
+      debugPrint(
+        '[Network] Response $statusCode in ${duration.inMilliseconds}ms',
+      );
     }
   }
 
-  /// Log error
   void logError({
     required String id,
     required String error,
@@ -134,52 +134,56 @@ class NetworkLogsNotifier extends StateNotifier<List<NetworkLog>> {
     state = [
       for (final log in state)
         if (log.id == id)
-          log.copyWith(
-            error: error,
-            duration: duration,
-          )
+          log.copyWith(error: error, duration: duration)
         else
           log,
     ];
 
-    if (kDebugMode) {
-      debugPrint('[Network] Error: $error');
-    }
+    if (kDebugMode) debugPrint('[Network] Error: $error');
   }
 
-  /// Clear all logs
   void clearLogs() {
     state = [];
-    if (kDebugMode) {
-      debugPrint('[Network] Logs cleared');
-    }
+    if (kDebugMode) debugPrint('[Network] Logs cleared');
   }
 
-  /// Remove logs older than duration
   void removeOldLogs(Duration maxAge) {
     final cutoff = DateTime.now().subtract(maxAge);
     state = state.where((log) => log.timestamp.isAfter(cutoff)).toList();
   }
 }
 
-/// Provider for network logs
 final networkLogsProvider =
-StateNotifierProvider<NetworkLogsNotifier, List<NetworkLog>>((ref) {
+    StateNotifierProvider<NetworkLogsNotifier, List<NetworkLog>>((ref) {
   return NetworkLogsNotifier();
 });
 
-/// Network logger utility class
 class NetworkLogger {
   NetworkLogger._();
 
   static NetworkLogsNotifier? _notifier;
 
-  /// Initialize the network logger with the notifier
+  static const _sensitiveHeaderNames = {
+    'authorization',
+    'apikey',
+    'x-api-key',
+    'cookie',
+    'set-cookie',
+  };
+
+  static const _sensitiveQueryNames = {
+    'access_token',
+    'token',
+    'apikey',
+    'api_key',
+    'key',
+    'code',
+  };
+
   static void init(NetworkLogsNotifier notifier) {
     _notifier = notifier;
   }
 
-  /// Log a request (returns ID for tracking)
   static String logRequest({
     required String method,
     required String url,
@@ -193,24 +197,15 @@ class NetworkLogger {
       return '';
     }
 
-    String? bodyStr;
-    if (body != null) {
-      try {
-        bodyStr = body is String ? body : jsonEncode(body);
-      } catch (e) {
-        bodyStr = body.toString();
-      }
-    }
-
+    final advanced = AppPreferencesService.instance.advancedLoggingEnabled;
     return _notifier!.logRequest(
       method: method,
-      url: url,
-      headers: headers,
-      body: bodyStr,
+      url: _sanitizeUrl(url),
+      headers: advanced ? _redactHeaders(headers) : null,
+      body: advanced ? _serializeBody(body) : null,
     );
   }
 
-  /// Log a response
   static void logResponse({
     required String id,
     required int statusCode,
@@ -220,29 +215,16 @@ class NetworkLogger {
   }) {
     if (_notifier == null) return;
 
-    String? bodyStr;
-    if (body != null) {
-      try {
-        bodyStr = body is String ? body : jsonEncode(body);
-        // Truncate very long responses
-        if (bodyStr.length > 10000) {
-          bodyStr = '${bodyStr.substring(0, 10000)}... [truncated]';
-        }
-      } catch (e) {
-        bodyStr = body.toString();
-      }
-    }
-
+    final advanced = AppPreferencesService.instance.advancedLoggingEnabled;
     _notifier!.logResponse(
       id: id,
       statusCode: statusCode,
-      headers: headers,
-      body: bodyStr,
+      headers: advanced ? _redactHeaders(headers) : null,
+      body: advanced ? _serializeBody(body) : null,
       duration: duration,
     );
   }
 
-  /// Log an error
   static void logError({
     required String id,
     required dynamic error,
@@ -257,7 +239,49 @@ class NetworkLogger {
     );
   }
 
-  /// Export logs as JSON
+  static Map<String, dynamic>? _redactHeaders(
+    Map<String, dynamic>? headers,
+  ) {
+    if (headers == null) return null;
+    return {
+      for (final entry in headers.entries)
+        entry.key: _sensitiveHeaderNames.contains(entry.key.toLowerCase())
+            ? '[redacted]'
+            : entry.value,
+    };
+  }
+
+  static String? _serializeBody(dynamic body) {
+    if (body == null) return null;
+    String result;
+    try {
+      result = body is String ? body : jsonEncode(body);
+    } catch (_) {
+      result = body.toString();
+    }
+    if (result.length > 10000) {
+      return '${result.substring(0, 10000)}... [truncated]';
+    }
+    return result;
+  }
+
+  static String _sanitizeUrl(String rawUrl) {
+    final uri = Uri.tryParse(rawUrl);
+    if (uri == null || uri.queryParameters.isEmpty) return rawUrl;
+
+    var changed = false;
+    final safeQuery = <String, String>{};
+    for (final entry in uri.queryParameters.entries) {
+      if (_sensitiveQueryNames.contains(entry.key.toLowerCase())) {
+        safeQuery[entry.key] = '[redacted]';
+        changed = true;
+      } else {
+        safeQuery[entry.key] = entry.value;
+      }
+    }
+    return changed ? uri.replace(queryParameters: safeQuery).toString() : rawUrl;
+  }
+
   static String exportLogsAsJson(List<NetworkLog> logs) {
     final data = {
       'exportedAt': DateTime.now().toIso8601String(),
@@ -267,7 +291,7 @@ class NetworkLogger {
 
     try {
       return const JsonEncoder.withIndent('  ').convert(data);
-    } catch (e) {
+    } catch (_) {
       return jsonEncode(data);
     }
   }
