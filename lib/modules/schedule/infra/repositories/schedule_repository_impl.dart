@@ -25,6 +25,15 @@ class ScheduleRepositoryImpl implements ScheduleRepository {
   /// into the local box so tasks created on another device show up here.
   final ScheduleRemoteDatasource? _remote;
 
+  /// Session-local tombstones for tasks deleted on this device.
+  ///
+  /// A Supabase list request can already be in flight when a task is deleted.
+  /// Without this guard, that stale response sees the local row missing and
+  /// hydrates it straight back into Hive. Keep the tombstone until an explicit
+  /// save recreates the same id, so every schedule projection remains deleted
+  /// even when a pre-delete GET completes after the DELETE.
+  final Set<String> _deletedTaskIds = <String>{};
+
   ScheduleRepositoryImpl({
     Box<ScheduledTask>? box,
     ScheduleRemoteDatasource? remote,
@@ -108,7 +117,9 @@ class ScheduleRepositoryImpl implements ScheduleRepository {
   /// device appears here. Best-effort: any failure leaves local data untouched.
   ///
   /// Local wins on conflict — a row still waiting in the sync queue must not be
-  /// overwritten by the older server copy it is about to replace.
+  /// overwritten by the older server copy it is about to replace. Locally
+  /// deleted ids also win so an in-flight pre-delete response cannot resurrect
+  /// the task after its Hive row has been removed.
   Future<void> _hydrateFromRemote({DateTime? from, DateTime? to}) async {
     final remote = _remote;
     if (remote == null) return;
@@ -116,6 +127,8 @@ class ScheduleRepositoryImpl implements ScheduleRepository {
     try {
       final remoteTasks = await remote.list(from: from, to: to);
       for (final task in remoteTasks) {
+        if (_deletedTaskIds.contains(task.id)) continue;
+
         final local = _box.get(task.id);
         if (local == null || task.updatedAt.isAfter(local.updatedAt)) {
           await _box.put(task.id, _toModel(task));
@@ -136,6 +149,7 @@ class ScheduleRepositoryImpl implements ScheduleRepository {
     await _hydrateFromRemote(from: from, to: to);
 
     final items = _box.values.where((m) {
+      if (_deletedTaskIds.contains(m.id)) return false;
       if (from != null && m.scheduledAt.isBefore(from)) return false;
       if (to != null && m.scheduledAt.isAfter(to)) return false;
       return true;
@@ -146,6 +160,10 @@ class ScheduleRepositoryImpl implements ScheduleRepository {
 
   @override
   Future<TaskScheduleEntity> saveTask(TaskScheduleEntity task) async {
+    // An explicit save is the only operation that may intentionally recreate a
+    // previously deleted id during this repository session.
+    _deletedTaskIds.remove(task.id);
+
     final updated = task.copyWith(updatedAt: DateTime.now());
     await _box.put(updated.id, _toModel(updated));
     await _queueUpsert(updated);
@@ -172,6 +190,9 @@ class ScheduleRepositoryImpl implements ScheduleRepository {
 
   @override
   Future<void> deleteTask(String id) async {
+    // Tombstone before the first await. A remote list that resolves while the
+    // delete is running must never be allowed to put this row back into Hive.
+    _deletedTaskIds.add(id);
     await _box.delete(id);
     await SyncService.instance.enqueueDelete(
       table: kScheduleTasksTable,
@@ -182,6 +203,7 @@ class ScheduleRepositoryImpl implements ScheduleRepository {
 
   @override
   Future<TaskScheduleEntity?> getById(String id) async {
+    if (_deletedTaskIds.contains(id)) return null;
     final m = _box.get(id);
     if (m == null) return null;
     return _toEntity(m);
