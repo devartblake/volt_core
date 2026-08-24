@@ -3,8 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/services/storage/file_storage_service.dart';
-import 'app_router.dart';
 import '../core/theme/app_theme.dart';
+import '../core/theme/theme_mode_provider.dart';
+import 'app_router.dart';
 
 /// Root Voltcore application widget.
 ///
@@ -16,19 +17,15 @@ class VoltcoreApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // 👇 Get the router from Riverpod
     final router = ref.watch(goRouterProvider);
+    final themeMode = ref.watch(themeModeProvider);
 
     return MaterialApp.router(
       title: 'Voltcore',
       debugShowCheckedModeBanner: false,
-
-      // If AppTheme is implemented, this plugs right in.
-      // Otherwise you can temporarily use ThemeData.light() / ThemeData.dark().
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
-      themeMode: ThemeMode.system,
-
+      themeMode: themeMode,
       routerConfig: router,
     );
   }
