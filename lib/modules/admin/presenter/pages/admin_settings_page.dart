@@ -2,20 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/constants/route_paths.dart';
+import '../../../../core/services/settings/app_preferences_service.dart';
 import '../../../../shared/widgets/widgets.dart';
 import '../../infra/services/tenant_retention_policy_service.dart';
 
 class AdminSettingsPage extends StatelessWidget {
   const AdminSettingsPage({super.key});
-
-  void _showComingSoon(BuildContext context, String feature) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('$feature — coming soon'),
-        duration: const Duration(seconds: 2),
-      ),
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -39,14 +31,32 @@ class AdminSettingsPage extends StatelessWidget {
             style: textTheme.bodyMedium,
           ),
           const SizedBox(height: 24),
-          SwitchListTile(
-            title: const Text('Enable advanced logging'),
-            subtitle: const Text(
-              'Collect more detailed logs for troubleshooting.',
-            ),
-            value: true,
-            onChanged: (_) {
-              _showComingSoon(context, 'Advanced logging toggle');
+          StatefulBuilder(
+            builder: (context, setState) {
+              final preferences = AppPreferencesService.instance;
+              final enabled = preferences.advancedLoggingEnabled;
+              return SwitchListTile(
+                title: const Text('Enable advanced logging'),
+                subtitle: const Text(
+                  'Capture request/response headers and bodies on this device. '
+                  'Credential headers remain redacted.',
+                ),
+                value: enabled,
+                onChanged: (value) async {
+                  await preferences.setAdvancedLoggingEnabled(value);
+                  if (!context.mounted) return;
+                  setState(() {});
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        value
+                            ? 'Advanced network payload logging enabled.'
+                            : 'Advanced network payload logging disabled.',
+                      ),
+                    ),
+                  );
+                },
+              );
             },
           ),
           const Divider(),
