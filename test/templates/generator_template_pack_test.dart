@@ -1,13 +1,13 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:uuid/uuid.dart';
-import 'package:volt_core/modules/inspections/domain/entities/inspection_entity.dart';
-import 'package:volt_core/modules/maintenance/infra/models/maintenance_record.dart';
-import 'package:volt_core/modules/templates/domain/entities/template_entities.dart';
-import 'package:volt_core/modules/templates/domain/services/generator_template_pack.dart';
-import 'package:volt_core/modules/templates/infra/mappers/legacy_generator_response_adapter.dart';
-import 'package:volt_core/modules/templates/infra/repositories/template_definition_repository.dart';
-import 'package:volt_core/modules/templates/infra/repositories/template_management_repository.dart';
-import 'package:volt_core/modules/templates/infra/services/generator_template_pack_installer.dart';
+import 'package:voltcore/modules/inspections/domain/entities/inspection_entity.dart';
+import 'package:voltcore/modules/maintenance/infra/models/maintenance_record.dart';
+import 'package:voltcore/modules/templates/domain/entities/template_entities.dart';
+import 'package:voltcore/modules/templates/domain/services/generator_template_pack.dart';
+import 'package:voltcore/modules/templates/infra/mappers/legacy_generator_response_adapter.dart';
+import 'package:voltcore/modules/templates/infra/repositories/template_definition_repository.dart';
+import 'package:voltcore/modules/templates/infra/repositories/template_management_repository.dart';
+import 'package:voltcore/modules/templates/infra/services/generator_template_pack_installer.dart';
 
 void main() {
   const tenantId = 'tenant-a';
