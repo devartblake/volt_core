@@ -1,189 +1,219 @@
 # Voltcore
 
-Field inspection and maintenance app for standby generator compliance work â
-FDNY/DEP inspections, maintenance records, load tests, scheduling, and the PDF
-reports that come out of them.
+Voltcore is an offline-first Flutter field-service and compliance application.
+It began with standby-generator inspections and maintenance and is evolving into
+**Voltcore FieldOps**: tenant-safe customers, sites, assets, work orders,
+scheduling, versioned inspection/maintenance templates, evidence, and signed
+reports.
 
-Built with Flutter, offline-first on Hive, syncing to Supabase when a
-connection is available.
-
----
+Flutter/Hive is the local execution layer. Supabase provides authenticated,
+tenant-scoped synchronization and database authorization.
 
 ## Requirements
 
 | Tool | Version |
 | --- | --- |
-| Flutter | stable channel (Dart SDK ^3.7.2) |
-| A Supabase project | for cloud sync (the app runs without one, locally only) |
-
-Run `flutter doctor` before anything else.
-
-## Getting started
+| Flutter | stable channel; Dart SDK `^3.7.2` |
+| Supabase | optional for local-only work; required for shared sync/RLS |
 
 ```bash
+flutter doctor
 flutter pub get
-flutter run              # add -d chrome for web
+flutter run
 ```
 
-Without Supabase configured the app still runs: everything saves to the local
-Hive database, and sync operations queue up until credentials exist.
+For web:
 
----
+```bash
+flutter run -d edge
+# or
+flutter build web
+```
 
 ## Configuration
 
-Environment files live in `assets/env/` and are **bundled as assets**, so a
-change to one requires a rebuild â a hot reload or browser refresh keeps serving
-the previous values.
+Environment assets live in `assets/env/`:
 
-| File | Used when |
-| --- | --- |
-| `assets/env/.env.dev` | default / debug builds |
-| `assets/env/.env.staging` | staging |
-| `assets/env/.env.prod` | release |
+- `.env.dev`
+- `.env.staging`
+- `.env.prod`
 
-Keys each file should define:
+Each configured environment should provide:
 
 ```dotenv
 SUPABASE_URL="https://<project>.supabase.co"
 SUPABASE_ANON_KEY="<publishable key>"
-SUPABASE_TENANT_ID="<uuid of a row in public.tenants>"
+SUPABASE_TENANT_ID="<public.tenants uuid>"
 ```
 
-`SUPABASE_TENANT_ID` must be a **tenant** id, not a user id. Every synced row is
-stamped with it, and row-level security rejects writes whose tenant the signed-in
-user isn't a member of.
+`SUPABASE_TENANT_ID` is a tenant UUID, never a user UUID. Authorization comes
+from active `tenant_members` rows and database RLS. UI role checks are only an
+affordance and cannot grant access the database refuses.
+
+## Architecture
+
+Feature-first clean architecture:
+
+```text
+lib/
+├── app/                  router, shells, default-deny route RBAC
+├── core/
+│   ├── constants/        routes and feature flags
+│   ├── services/         Hive, sync, storage, PDF, photos, notifications
+│   └── theme/
+├── modules/
+│   └── <feature>/
+│       ├── domain/
+│       ├── infra/
+│       ├── external/
+│       └── presenter/
+└── shared/widgets/
+```
+
+Key rules:
+
+- **Offline first:** repositories persist locally before queuing cloud work.
+- **Durable sync:** `SyncService` drains the Hive-backed outbox with retry.
+- **Default-deny routing:** every named route needs an explicit `RouteRoles`
+  decision; route tests fail closed when coverage is missing.
+- **One page chrome:** screens use `AppPage`; shells own the app bar/navigation.
+- **Web has no filesystem:** report/photo/signature bytes use `WebFileStore`
+  (Hive/IndexedDB) instead of filesystem APIs.
+- **Tenant authorization is server-owned:** Supabase RLS and tenant membership
+  are authoritative.
+
+## Testing and CI
+
+```bash
+flutter analyze --fatal-infos --fatal-warnings
+flutter test
+flutter build web
+```
+
+CI runs these gates for pull requests. A Phase 3 slice is not merged until the
+analyzer, tests, and web build are green.
+
+## Current FieldOps status — 24 August 2026
+
+### Phase 1 — complete
+
+- tenant-safe scheduling;
+- generic asset vocabulary and registry support.
+
+### Phase 2 — complete / rollout validation
+
+- customer/site directory;
+- site-aware asset registration/reassignment;
+- QR lookup and asset history;
+- work-order create/edit/list/detail and lifecycle controls;
+- dispatch assignment/workload views;
+- database-owned work-order events;
+- schedule-task detail routing and inspection-to-maintenance handoff.
+
+### Schedule deletion consistency
+
+PR #52 fixed a race where a stale remote schedule GET could rehydrate a task
+after its DELETE succeeded. Deleted task IDs are now tombstoned at the shared
+schedule repository boundary, so the task stays absent from Upcoming, Dashboard
+activity, statistics, calendar/list/timeline projections, and direct detail
+until the same ID is intentionally saved again.
+
+### Phase 3 — certification / pilot readiness
+
+Merged capabilities include:
+
+- tenant-safe versioned template/revision/field/response schema;
+- atomic template draft save and publication;
+- role-gated template management and draft editor;
+- generic runtime renderer for text, number, reading, date, select, boolean,
+  checklist, photo, and signature fields;
+- visibility rules and response validation;
+- local-first response autosave, restart recovery, and completion locking;
+- exact-revision Hive definition cache;
+- built-in generator inspection and maintenance template packs;
+- lossless legacy generator adapters with `_legacyPayload` provenance;
+- generic revision-pinned PDF renderer;
+- native and web/IndexedDB report persistence;
+- Documents discovery/open/share/delete on native and web;
+- immutable report-artifact metadata linked to the completed response and its
+  downstream customer/site/asset/work-order/inspection/maintenance context;
+- technician field-form runtime at `/field-forms/:templateSlug`, guarded by a
+  default-off build flag.
+
+The report-artifact migration is deployed to the connected VoltCore Supabase
+project and its RLS/trigger policies have been verified.
+
+## Generator template pilot
+
+The new execution path remains **off by default**. Enable it only in a controlled
+pilot build:
+
+```bash
+flutter run -d edge \
+  --dart-define=VOLTCORE_GENERATOR_TEMPLATE_PILOT=true
+```
+
+or:
+
+```bash
+flutter build web \
+  --dart-define=VOLTCORE_GENERATOR_TEMPLATE_PILOT=true
+```
+
+Rollback is the inverse: omit the define or set it to `false`. The template
+execution route disappears while the existing legacy inspection and maintenance
+routes/reports remain intact.
+
+Before starting a pilot, an authorized supervisor/dispatcher/admin should open
+**Template Management** and use **Install generator templates**. The installer is
+idempotent: existing tenant-owned slugs/revisions are not replaced.
+
+Initial generator inspection pilot route:
+
+```text
+/field-forms/generator-inspection
+```
+
+Operational roles (technician, supervisor, dispatcher, admin) can execute
+published field forms; template management remains restricted to supervisory
+roles.
+
+See [`docs/voltcore_fieldops_roadmap.md`](docs/voltcore_fieldops_roadmap.md) for
+the final Phase 3 automated and manual certification checklist.
 
 ## Supabase setup
 
-Run these in the SQL editor of your project, in order:
+For a fresh installation use the consolidated schema and then apply later
+migrations in timestamp order. Existing environments should apply only pending
+migrations.
 
-1. `supabase/schema/voltcore_complete_schema.sql` â tables, RLS policies, helpers.
-2. `supabase/migrations/0002_align_app_sync_columns.sql`
-3. `supabase/migrations/0003_missing_tables.sql` â `schedule_tasks`,
-   `technicians`, `role_assignments`, and the dashboard RPC.
-4. `supabase/migrations/0004_equipment.sql` â the shared equipment registry.
-
-Then create a tenant and grant yourself membership â **roles come from the
-database**, so without a `tenant_members` row the app treats you as a technician
-regardless of what you pick at sign-in:
+Core tenant bootstrap concept:
 
 ```sql
 insert into public.tenants(name, slug)
 values ('Your Company', 'your-company')
-returning id;   -- put this uuid in SUPABASE_TENANT_ID
+returning id;
 
 insert into public.tenant_members(tenant_id, user_id, role)
-values ('<tenant uuid>', '<your auth.users uuid>', 'admin')
+values ('<tenant uuid>', '<auth.users uuid>', 'admin')
 on conflict (tenant_id, user_id) do update
   set role = 'admin', is_active = true;
 ```
 
-Storage bucket for signatures, photos, and PDFs:
+Never place service-role credentials in the Flutter application.
 
-```sql
-insert into storage.buckets(id, name, public)
-values ('voltcore-files', 'voltcore-files', false)
-on conflict (id) do nothing;
+## Documents
 
-create policy voltcore_files_rw on storage.objects
-  for all to authenticated
-  using (bucket_id = 'voltcore-files')
-  with check (bucket_id = 'voltcore-files');
-```
-
-Verify the setup:
-
-```sql
-select exists(
-  select 1 from public.tenant_members
-  where tenant_id = '<SUPABASE_TENANT_ID>'
-    and user_id = auth.uid()
-    and is_active
-) as writes_will_pass;
-```
-
----
-
-## Architecture
-
-Feature-first, with clean-architecture layers inside each module:
-
-```
-lib/
-âââ app/            # router, shells, drawer, RBAC route table
-âââ core/
-â   âââ services/   # hive, sync, storage, photos, pdf, notifications, forms
-â   âââ theme/      # ColorScheme + StatusColors extension
-â   âââ constants/  # routes, feature flags
-âââ modules/        # inspections, maintenance, schedule, admin, auth, â¦
-â   âââ <feature>/
-â       âââ domain/     # entities, usecases
-â       âââ infra/      # models, mappers, repositories, datasources
-â       âââ external/   # Supabase-facing implementations
-â       âââ presenter/  # pages, widgets, controllers
-âââ shared/widgets/ # AppPage + the component kit
-```
-
-Points worth knowing before changing things:
-
-- **Offline-first.** Repositories write to Hive first, then enqueue a
-  `SyncOperation`. `SyncService` drains that durable outbox with exponential
-  backoff whenever connectivity allows; the UI never blocks on the network.
-- **One page chrome.** Screens return `AppPage`, never their own
-  `Scaffold`/`AppBar` â the shell owns navigation and the app bar. Adding a
-  second `AppBar` reintroduces the doubled-header bug.
-- **RBAC is default-deny.** Every route needs an entry in
-  `lib/app/route_roles.dart`; unlisted routes are refused for all roles, and
-  `test/app/route_roles_test.dart` fails if a `RouteNames` constant has no
-  decision. Roles are read from `tenant_members` â the sign-in selector is only a
-  preference and cannot escalate.
-- **Web has no filesystem.** Signature and photo bytes go to `WebFileStore`
-  (Hive/IndexedDB) instead of `dart:io`. Guard any new file work with `kIsWeb`.
-- **Status colours** (`success` / `warning` / `info`) come from the
-  `StatusColors` theme extension, not raw `Colors.green` â those don't adapt to
-  dark mode.
-
-## Testing
-
-```bash
-flutter analyze     # must stay clean; CI runs with --fatal-infos
-flutter test
-flutter build web   # or apk / ipa
-```
-
-CI (`.github/workflows/ci.yml`) runs analyze and the test suite on every push
-and pull request.
-
-## FieldOps delivery status
-
-- **Phase 1 â complete:** tenant-safe scheduling and generic, site-aware asset
-  foundation.
-- **Phase 2 â merge and rollout validation:** customer/site directory,
-  site-aware asset registration and reassignment, QR lookup, asset history,
-  work-order operations UI, Supabase merge/sync, trigger-owned audit history,
-  scheduled-task details, and grouped navigation are complete in
-  [PR #41](https://github.com/devartblake/volt_core/pull/41). Merge it, then
-  run the staged tenant/RLS and real-user workflow checks.
-- **Phase 3 â foundation in progress:** versioned, tenant-safe template and
-  response contracts, local-first response persistence, and durable sync are
-  being established before the generic renderer, PDFs, and generator-form
-  migration.
-
-See [`docs/voltcore_fieldops_roadmap.md`](docs/voltcore_fieldops_roadmap.md)
-for the completed-task record, deployment verification, the remaining Phase 2
-gates, and the ordered Phase 3 backlog.
+Generated PDFs use the managed PDF tree on native platforms and logical `pdfs/`
+paths in `WebFileStore` on web. The Documents screen reads both implementations
+through the same metadata model.
 
 ## Documentation
 
-Deeper notes live in [`docs/`](docs/):
-
 | Document | Covers |
 | --- | --- |
-| `codebase_audit_and_ux_plan.md` | Full audit, findings, and the phased remediation plan |
-| `deferred_migrations_plan.md` | Plan for the two deferred UI migrations |
-| `offline_sync_and_backup.md` | Sync engine and cloud file backup |
-| `photos_reminders_and_reliability.md` | Photo attachments, reminders, path handling |
-| `email_and_documents.md` | Report email and the PDF library |
-| `routing_audit.md` | Route table review (partly superseded by the audit doc) |
-| `voltcore_fieldops_roadmap.md` | Expansion from generator compliance to field-service asset operations |
+| `docs/voltcore_fieldops_roadmap.md` | FieldOps phases, Phase 3 implementation record, pilot/rollback certification |
+| `docs/offline_sync_and_backup.md` | Durable sync and file backup |
+| `docs/email_and_documents.md` | PDF library and report delivery |
+| `docs/photos_reminders_and_reliability.md` | Photos, reminders, and file reliability |
+| `docs/codebase_audit_and_ux_plan.md` | Broader codebase/UX audit and remediation plan |
