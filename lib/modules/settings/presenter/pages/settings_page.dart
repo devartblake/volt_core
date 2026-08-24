@@ -6,6 +6,8 @@ import 'package:go_router/go_router.dart';
 import '../../../../app/route_roles.dart';
 import '../../../../core/constants/route_paths.dart';
 import '../../../../core/services/settings/app_preferences_provider.dart';
+import '../../../../core/services/storage/cache_maintenance_service.dart';
+import '../../../../core/services/storage/user_data_export_service.dart';
 import '../../../../core/theme/theme_mode_provider.dart';
 import '../../../../shared/widgets/widgets.dart';
 import '../../../auth/presenter/controllers/auth_controller.dart';
@@ -19,6 +21,8 @@ class SettingsPage extends ConsumerStatefulWidget {
 }
 
 class _SettingsPageState extends ConsumerState<SettingsPage> {
+  bool _exporting = false;
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -133,19 +137,30 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               ),
               const Divider(height: 1),
               ListTile(
+                leading: const Icon(Icons.cleaning_services_outlined),
                 title: const Text('Clear Cache'),
-                subtitle: const Text('Free up storage space'),
+                subtitle: const Text(
+                  'Remove disposable temporary files without deleting records',
+                ),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () => _showClearCacheDialog(context),
               ),
               const Divider(height: 1),
               ListTile(
+                leading: _exporting
+                    ? const SizedBox(
+                        width: 24,
+                        height: 24,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.download_outlined),
                 title: const Text('Export Data'),
-                subtitle: const Text('Download your inspection data'),
-                trailing: const Icon(Icons.download_outlined),
-                onTap: () => ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Export feature - Coming soon')),
+                subtitle: const Text(
+                  'Save inspection history and load-test records as JSON',
                 ),
+                trailing: const Icon(Icons.chevron_right),
+                enabled: !_exporting,
+                onTap: _exporting ? null : _exportInspectionData,
               ),
             ],
           ),
@@ -181,7 +196,9 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                 ListTile(
                   leading: const Icon(Icons.bug_report_outlined),
                   title: const Text('Debug Tools'),
-                  subtitle: const Text('Inspect local storage and network activity'),
+                  subtitle: const Text(
+                    'Inspect local storage and network activity',
+                  ),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () => context.push('/debug'),
                 ),
@@ -302,6 +319,34 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     );
   }
 
+  Future<void> _exportInspectionData() async {
+    setState(() => _exporting = true);
+    try {
+      final result =
+          await UserDataExportService.instance.exportInspectionData();
+      if (!mounted) return;
+      if (result.saved) {
+        final destination = result.destination;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              destination == null || destination.isEmpty
+                  ? 'Inspection data exported successfully.'
+                  : 'Inspection data exported to $destination',
+            ),
+          ),
+        );
+      }
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Unable to export data: $error')),
+      );
+    } finally {
+      if (mounted) setState(() => _exporting = false);
+    }
+  }
+
   Future<void> _showChangePasswordDialog(BuildContext context) async {
     final passwordController = TextEditingController();
     final confirmController = TextEditingController();
@@ -337,7 +382,9 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                                   () => obscurePassword = !obscurePassword,
                                 ),
                         icon: Icon(
-                          obscurePassword ? Icons.visibility : Icons.visibility_off,
+                          obscurePassword
+                              ? Icons.visibility
+                              : Icons.visibility_off,
                         ),
                       ),
                     ),
@@ -365,7 +412,9 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                                   () => obscureConfirm = !obscureConfirm,
                                 ),
                         icon: Icon(
-                          obscureConfirm ? Icons.visibility : Icons.visibility_off,
+                          obscureConfirm
+                              ? Icons.visibility
+                              : Icons.visibility_off,
                         ),
                       ),
                     ),
@@ -450,21 +499,25 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   void _showClearCacheDialog(BuildContext context) {
     showDialog<void>(
       context: context,
-      builder: (ctx) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: const Text('Clear Cache'),
         content: const Text(
-          'This will clear cached data. Synced inspection data is not removed.',
+          'This removes disposable temporary files only. Offline records, '
+          'queued sync work, PDFs, photos, and signatures are preserved.',
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(ctx),
+            onPressed: () => Navigator.pop(dialogContext),
             child: const Text('Cancel'),
           ),
           FilledButton(
-            onPressed: () {
-              Navigator.pop(ctx);
+            onPressed: () async {
+              Navigator.pop(dialogContext);
+              final result = await CacheMaintenanceService.instance
+                  .clearTemporaryCache();
+              if (!context.mounted) return;
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Cache cleared')),
+                SnackBar(content: Text(result.message)),
               );
             },
             child: const Text('Clear'),
