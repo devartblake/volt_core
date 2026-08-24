@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as path;
 
 import 'file_storage_service.dart';
+import 'web_file_store.dart';
 
 /// Logical grouping for a generated document.
 enum PdfCategory { inspection, maintenance, other }
@@ -21,7 +22,7 @@ extension PdfCategoryLabel on PdfCategory {
   }
 }
 
-/// Metadata for one generated PDF on disk.
+/// Metadata for one generated PDF on disk or in the web byte store.
 @immutable
 class PdfDocumentInfo {
   const PdfDocumentInfo({
@@ -41,10 +42,11 @@ class PdfDocumentInfo {
   String get sizeLabel => FileStorageService.formatBytes(sizeBytes);
 }
 
-/// Reads and manages the library of generated PDF reports produced by the app.
+/// Reads and manages generated PDF reports produced by the app.
 ///
-/// The files already live in one managed tree (`<appData>/pdfs/...`), so the
-/// library is just an enumeration of that tree — no separate index needed.
+/// Native platforms enumerate the managed `<appData>/pdfs/` tree. Web uses
+/// [WebFileStore] logical `pdfs/` paths backed by IndexedDB, which lets the same
+/// Documents screen expose reports generated in Edge/Chrome.
 class PdfLibraryService {
   PdfLibraryService._();
 
@@ -52,7 +54,22 @@ class PdfLibraryService {
 
   /// All generated PDFs, newest first.
   Future<List<PdfDocumentInfo>> listDocuments() async {
-    if (kIsWeb) return const [];
+    if (kIsWeb) {
+      await WebFileStore.instance.init();
+      return WebFileStore.instance
+          .listSync(prefix: 'pdfs/')
+          .where((item) => item.path.toLowerCase().endsWith('.pdf'))
+          .map(
+            (item) => PdfDocumentInfo(
+              path: item.path,
+              name: item.path.split('/').last,
+              category: _categoryFor(item.path),
+              sizeBytes: item.sizeBytes,
+              modified: item.modified.toLocal(),
+            ),
+          )
+          .toList(growable: false);
+    }
 
     final root = await FileStorageService.instance.getPdfsDirectory();
     if (!await root.exists()) return const [];
@@ -96,7 +113,11 @@ class PdfLibraryService {
   /// Note: this removes the local copy only. A cloud backup (if already
   /// uploaded) is left intact.
   Future<void> deleteDocument(String filePath) async {
-    if (kIsWeb) return;
+    if (kIsWeb) {
+      await WebFileStore.instance.remove(filePath);
+      return;
+    }
+
     final file = File(filePath);
     if (await file.exists()) {
       await file.delete();
