@@ -1,8 +1,9 @@
 /// Compile-time switches for features that are not ready for users.
 ///
 /// A flag here means the implementation may exist in the codebase while its
-/// user-facing entry point remains deliberately gated. Flip a pilot flag only
-/// after its data, authorization, and rollback boundaries are certified.
+/// user-facing entry point remains deliberately gated. Pilot flags default to
+/// their safest production value and may be enabled for a specific build with
+/// `--dart-define` without changing source code.
 class FeatureFlags {
   const FeatureFlags._();
 
@@ -15,9 +16,13 @@ class FeatureFlags {
 
   /// Phase 3 technician template-runtime pilot.
   ///
-  /// Kept off until the generator legacy/template parity and field pilot are
-  /// certified. Turning this off removes the execution route without changing
-  /// existing legacy inspection/maintenance routes, providing a one-switch
-  /// rollback path during rollout.
-  static const bool generatorTemplatePilotEnabled = false;
+  /// Defaults OFF. Enable only for a certified pilot build with:
+  /// `--dart-define=VOLTCORE_GENERATOR_TEMPLATE_PILOT=true`.
+  ///
+  /// Returning this define to false removes the execution route and pilot entry
+  /// point while leaving the legacy inspection/maintenance workflows intact.
+  static const bool generatorTemplatePilotEnabled = bool.fromEnvironment(
+    'VOLTCORE_GENERATOR_TEMPLATE_PILOT',
+    defaultValue: false,
+  );
 }
