@@ -10,7 +10,6 @@ import '../../../../shared/widgets/widgets.dart';
 import '../../../auth/presenter/controllers/auth_controller.dart';
 import '../../../inspections/presenter/controllers/user_profile_controller.dart';
 
-/// Settings page for app configuration.
 class SettingsPage extends ConsumerStatefulWidget {
   const SettingsPage({super.key});
 
@@ -35,10 +34,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       role: auth.currentRole,
     );
     final canOpenDebug = kDebugMode &&
-        RouteRoles.isAllowedByName(
-          name: 'debug_menu',
-          role: auth.currentRole,
-        );
+        RouteRoles.isAllowedByName(name: 'debug_menu', role: auth.currentRole);
 
     return AppPage(
       title: 'Settings',
@@ -57,32 +53,38 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                 title: const Text('Dark Mode'),
                 subtitle: const Text('Use dark theme throughout the app'),
                 value: themeMode == ThemeMode.dark,
-                onChanged: (value) {
-                  ref.read(themeModeProvider.notifier).setDarkMode(value);
-                },
+                onChanged: (value) =>
+                    ref.read(themeModeProvider.notifier).setDarkMode(value),
               ),
               const Divider(height: 1),
               ListTile(
                 title: const Text('Language'),
                 subtitle: Text(_language),
                 trailing: const Icon(Icons.chevron_right),
-                onTap: () {
-                  _showLanguageDialog(context);
-                },
+                onTap: () => _showChoiceDialog(
+                  context: context,
+                  title: 'Select Language',
+                  options: const ['English', 'Spanish', 'French'],
+                  selected: _language,
+                  onSelected: (value) => setState(() => _language = value),
+                ),
               ),
               const Divider(height: 1),
               ListTile(
                 title: const Text('Date Format'),
                 subtitle: Text(_dateFormat),
                 trailing: const Icon(Icons.chevron_right),
-                onTap: () {
-                  _showDateFormatDialog(context);
-                },
+                onTap: () => _showChoiceDialog(
+                  context: context,
+                  title: 'Select Date Format',
+                  options: const ['MM/DD/YYYY', 'DD/MM/YYYY', 'YYYY-MM-DD'],
+                  selected: _dateFormat,
+                  onSelected: (value) => setState(() => _dateFormat = value),
+                ),
               ),
             ],
           ),
           const SizedBox(height: 24),
-
           _SectionHeader(
             icon: Icons.notifications_outlined,
             title: 'Notifications',
@@ -95,14 +97,11 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                 title: const Text('Push Notifications'),
                 subtitle: const Text('Receive alerts for important updates'),
                 value: _notifications,
-                onChanged: (value) {
-                  setState(() => _notifications = value);
-                },
+                onChanged: (value) => setState(() => _notifications = value),
               ),
             ],
           ),
           const SizedBox(height: 24),
-
           _SectionHeader(
             icon: Icons.cloud_outlined,
             title: 'Data & Sync',
@@ -113,11 +112,9 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             children: [
               SwitchListTile(
                 title: const Text('Auto-Sync'),
-                subtitle: const Text('Automatically sync infra when online'),
+                subtitle: const Text('Automatically sync data when online'),
                 value: _autoSync,
-                onChanged: (value) {
-                  setState(() => _autoSync = value);
-                },
+                onChanged: (value) => setState(() => _autoSync = value),
               ),
               const Divider(height: 1),
               ListTile(
@@ -125,36 +122,27 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                 title: const Text('Documents'),
                 subtitle: const Text('View, share and email generated reports'),
                 trailing: const Icon(Icons.chevron_right),
-                onTap: () {
-                  context.push(RoutePaths.documents);
-                },
+                onTap: () => context.push(RoutePaths.documents),
               ),
               const Divider(height: 1),
               ListTile(
                 title: const Text('Clear Cache'),
                 subtitle: const Text('Free up storage space'),
                 trailing: const Icon(Icons.chevron_right),
-                onTap: () {
-                  _showClearCacheDialog(context);
-                },
+                onTap: () => _showClearCacheDialog(context),
               ),
               const Divider(height: 1),
               ListTile(
                 title: const Text('Export Data'),
-                subtitle: const Text('Download your inspection infra'),
+                subtitle: const Text('Download your inspection data'),
                 trailing: const Icon(Icons.download_outlined),
-                onTap: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Export feature - Coming soon'),
-                    ),
-                  );
-                },
+                onTap: () => ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Export feature - Coming soon')),
+                ),
               ),
             ],
           ),
           const SizedBox(height: 24),
-
           _SectionHeader(
             icon: Icons.settings_applications_outlined,
             title: 'Advanced',
@@ -179,18 +167,14 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                 title: const Text('Selection Options'),
                 subtitle: const Text('Manage technicians, makes, and voltages'),
                 trailing: const Icon(Icons.chevron_right),
-                onTap: () {
-                  context.push(RoutePaths.selectionManagement);
-                },
+                onTap: () => context.push(RoutePaths.selectionManagement),
               ),
               if (canOpenDebug) ...[
                 const Divider(height: 1),
                 ListTile(
                   leading: const Icon(Icons.bug_report_outlined),
                   title: const Text('Debug Tools'),
-                  subtitle: const Text(
-                    'Inspect local storage and network activity',
-                  ),
+                  subtitle: const Text('Inspect local storage and network activity'),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () => context.push('/debug'),
                 ),
@@ -198,7 +182,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             ],
           ),
           const SizedBox(height: 24),
-
           if (userProfile != null) ...[
             _SectionHeader(
               icon: Icons.person_outline,
@@ -222,15 +205,11 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                 ),
                 const Divider(height: 1),
                 ListTile(
+                  leading: const Icon(Icons.password_outlined),
                   title: const Text('Change Password'),
+                  subtitle: const Text('Update your account password securely'),
                   trailing: const Icon(Icons.chevron_right),
-                  onTap: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Password change - Coming soon'),
-                      ),
-                    );
-                  },
+                  onTap: () => _showChangePasswordDialog(context),
                 ),
                 const Divider(height: 1),
                 ListTile(
@@ -238,19 +217,13 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                     'Sign Out',
                     style: TextStyle(color: theme.colorScheme.error),
                   ),
-                  trailing: Icon(
-                    Icons.logout,
-                    color: theme.colorScheme.error,
-                  ),
-                  onTap: () {
-                    _showSignOutDialog(context);
-                  },
+                  trailing: Icon(Icons.logout, color: theme.colorScheme.error),
+                  onTap: () => _showSignOutDialog(context),
                 ),
               ],
             ),
             const SizedBox(height: 24),
           ],
-
           _SectionHeader(
             icon: Icons.info_outline,
             title: 'About',
@@ -262,33 +235,23 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               ListTile(
                 title: const Text('About Voltcore'),
                 trailing: const Icon(Icons.chevron_right),
-                onTap: () {
-                  context.push(RoutePaths.about);
-                },
+                onTap: () => context.push(RoutePaths.about),
               ),
               const Divider(height: 1),
               ListTile(
                 title: const Text('Privacy Policy'),
                 trailing: const Icon(Icons.open_in_new),
-                onTap: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Opening privacy policy...'),
-                    ),
-                  );
-                },
+                onTap: () => ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Opening privacy policy...')),
+                ),
               ),
               const Divider(height: 1),
               ListTile(
                 title: const Text('Terms of Service'),
                 trailing: const Icon(Icons.open_in_new),
-                onTap: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Opening terms of service...'),
-                    ),
-                  );
-                },
+                onTap: () => ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Opening terms of service...')),
+                ),
               ),
               const Divider(height: 1),
               const ListTile(
@@ -303,30 +266,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     );
   }
 
-  void _showLanguageDialog(BuildContext context) {
-    _showChoiceDialog(
-      context: context,
-      title: 'Select Language',
-      options: const ['English', 'Spanish', 'French'],
-      selected: _language,
-      onSelected: (value) => setState(() => _language = value),
-    );
-  }
-
-  void _showDateFormatDialog(BuildContext context) {
-    _showChoiceDialog(
-      context: context,
-      title: 'Select Date Format',
-      options: const ['MM/DD/YYYY', 'DD/MM/YYYY', 'YYYY-MM-DD'],
-      selected: _dateFormat,
-      onSelected: (value) => setState(() => _dateFormat = value),
-    );
-  }
-
-  /// Single-choice dialog shared by the language and date-format settings.
-  ///
-  /// Uses [RadioGroup], which owns the selection and the change callback; the
-  /// per-tile `groupValue`/`onChanged` pair it replaces is deprecated.
   void _showChoiceDialog({
     required BuildContext context,
     required String title,
@@ -348,15 +287,157 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             mainAxisSize: MainAxisSize.min,
             children: [
               for (final option in options)
-                RadioListTile<String>(
-                  title: Text(option),
-                  value: option,
-                ),
+                RadioListTile<String>(title: Text(option), value: option),
             ],
           ),
         ),
       ),
     );
+  }
+
+  Future<void> _showChangePasswordDialog(BuildContext context) async {
+    final passwordController = TextEditingController();
+    final confirmController = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+    var saving = false;
+    var obscurePassword = true;
+    var obscureConfirm = true;
+
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: !saving,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Change Password'),
+          content: Form(
+            key: formKey,
+            child: SizedBox(
+              width: 420,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextFormField(
+                    controller: passwordController,
+                    obscureText: obscurePassword,
+                    enabled: !saving,
+                    autofocus: true,
+                    decoration: InputDecoration(
+                      labelText: 'New password',
+                      suffixIcon: IconButton(
+                        onPressed: saving
+                            ? null
+                            : () => setDialogState(
+                                  () => obscurePassword = !obscurePassword,
+                                ),
+                        icon: Icon(
+                          obscurePassword ? Icons.visibility : Icons.visibility_off,
+                        ),
+                      ),
+                    ),
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Enter a new password.';
+                      }
+                      if (value.length < 8) {
+                        return 'Use at least 8 characters.';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  TextFormField(
+                    controller: confirmController,
+                    obscureText: obscureConfirm,
+                    enabled: !saving,
+                    decoration: InputDecoration(
+                      labelText: 'Confirm new password',
+                      suffixIcon: IconButton(
+                        onPressed: saving
+                            ? null
+                            : () => setDialogState(
+                                  () => obscureConfirm = !obscureConfirm,
+                                ),
+                        icon: Icon(
+                          obscureConfirm ? Icons.visibility : Icons.visibility_off,
+                        ),
+                      ),
+                    ),
+                    validator: (value) {
+                      if (value != passwordController.text) {
+                        return 'Passwords do not match.';
+                      }
+                      return null;
+                    },
+                    onFieldSubmitted: (_) {
+                      if (!saving) {
+                        _submitPasswordChange(
+                          dialogContext: dialogContext,
+                          formKey: formKey,
+                          newPassword: passwordController.text,
+                          setSaving: (value) =>
+                              setDialogState(() => saving = value),
+                        );
+                      }
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: saving ? null : () => Navigator.pop(dialogContext),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: saving
+                  ? null
+                  : () => _submitPasswordChange(
+                        dialogContext: dialogContext,
+                        formKey: formKey,
+                        newPassword: passwordController.text,
+                        setSaving: (value) =>
+                            setDialogState(() => saving = value),
+                      ),
+              child: saving
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Text('Update Password'),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    passwordController.dispose();
+    confirmController.dispose();
+  }
+
+  Future<void> _submitPasswordChange({
+    required BuildContext dialogContext,
+    required GlobalKey<FormState> formKey,
+    required String newPassword,
+    required ValueChanged<bool> setSaving,
+  }) async {
+    if (!(formKey.currentState?.validate() ?? false)) return;
+    setSaving(true);
+    try {
+      await ref.read(authStateProvider.notifier).changePassword(newPassword);
+      if (!mounted || !dialogContext.mounted) return;
+      Navigator.pop(dialogContext);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Password updated successfully.')),
+      );
+    } catch (error) {
+      if (!mounted || !dialogContext.mounted) return;
+      setSaving(false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Unable to update password: $error')),
+      );
+    }
   }
 
   void _showClearCacheDialog(BuildContext context) {
@@ -365,7 +446,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       builder: (ctx) => AlertDialog(
         title: const Text('Clear Cache'),
         content: const Text(
-          'This will clear all cached infra. Your inspection infra will not be affected.',
+          'This will clear cached data. Synced inspection data is not removed.',
         ),
         actions: [
           TextButton(
@@ -411,64 +492,48 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
 }
 
 class _SectionHeader extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final ThemeData theme;
-
   const _SectionHeader({
     required this.icon,
     required this.title,
     required this.theme,
   });
 
+  final IconData icon;
+  final String title;
+  final ThemeData theme;
+
   @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(left: 4, bottom: 8),
-      child: Row(
-        children: [
-          Icon(
-            icon,
-            size: 20,
-            color: theme.colorScheme.primary,
-          ),
-          const SizedBox(width: 8),
-          Text(
-            title,
-            style: theme.textTheme.titleSmall?.copyWith(
-              color: theme.colorScheme.primary,
-              fontWeight: FontWeight.w600,
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.only(left: 4, bottom: 8),
+        child: Row(
+          children: [
+            Icon(icon, size: 20, color: theme.colorScheme.primary),
+            const SizedBox(width: 8),
+            Text(
+              title,
+              style: theme.textTheme.titleSmall?.copyWith(
+                color: theme.colorScheme.primary,
+                fontWeight: FontWeight.w600,
+              ),
             ),
-          ),
-        ],
-      ),
-    );
-  }
+          ],
+        ),
+      );
 }
 
 class _SettingCard extends StatelessWidget {
+  const _SettingCard({required this.theme, required this.children});
+
   final ThemeData theme;
   final List<Widget> children;
 
-  const _SettingCard({
-    required this.theme,
-    required this.children,
-  });
-
   @override
-  Widget build(BuildContext context) {
-    return Card(
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(
-          color: theme.colorScheme.outlineVariant,
-          width: 1,
+  Widget build(BuildContext context) => Card(
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: BorderSide(color: theme.colorScheme.outlineVariant),
         ),
-      ),
-      child: Column(
-        children: children,
-      ),
-    );
-  }
+        child: Column(children: children),
+      );
 }
