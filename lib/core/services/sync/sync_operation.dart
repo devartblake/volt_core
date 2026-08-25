@@ -49,7 +49,11 @@ class SyncOperation {
 
   /// Logical target ("table/recordId" for rows, remote path for files).
   /// Used to collapse repeated edits into a single pending op.
-  final String entityId;
+  ///
+  /// Mutable because queue maintenance can rewrite the row it points at — see
+  /// [retagQueuedRow], where re-stamping a tenant also re-derives an equipment
+  /// row's id. The Hive key is [id], not this, so changing it is safe.
+  String entityId;
 
   /// Operation body. Shape depends on [type]:
   /// - upsert:     `{ 'table': String, 'row': Map }`
