@@ -81,6 +81,23 @@ class Inspection extends HiveObject {
   // Generated PDF path
   @HiveField(60) String pdfPath;
 
+  // Address parts. Field 4 (`address`) stays the street line; records written
+  // before this split hold their whole one-line address there and simply leave
+  // these empty.
+  //
+  // NOTE: inspection.g.dart is checked in without build_runner in the
+  // pubspec, so it is maintained by hand. Fields 61+ are read with null-safe
+  // casts because rows written before they existed have no entry for them —
+  // regenerating this adapter would emit bare `as String` casts and start
+  // throwing on every pre-existing inspection.
+  @HiveField(61) String addressLine2;
+  @HiveField(62) String city;
+  @HiveField(63) String state;
+  @HiveField(64) String postalCode;
+
+  /// Per-checklist-item conclusions, keyed by InspectionChecklistItem.key.
+  @HiveField(65) Map<String, String> checklistNotes;
+
   Inspection({
     required this.id,
     required this.createdAt,
@@ -143,7 +160,13 @@ class Inspection extends HiveObject {
     DateTime? customerSigDate,
     this.customerName = '',
     this.pdfPath = '',
-  })  : serviceDate = serviceDate ?? DateTime.now(),
+    this.addressLine2 = '',
+    this.city = '',
+    this.state = '',
+    this.postalCode = '',
+    Map<String, String>? checklistNotes,
+  })  : checklistNotes = checklistNotes ?? <String, String>{},
+        serviceDate = serviceDate ?? DateTime.now(),
         technicianSigDate = technicianSigDate ?? DateTime.now(),
         customerSigDate = customerSigDate ?? DateTime.now();
 }
@@ -151,6 +174,19 @@ class Inspection extends HiveObject {
 // ====== DOMAIN MAPPER ======
 
 extension InspectionHiveMapper on Inspection {
+  /// The whole address on one line, for the printed report.
+  ///
+  /// Field 4 holds only the street line since the address was split into
+  /// parts; records written before that hold their entire address there and
+  /// compose back to exactly the same string.
+  String get formattedAddress => composeAddress(
+        line1: address,
+        line2: addressLine2,
+        city: city,
+        state: state,
+        postalCode: postalCode,
+      );
+
   InspectionEntity toEntity() {
     return InspectionEntity(
       id: id,
@@ -159,6 +195,10 @@ extension InspectionHiveMapper on Inspection {
       siteCode: siteCode,
       siteGrade: siteGrade,
       address: address,
+      addressLine2: addressLine2,
+      city: city,
+      state: state,
+      postalCode: postalCode,
       serviceDate: serviceDate,
       technicianName: technicianName,
       generatorMake: generatorMake,
@@ -215,6 +255,7 @@ extension InspectionHiveMapper on Inspection {
       customerSigDate: customerSigDate,
       customerName: customerName,
       pdfPath: pdfPath,
+      checklistNotes: Map<String, String>.of(checklistNotes),
     );
   }
 }
@@ -227,6 +268,10 @@ Inspection inspectionFromEntity(InspectionEntity e) {
     siteCode: e.siteCode,
     siteGrade: e.siteGrade,
     address: e.address,
+    addressLine2: e.addressLine2,
+    city: e.city,
+    state: e.state,
+    postalCode: e.postalCode,
     serviceDate: e.serviceDate,
     technicianName: e.technicianName,
     generatorMake: e.generatorMake,
@@ -283,5 +328,6 @@ Inspection inspectionFromEntity(InspectionEntity e) {
     customerSigDate: e.customerSigDate,
     customerName: e.customerName,
     pdfPath: e.pdfPath,
+    checklistNotes: Map<String, String>.of(e.checklistNotes),
   );
 }

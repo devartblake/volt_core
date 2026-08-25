@@ -90,7 +90,14 @@ class InspectionRemoteDatasource {
           DateTime.now(),
       siteCode: m['site_code'] ?? '',
       siteGrade: m['site_grade'] ?? '',
-      address: m['address'] ?? '',
+      // Payload first, top-level second. `address` at the top level is the
+      // whole address on one line; rows written before the split have only
+      // that, and it becomes the street line, which is where it already was.
+      address: m['address_line1'] ?? m['address'] ?? '',
+      addressLine2: m['address_line2'] ?? '',
+      city: m['address_city'] ?? '',
+      state: m['address_state'] ?? '',
+      postalCode: m['address_postal_code'] ?? '',
       serviceDate: DateTime.tryParse(m['service_date'] ?? '') ?? DateTime.now(),
       technicianName: m['technician_name'] ?? '',
       generatorMake: m['generator_make'] ?? '',
@@ -135,6 +142,10 @@ class InspectionRemoteDatasource {
       loadbankDone: m['loadbank_done'] ?? false,
       atsVerified: m['ats_verified'] ?? false,
       fuelStoredOver1Yr: m['fuel_stored_over_1yr'] ?? false,
+      checklistNotes: (m['checklist_notes'] as Map?)?.map(
+            (key, value) => MapEntry(key.toString(), value.toString()),
+          ) ??
+          const <String, String>{},
       lastServiceDate: m['last_service_date'] ?? '',
       oilFilterChangeDate: m['oil_filter_change_date'] ?? '',
       fuelFilterDate: m['fuel_filter_date'] ?? '',
@@ -164,7 +175,10 @@ class InspectionRemoteDatasource {
       if (SyncContext.tenantId != null) 'tenant_id': SyncContext.tenantId,
       'site_code': e.siteCode,
       'site_grade': e.siteGrade,
-      'address': e.address,
+      // The column keeps meaning "the whole address", so anything reading the
+      // table directly — reports, exports — is unaffected by the split. The
+      // individual parts round-trip through the payload below.
+      'address': e.formattedAddress,
       'service_date': e.serviceDate.toIso8601String(),
       'technician_name': e.technicianName,
       'notes': e.notes,
@@ -211,6 +225,14 @@ class InspectionRemoteDatasource {
       'emergency_only': e.emergencyOnly,
       'estimated_annual_runtime_hours': e.estimatedAnnualRuntimeHours,
       'fuel_for_6hrs': e.fuelFor6hrs,
+      // Address parts. The composed one-liner lives in the top-level `address`
+      // column; these are what the form's individual fields read back.
+      'address_line1': e.address,
+      'address_line2': e.addressLine2,
+      'address_city': e.city,
+      'address_state': e.state,
+      'address_postal_code': e.postalCode,
+      'checklist_notes': e.checklistNotes,
       'genset_runs_under_load': e.gensetRunsUnderLoad,
       'voltage_frequency_ok': e.voltageFrequencyOk,
       'exhaust_ok': e.exhaustOk,

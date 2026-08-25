@@ -14,6 +14,10 @@ class InspectionMapper {
       siteCode: e.siteCode,
       siteGrade: e.siteGrade,
       address: e.address,
+      addressLine2: e.addressLine2,
+      city: e.city,
+      state: e.state,
+      postalCode: e.postalCode,
       serviceDate: e.serviceDate,
       technicianName: e.technicianName,
 
@@ -86,6 +90,7 @@ class InspectionMapper {
 
       // PDF path
       pdfPath: e.pdfPath,
+      checklistNotes: Map<String, String>.of(e.checklistNotes),
     );
   }
 }
