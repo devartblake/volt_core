@@ -6,6 +6,7 @@ import '../../../auth/domain/user_role.dart';
 import '../../../auth/presenter/controllers/auth_controller.dart';
 import '../../domain/entities/tenant_member_entity.dart';
 import '../controllers/tenant_role_management_controller.dart';
+import '../widgets/add_tenant_member_dialog.dart';
 
 /// Tenant-authoritative team and role management.
 ///
@@ -68,6 +69,14 @@ class _TechniciansPageState extends ConsumerState<TechniciansPage> {
                   .load(),
         ),
       ],
+      fab: FloatingActionButton.extended(
+        onPressed: () => showDialog<void>(
+          context: context,
+          builder: (_) => const AddTenantMemberDialog(),
+        ),
+        icon: const Icon(Icons.person_add_alt_1),
+        label: const Text('Add member'),
+      ),
       body: Column(
         children: [
           Padding(

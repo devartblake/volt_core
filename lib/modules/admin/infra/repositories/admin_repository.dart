@@ -4,6 +4,7 @@ import 'package:voltcore/modules/auth/domain/user_role.dart';
 
 import '../../domain/entities/admin_dashboard_stats_entity.dart';
 import '../../domain/entities/tenant_member_entity.dart';
+import '../../domain/entities/tenant_user_lookup.dart';
 
 abstract class AdminRepository {
   /// Legacy technician registry. Kept for compatibility with older screens.
@@ -26,6 +27,21 @@ abstract class AdminRepository {
     required TenantMemberEntity member,
     required UserRole newRole,
     required String assignedByUserId,
+    String? reason,
+  });
+
+  /// Find a registered account by exact email, or null when none uses it.
+  ///
+  /// Somebody who has signed up but was never added to this tenant is invisible
+  /// to every policy an admin has, so this is the only way to reach them.
+  Future<TenantUserLookup?> lookupUserByEmail(String email);
+
+  /// Grant [role] in the active tenant to a user found by [lookupUserByEmail].
+  Future<void> addTenantMember({
+    required String userId,
+    required UserRole role,
+    required String assignedByUserId,
+    UserRole? previousRole,
     String? reason,
   });
 

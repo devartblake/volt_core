@@ -4,6 +4,7 @@ import '../../../../core/services/sync/sync_context.dart';
 import '../../../auth/domain/user_role.dart';
 import '../../domain/entities/admin_dashboard_stats_entity.dart';
 import '../../domain/entities/tenant_member_entity.dart';
+import '../../domain/entities/tenant_user_lookup.dart';
 import '../../infra/models/technician_model.dart';
 
 class AdminRemoteDatasource {
@@ -96,7 +97,9 @@ class AdminRemoteDatasource {
     await _client
         .from(tenantMembersTable)
         .update({
-          'role': newRole.name,
+          // `wire`, not `name` — these columns are the app_role enum, which
+          // spells the field role "technician". See UserRoleX.wire.
+          'role': newRole.wire,
           'updated_at': DateTime.now().toUtc().toIso8601String(),
         })
         .eq('tenant_id', tenantId)
@@ -106,8 +109,8 @@ class AdminRemoteDatasource {
       await _client.from(tenantRoleAssignmentsTable).insert({
         'tenant_id': tenantId,
         'user_id': userId,
-        'previous_role': previousRole.name,
-        'new_role': newRole.name,
+        'previous_role': previousRole.wire,
+        'new_role': newRole.wire,
         'assigned_by_user_id': assignedByUserId,
         'reason': reason,
       });
@@ -116,13 +119,104 @@ class AdminRemoteDatasource {
       await _client
           .from(tenantMembersTable)
           .update({
-            'role': previousRole.name,
+            'role': previousRole.wire,
             'updated_at': DateTime.now().toUtc().toIso8601String(),
           })
           .eq('tenant_id', tenantId)
           .eq('user_id', userId);
       rethrow;
     }
+  }
+
+  /// Find a registered user by their exact email address.
+  ///
+  /// Goes through the `admin_lookup_user_by_email` definer function rather than
+  /// selecting `user_profiles` directly: somebody who is not yet a member of
+  /// this tenant is invisible to every RLS policy the admin has, which is the
+  /// whole reason they need adding. Returns null when no account uses that
+  /// address.
+  Future<TenantUserLookup?> lookupUserByEmail(String email) async {
+    final tenantId = SyncContext.tenantId;
+    if (tenantId == null || tenantId.isEmpty) {
+      throw StateError('No active tenant is configured.');
+    }
+
+    final rows = (await _client.rpc(
+      'admin_lookup_user_by_email',
+      params: {'p_tenant_id': tenantId, 'p_email': email},
+    ) as List)
+        .cast<Map<String, dynamic>>();
+
+    if (rows.isEmpty) return null;
+    final row = rows.first;
+
+    final userId = row['user_id']?.toString();
+    if (userId == null || userId.isEmpty) return null;
+
+    final displayName = row['display_name']?.toString().trim() ?? '';
+    final resolvedEmail = row['email']?.toString() ?? '';
+
+    return TenantUserLookup(
+      tenantId: tenantId,
+      userId: userId,
+      displayName: displayName.isNotEmpty
+          ? displayName
+          : (resolvedEmail.isEmpty ? 'Registered user' : resolvedEmail.split('@').first),
+      email: resolvedEmail,
+      phone: row['phone']?.toString(),
+      isActiveAccount: row['is_active'] == true,
+      isMember: row['is_member'] == true,
+      currentRole: UserRoleX.fromString(row['member_role']?.toString()),
+    );
+  }
+
+  /// Grant [role] to [userId] in the active tenant, with an audit row.
+  ///
+  /// Upserts rather than inserts: `tenant_members` is keyed on
+  /// `(tenant_id, user_id)`, and somebody who was previously deactivated still
+  /// has a row. A plain insert would fail on the primary key and leave an admin
+  /// unable to re-add a former colleague.
+  Future<void> addTenantMember({
+    required String userId,
+    required UserRole role,
+    required String assignedByUserId,
+    UserRole? previousRole,
+    String? reason,
+  }) async {
+    final tenantId = SyncContext.tenantId;
+    if (tenantId == null || tenantId.isEmpty) {
+      throw StateError('No active tenant is configured.');
+    }
+
+    // Audit first, membership second — the reverse of updateTenantMemberRole,
+    // which has an existing row to roll back to and so can afford to write
+    // first. Here there may be nothing to restore. If the audit insert fails,
+    // nothing has been granted; if the membership write fails, the audit
+    // records a change that did not happen. Of the two halves, a privilege
+    // granted with no record is the one that must not be possible.
+    //
+    // `previous_role` is NOT NULL, so a first-time grant records the new role
+    // on both sides. previous == new is how this table spells "no prior role".
+    await _client.from(tenantRoleAssignmentsTable).insert({
+      'tenant_id': tenantId,
+      'user_id': userId,
+      'previous_role': (previousRole ?? role).wire,
+      'new_role': role.wire,
+      'assigned_by_user_id': assignedByUserId,
+      'reason': reason ?? 'Added to tenant',
+    });
+
+    // Upsert, not insert: tenant_members is keyed on (tenant_id, user_id), and
+    // somebody previously deactivated still has a row. A plain insert would
+    // fail on the primary key and leave an admin unable to re-add a former
+    // colleague.
+    await _client.from(tenantMembersTable).upsert({
+      'tenant_id': tenantId,
+      'user_id': userId,
+      'role': role.wire,
+      'is_active': true,
+      'updated_at': DateTime.now().toUtc().toIso8601String(),
+    });
   }
 
   Future<List<Map<String, dynamic>>> fetchTechnicians() async {

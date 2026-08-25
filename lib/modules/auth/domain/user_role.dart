@@ -60,6 +60,31 @@ extension UserRoleX on UserRole {
     }
   }
 
+  /// The value Postgres expects for a `public.app_role` column.
+  ///
+  /// **Not** the same as [name]. The Dart enum spells the field role `tech`
+  /// while the database enum is `('admin','supervisor','dispatcher',
+  /// 'technician')`, so writing `role.name` to `tenant_members.role` or
+  /// `tenant_role_assignments.{previous,new}_role` fails with
+  /// `22P02 invalid input value for enum app_role: "tech"`.
+  ///
+  /// Reading is unaffected — [fromString] already accepts `technician`.
+  ///
+  /// Only for columns typed `app_role`. The legacy `technicians.role` is plain
+  /// text defaulting to `'tech'`, and keeps using [name].
+  String get wire {
+    switch (this) {
+      case UserRole.tech:
+        return 'technician';
+      case UserRole.supervisor:
+        return 'supervisor';
+      case UserRole.dispatcher:
+        return 'dispatcher';
+      case UserRole.admin:
+        return 'admin';
+    }
+  }
+
   /// Short machine-safe code (useful for persistence or logs).
   ///
   /// Example string values:

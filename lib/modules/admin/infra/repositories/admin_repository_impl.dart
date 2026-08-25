@@ -7,6 +7,7 @@ import 'package:voltcore/modules/auth/domain/user_role.dart';
 
 import '../../domain/entities/admin_dashboard_stats_entity.dart';
 import '../../domain/entities/tenant_member_entity.dart';
+import '../../domain/entities/tenant_user_lookup.dart';
 
 final adminRepositoryProvider = Provider<AdminRepository>((ref) {
   final remote = AdminRemoteDatasource();
@@ -36,6 +37,28 @@ class AdminRepositoryImpl implements AdminRepository {
       previousRole: member.role,
       newRole: newRole,
       assignedByUserId: assignedByUserId,
+      reason: reason,
+    );
+  }
+
+  @override
+  Future<TenantUserLookup?> lookupUserByEmail(String email) {
+    return _remote.lookupUserByEmail(email);
+  }
+
+  @override
+  Future<void> addTenantMember({
+    required String userId,
+    required UserRole role,
+    required String assignedByUserId,
+    UserRole? previousRole,
+    String? reason,
+  }) {
+    return _remote.addTenantMember(
+      userId: userId,
+      role: role,
+      assignedByUserId: assignedByUserId,
+      previousRole: previousRole,
       reason: reason,
     );
   }
