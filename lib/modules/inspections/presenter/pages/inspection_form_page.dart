@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/services/forms/form_draft_service.dart';
+import '../../../../app/nav_extensions.dart';
 import '../../../../shared/widgets/widgets.dart';
 import '../../domain/entities/inspection_entity.dart';
 import '../controllers/inspection_form_controller.dart';
@@ -234,7 +235,11 @@ class _InspectionFormPageState extends ConsumerState<InspectionFormPage> {
         final leave = await _confirmDiscard();
         if (leave && mounted) {
           FormDraftService.instance.cancelPending(inspection.id);
-          if (context.mounted) context.pop();
+          // popIfPossible, not pop: the navigation that triggered this may
+          // have been a `go` that already replaced the form, in which case
+          // there is nothing to pop and the technician is where they asked
+          // to be.
+          if (context.mounted) context.popIfPossible();
         }
       },
       child: AppPage(

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show Uint8List;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
+import '../../../../app/nav_extensions.dart';
 import 'package:open_filex/open_filex.dart';
 
 import '../../../../core/services/pdf/pdf_prefs_service.dart';
@@ -188,10 +188,12 @@ class _MaintenanceFormPageState extends ConsumerState<MaintenanceFormPage> {
         ),
       );
 
-      // Navigate back after brief delay
+      // Navigate back after brief delay. popOrGo, not pop: the record is
+      // saved and the technician must not be stranded on the form, so when
+      // there is nothing to pop we send them to the list rather than throw.
       Future.delayed(const Duration(milliseconds: 500), () {
         if (mounted) {
-          context.pop();
+          context.popOrGo('/maintenance');
         }
       });
 
@@ -384,7 +386,7 @@ class _MaintenanceFormPageState extends ConsumerState<MaintenanceFormPage> {
       onPopInvokedWithResult: (didPop, _) async {
         if (didPop) return;
         final leave = await _confirmDiscard();
-        if (leave && context.mounted) context.pop();
+        if (leave && context.mounted) context.popIfPossible();
       },
       child: AppPage(
       title: widget.id == null
