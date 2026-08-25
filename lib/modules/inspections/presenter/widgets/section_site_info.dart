@@ -100,13 +100,68 @@ class _SectionSiteInfoState extends ConsumerState<SectionSiteInfo> {
               onChanged: (v) => _update(
                   (curr) => curr.copyWith(siteGrade: v ?? '')),
             ),
+            // Address, one component per field.
+            //
+            // This was a single free-text box, which meant the same site could
+            // be written five different ways across five inspections and never
+            // match itself. Street line stays `address`, so every record
+            // written before the split still reads back exactly as entered.
             LabeledField(
-              label: 'Address',
+              label: 'Street Address',
               value: m.address,
               required: true,
-              maxLines: 2,
+              hint: '952 Flushing Ave',
+              prefixIcon: Icons.home_outlined,
+              textCapitalization: TextCapitalization.words,
+              onChanged: (v) => _update((curr) => curr.copyWith(address: v)),
+            ),
+            LabeledField(
+              label: 'Apt / Suite / Floor',
+              value: m.addressLine2,
+              hint: 'Suite 3',
+              helper: 'Optional',
+              prefixIcon: Icons.meeting_room_outlined,
+              textCapitalization: TextCapitalization.words,
               onChanged: (v) =>
-                  _update((curr) => curr.copyWith(address: v)),
+                  _update((curr) => curr.copyWith(addressLine2: v)),
+            ),
+            LabeledField(
+              label: 'City',
+              value: m.city,
+              hint: 'Brooklyn',
+              prefixIcon: Icons.location_city_outlined,
+              textCapitalization: TextCapitalization.words,
+              onChanged: (v) => _update((curr) => curr.copyWith(city: v)),
+            ),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // State is short and zip is fixed-width, so they share a row
+                // rather than each eating a full line on a tablet.
+                Expanded(
+                  flex: 2,
+                  child: LabeledField(
+                    label: 'State',
+                    value: m.state,
+                    hint: 'NY',
+                    textCapitalization: TextCapitalization.characters,
+                    onChanged: (v) =>
+                        _update((curr) => curr.copyWith(state: v)),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  flex: 3,
+                  child: LabeledField(
+                    label: 'ZIP Code',
+                    value: m.postalCode,
+                    hint: '11206',
+                    keyboardType: TextInputType.number,
+                    onChanged: (v) =>
+                        _update((curr) => curr.copyWith(postalCode: v)),
+                  ),
+                ),
+              ],
             ),
 
             // Technician — the kit's own "add option" affordance replaces the

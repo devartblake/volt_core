@@ -81,6 +81,45 @@ class Inspection extends HiveObject {
   // Generated PDF path
   @HiveField(60) String pdfPath;
 
+  // ---------------------------------------------------------------------
+  // Fields added after this type had already shipped.
+  //
+  // READ THIS BEFORE ADDING FIELD 66.
+  //
+  // Rows already written to a technician's device carry no entry for a field
+  // that did not exist when they were saved, so `fields[n]` comes back null.
+  // hive_generator emits a bare `fields[n] as String` for a non-nullable
+  // constructor parameter, which throws a TypeError on every one of those
+  // rows — the whole inspection list fails to load, not just the new column.
+  //
+  // `defaultValue:` is what prevents that. It makes the generator emit
+  //
+  //     fields[61] == null ? '' : fields[61] as String
+  //
+  // so the safety lives in the annotation and survives regeneration, rather
+  // than being patched into inspection.g.dart by hand where the next
+  // regeneration would silently drop it.
+  //
+  // A nullable constructor parameter achieves the same thing on its own —
+  // that is why `checklistNotes` needs no defaultValue: its parameter is
+  // `Map<String, String>?`, so the generator emits a null-safe `as Map?`.
+  //
+  // Either way, test/inspections/inspection_adapter_migration_test.dart
+  // decodes a row truncated to every historical field count and fails if a
+  // newly added field cannot tolerate being absent.
+  // ---------------------------------------------------------------------
+
+  // Address parts. Field 4 (`address`) stays the street line; records written
+  // before this split hold their whole one-line address there and leave these
+  // empty.
+  @HiveField(61, defaultValue: '') String addressLine2;
+  @HiveField(62, defaultValue: '') String city;
+  @HiveField(63, defaultValue: '') String state;
+  @HiveField(64, defaultValue: '') String postalCode;
+
+  /// Per-checklist-item conclusions, keyed by InspectionChecklistItem.key.
+  @HiveField(65) Map<String, String> checklistNotes;
+
   Inspection({
     required this.id,
     required this.createdAt,
@@ -143,7 +182,13 @@ class Inspection extends HiveObject {
     DateTime? customerSigDate,
     this.customerName = '',
     this.pdfPath = '',
-  })  : serviceDate = serviceDate ?? DateTime.now(),
+    this.addressLine2 = '',
+    this.city = '',
+    this.state = '',
+    this.postalCode = '',
+    Map<String, String>? checklistNotes,
+  })  : checklistNotes = checklistNotes ?? <String, String>{},
+        serviceDate = serviceDate ?? DateTime.now(),
         technicianSigDate = technicianSigDate ?? DateTime.now(),
         customerSigDate = customerSigDate ?? DateTime.now();
 }
@@ -151,6 +196,19 @@ class Inspection extends HiveObject {
 // ====== DOMAIN MAPPER ======
 
 extension InspectionHiveMapper on Inspection {
+  /// The whole address on one line, for the printed report.
+  ///
+  /// Field 4 holds only the street line since the address was split into
+  /// parts; records written before that hold their entire address there and
+  /// compose back to exactly the same string.
+  String get formattedAddress => composeAddress(
+        line1: address,
+        line2: addressLine2,
+        city: city,
+        state: state,
+        postalCode: postalCode,
+      );
+
   InspectionEntity toEntity() {
     return InspectionEntity(
       id: id,
@@ -159,6 +217,10 @@ extension InspectionHiveMapper on Inspection {
       siteCode: siteCode,
       siteGrade: siteGrade,
       address: address,
+      addressLine2: addressLine2,
+      city: city,
+      state: state,
+      postalCode: postalCode,
       serviceDate: serviceDate,
       technicianName: technicianName,
       generatorMake: generatorMake,
@@ -215,6 +277,7 @@ extension InspectionHiveMapper on Inspection {
       customerSigDate: customerSigDate,
       customerName: customerName,
       pdfPath: pdfPath,
+      checklistNotes: Map<String, String>.of(checklistNotes),
     );
   }
 }
@@ -227,6 +290,10 @@ Inspection inspectionFromEntity(InspectionEntity e) {
     siteCode: e.siteCode,
     siteGrade: e.siteGrade,
     address: e.address,
+    addressLine2: e.addressLine2,
+    city: e.city,
+    state: e.state,
+    postalCode: e.postalCode,
     serviceDate: e.serviceDate,
     technicianName: e.technicianName,
     generatorMake: e.generatorMake,
@@ -283,5 +350,6 @@ Inspection inspectionFromEntity(InspectionEntity e) {
     customerSigDate: e.customerSigDate,
     customerName: e.customerName,
     pdfPath: e.pdfPath,
+    checklistNotes: Map<String, String>.of(e.checklistNotes),
   );
 }

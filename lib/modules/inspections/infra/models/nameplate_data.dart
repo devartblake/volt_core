@@ -2,6 +2,15 @@ import 'package:hive/hive.dart';
 import '../../domain/entities/nameplate_entity.dart';
 part 'nameplate_data.g.dart';
 
+// ADDING A FIELD? It must tolerate being absent.
+//
+// Rows already on a technician's device carry no entry for a field that did
+// not exist when they were saved, so `fields[n]` comes back null and the
+// generated `fields[n] as String` throws — failing the whole record, not just
+// the new column. Give a new field `@HiveField(n, defaultValue: ...)` (or a
+// nullable constructor parameter) so the generator emits a null-safe read.
+// test/storage/hive_adapter_forward_compat_test.dart enforces this; update
+// its currentFieldCount for this model and leave fieldCountAtLastRelease.
 @HiveType(typeId: 12)
 class NameplateData extends HiveObject {
   @HiveField(0) String id;

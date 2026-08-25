@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../domain/entities/inspection_entity.dart';
+import '../../domain/inspection_checklist.dart';
 import '../../../../core/theme/status_colors.dart';
 import '../../../../shared/widgets/widgets.dart';
 
@@ -35,21 +36,14 @@ class _SectionPostInspectionState extends State<SectionPostInspection> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    // Calculate completion percentage
-    final checks = [
-      m.gensetRunsUnderLoad,
-      m.voltageFrequencyOk,
-      m.exhaustOk,
-      m.groundingBondingOk,
-      m.controlPanelOk,
-      m.safetyDevicesOk,
-      m.deficienciesDocumented,
-      m.loadbankDone,
-      m.atsVerified,
-      m.fuelStoredOver1Yr,
-    ];
-    final completed = checks.where((c) => c).length;
-    final percentage = (completed / checks.length * 100).toInt();
+    // Both the count and the rows below walk the same list, so an item can no
+    // longer be added to one and forgotten in the other.
+    final total = kInspectionChecklist.length;
+    final completed = m.checklistCompletedCount;
+    final percentage = (completed / total * 100).toInt();
+    final noted = kInspectionChecklist
+        .where((item) => m.checklistNoteFor(item.key).isNotEmpty)
+        .length;
 
     return Card(
       elevation: 0,
@@ -92,7 +86,8 @@ class _SectionPostInspectionState extends State<SectionPostInspection> {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        '$completed of ${checks.length} items completed',
+                        '$completed of $total answered yes'
+                        '${noted > 0 ? '  ·  $noted with conclusions' : ''}',
                         style: theme.textTheme.bodySmall?.copyWith(
                           color: theme.colorScheme.onSurfaceVariant,
                         ),
@@ -127,103 +122,115 @@ class _SectionPostInspectionState extends State<SectionPostInspection> {
               ),
             ),
             const SizedBox(height: 24),
-            _modernSwitch(
-              'Generator runs under load',
-              Icons.power,
-              m.gensetRunsUnderLoad,
-                  (curr, v) => curr.copyWith(gensetRunsUnderLoad: v),
-              theme,
-            ),
-            const SizedBox(height: 8),
-            _modernSwitch(
-              'Voltage & frequency acceptable',
-              Icons.electrical_services,
-              m.voltageFrequencyOk,
-                  (curr, v) => curr.copyWith(voltageFrequencyOk: v),
-              theme,
-            ),
-            const SizedBox(height: 8),
-            _modernSwitch(
-              'Exhaust condition OK',
-              Icons.air,
-              m.exhaustOk,
-                  (curr, v) => curr.copyWith(exhaustOk: v),
-              theme,
-            ),
-            const SizedBox(height: 8),
-            _modernSwitch(
-              'Grounding / Bonding OK',
-              Icons.bolt,
-              m.groundingBondingOk,
-                  (curr, v) => curr.copyWith(groundingBondingOk: v),
-              theme,
-            ),
-            const SizedBox(height: 8),
-            _modernSwitch(
-              'Control panel OK',
-              Icons.dashboard,
-              m.controlPanelOk,
-                  (curr, v) => curr.copyWith(controlPanelOk: v),
-              theme,
-            ),
-            const SizedBox(height: 8),
-            _modernSwitch(
-              'Safety devices operational',
-              Icons.security,
-              m.safetyDevicesOk,
-                  (curr, v) => curr.copyWith(safetyDevicesOk: v),
-              theme,
-            ),
-            const SizedBox(height: 8),
-            _modernSwitch(
-              'Deficiencies documented',
-              Icons.description,
-              m.deficienciesDocumented,
-                  (curr, v) => curr.copyWith(deficienciesDocumented: v),
-              theme,
-            ),
-            const SizedBox(height: 8),
-            _modernSwitch(
-              'Loadbank test completed',
-              Icons.science,
-              m.loadbankDone,
-                  (curr, v) => curr.copyWith(loadbankDone: v),
-              theme,
-            ),
-            const SizedBox(height: 8),
-            _modernSwitch(
-              'ATS verified',
-              Icons.swap_horiz,
-              m.atsVerified,
-                  (curr, v) => curr.copyWith(atsVerified: v),
-              theme,
-            ),
-            const SizedBox(height: 8),
-            _modernSwitch(
-              'Fuel stored over 1 year',
-              Icons.water_drop,
-              m.fuelStoredOver1Yr,
-                  (curr, v) => curr.copyWith(fuelStoredOver1Yr: v),
-              theme,
-            ),
+            for (final item in kInspectionChecklist) ...[
+              StatusSwitchTile(
+                label: item.label,
+                icon: _iconFor(item.key),
+                value: item.read(m),
+                onChanged: (v) => _update((curr) => item.write(curr, v)),
+                note: m.checklistNoteFor(item.key),
+                onNotePressed: () => _editConclusion(item),
+                margin: const EdgeInsets.only(bottom: 8),
+              ),
+              // Show the conclusion under its own row rather than only behind
+              // the dialog. A finding nobody can see without tapping into it is
+              // a finding that gets missed on review.
+              if (m.checklistNoteFor(item.key).isNotEmpty)
+                _ConclusionSummary(
+                  text: m.checklistNoteFor(item.key),
+                  onTap: () => _editConclusion(item),
+                ),
+            ],
           ],
         ),
       ),
     );
   }
 
-  Widget _modernSwitch(
-      String label,
-      IconData icon,
-      bool val,
-      InspectionEntity Function(InspectionEntity, bool) onSavedBuilder,
-      ThemeData theme,
-      ) {
-    return StatusSwitchTile(
-      label: label,
-      icon: icon,
-      value: val,
-      onChanged: (v) => _update((curr) => onSavedBuilder(curr, v)),
+  Future<void> _editConclusion(InspectionChecklistItem item) async {
+    final result = await ChecklistNoteDialog.show(
+      context,
+      itemLabel: item.label,
+      answer: item.read(widget.model),
+      initialText: widget.model.checklistNoteFor(item.key),
+    );
+    // null is a dismissal; "" is a deliberate clear, which withChecklistNote
+    // turns into a removal.
+    if (result == null) return;
+    _update((curr) => curr.withChecklistNote(item.key, result));
+  }
+
+  /// Icons stay in the presenter — the checklist itself is domain data and has
+  /// no business importing material.
+  static IconData _iconFor(String key) {
+    switch (key) {
+      case 'genset_runs_under_load':
+        return Icons.power;
+      case 'voltage_frequency_ok':
+        return Icons.electrical_services;
+      case 'exhaust_ok':
+        return Icons.air;
+      case 'grounding_bonding_ok':
+        return Icons.bolt;
+      case 'control_panel_ok':
+        return Icons.dashboard;
+      case 'safety_devices_ok':
+        return Icons.security;
+      case 'deficiencies_documented':
+        return Icons.description;
+      case 'loadbank_done':
+        return Icons.science;
+      case 'ats_verified':
+        return Icons.swap_horiz;
+      case 'fuel_stored_over_1yr':
+        return Icons.water_drop;
+      default:
+        return Icons.check_circle_outline;
+    }
+  }
+}
+
+/// One saved conclusion, rendered under the item it belongs to.
+class _ConclusionSummary extends StatelessWidget {
+  const _ConclusionSummary({required this.text, required this.onTap});
+
+  final String text;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+
+    return Padding(
+      padding: const EdgeInsets.only(left: 16, right: 8, bottom: 12),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(8),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(
+                Icons.subdirectory_arrow_right,
+                size: 16,
+                color: scheme.onSurfaceVariant,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  text,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: scheme.onSurfaceVariant,
+                    fontStyle: FontStyle.italic,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

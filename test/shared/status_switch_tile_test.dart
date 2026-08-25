@@ -23,6 +23,27 @@ Widget _host({
   );
 }
 
+/// Host that exercises the yes/no badge and the conclusion button.
+Widget _annotatedHost({
+  required bool value,
+  String? note,
+  VoidCallback? onNotePressed,
+}) {
+  return MaterialApp(
+    theme: AppTheme.lightTheme,
+    home: Scaffold(
+      body: StatusSwitchTile(
+        label: 'Exhaust condition OK',
+        icon: Icons.air,
+        value: value,
+        onChanged: (_) {},
+        note: note,
+        onNotePressed: onNotePressed,
+      ),
+    ),
+  );
+}
+
 void main() {
   group('StatusSwitchTile', () {
     testWidgets('renders and toggles', (tester) async {
@@ -122,6 +143,78 @@ void main() {
         material.color,
         theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
       );
+    });
+  });
+
+  group('yes/no indicator', () {
+    testWidgets('spells out the switch position', (tester) async {
+      // A bare switch only reads as an answer once you know which side is
+      // which, and these get audited later by somebody who was not there.
+      await tester.pumpWidget(_annotatedHost(value: false));
+      expect(find.text('NO'), findsOneWidget);
+      expect(find.text('YES'), findsNothing);
+
+      await tester.pumpWidget(_annotatedHost(value: true));
+      expect(find.text('YES'), findsOneWidget);
+      expect(find.text('NO'), findsNothing);
+    });
+  });
+
+  group('conclusion button', () {
+    testWidgets('is absent unless a handler is given', (tester) async {
+      await tester.pumpWidget(_annotatedHost(value: true));
+      expect(find.byIcon(Icons.note_add_outlined), findsNothing);
+      expect(find.byIcon(Icons.sticky_note_2), findsNothing);
+    });
+
+    testWidgets('shows an empty-note icon when nothing is written',
+        (tester) async {
+      await tester.pumpWidget(
+        _annotatedHost(value: true, note: '', onNotePressed: () {}),
+      );
+      expect(find.byIcon(Icons.note_add_outlined), findsOneWidget);
+    });
+
+    testWidgets('changes icon once a conclusion exists', (tester) async {
+      // Distinguishable by shape, not only by shade — the tile is read on a
+      // tablet in a generator room.
+      await tester.pumpWidget(
+        _annotatedHost(value: true, note: 'Minor soot.', onNotePressed: () {}),
+      );
+      expect(find.byIcon(Icons.sticky_note_2), findsOneWidget);
+      expect(find.byIcon(Icons.note_add_outlined), findsNothing);
+    });
+
+    testWidgets('treats whitespace as no note', (tester) async {
+      await tester.pumpWidget(
+        _annotatedHost(value: true, note: '   ', onNotePressed: () {}),
+      );
+      expect(find.byIcon(Icons.note_add_outlined), findsOneWidget);
+    });
+
+    testWidgets('opens the note without toggling the switch', (tester) async {
+      // The button sits inside SwitchListTile's title, so a tap that fell
+      // through to the tile would flip the answer while opening the dialog.
+      var noteTaps = 0;
+      var toggles = 0;
+      await tester.pumpWidget(MaterialApp(
+        theme: AppTheme.lightTheme,
+        home: Scaffold(
+          body: StatusSwitchTile(
+            label: 'Exhaust condition OK',
+            icon: Icons.air,
+            value: true,
+            onChanged: (_) => toggles++,
+            onNotePressed: () => noteTaps++,
+          ),
+        ),
+      ));
+
+      await tester.tap(find.byIcon(Icons.note_add_outlined));
+      await tester.pumpAndSettle();
+
+      expect(noteTaps, 1);
+      expect(toggles, 0);
     });
   });
 }

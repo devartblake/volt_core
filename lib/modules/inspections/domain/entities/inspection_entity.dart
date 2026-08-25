@@ -10,7 +10,19 @@ class InspectionEntity {
   final DateTime updatedAt;
   final String siteCode;
   final String siteGrade; // "Green" | "Amber" | "Red"
+  /// Street line: number and street only.
+  ///
+  /// Records created before the address was split into parts hold their whole
+  /// one-line address here, which is why nothing migrates it out: for those
+  /// rows [formattedAddress] is just this string, and they keep rendering
+  /// exactly as before.
   final String address;
+
+  /// Apartment, suite, floor or unit. Optional.
+  final String addressLine2;
+  final String city;
+  final String state;
+  final String postalCode;
   final DateTime serviceDate;
   final String technicianName;
   final String generatorMake;
@@ -80,6 +92,15 @@ class InspectionEntity {
   final String customerName;
   final String pdfPath;
 
+  /// Per-item conclusions for the post-inspection checklist, keyed by
+  /// [InspectionChecklistItem.key].
+  ///
+  /// The switches record *whether* each item passed; this records *what was
+  /// found*. The single Notes box at the bottom of the form cannot say which
+  /// item a remark belongs to, which is exactly what the reader needs months
+  /// later. Absent key means no conclusion was written for that item.
+  final Map<String, String> checklistNotes;
+
   /// When the inspection is scheduled to occur (defaults to [serviceDate]).
   final DateTime scheduledAt;
 
@@ -99,6 +120,10 @@ class InspectionEntity {
     this.siteCode = '',
     this.siteGrade = '',
     this.address = '',
+    this.addressLine2 = '',
+    this.city = '',
+    this.state = '',
+    this.postalCode = '',
     required this.serviceDate,
     this.technicianName = '',
     this.generatorMake = '',
@@ -155,6 +180,7 @@ class InspectionEntity {
     required this.customerSigDate,
     this.customerName = '',
     this.pdfPath = '',
+    this.checklistNotes = const {},
     DateTime? scheduledAt,
     this.nextDueAt,
     this.tenantId = '',
@@ -168,6 +194,10 @@ class InspectionEntity {
     String? siteCode,
     String? siteGrade,
     String? address,
+    String? addressLine2,
+    String? city,
+    String? state,
+    String? postalCode,
     DateTime? serviceDate,
     String? technicianName,
     String? generatorMake,
@@ -224,6 +254,7 @@ class InspectionEntity {
     DateTime? customerSigDate,
     String? customerName,
     String? pdfPath,
+    Map<String, String>? checklistNotes,
     DateTime? scheduledAt,
     DateTime? nextDueAt,
     String? tenantId,
@@ -236,6 +267,10 @@ class InspectionEntity {
       siteCode: siteCode ?? this.siteCode,
       siteGrade: siteGrade ?? this.siteGrade,
       address: address ?? this.address,
+      addressLine2: addressLine2 ?? this.addressLine2,
+      city: city ?? this.city,
+      state: state ?? this.state,
+      postalCode: postalCode ?? this.postalCode,
       serviceDate: serviceDate ?? this.serviceDate,
       technicianName: technicianName ?? this.technicianName,
       generatorMake: generatorMake ?? this.generatorMake,
@@ -299,6 +334,7 @@ class InspectionEntity {
       customerSigDate: customerSigDate ?? this.customerSigDate,
       customerName: customerName ?? this.customerName,
       pdfPath: pdfPath ?? this.pdfPath,
+      checklistNotes: checklistNotes ?? this.checklistNotes,
       scheduledAt: scheduledAt ?? this.scheduledAt,
       nextDueAt: nextDueAt ?? this.nextDueAt,
       tenantId: tenantId ?? this.tenantId,
@@ -316,6 +352,10 @@ class InspectionEntity {
       siteCode: '',
       siteGrade: '',
       address: '',
+      addressLine2: '',
+      city: '',
+      state: '',
+      postalCode: '',
       serviceDate: now,
       technicianName: '',
       generatorMake: '',
@@ -372,6 +412,7 @@ class InspectionEntity {
       customerSigDate: now,
       customerName: '',
       pdfPath: '',
+      checklistNotes: const {},
       // all other fields rely on their default values from the constructor
     );
   }
@@ -401,10 +442,48 @@ String inspectionDisplayTitle({
       '${serviceDate.month}/${serviceDate.day}/${serviceDate.year}';
 }
 
+/// Join the address parts into one line, skipping the blanks.
+///
+/// Nothing is inferred and nothing is reformatted — an inspection saved with
+/// only a street line renders as just that street line, which is what every
+/// record created before the address was split into parts looks like.
+String composeAddress({
+  required String line1,
+  String line2 = '',
+  String city = '',
+  String state = '',
+  String postalCode = '',
+}) {
+  final street = [line1.trim(), line2.trim()]
+      .where((part) => part.isNotEmpty)
+      .join(', ');
+
+  // "Brooklyn NY 11206" — state and zip are one unit, not comma-separated,
+  // because that is how a US address is written and how it will be read back
+  // off a printed report.
+  final region = [state.trim(), postalCode.trim()]
+      .where((part) => part.isNotEmpty)
+      .join(' ');
+  final locality = [city.trim(), region]
+      .where((part) => part.isNotEmpty)
+      .join(', ');
+
+  return [street, locality].where((part) => part.isNotEmpty).join(', ');
+}
+
 extension InspectionEntityDisplay on InspectionEntity {
+  /// The whole address on one line. See [composeAddress].
+  String get formattedAddress => composeAddress(
+        line1: address,
+        line2: addressLine2,
+        city: city,
+        state: state,
+        postalCode: postalCode,
+      );
+
   /// See [inspectionDisplayTitle].
   String get displayTitle => inspectionDisplayTitle(
-        address: address,
+        address: formattedAddress,
         siteCode: siteCode,
         serviceDate: serviceDate,
       );

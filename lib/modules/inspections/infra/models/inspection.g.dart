@@ -78,13 +78,18 @@ class InspectionAdapter extends TypeAdapter<Inspection> {
       customerSigDate: fields[58] as DateTime?,
       customerName: fields[59] as String,
       pdfPath: fields[60] as String,
+      addressLine2: fields[61] == null ? '' : fields[61] as String,
+      city: fields[62] == null ? '' : fields[62] as String,
+      state: fields[63] == null ? '' : fields[63] as String,
+      postalCode: fields[64] == null ? '' : fields[64] as String,
+      checklistNotes: (fields[65] as Map?)?.cast<String, String>(),
     );
   }
 
   @override
   void write(BinaryWriter writer, Inspection obj) {
     writer
-      ..writeByte(61)
+      ..writeByte(66)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -206,7 +211,17 @@ class InspectionAdapter extends TypeAdapter<Inspection> {
       ..writeByte(59)
       ..write(obj.customerName)
       ..writeByte(60)
-      ..write(obj.pdfPath);
+      ..write(obj.pdfPath)
+      ..writeByte(61)
+      ..write(obj.addressLine2)
+      ..writeByte(62)
+      ..write(obj.city)
+      ..writeByte(63)
+      ..write(obj.state)
+      ..writeByte(64)
+      ..write(obj.postalCode)
+      ..writeByte(65)
+      ..write(obj.checklistNotes);
   }
 
   @override
