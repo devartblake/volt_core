@@ -11,6 +11,7 @@ import 'file_backup_service.dart';
 import 'sync_context.dart';
 import 'sync_operation.dart';
 import 'sync_queue.dart';
+import 'tenant_retag.dart';
 
 enum SyncState { idle, syncing, offline }
 
@@ -202,6 +203,7 @@ class SyncService {
       _emit(state: SyncState.syncing);
 
       final ops = await _queue.all();
+      await _retagQueuedRows(ops);
       for (final op in ops) {
         if (op.status == SyncOpStatus.failed && op.attempts >= _maxAttempts) {
           continue;
@@ -226,7 +228,7 @@ class SyncService {
             debugPrint(
               '[Sync] ${op.type.name} failed (attempt ${op.attempts}): $e',
             );
-            _debugExplainIfRlsDenied(e);
+            _debugExplainIfRlsDenied(e, op);
           }
         }
       }
@@ -239,24 +241,59 @@ class SyncService {
     }
   }
 
-  static void _debugExplainIfRlsDenied(Object error) {
+  /// Explain a 42501 in terms of the row that was actually rejected.
+  ///
+  /// This used to print [SyncContext.tenantId] as "tenant_id sent", which is
+  /// the tenant configured *now* rather than the one frozen into the queued
+  /// row. When those disagree — the case that produces the rejection — the
+  /// message contradicted itself, reporting the correct tenant beside a 403.
+  static void _debugExplainIfRlsDenied(Object error, SyncOperation op) {
     if (!error.toString().contains('42501')) return;
 
+    final row = op.type == SyncOpType.upsert ? op.payload['row'] : null;
+    final rowTenant = row is Map ? row['tenant_id']?.toString() : null;
     final tenant = SyncContext.tenantId;
     final user = SyncContext.userId;
+
+    final offender = rowTenant ?? tenant;
 
     debugPrint(
       '[Sync] ^ This is row-level security, not connectivity. Retrying will '
       'not clear it.\n'
-      '       tenant_id sent = ${tenant ?? '(SUPABASE_TENANT_ID not set)'}\n'
-      '       auth user      = ${user ?? '(no session)'}\n'
-      '${tenant != null && tenant == user ? '       These are the same uuid: SUPABASE_TENANT_ID is set to the\n'
-          '       user id rather than a tenant id.\n' : ''}'
-      '       Fix: run supabase/manual/tenant_bootstrap.sql, then set\n'
-      '       SUPABASE_TENANT_ID to the tenant id it prints and restart.\n'
-      '       Rows already queued keep the old tenant_id — clear the sync '
-      'queue after.',
+      '       tenant_id on the row = ${rowTenant ?? '(none on this op)'}\n'
+      '       tenant_id configured = '
+      '${tenant ?? '(SUPABASE_TENANT_ID not set)'}\n'
+      '       auth user            = ${user ?? '(no session)'}\n'
+      '${offender != null && offender == user ? '       The rejected tenant_id is the user id, not a tenant id.\n' : ''}'
+      '${rowTenant != null && tenant != null && rowTenant != tenant ? '       The row predates the current setting; it is re-stamped and\n'
+          '       retried automatically on the next drain.\n' : '       Fix: run supabase/manual/tenant_bootstrap.sql, then set\n'
+          '       SUPABASE_TENANT_ID to the tenant id it prints and restart.\n'}',
     );
+  }
+
+  /// Bring queued rows up to date with the currently configured tenant.
+  ///
+  /// See [retagQueuedRow]: without this, fixing `SUPABASE_TENANT_ID` only
+  /// affects rows queued afterwards, and everything already in the outbox
+  /// retries against the old tenant until it exhausts its budget and dies.
+  Future<void> _retagQueuedRows(List<SyncOperation> ops) async {
+    final tenant = SyncContext.tenantId;
+    if (tenant == null) return;
+
+    var retagged = 0;
+    for (final op in ops) {
+      if (retagQueuedRow(op, tenant)) {
+        await _queue.save(op);
+        retagged++;
+      }
+    }
+
+    if (retagged > 0 && kDebugMode) {
+      debugPrint(
+        '[Sync] Re-stamped $retagged queued row(s) onto tenant $tenant; they '
+        'were captured under a different one.',
+      );
+    }
   }
 
   bool _backoffElapsed(SyncOperation op) {
