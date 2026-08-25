@@ -78,16 +78,11 @@ class InspectionAdapter extends TypeAdapter<Inspection> {
       customerSigDate: fields[58] as DateTime?,
       customerName: fields[59] as String,
       pdfPath: fields[60] as String,
-      // Fields 61+ were added after rows existed on devices. Those rows carry
-      // no entry, so `fields[61]` is null and a bare `as String` would throw
-      // on every inspection saved before the upgrade. Hand-maintained: this
-      // file is checked in without build_runner in the pubspec.
-      addressLine2: fields[61] as String? ?? '',
-      city: fields[62] as String? ?? '',
-      state: fields[63] as String? ?? '',
-      postalCode: fields[64] as String? ?? '',
-      checklistNotes:
-          (fields[65] as Map?)?.cast<String, String>() ?? <String, String>{},
+      addressLine2: fields[61] == null ? '' : fields[61] as String,
+      city: fields[62] == null ? '' : fields[62] as String,
+      state: fields[63] == null ? '' : fields[63] as String,
+      postalCode: fields[64] == null ? '' : fields[64] as String,
+      checklistNotes: (fields[65] as Map?)?.cast<String, String>(),
     );
   }
 

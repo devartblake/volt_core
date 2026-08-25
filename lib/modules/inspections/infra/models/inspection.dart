@@ -81,19 +81,41 @@ class Inspection extends HiveObject {
   // Generated PDF path
   @HiveField(60) String pdfPath;
 
-  // Address parts. Field 4 (`address`) stays the street line; records written
-  // before this split hold their whole one-line address there and simply leave
-  // these empty.
+  // ---------------------------------------------------------------------
+  // Fields added after this type had already shipped.
   //
-  // NOTE: inspection.g.dart is checked in without build_runner in the
-  // pubspec, so it is maintained by hand. Fields 61+ are read with null-safe
-  // casts because rows written before they existed have no entry for them —
-  // regenerating this adapter would emit bare `as String` casts and start
-  // throwing on every pre-existing inspection.
-  @HiveField(61) String addressLine2;
-  @HiveField(62) String city;
-  @HiveField(63) String state;
-  @HiveField(64) String postalCode;
+  // READ THIS BEFORE ADDING FIELD 66.
+  //
+  // Rows already written to a technician's device carry no entry for a field
+  // that did not exist when they were saved, so `fields[n]` comes back null.
+  // hive_generator emits a bare `fields[n] as String` for a non-nullable
+  // constructor parameter, which throws a TypeError on every one of those
+  // rows — the whole inspection list fails to load, not just the new column.
+  //
+  // `defaultValue:` is what prevents that. It makes the generator emit
+  //
+  //     fields[61] == null ? '' : fields[61] as String
+  //
+  // so the safety lives in the annotation and survives regeneration, rather
+  // than being patched into inspection.g.dart by hand where the next
+  // regeneration would silently drop it.
+  //
+  // A nullable constructor parameter achieves the same thing on its own —
+  // that is why `checklistNotes` needs no defaultValue: its parameter is
+  // `Map<String, String>?`, so the generator emits a null-safe `as Map?`.
+  //
+  // Either way, test/inspections/inspection_adapter_migration_test.dart
+  // decodes a row truncated to every historical field count and fails if a
+  // newly added field cannot tolerate being absent.
+  // ---------------------------------------------------------------------
+
+  // Address parts. Field 4 (`address`) stays the street line; records written
+  // before this split hold their whole one-line address there and leave these
+  // empty.
+  @HiveField(61, defaultValue: '') String addressLine2;
+  @HiveField(62, defaultValue: '') String city;
+  @HiveField(63, defaultValue: '') String state;
+  @HiveField(64, defaultValue: '') String postalCode;
 
   /// Per-checklist-item conclusions, keyed by InspectionChecklistItem.key.
   @HiveField(65) Map<String, String> checklistNotes;

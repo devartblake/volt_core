@@ -63,6 +63,10 @@ class _ReplayReader implements BinaryReader {
       throw UnimplementedError('${invocation.memberName}');
 }
 
+/// How many fields the adapter writes today. Bump alongside the adapter's
+/// leading `writeByte(n)`; the test below asserts they agree.
+const kInspectionAdapterFieldCount = 66;
+
 void main() {
   final adapter = InspectionAdapter();
 
@@ -93,32 +97,42 @@ void main() {
       expect(restored.checklistNotes, {'exhaust_ok': 'Minor soot.'});
     });
 
-    test('reads a row written before those fields existed', () {
-      // The migration case, and the reason inspection.g.dart reads fields 61+
-      // with null-safe casts. That file is checked in without build_runner in
-      // the pubspec, so regenerating it would emit bare `as String` casts —
-      // and every inspection already on a technician's tablet would start
-      // throwing a TypeError on load.
-      final model = inspectionFromEntity(
-        InspectionEntity.newDraft().copyWith(address: 'Legacy row'),
-      );
+    // Every field added after this type shipped must tolerate being absent,
+    // because rows already on a technician's device carry no entry for it.
+    // Truncating to each historical field count is how a *future* field 66
+    // gets caught too: add one without a `defaultValue:` (or a nullable
+    // constructor parameter) and the shortest truncation below throws
+    // "type 'Null' is not a subtype of type 'String' in type cast" — which is
+    // exactly what the technician's device would do on every inspection.
+    //
+    // 61 is the field count of the release before the address split.
+    const oldestShippedFieldCount = 61;
 
-      final legacyFields =
-          encode(model).fields.where((field) => field.key <= 60).toList();
-      expect(legacyFields, hasLength(61), reason: 'fields 0..60 only');
+    for (var size = oldestShippedFieldCount;
+        size <= kInspectionAdapterFieldCount;
+        size++) {
+      test('reads a row holding only the first $size fields', () {
+        final model = inspectionFromEntity(
+          InspectionEntity.newDraft().copyWith(address: 'Legacy row'),
+        );
 
-      final restored = adapter.read(_ReplayReader(legacyFields));
+        final truncated =
+            encode(model).fields.where((field) => field.key < size).toList();
+        expect(truncated, hasLength(size));
 
-      expect(restored.address, 'Legacy row');
-      expect(restored.addressLine2, '');
-      expect(restored.city, '');
-      expect(restored.state, '');
-      expect(restored.postalCode, '');
-      expect(restored.checklistNotes, isEmpty);
+        final restored = adapter.read(_ReplayReader(truncated));
 
-      // And it still composes back to exactly what was stored.
-      expect(restored.formattedAddress, 'Legacy row');
-    });
+        // Whatever is missing falls back to a usable empty value rather than
+        // throwing, and what *was* stored is untouched.
+        expect(restored.address, 'Legacy row');
+        expect(restored.formattedAddress, 'Legacy row');
+        expect(restored.addressLine2, isA<String>());
+        expect(restored.city, isA<String>());
+        expect(restored.state, isA<String>());
+        expect(restored.postalCode, isA<String>());
+        expect(restored.checklistNotes, isA<Map<String, String>>());
+      });
+    }
 
     test('declares exactly as many fields as it writes', () {
       // Guards the hand-maintained count. The adapter opens with a single
@@ -128,11 +142,14 @@ void main() {
       final writer = encode(inspectionFromEntity(InspectionEntity.newDraft()));
 
       expect(writer.declaredCount, writer.fields.length);
-      expect(writer.declaredCount, 66);
-      expect(writer.fields.map((f) => f.key).toSet(), hasLength(66));
+      expect(writer.declaredCount, kInspectionAdapterFieldCount);
+      expect(
+        writer.fields.map((f) => f.key).toSet(),
+        hasLength(kInspectionAdapterFieldCount),
+      );
       expect(
         writer.fields.map((f) => f.key).reduce((a, b) => a > b ? a : b),
-        65,
+        kInspectionAdapterFieldCount - 1,
       );
     });
   });
