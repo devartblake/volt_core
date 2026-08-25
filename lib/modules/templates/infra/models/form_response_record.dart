@@ -6,6 +6,15 @@ const int kFormResponseRecordTypeId = 74;
 ///
 /// The values snapshot stays JSON-compatible so it can be sent unchanged to
 /// Supabase and, crucially, continues to describe the exact revision used.
+// ADDING A FIELD? It must tolerate being absent.
+//
+// This adapter is written by hand, so read the new field defensively —
+// `fields[n] as String? ?? ''`, never a bare cast. Rows already on a
+// technician's device carry no entry for it, and a bare cast throws on null,
+// failing the whole record rather than just the new column. Remember the
+// leading writeByte(count) too.
+// test/storage/hive_adapter_forward_compat_test.dart enforces this; update
+// its currentFieldCount for this model and leave fieldCountAtLastRelease.
 @HiveType(typeId: kFormResponseRecordTypeId)
 class FormResponseRecord {
   const FormResponseRecord({

@@ -3,6 +3,15 @@ import 'package:hive/hive.dart';
 part 'load_test_record.g.dart';
 
 /// A single row from the "Load Test" sheet, linked to an Inspection by `inspectionId`.
+// ADDING A FIELD? It must tolerate being absent.
+//
+// Rows already on a technician's device carry no entry for a field that did
+// not exist when they were saved, so `fields[n]` comes back null and the
+// generated `fields[n] as String` throws — failing the whole record, not just
+// the new column. Give a new field `@HiveField(n, defaultValue: ...)` (or a
+// nullable constructor parameter) so the generator emits a null-safe read.
+// test/storage/hive_adapter_forward_compat_test.dart enforces this; update
+// its currentFieldCount for this model and leave fieldCountAtLastRelease.
 @HiveType(typeId: 11) // <-- make sure this is unused elsewhere
 class LoadTestRecord extends HiveObject {
   @HiveField(0)
