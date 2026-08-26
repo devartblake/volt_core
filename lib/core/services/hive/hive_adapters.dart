@@ -10,6 +10,8 @@ import '../../../modules/load_test/infra/models/test_interval_record.dart';
 import '../../../modules/maintenance/infra/models/maintenance_record.dart';
 import '../../../modules/schedule/infra/models/schedule_task.dart';
 import '../../../modules/templates/infra/models/form_response_record.dart';
+import '../../../modules/fleet/infra/models/vehicle_asset_catalog_item_record.dart';
+import '../../../modules/fleet/infra/models/vehicle_asset_record.dart';
 import '../../../modules/fleet/infra/models/vehicle_maintenance_check_record.dart';
 import '../../../modules/fleet/infra/models/vehicle_record.dart';
 import '../../../modules/work_orders/infra/models/work_order_record.dart';
@@ -40,6 +42,10 @@ class HiveAdapters {
     _safeRegister<VehicleMaintenanceCheckRecord>(
       VehicleMaintenanceCheckRecordAdapter(),
     );
+    _safeRegister<VehicleAssetCatalogItemRecord>(
+      VehicleAssetCatalogItemRecordAdapter(),
+    );
+    _safeRegister<VehicleAssetRecord>(VehicleAssetRecordAdapter());
     _safeRegister<FormResponseRecord>(FormResponseRecordAdapter());
 
     _registered = true;

@@ -16,8 +16,18 @@ void main() {
   bool allows(String route, UserRole role) =>
       RouteRoles.isAllowedByName(name: route, role: role);
 
-  const readable = ['fleet', 'fleet_vehicle_detail'];
-  const managerOnly = ['fleet_vehicle_new', 'fleet_vehicle_edit'];
+  // A technician opens their own van's pages; RLS narrows *which* van.
+  const readable = [
+    'fleet',
+    'fleet_vehicle_detail',
+    'fleet_vehicle_assets',
+  ];
+  const managerOnly = [
+    'fleet_vehicle_new',
+    'fleet_vehicle_edit',
+    'fleet_maintenance_new',
+  ];
+  const adminOnly = ['fleet_catalog'];
 
   group('a technician', () {
     test('can open their vehicle', () {
@@ -43,6 +53,24 @@ void main() {
       for (final role in managers) {
         for (final route in [...readable, ...managerOnly]) {
           expect(allows(route, role), isTrue, reason: '$role → $route');
+        }
+      }
+    });
+  });
+
+  group('the tool catalog', () {
+    test('is admin-only', () {
+      // A sloppy catalog is exactly what splitting catalog from assignment
+      // exists to prevent, and the migration gates its writes on
+      // has_tenant_role(..., ['admin']).
+      for (final route in adminOnly) {
+        expect(allows(route, UserRole.admin), isTrue, reason: route);
+        for (final role in [
+          UserRole.tech,
+          UserRole.supervisor,
+          UserRole.dispatcher,
+        ]) {
+          expect(allows(route, role), isFalse, reason: '$role → $route');
         }
       }
     });

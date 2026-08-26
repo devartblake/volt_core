@@ -183,6 +183,19 @@ class RouteRoles {
       UserRole.dispatcher,
       UserRole.admin,
     },
+    // A technician opens their own van's tool list — it is what they signed
+    // for. RLS returns only their vehicle's assets; adding and editing is
+    // gated in the UI and by vehicle_assets' write policies.
+    'fleet_vehicle_assets': {
+      UserRole.tech,
+      UserRole.supervisor,
+      UserRole.dispatcher,
+      UserRole.admin,
+    },
+    // Admin only, unlike the rest of the fleet. A sloppy catalog is exactly
+    // what splitting catalog from assignment exists to prevent, and the
+    // migration gates its writes on has_tenant_role(..., ['admin']).
+    'fleet_catalog': {UserRole.admin},
     'fleet_vehicle_new': {
       UserRole.supervisor,
       UserRole.dispatcher,

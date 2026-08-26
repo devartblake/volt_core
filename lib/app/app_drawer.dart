@@ -174,6 +174,14 @@ const List<NavSection> _navSections = [
         routeName: RouteNames.fleet,
         description: 'Vans and trucks, and who is stationed to them',
       ),
+      NavItem(
+        'Tool Catalog',
+        Icons.handyman_outlined,
+        RoutePaths.fleetCatalog,
+        routeName: RouteNames.fleetCatalog,
+        description: 'Tool types vans carry',
+        isSubItem: true,
+      ),
     ],
   ),
 

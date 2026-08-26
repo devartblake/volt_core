@@ -1,7 +1,7 @@
 # Fleet & vehicle assets — implementation plan
 
 **Date:** 2026-08-25
-**Status:** 🚧 Phases 1–2 built. Phases 3–5 proposed.
+**Status:** 🚧 Phases 1–3 built. Phases 4–5 proposed.
 **Scope:** Two new capabilities — vehicle records with a maintenance checklist,
 and the tool inventory carried in each vehicle with its signed hand-over
 receipt.
@@ -303,7 +303,7 @@ Ordered so each phase is independently useful and independently revertable.
 | --- | --- | --- |
 | **1** ✅ | Migration for `fleet_vehicles` + RLS; entity, Hive model, repo, sync; list / detail / form; RBAC + drawer | Done — see §11 |
 | **2** ✅ | `vehicle_maintenance_checks`; checklist form; history tab; latest-values denormalisation | Done — see §12 |
-| **3** | `vehicle_asset_catalog` + `vehicle_assets`; catalog admin screen; per-vehicle assignment | Medium |
+| **3** ✅ | `vehicle_asset_catalog` + `vehicle_assets`; catalog admin screen; per-vehicle assignment | Done — see §13 |
 | **4** | `vehicle_asset_checks` + lines; receipt screen; signature; PDF | Largest of the asset work |
 | **5** | Service-due rules (odometer or elapsed time), dashboard tile, out-of-service surfacing | Small, high visibility |
 
@@ -454,3 +454,68 @@ that matters.
 managed. Letting a technician log their own walk-around is one line in
 `RouteRoles` plus one policy in the migration, if that turns out to be how the
 work flows.
+
+
+---
+
+## 13. Phase 3 — what was built
+
+| Area | Files |
+| --- | --- |
+| Migration | `supabase/migrations/20260825180000_vehicle_assets.sql` |
+| Optional seed | `supabase/manual/seed_vehicle_asset_catalog.sql` — the ten tools on the current paper receipt |
+| Domain | `domain/entities/vehicle_asset_catalog_item.dart`, `vehicle_asset.dart` |
+| Storage | `infra/models/vehicle_asset_catalog_item_record.dart` (typeId 77), `vehicle_asset_record.dart` (78), `infra/datasources/vehicle_asset_boxes.dart` |
+| Sync | `infra/mappers/vehicle_asset_supabase_mapper.dart` |
+| Repository | `infra/repositories/vehicle_asset_repository.dart` |
+| Presenter | `presenter/pages/vehicle_asset_catalog_page.dart`, `vehicle_assets_page.dart`, assets card on the detail page |
+| Tests | `test/fleet/vehicle_asset_repository_test.dart` (26 cases) |
+
+### No quantity column
+
+**One row per physical item.** The paper form lists the two Werner 8ft ladders
+as two separate lines, and on the sample one is missing and the other is not. A
+single row carrying `quantity: 2` cannot express that — which is the whole
+reason the receipt exists.
+
+Adding a quantity later would be additive, but it would reintroduce exactly the
+ambiguity this avoids. If a genuinely countable consumable turns up, catalog
+the container ("box of connectors") rather than the count.
+
+### Access
+
+| | Tech | Supervisor · Dispatcher | Admin |
+| --- | --- | --- | --- |
+| See their van's tool list | ✅ | ✅ (all vans) | ✅ |
+| Add / edit / retire a tool on a van | ❌ | ✅ | ✅ |
+| Curate the catalog | ❌ | ❌ | ✅ |
+
+The catalog is **admin-only**, unlike the rest of the fleet: a sloppy catalog is
+precisely what splitting catalog from assignment exists to prevent. Everyone can
+*read* it, because a technician needs the tool's name to make sense of their own
+van's list.
+
+Writes stay with dispatch throughout — confirmed 2026-08-25 that a technician
+does **not** log their own walk-around.
+
+### Other decisions
+
+- **FMC / NMC**, not "ok / broken". The words on the screen are the words on the
+  form the technician has been signing for years.
+- **`is_missing` is separate from `retired_at`.** A missing ladder is expected
+  back; a retired one is not. Retiring clears missing, or the tool would sit on
+  the attention list forever.
+- **Serials are unique across the fleet** — the same numbered tool cannot be in
+  two vans — but only among *non-retired* assets, so a replacement can inherit
+  the number. Blank serials store as `null`, never `''`, or every unserialised
+  tool would collide with every other one on the partial index.
+- **`catalog_id` is `on delete restrict`.** Deleting a catalog entry vans still
+  carry would orphan real tools; deactivate it instead.
+- **An asset cannot be moved to a different catalog entry after creation.** That
+  would silently rewrite what past receipts referred to. Retire it and add the
+  right one.
+- **A row whose catalog entry has not synced still renders**, as "Unknown tool ·
+  <serial>". Dropping it would hide exactly the tool somebody needs to ask
+  about.
+- Anything missing or NMC **sorts to the top** and gets a banner. That is why
+  somebody opened the screen.

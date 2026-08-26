@@ -1,5 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hive/hive.dart';
+import 'package:voltcore/modules/fleet/infra/models/vehicle_asset_catalog_item_record.dart';
+import 'package:voltcore/modules/fleet/infra/models/vehicle_asset_record.dart';
 import 'package:voltcore/modules/fleet/infra/models/vehicle_maintenance_check_record.dart';
 import 'package:voltcore/modules/fleet/infra/models/vehicle_record.dart';
 import 'package:voltcore/modules/inspections/domain/entities/inspection_entity.dart';
@@ -181,6 +183,34 @@ void main() {
       currentFieldCount: 14,
       fieldCountAtLastRelease: 14,
     ),
+    _AdapterCase<VehicleAssetCatalogItemRecord>(
+      name: 'VehicleAssetCatalogItemRecordAdapter',
+      adapter: VehicleAssetCatalogItemRecordAdapter(),
+      sample: () => VehicleAssetCatalogItemRecord(
+        id: 'k1',
+        tenantId: 'tenant-1',
+        name: 'IDEAL 1/2" EMT BENDER',
+        createdAt: now,
+        updatedAt: now,
+      ),
+      currentFieldCount: 9,
+      fieldCountAtLastRelease: 9,
+    ),
+    _AdapterCase<VehicleAssetRecord>(
+      name: 'VehicleAssetRecordAdapter',
+      adapter: VehicleAssetRecordAdapter(),
+      sample: () => VehicleAssetRecord(
+        id: 'a1',
+        tenantId: 'tenant-1',
+        vehicleId: 'v1',
+        catalogId: 'k1',
+        assignedAt: now,
+        createdAt: now,
+        updatedAt: now,
+      ),
+      currentFieldCount: 12,
+      fieldCountAtLastRelease: 12,
+    ),
     _AdapterCase<FormResponseRecord>(
       name: 'FormResponseRecordAdapter',
       adapter: FormResponseRecordAdapter(),
@@ -201,10 +231,10 @@ void main() {
   ];
 
   test('every registered Hive adapter is covered', () {
-    // hive_adapters.dart registers ten. An eleventh added without a case here
-    // would get no forward-compatibility guard at all.
-    expect(cases, hasLength(10));
-    expect(cases.map((c) => c.name).toSet(), hasLength(10));
+    // hive_adapters.dart registers twelve. A thirteenth added without a case
+    // here would get no forward-compatibility guard at all.
+    expect(cases, hasLength(12));
+    expect(cases.map((c) => c.name).toSet(), hasLength(12));
   });
 
   for (final adapterCase in cases) {

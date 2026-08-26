@@ -11,8 +11,8 @@ import 'vehicle_maintenance_form_page.dart' show formatShortDate;
 
 /// One vehicle.
 ///
-/// Phase 2 adds the maintenance history. The assets section is still a
-/// placeholder that says so, rather than a blank area that reads as a bug.
+/// Phase 3 adds the tool manifest. The signed receipt for it arrives with
+/// phase 4.
 class VehicleDetailPage extends ConsumerWidget {
   const VehicleDetailPage({super.key, required this.id});
 
@@ -93,12 +93,7 @@ class _VehicleBody extends ConsumerWidget {
         const SizedBox(height: 16),
         _MaintenanceHistory(vehicle: vehicle),
         const SizedBox(height: 8),
-        const _ComingSoon(
-          icon: Icons.handyman_outlined,
-          title: 'Vehicle assets',
-          message: 'The tools carried in this vehicle, and the signed receipt '
-              'for them, arrive with phases 3 and 4.',
-        ),
+        _AssetsCard(vehicle: vehicle),
       ],
     );
   }
@@ -326,29 +321,54 @@ class _CheckTile extends StatelessWidget {
   }
 }
 
-class _ComingSoon extends StatelessWidget {
-  const _ComingSoon({
-    required this.icon,
-    required this.title,
-    required this.message,
-  });
+/// The tools this vehicle carries, summarised, linking to the full list.
+class _AssetsCard extends ConsumerWidget {
+  const _AssetsCard({required this.vehicle});
 
-  final IconData icon;
-  final String title;
-  final String message;
+  final VehicleEntity vehicle;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final assets = ref.watch(vehicleAssetsProvider(vehicle.id));
 
     return Card(
-      color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
+      clipBehavior: Clip.antiAlias,
       child: ListTile(
-        leading: Icon(icon, color: theme.colorScheme.onSurfaceVariant),
-        title: Text(title, style: theme.textTheme.titleSmall),
-        subtitle: Text(message, style: theme.textTheme.bodySmall),
-        isThreeLine: true,
+        onTap: () => context.push(
+          RoutePaths.fleetVehicleAssets.replaceFirst(':id', vehicle.id),
+        ),
+        leading: Icon(
+          Icons.handyman_outlined,
+          color: theme.colorScheme.onSurfaceVariant,
+        ),
+        title: Text('Vehicle assets', style: theme.textTheme.titleSmall),
+        subtitle: Text(
+          assets.when(
+            loading: () => 'Loading…',
+            error: (_, __) => 'Could not load the tool list',
+            data: (list) {
+              if (list.isEmpty) return 'No tools assigned';
+              final needing =
+                  list.where((r) => r.asset.needsAttention).length;
+              final carried =
+                  list.length == 1 ? '1 tool' : '${list.length} tools';
+              // Lead with the problem when there is one: a missing ladder is
+              // why somebody opened this page.
+              return needing == 0
+                  ? '$carried · all present and FMC'
+                  : '$carried · $needing missing or NMC';
+            },
+          ),
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: assets.asData?.value.any((r) => r.asset.needsAttention) == true
+                ? theme.colorScheme.error
+                : null,
+          ),
+        ),
+        trailing: const Icon(Icons.chevron_right),
       ),
     );
   }
 }
+

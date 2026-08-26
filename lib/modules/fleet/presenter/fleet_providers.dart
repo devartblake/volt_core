@@ -6,6 +6,8 @@ import '../../auth/domain/user_role.dart';
 import '../../auth/presenter/controllers/auth_controller.dart';
 import '../domain/entities/vehicle_entity.dart';
 import '../domain/entities/vehicle_maintenance_check.dart';
+import '../domain/entities/vehicle_asset_catalog_item.dart';
+import '../infra/repositories/vehicle_asset_repository.dart';
 import '../infra/repositories/vehicle_check_repository.dart';
 import '../infra/repositories/vehicle_repository_impl.dart';
 
@@ -77,4 +79,36 @@ final vehicleChecksProvider =
     FutureProvider.family<List<VehicleMaintenanceCheck>, String>(
   (ref, vehicleId) =>
       ref.watch(vehicleCheckRepositoryProvider).listForVehicle(vehicleId),
+);
+
+
+/// Whether the signed-in user curates the tool catalog.
+///
+/// Admin only, unlike the rest of the fleet: a sloppy catalog is exactly what
+/// splitting catalog from assignment exists to prevent, and the migration gates
+/// vehicle_asset_catalog writes on has_tenant_role(..., ['admin']).
+final fleetCatalogEditorProvider = Provider<bool>((ref) {
+  return ref.watch(authStateProvider).currentRole == UserRole.admin;
+});
+
+/// The tool catalog. Active entries only — a deactivated tool should not be
+/// offered when assigning.
+final vehicleAssetCatalogProvider =
+    FutureProvider<List<VehicleAssetCatalogItem>>(
+  (ref) => ref.watch(vehicleAssetRepositoryProvider).listCatalog(),
+);
+
+/// The whole catalog including deactivated entries, for the admin screen.
+final vehicleAssetCatalogAllProvider =
+    FutureProvider<List<VehicleAssetCatalogItem>>(
+  (ref) => ref
+      .watch(vehicleAssetRepositoryProvider)
+      .listCatalog(includeInactive: true),
+);
+
+/// Tools in one vehicle, resolved against the catalog.
+final vehicleAssetsProvider =
+    FutureProvider.family<List<ResolvedVehicleAsset>, String>(
+  (ref, vehicleId) =>
+      ref.watch(vehicleAssetRepositoryProvider).listForVehicle(vehicleId),
 );
