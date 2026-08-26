@@ -1,10 +1,21 @@
 # Fleet & vehicle assets — implementation plan
 
 **Date:** 2026-08-25
-**Status:** 📋 Proposed. Nothing built yet.
+**Status:** 🚧 Phase 1 built. Phases 2–5 proposed.
 **Scope:** Two new capabilities — vehicle records with a maintenance checklist,
 and the tool inventory carried in each vehicle with its signed hand-over
-receipt. Available to supervisor, dispatcher and admin; not to tech.
+receipt.
+
+**Decisions taken (2026-08-25), replacing the open questions they answer:**
+
+- **Naming confirmed.** Fleet for vehicles, Vehicle Assets for the tools.
+  Neither goes into `public.equipment`, which stays the field-service assets we
+  inspect. (§0, §1)
+- **Access resolved, and it is not "every role except tech".** A technician is
+  stationed to a specific vehicle, is responsible for it and its assets, and
+  signs for it when it is dispatched — daily. So a tech reads *their* vehicle;
+  dispatch does the data entry and owns the fleet record. §3 below is rewritten
+  to match; the original either/or is settled as **(b)**.
 
 Derived from two paper forms currently in use:
 
@@ -98,13 +109,13 @@ vehicle_asset_catalog ──── vehicle_assets         (what a tool *is*, vs.
 | `model_year` | int | |
 | `vehicle_type` | text | `van` \| `truck` \| `other` |
 | `odometer` | int | Current reading, updated by each check |
-| `status` | text | `active` \| `in_service` \| `out_of_service` \| `retired` |
+| `status` | text | `active` \| `maintenance` \| `out_of_service` \| `retired` — see §11 for why not `in_service` |
 | `notes` | text | |
 | audit | `created_at`, `updated_at`, `updated_by` | matches the other tables |
 
 `designation` is the human key and should be unique per tenant among
 non-retired vehicles. VIN is nullable because a vehicle gets added before
-somebody walks out to read the plate off it.
+somebody walks out to read the VIN off it.
 
 ### 2.2 `vehicle_maintenance_checks`
 
@@ -161,48 +172,45 @@ express that.
 
 ## 3. Access control
 
-The request: every role except tech.
+**A technician is stationed to one vehicle.** They are responsible for it and
+for its assets, and they sign for it when it is dispatched — a daily event, on
+the digital version of the receipt. Dispatch does the data entry; the driver
+signs.
+
+That makes the rule per-row, not per-role alone:
+
+| | Technician | Supervisor · Dispatcher · Admin |
+| --- | --- | --- |
+| See the vehicle list | ✅ their assigned vehicle only | ✅ whole fleet |
+| Open a vehicle's detail | ✅ theirs | ✅ any |
+| Add / edit a vehicle | ❌ | ✅ |
+| Sign the daily receipt (phase 4) | ✅ theirs | ✅ |
 
 ```dart
-// lib/app/route_roles.dart
-const _fleetRoles = {UserRole.supervisor, UserRole.dispatcher, UserRole.admin};
-
-'fleet': _fleetRoles,
-'fleet_vehicle_new': _fleetRoles,
-'fleet_vehicle_detail': _fleetRoles,
-'fleet_vehicle_edit': _fleetRoles,
-'fleet_maintenance_new': _fleetRoles,
-'fleet_assets': _fleetRoles,
-'fleet_asset_check_new': _fleetRoles,
-'fleet_catalog': {UserRole.admin},   // editing the master tool list
+// lib/app/route_roles.dart — built
+'fleet':                {tech, supervisor, dispatcher, admin},
+'fleet_vehicle_detail': {tech, supervisor, dispatcher, admin},
+'fleet_vehicle_new':    {supervisor, dispatcher, admin},
+'fleet_vehicle_edit':   {supervisor, dispatcher, admin},
 ```
+
+**RouteRoles decides which screens open, not which rows come back.** The
+narrowing to one vehicle is `fleet_vehicles_read` in the database, mirrored
+locally by `fleetVisibleVehiclesProvider`. `assigned_to_user_id` is therefore
+not a detail on the form — it is what makes the vehicle visible to its driver
+at all, and clearing it takes the vehicle off their device.
 
 Two things this gets for free:
 
-1. `RouteRoles` is **default-deny**, and `test/app/route_roles_test.dart` fails
-   if a `RouteNames` constant is missing from both the role map and the public
-   list. Adding a route without an RBAC decision is already impossible.
-2. `AppDrawer` filters through `RouteRoles.isAllowedByName`, so the Fleet
-   section disappears for tech with no separate drawer logic.
+1. `RouteRoles` is default-deny, and `test/app/route_roles_test.dart` fails if
+   a `RouteNames` constant is missing from both the role map and the public
+   list. Adding a route without an RBAC decision is impossible.
+2. `AppDrawer` filters through `RouteRoles.isAllowedByName`, so no separate
+   drawer logic is needed.
 
-### ⚠️ This conflicts with the paper workflow
-
-**The asset receipt is signed by the driver, and the driver is a technician.**
-The sample names two operators in the signature block and has a
-`[X] Driver INITIAL / SIGNATURE` line at the top.
-
-Excluding tech entirely means one of:
-
-- **(a)** dispatch does the data entry from a paper form the driver still signs
-  — the app becomes a record of a paper process, and the signature is a scan or
-  is lost; or
-- **(b)** techs eventually need a narrow, tech-visible signing screen.
-
-This plan implements **(a)** as asked. Design for **(b)** by keeping the
-signature on the *check header*, not on the vehicle, so a tech-facing "sign for
-my van" route can be added later without touching the schema.
-
-Worth settling before Phase 4 — it changes who the receipt screen is built for.
+`test/fleet/fleet_route_roles_test.dart` pins the split itself, which
+completeness cannot: granting tech `fleet_vehicle_edit` by accident would pass
+the coverage test and hand a driver the ability to reassign their own van.
 
 ---
 
@@ -293,7 +301,7 @@ Ordered so each phase is independently useful and independently revertable.
 
 | Phase | Deliverable | Rough size |
 | --- | --- | --- |
-| **1** | Migration for `fleet_vehicles` + RLS; entity, Hive model, repo, sync; list / detail / form; RBAC + drawer | Largest — establishes the module skeleton |
+| **1** ✅ | Migration for `fleet_vehicles` + RLS; entity, Hive model, repo, sync; list / detail / form; RBAC + drawer | Done — see §11 |
 | **2** | `vehicle_maintenance_checks`; checklist form; history tab; latest-values denormalisation | Medium |
 | **3** | `vehicle_asset_catalog` + `vehicle_assets`; catalog admin screen; per-vehicle assignment | Medium |
 | **4** | `vehicle_asset_checks` + lines; receipt screen; signature; PDF | Largest of the asset work |
@@ -319,8 +327,8 @@ missed brake service. Do not let it fall off the end.
 
 ## 9. Open questions
 
-1. **Tech access vs. the driver's signature** (§3). The most consequential one —
-   it decides who Phase 4 is built for.
+1. ~~Tech access vs. the driver's signature.~~ **Settled** — see §3. The tech
+   is the driver, signs daily, and dispatch does the data entry.
 2. **Does a missing tool raise anything?** A missing ladder on a signed receipt
    is currently just ink. It could open a work order, notify dispatch, or mark
    the vehicle `out_of_service`. Cheap to add at Phase 4, awkward to retrofit.
@@ -342,3 +350,41 @@ missed brake service. Do not let it fall off the end.
 - **No GPS, telematics, fuel cards or route planning.** Out of scope.
 - **No tech-facing screens.** Per the stated access rule, with the seam for
   adding them left open (§3).
+
+
+---
+
+## 11. Phase 1 — what was built
+
+| Area | Files |
+| --- | --- |
+| Migration | `supabase/migrations/20260825140000_fleet_vehicles.sql` |
+| Domain | `modules/fleet/domain/entities/vehicle_entity.dart` |
+| Storage | `infra/models/vehicle_record.dart` (typeId 75), `infra/datasources/vehicles_box.dart` |
+| Sync | `infra/mappers/vehicle_supabase_mapper.dart`, `infra/datasources/vehicle_remote_datasource.dart` |
+| Repository | `infra/repositories/vehicle_repository{,_impl}.dart` |
+| Presenter | `presenter/fleet_providers.dart`, `presenter/pages/vehicle_{list,detail,form}_page.dart` |
+| Wiring | `route_paths.dart`, `app_router.dart`, `route_roles.dart`, `app_drawer.dart`, `hive_adapters.dart`, `hive_service.dart` |
+| Tests | `test/fleet/` (3 files, 37 cases) + a `VehicleRecordAdapter` case in the forward-compat suite |
+
+Decisions worth knowing before phase 2:
+
+- **`status` is stored `out_of_service`, not `outOfService`.** `VehicleStatusX.wire`
+  exists for the same reason `UserRoleX.wire` does — the check constraint
+  rejects the enum's own `name`.
+- **`maintenance`, not the plan's `in_service`.** "In service" reads as both
+  "in use" and "being serviced", which are opposites here.
+- **Duplicate designation and duplicate VIN are caught in the repository**, not
+  left to surface as an opaque `23505` from the partial unique indexes seconds
+  later. Designations are reusable once a vehicle is retired.
+- **A blank VIN is stored as `null`, never `''`** — the unique index is partial
+  (`where vin is not null`), so `''` would collide every un-VINed vehicle with
+  every other one.
+- **VIN rejects I, O and Q**, which the standard excludes because they are
+  misread as 1 and 0. That is the transcription error to catch at the keyboard.
+- `LabeledField` gained `inputFormatters` along the way; the year and odometer
+  fields wanted digits-only rather than a validator scolding after the fact.
+
+**Not done, and deliberately visible:** the detail page carries two "arrives in
+phase N" cards where maintenance history and assets will go, rather than a
+blank area that reads as a bug.

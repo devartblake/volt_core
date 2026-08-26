@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hive/hive.dart';
+import 'package:voltcore/modules/fleet/infra/models/vehicle_record.dart';
 import 'package:voltcore/modules/inspections/domain/entities/inspection_entity.dart';
 import 'package:voltcore/modules/inspections/infra/models/inspection.dart';
 import 'package:voltcore/modules/inspections/infra/models/nameplate_data.dart';
@@ -151,6 +152,19 @@ void main() {
       currentFieldCount: 13,
       fieldCountAtLastRelease: 13,
     ),
+    _AdapterCase<VehicleRecord>(
+      name: 'VehicleRecordAdapter',
+      adapter: VehicleRecordAdapter(),
+      sample: () => VehicleRecord(
+        id: 'v1',
+        tenantId: 'tenant-1',
+        designation: 'Truck A',
+        createdAt: now,
+        updatedAt: now,
+      ),
+      currentFieldCount: 15,
+      fieldCountAtLastRelease: 15,
+    ),
     _AdapterCase<FormResponseRecord>(
       name: 'FormResponseRecordAdapter',
       adapter: FormResponseRecordAdapter(),
@@ -171,10 +185,10 @@ void main() {
   ];
 
   test('every registered Hive adapter is covered', () {
-    // hive_adapters.dart registers eight. A ninth added without a case here
+    // hive_adapters.dart registers nine. A tenth added without a case here
     // would get no forward-compatibility guard at all.
-    expect(cases, hasLength(8));
-    expect(cases.map((c) => c.name).toSet(), hasLength(8));
+    expect(cases, hasLength(9));
+    expect(cases.map((c) => c.name).toSet(), hasLength(9));
   });
 
   for (final adapterCase in cases) {

@@ -151,6 +151,41 @@ class RouteRoles {
       UserRole.admin,
     },
 
+    // ----- Fleet -----
+    //
+    // A technician is stationed to one vehicle: they are responsible for it
+    // and its assets and they sign for it when it is dispatched, so they can
+    // reach the list and the detail page. What they *see* there is narrowed to
+    // their own vehicle by RLS (fleet_vehicles_read) and mirrored locally by
+    // fleetVisibleVehiclesProvider — this map decides which screens open, not
+    // which rows come back.
+    //
+    // Editing the fleet record stays with dispatch. The database agrees:
+    // fleet_vehicles' write policies are gated on can_manage_tenant_work(),
+    // which is exactly admin/supervisor/dispatcher.
+    'fleet': {
+      UserRole.tech,
+      UserRole.supervisor,
+      UserRole.dispatcher,
+      UserRole.admin,
+    },
+    'fleet_vehicle_detail': {
+      UserRole.tech,
+      UserRole.supervisor,
+      UserRole.dispatcher,
+      UserRole.admin,
+    },
+    'fleet_vehicle_new': {
+      UserRole.supervisor,
+      UserRole.dispatcher,
+      UserRole.admin,
+    },
+    'fleet_vehicle_edit': {
+      UserRole.supervisor,
+      UserRole.dispatcher,
+      UserRole.admin,
+    },
+
     // ----- Equipment / Nameplate -----
     'nameplate_list': {
       UserRole.tech,

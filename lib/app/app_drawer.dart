@@ -165,6 +165,19 @@ const List<NavSection> _navSections = [
   ),
 
   NavSection(
+    title: 'Fleet',
+    items: [
+      NavItem(
+        'Vehicles',
+        Icons.local_shipping_outlined,
+        RoutePaths.fleet,
+        routeName: RouteNames.fleet,
+        description: 'Vans and trucks, and who is stationed to them',
+      ),
+    ],
+  ),
+
+  NavSection(
     title: 'Equipment',
     items: [
       NavItem(

@@ -33,6 +33,9 @@ import '../modules/maintenance/presenter/pages/maintenance_archive_page.dart';
 import '../modules/maintenance/presenter/pages/maintenance_detail_page.dart';
 import '../modules/maintenance/presenter/pages/maintenance_form_page.dart';
 import '../modules/maintenance/presenter/pages/maintenance_list_page.dart';
+import '../modules/fleet/presenter/pages/vehicle_detail_page.dart';
+import '../modules/fleet/presenter/pages/vehicle_form_page.dart';
+import '../modules/fleet/presenter/pages/vehicle_list_page.dart';
 import '../modules/work_orders/presenter/pages/work_order_form_page.dart';
 import '../modules/work_orders/presenter/pages/work_order_list_page.dart';
 import '../modules/schedule/presenter/pages/schedule_page.dart';
@@ -176,6 +179,32 @@ final goRouterProvider = Provider<GoRouter>((ref) {
             name: RouteNames.workOrderEdit,
             builder: (_, state) => TechShell(
               child: WorkOrderFormPage(id: state.pathParameters['id']!),
+            ),
+          ),
+        ],
+      ),
+      GoRoute(
+        path: RoutePaths.fleet,
+        name: RouteNames.fleet,
+        builder: (_, __) => const TechShell(child: VehicleListPage()),
+        routes: [
+          GoRoute(
+            path: RoutePaths.fleetNewSub,
+            name: RouteNames.fleetNew,
+            builder: (_, __) => const TechShell(child: VehicleFormPage()),
+          ),
+          GoRoute(
+            path: RoutePaths.fleetEditSub,
+            name: RouteNames.fleetEdit,
+            builder: (_, state) => TechShell(
+              child: VehicleFormPage(id: state.pathParameters['id']!),
+            ),
+          ),
+          GoRoute(
+            path: RoutePaths.fleetDetailSub,
+            name: RouteNames.fleetDetail,
+            builder: (_, state) => TechShell(
+              child: VehicleDetailPage(id: state.pathParameters['id']!),
             ),
           ),
         ],
