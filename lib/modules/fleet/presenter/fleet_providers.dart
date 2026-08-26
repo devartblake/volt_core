@@ -5,6 +5,8 @@ import '../../admin/infra/repositories/admin_repository_impl.dart';
 import '../../auth/domain/user_role.dart';
 import '../../auth/presenter/controllers/auth_controller.dart';
 import '../domain/entities/vehicle_entity.dart';
+import '../domain/entities/vehicle_maintenance_check.dart';
+import '../infra/repositories/vehicle_check_repository.dart';
 import '../infra/repositories/vehicle_repository_impl.dart';
 
 /// Whether the signed-in user manages the fleet, as opposed to being stationed
@@ -68,3 +70,11 @@ final fleetAssignableMembersProvider =
           a.displayName.toLowerCase().compareTo(b.displayName.toLowerCase()),
     );
 });
+
+
+/// Maintenance history for one vehicle, newest first.
+final vehicleChecksProvider =
+    FutureProvider.family<List<VehicleMaintenanceCheck>, String>(
+  (ref, vehicleId) =>
+      ref.watch(vehicleCheckRepositoryProvider).listForVehicle(vehicleId),
+);

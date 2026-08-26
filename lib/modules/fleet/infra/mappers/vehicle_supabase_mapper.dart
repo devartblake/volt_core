@@ -30,6 +30,7 @@ Map<String, dynamic> vehicleToSupabaseJson(VehicleEntity v) {
     'assigned_to_user_id':
         (v.assignedToUserId ?? '').trim().isEmpty ? null : v.assignedToUserId,
     'notes': v.notes.trim(),
+    'last_check_at': v.lastCheckAt?.toIso8601String(),
     'created_at': v.createdAt.toIso8601String(),
     'updated_at': v.updatedAt.toIso8601String(),
     if (SyncContext.userId != null) 'updated_by': SyncContext.userId,
@@ -54,6 +55,7 @@ VehicleEntity vehicleFromSupabaseJson(Map<String, dynamic> row) {
     status: VehicleStatusX.fromWire(row['status']?.toString()),
     assignedToUserId: row['assigned_to_user_id']?.toString(),
     notes: (row['notes'] ?? '').toString(),
+    lastCheckAt: DateTime.tryParse('${row['last_check_at']}')?.toUtc(),
     createdAt:
         DateTime.tryParse('${row['created_at']}')?.toUtc() ?? DateTime.now().toUtc(),
     updatedAt:

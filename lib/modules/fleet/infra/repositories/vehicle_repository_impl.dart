@@ -62,6 +62,7 @@ class VehicleRepositoryImpl implements VehicleRepository {
         status: VehicleStatusX.fromWire(value.status),
         assignedToUserId: value.assignedToUserId,
         notes: value.notes,
+        lastCheckAt: value.lastCheckAt,
         createdAt: value.createdAt,
         updatedAt: value.updatedAt,
       );
@@ -80,6 +81,7 @@ class VehicleRepositoryImpl implements VehicleRepository {
         status: value.status.wire,
         assignedToUserId: value.assignedToUserId,
         notes: value.notes,
+        lastCheckAt: value.lastCheckAt,
         createdAt: value.createdAt,
         updatedAt: value.updatedAt,
       );

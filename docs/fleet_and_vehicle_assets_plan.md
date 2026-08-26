@@ -1,7 +1,7 @@
 # Fleet & vehicle assets — implementation plan
 
 **Date:** 2026-08-25
-**Status:** 🚧 Phase 1 built. Phases 2–5 proposed.
+**Status:** 🚧 Phases 1–2 built. Phases 3–5 proposed.
 **Scope:** Two new capabilities — vehicle records with a maintenance checklist,
 and the tool inventory carried in each vehicle with its signed hand-over
 receipt.
@@ -302,7 +302,7 @@ Ordered so each phase is independently useful and independently revertable.
 | Phase | Deliverable | Rough size |
 | --- | --- | --- |
 | **1** ✅ | Migration for `fleet_vehicles` + RLS; entity, Hive model, repo, sync; list / detail / form; RBAC + drawer | Done — see §11 |
-| **2** | `vehicle_maintenance_checks`; checklist form; history tab; latest-values denormalisation | Medium |
+| **2** ✅ | `vehicle_maintenance_checks`; checklist form; history tab; latest-values denormalisation | Done — see §12 |
 | **3** | `vehicle_asset_catalog` + `vehicle_assets`; catalog admin screen; per-vehicle assignment | Medium |
 | **4** | `vehicle_asset_checks` + lines; receipt screen; signature; PDF | Largest of the asset work |
 | **5** | Service-due rules (odometer or elapsed time), dashboard tile, out-of-service surfacing | Small, high visibility |
@@ -336,8 +336,8 @@ missed brake service. Do not let it fall off the end.
    whether `fleet_vehicles` needs a `site_id`.
 4. **Retention.** Inspections keep everything; `tenant_retention_policy` exists
    for archived maintenance. Do asset receipts fall under it?
-5. **Odometer trust.** If a maintenance check reports an odometer *lower* than
-   the stored one, is that a typo to reject or a correction to accept?
+5. ~~Odometer trust.~~ **Settled** — refused by default, overridable with an
+   explicit confirmation. See §12.
 6. **Disclaimer wording** — who owns revisions, and does an existing signature
    need re-acceptance when it changes?
 
@@ -388,3 +388,69 @@ Decisions worth knowing before phase 2:
 **Not done, and deliberately visible:** the detail page carries two "arrives in
 phase N" cards where maintenance history and assets will go, rather than a
 blank area that reads as a bug.
+
+
+---
+
+## 12. Phase 2 — what was built
+
+| Area | Files |
+| --- | --- |
+| Migration | `supabase/migrations/20260825160000_vehicle_maintenance_checks.sql` |
+| Domain | `domain/entities/vehicle_maintenance_check.dart` |
+| Storage | `infra/models/vehicle_maintenance_check_record.dart` (typeId 76), its box |
+| Sync | `infra/mappers/vehicle_maintenance_check_supabase_mapper.dart` |
+| Repository | `infra/repositories/vehicle_check_repository.dart` |
+| Presenter | `presenter/pages/vehicle_maintenance_form_page.dart`, history section on the detail page |
+| Tests | `test/fleet/vehicle_check_repository_test.dart` (18 cases) |
+
+### The odometer question, settled
+
+A reading lower than the vehicle already shows is **refused by default** and
+retryable with `allowOdometerRollback: true`, which the form surfaces as a
+dialog naming both numbers.
+
+It is overwhelmingly a transposed digit on a six-figure number. But it is
+legitimately a correction after a cluster replacement, so refusing outright
+would make the app wrong about a real vehicle. Refuse-then-confirm catches the
+common case at the keyboard and keeps the rare one recordable, with the person
+entering it having said out loud that they meant it.
+
+### Cached values only ever move forward
+
+`fleet_vehicles.odometer` and `last_check_at` are denormalised so the list does
+not need a correlated subquery. Both are advanced in two places that must
+agree:
+
+- the repository, so the list is right immediately after a save while offline;
+- `refresh_vehicle_check_cache()`, so it is still right when a *second* device
+  syncs a check the first has never seen.
+
+Both take the **maximum**, never the latest write. Checks get entered out of
+order — June's typed in first, March's caught up later — and a backdated check
+must not report the van as more recently inspected than it is. There is a test
+for exactly that interleaving; a simpler "backdated check" test passed even
+with the guard removed, because `shouldTouch` short-circuits before the branch
+that matters.
+
+### Other decisions
+
+- **A check is an event row**, not columns on the vehicle. The paper form is
+  filled in repeatedly and "when was Truck A last serviced, and by whom?" is
+  the question it exists to answer.
+- **`ok` / `attention` / `fail`, not a boolean.** "Needs watching at the next
+  service" is the most common real answer on a walk-around, and collapsing it
+  into pass/fail means it is recorded as a pass and forgotten.
+- **Dates are sent as calendar days** (`2026-06-05`), not instants. A `date`
+  column round-trips a timestamp back with a time the user never entered, which
+  renders as a different day either side of midnight.
+- **The date picker's `lastDate` is today.** A service date is in the past, and
+  allowing next year invites a typo that reads as "serviced recently" forever.
+- `_DateField` is keyed on its value — `LabeledField` seeds its controller
+  once, so without the key the field keeps showing the old date after a pick.
+  The inspection date fields had this exact bug.
+
+**Writing a check is dispatch-only**, matching how the vehicle record itself is
+managed. Letting a technician log their own walk-around is one line in
+`RouteRoles` plus one policy in the migration, if that turns out to be how the
+work flows.

@@ -5,13 +5,14 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/constants/route_paths.dart';
 import '../../../../shared/widgets/widgets.dart';
 import '../../domain/entities/vehicle_entity.dart';
+import '../../domain/entities/vehicle_maintenance_check.dart';
 import '../fleet_providers.dart';
+import 'vehicle_maintenance_form_page.dart' show formatShortDate;
 
 /// One vehicle.
 ///
-/// Phase 1 is the record itself. The maintenance-history and assets tabs
-/// arrive in phases 2 and 3; their placeholders below say so rather than
-/// leaving a blank area that reads as a bug.
+/// Phase 2 adds the maintenance history. The assets section is still a
+/// placeholder that says so, rather than a blank area that reads as a bug.
 class VehicleDetailPage extends ConsumerWidget {
   const VehicleDetailPage({super.key, required this.id});
 
@@ -90,12 +91,7 @@ class _VehicleBody extends ConsumerWidget {
           ),
         ],
         const SizedBox(height: 16),
-        const _ComingSoon(
-          icon: Icons.build_outlined,
-          title: 'Maintenance history',
-          message: 'Oil changes, brake checks and odometer readings arrive '
-              'with phase 2.',
-        ),
+        _MaintenanceHistory(vehicle: vehicle),
         const SizedBox(height: 8),
         const _ComingSoon(
           icon: Icons.handyman_outlined,
@@ -210,6 +206,122 @@ class _AssignmentCard extends ConsumerWidget {
         ),
         isThreeLine: true,
       ),
+    );
+  }
+}
+
+/// Completed maintenance checks, newest first.
+class _MaintenanceHistory extends ConsumerWidget {
+  const _MaintenanceHistory({required this.vehicle});
+
+  final VehicleEntity vehicle;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final checks = ref.watch(vehicleChecksProvider(vehicle.id));
+    final isManager = ref.watch(fleetManagerProvider);
+
+    return Card(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          ListTile(
+            leading: Icon(
+              Icons.build_outlined,
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+            title: Text('Maintenance history', style: theme.textTheme.titleSmall),
+            subtitle: Text(
+              vehicle.lastCheckAt == null
+                  ? 'No check recorded yet'
+                  : 'Last checked \${formatShortDate(vehicle.lastCheckAt!.toLocal())}',
+              style: theme.textTheme.bodySmall,
+            ),
+            trailing: isManager
+                ? IconButton(
+                    tooltip: 'Record a check',
+                    icon: const Icon(Icons.add_circle_outline),
+                    onPressed: () => context.push(
+                      RoutePaths.fleetMaintenanceNew
+                          .replaceFirst(':id', vehicle.id),
+                    ),
+                  )
+                : null,
+          ),
+          checks.when(
+            loading: () => const Padding(
+              padding: EdgeInsets.all(16),
+              child: LinearProgressIndicator(minHeight: 2),
+            ),
+            error: (error, _) => Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              child: Text(
+                'Could not load history. \$error',
+                style: theme.textTheme.bodySmall
+                    ?.copyWith(color: theme.colorScheme.error),
+              ),
+            ),
+            data: (list) {
+              if (list.isEmpty) {
+                return Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                  child: Text(
+                    isManager
+                        ? 'Record the first check to start tracking service '
+                            'intervals.'
+                        : 'Nothing recorded for this vehicle yet.',
+                    style: theme.textTheme.bodySmall,
+                  ),
+                );
+              }
+              return Column(
+                children: [
+                  for (final check in list) _CheckTile(check: check),
+                  const SizedBox(height: 8),
+                ],
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CheckTile extends StatelessWidget {
+  const _CheckTile({required this.check});
+
+  final VehicleMaintenanceCheck check;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final since = check.milesSinceService;
+
+    return ListTile(
+      dense: true,
+      leading: Icon(
+        check.needsFollowUp ? Icons.warning_amber_outlined : Icons.check_circle_outline,
+        // A failed brake check has to be visible without reading the row.
+        color: check.needsFollowUp
+            ? theme.colorScheme.error
+            : theme.colorScheme.onSurfaceVariant,
+        size: 20,
+      ),
+      title: Text(formatShortDate(check.checkedAt.toLocal())),
+      subtitle: Text(
+        [
+          '\${check.odometer} mi',
+          if (since != null) '\$since mi since service',
+          if (check.brakeStatus.needsFollowUp)
+            'Brakes: \${check.brakeStatus.label}',
+          if (check.batteryStatus.needsFollowUp)
+            'Battery: \${check.batteryStatus.label}',
+        ].join('  ·  '),
+        style: theme.textTheme.bodySmall,
+      ),
+      isThreeLine: check.notes.trim().isNotEmpty,
     );
   }
 }

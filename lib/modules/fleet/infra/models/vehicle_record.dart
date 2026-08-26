@@ -30,6 +30,7 @@ class VehicleRecord {
     this.status = 'active',
     this.assignedToUserId,
     this.notes = '',
+    this.lastCheckAt,
   });
 
   @HiveField(0)
@@ -62,6 +63,11 @@ class VehicleRecord {
   final DateTime createdAt;
   @HiveField(14)
   final DateTime updatedAt;
+
+  /// Added in phase 2. Nullable, so the generator-free adapter reads it back
+  /// as null on rows written by phase 1 without needing a defaultValue.
+  @HiveField(15)
+  final DateTime? lastCheckAt;
 }
 
 class VehicleRecordAdapter extends TypeAdapter<VehicleRecord> {
@@ -90,13 +96,14 @@ class VehicleRecordAdapter extends TypeAdapter<VehicleRecord> {
       notes: fields[12] as String? ?? '',
       createdAt: fields[13] as DateTime,
       updatedAt: fields[14] as DateTime,
+      lastCheckAt: fields[15] as DateTime?,
     );
   }
 
   @override
   void write(BinaryWriter writer, VehicleRecord value) {
     writer
-      ..writeByte(15)
+      ..writeByte(16)
       ..writeByte(0)..write(value.id)
       ..writeByte(1)..write(value.tenantId)
       ..writeByte(2)..write(value.designation)
@@ -111,6 +118,7 @@ class VehicleRecordAdapter extends TypeAdapter<VehicleRecord> {
       ..writeByte(11)..write(value.assignedToUserId)
       ..writeByte(12)..write(value.notes)
       ..writeByte(13)..write(value.createdAt)
-      ..writeByte(14)..write(value.updatedAt);
+      ..writeByte(14)..write(value.updatedAt)
+      ..writeByte(15)..write(value.lastCheckAt);
   }
 }

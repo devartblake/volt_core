@@ -81,6 +81,7 @@ class VehicleEntity {
     this.status = VehicleStatus.active,
     this.assignedToUserId,
     this.notes = '',
+    this.lastCheckAt,
   });
 
   factory VehicleEntity.newDraft({required String tenantId}) {
@@ -118,6 +119,13 @@ class VehicleEntity {
   final String? assignedToUserId;
 
   final String notes;
+
+  /// When the most recent maintenance check happened, cached from
+  /// `vehicle_maintenance_checks` so the fleet list does not need a
+  /// correlated subquery per row. Only ever moves forward — a backdated check
+  /// synced late must not drag it back.
+  final DateTime? lastCheckAt;
+
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -153,6 +161,7 @@ class VehicleEntity {
     String? assignedToUserId,
     bool clearAssignee = false,
     String? notes,
+    DateTime? lastCheckAt,
     DateTime? updatedAt,
   }) {
     return VehicleEntity(
@@ -170,6 +179,7 @@ class VehicleEntity {
       assignedToUserId:
           clearAssignee ? null : (assignedToUserId ?? this.assignedToUserId),
       notes: notes ?? this.notes,
+      lastCheckAt: lastCheckAt ?? this.lastCheckAt,
       createdAt: createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );

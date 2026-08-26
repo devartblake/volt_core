@@ -175,6 +175,14 @@ class RouteRoles {
       UserRole.dispatcher,
       UserRole.admin,
     },
+    // Recording a check is data entry, so it follows the same rule as editing
+    // the vehicle. Widening it to let a technician log their own walk-around
+    // is a one-line change here plus one policy in the migration.
+    'fleet_maintenance_new': {
+      UserRole.supervisor,
+      UserRole.dispatcher,
+      UserRole.admin,
+    },
     'fleet_vehicle_new': {
       UserRole.supervisor,
       UserRole.dispatcher,
