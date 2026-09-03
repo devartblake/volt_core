@@ -2,14 +2,11 @@
 
 ## Purpose
 
-Voltcore began as an offline-first standby-generator inspection and maintenance
-application. The FieldOps roadmap expands that foundation into a reusable
-field-service and compliance platform for customers, sites, assets, work
-orders, inspections, maintenance, evidence, and signed reports.
+Voltcore began as an offline-first standby-generator inspection and maintenance application. The FieldOps roadmap expands that foundation into a reusable, tenant-safe field-service and compliance platform for customers, sites, assets, work orders, inspections, maintenance, evidence, signed reports, operational tooling, and additional service verticals.
 
-Generator workflows remain the first supported vertical and the regression
-baseline. Phase 3 is an additive migration to a versioned template engine; it
-does not delete or rewrite legacy generator records or reports.
+Generator workflows remain the first supported vertical and the regression baseline. Phase 3 is additive: it does not delete or rewrite legacy generator records or reports.
+
+For the detailed Phase 3 closeout checklist and staged retention-enforcement design, see [`voltcore_phase3_onward_and_retention_action_plan.md`](voltcore_phase3_onward_and_retention_action_plan.md).
 
 ## Product core
 
@@ -25,32 +22,16 @@ flowchart TD
   P --> D[Documents / downstream links]
 ```
 
-## Delivery status — 24 August 2026
+## Delivery status — 3 September 2026
 
 | Phase | Status | Delivered scope | Remaining gate |
 | --- | --- | --- | --- |
-| Phase 1 | Complete | Tenant-safe scheduling and generic asset vocabulary. | Environment-by-environment operational verification only. |
-| Phase 2 | Complete / rollout validation | Customer/site directory, generic asset registration, work-order lifecycle, schedule details, audit events, dispatch views, and maintenance handoff. | Continue real-user rollout verification. |
-| Phase 3 | Certification / pilot readiness | Versioned templates, management UI, renderer, offline response lifecycle, generator packs/adapters, generic PDFs, cross-platform Documents integration, durable report links, and technician execution runtime. | Merge final certification PR, apply index hardening, install generator templates in the pilot tenant, run the manual offline/revision/PDF parity pilot, then enable the build flag only for that pilot. |
-
-## Reliability correction — schedule deletion consistency
-
-A schedule task DELETE could race an already-running remote schedule GET. The
-remote response then saw the local Hive row missing and rehydrated the deleted
-task, causing it to reappear in Upcoming, Dashboard/recent activity, counters,
-calendar/list/timeline views, or task detail.
-
-PR #52 fixed this at the shared repository boundary:
-
-- a deletion tombstone is recorded before the first delete `await`;
-- stale remote hydration skips tombstoned task IDs;
-- schedule loads and direct task lookup filter tombstoned IDs;
-- an explicit save is the only operation that clears the tombstone and may
-  intentionally recreate that ID;
-- Hive deletion, durable sync deletion, and reminder cancellation are preserved.
-
-This is intentionally a repository rule rather than a per-widget workaround so
-all schedule-driven views receive the same consistent state.
+| Phase 1 | Complete | Tenant-safe scheduling, generic asset vocabulary, local-first persistence, durable sync conventions. | Environment-by-environment operational verification only. |
+| Phase 2 | Complete / rollout validation | Customer/site directory, generic asset registration, work-order lifecycle, schedule details, audit events, dispatch views, maintenance handoff. | Continue real-user rollout verification. |
+| Phase 3 | Automated implementation complete / manual pilot pending | Versioned templates, management UI, generic renderer, offline response lifecycle, generator packs/adapters, generic PDFs, Documents integration, report links, technician runtime, RBAC/settings hardening. | Install generator templates in A&S Electric and complete the controlled inspection/maintenance pilot, PDF parity, sync, exact-revision, and rollback certification. |
+| Phase 4 | Planned | First reusable electrical template packs. | Begins only after Phase 3 pilot signoff. |
+| Phase 5 | Planned | Operations and commercial tooling. | Follows Phase 4 foundation. |
+| Phase 6 | Planned | Additional service verticals. | Follows stabilization of earlier phases. |
 
 ## Phase 1 — Secure foundation and generic asset vocabulary
 
@@ -66,31 +47,31 @@ Delivered:
 Delivered:
 
 - customer-to-site ownership and directory UI;
-- site-aware generic asset registration and reassignment;
+- site-aware generic asset registration/reassignment;
 - QR/barcode search and asset history;
 - work-order create/edit/list/detail and one-way lifecycle transitions;
 - technician assignment, priority, schedule, customer/site/asset links;
 - database-owned audit events;
-- schedule-task detail routing before source-record navigation;
+- schedule-task detail routing before source navigation;
 - operational workload summary;
-- inspection-to-maintenance scheduling handoff.
+- inspection-to-maintenance scheduling handoff;
+- legacy maintenance-record/archive access.
 
-Legacy generator maintenance records remain available under Maintenance Records
-and Archived Maintenance.
+### Schedule deletion consistency
+
+PR #52 fixed a race where a stale remote schedule GET could rehydrate a task after its DELETE succeeded. Deletion tombstones now live at the shared repository boundary, so deleted tasks stay absent from Upcoming, Dashboard activity, stats, calendar/list/timeline views, and detail until the same ID is intentionally saved again.
 
 ## Phase 3 — Template engine and generator migration
 
 ### Objective
 
-Replace generator-specific form/PDF branching with a versioned, tenant-safe
-engine while preserving every existing generator record/report throughout a
-controlled cutover.
+Replace generator-specific form/PDF branching with a versioned, tenant-safe engine while preserving every existing generator record/report throughout controlled cutover and rollback.
 
 ### Delivered architecture
 
-#### 1. Template contract and database foundation
+#### Template/data contract
 
-Delivered tables and relationships:
+Delivered entities:
 
 - `form_templates`
 - `form_template_revisions`
@@ -100,198 +81,173 @@ Delivered tables and relationships:
 - `form_responses`
 - `form_response_report_artifacts`
 
-Responses store the exact template revision used to collect them. Completed
-responses are immutable. Report artifacts derive their tenant/revision and
-customer/site/asset/work-order/inspection/maintenance links from the completed
-response in the database rather than trusting client-supplied relationship IDs.
+Responses store the exact template revision used. Completed responses are immutable. Report artifacts derive tenant/revision/customer/site/asset/work-order/inspection/maintenance links from the completed response rather than client-supplied relationship IDs.
 
-The report-artifact migration is deployed to the connected VoltCore Supabase
-project. RLS is enabled; the response-link trigger exists; authenticated SELECT
-and INSERT tenant policies were verified.
-
-#### 2. Template management
+#### Template management
 
 Delivered:
 
-- role-gated template list and revision history;
+- role-gated template list/revision history;
 - clone-as-draft;
-- draft editing of sections, fields, options, validation, visibility, and order;
+- draft editor for sections, fields, options, validation, visibility, and order;
 - atomic draft graph save;
 - atomic publish with replacement archival;
 - draft archival;
-- explicit, non-destructive installation of the built-in generator inspection
-  and maintenance template pack for the active tenant.
+- idempotent, non-destructive generator template-pack installation.
 
-Template management is available to supervisor, dispatcher, and admin roles.
-Supabase RLS remains authoritative; UI role gating is only an affordance.
+Template management is available to supervisor, dispatcher, and admin roles. RLS remains authoritative.
 
-#### 3. Generic runtime renderer
+#### Generic runtime renderer
 
 Supported field types:
 
-- text
-- number
-- reading with units
-- date
-- select
-- boolean
-- checklist
-- photo
-- signature
+- text;
+- number;
+- reading with units;
+- date;
+- select;
+- boolean;
+- checklist;
+- photo;
+- signature.
 
-The runtime supports conditional section/field visibility, required/type/range
-validation, read-only rendering, and pluggable photo/signature capture.
+The runtime supports conditional section/field visibility, required/type/range validation, read-only rendering, and pluggable evidence capture.
 
-#### 4. Offline response lifecycle
+#### Offline response lifecycle
 
 Delivered:
 
 - local-first response persistence;
 - durable sync enqueue;
 - debounced autosave;
-- serialized saves and retryable save errors;
+- serialized saves/retryable errors;
 - exact template-revision pinning;
 - validation before completion;
 - hard mutation lock after completion;
-- exact-revision Hive definition cache wired into the normal Hive lifecycle;
-- tests proving offline fallback never substitutes another/newer revision;
-- close/reopen cache regression coverage.
+- exact-revision Hive definition cache;
+- restart/offline recovery tests;
+- no-newer-revision substitution.
 
-#### 5. Generator template pack and legacy migration adapters
+#### Generator packs and legacy migration adapters
 
-Delivered canonical packs:
+Canonical packs:
 
 - `generator-inspection`
 - `generator-maintenance`
 
-Legacy adapters:
+Adapters preserve directly equivalent values, complete JSON-safe `_legacyPayload`, provenance, legacy boolean ambiguity, load-test/photo evidence links, and response state/revision provenance.
 
-- preserve directly equivalent values under stable semantic field keys;
-- preserve the complete JSON-safe legacy payload under `_legacyPayload`;
-- retain source/provenance metadata;
-- document legacy boolean ambiguity rather than guessing whether an old `false`
-  was explicit or a model default;
-- retain inspection load-test and photo collections as explicitly linked legacy
-  evidence rather than pretending they were scalar form fields;
-- preserve draft/completed state and revision provenance.
-
-Certification tests verify that every template field retains a canonical or
-legacy evidence source and that migrated generator inspection responses render
-through the generic report path.
-
-#### 6. Generic PDF and Documents path
+#### Generic PDF and Documents path
 
 Delivered:
 
-- exact revision check before report rendering;
-- Noto Sans assets and US Letter multi-page output;
-- response metadata, grade, deficiencies, sections, labels, readings, units,
-  photos/signatures, pagination, and legacy provenance;
-- native PDF storage using the existing managed PDF tree;
-- web PDF persistence in `WebFileStore`/IndexedDB;
-- Documents discovery, open, share, and delete for native and web;
-- durable file upload enqueue;
-- immutable server-side report metadata with downstream lookup indexes.
+- exact revision check before rendering;
+- Noto Sans / US Letter multi-page output;
+- metadata, grade, deficiencies, labels, readings, units, photos/signatures, pagination, provenance;
+- native managed-PDF storage;
+- web `WebFileStore`/IndexedDB persistence;
+- Documents discovery/open/share/delete;
+- durable upload enqueue;
+- immutable report metadata and downstream lookup indexes.
 
-The existing generator PDFs remain available as the pilot comparison baseline.
+Legacy generator PDFs remain available as the pilot comparison baseline.
 
-#### 7. Technician execution runtime and rollback
+#### Technician execution runtime and rollback
 
-Delivered route:
+Route:
 
-`/field-forms/:templateSlug`
+```text
+/field-forms/:templateSlug
+```
 
-For new work the page resolves the current published definition once, creates a
-local-first draft, and pins that revision. Reopened work resolves the response's
-exact stored revision. Completion validates, persists, locks the response, and
-generates the template report.
-
-The route is default-disabled and controlled at build time:
+Pilot flag:
 
 ```bash
-flutter run \
+flutter run -d edge \
   --dart-define=VOLTCORE_GENERATOR_TEMPLATE_PILOT=true
 ```
 
-or for a web build:
+or:
 
 ```bash
 flutter build web \
   --dart-define=VOLTCORE_GENERATOR_TEMPLATE_PILOT=true
 ```
 
-Without the define, the pilot route is not registered and all legacy generator
-inspection/maintenance routes continue unchanged. This is the Phase 3 rollback
-switch.
+Without the define, the pilot route is not registered and legacy generator inspection/maintenance routes remain active.
 
-### Phase 3 PR sequence
+### Phase 3 merged sequence
 
-Major merged increments:
+Core Phase 3 increments:
 
-- #46 — management write boundary and atomic revision RPCs
+- #46 — management write boundary / atomic revision RPCs
 - #47 — role-gated management UI
 - #48 — draft definition editor
-- #49 — generic runtime renderer
-- #50 — offline autosave and completion locking
-- #51 — generator template pack and legacy adapters
+- #49 — generic renderer
+- #50 — offline autosave / completion locking
+- #51 — generator template pack / legacy adapters
 - #53 — generic template PDF renderer
-- #54 — cross-platform report persistence and Documents integration
+- #54 — cross-platform report persistence / Documents
 - #55 — durable report artifact links
-- #56 — technician runtime pilot and exact-revision cache certification
+- #56 — technician runtime pilot / exact-revision cache certification
+- #57 — final automated Phase 3 certification / DB index hardening
 
-PR #52 was the independent schedule-deletion consistency repair performed before
-continuing Phase 3.
+Supporting hardening delivered afterward:
 
-## Final Phase 3 certification gate
+- #58 — Template Management discoverability and existing Settings wiring
+- #59 — password/account controls
+- #60 — persisted app settings and operational notification/auto-sync controls
+- #61 — cross-platform export / safe cache maintenance
+- #62 — tenant-membership-authoritative RBAC management
+- #63 — tenant retention-policy settings
+- #64 — privacy-aware advanced network logging
+- #65 — safe form navigation and Android tooling update
+- #66 — stale-tenant queued-sync healing
+- #67 — tenant-admin user/role management hardening
+- #68 — inspection address normalization, explicit YES/NO presentation, checklist conclusions
 
-Automated/code gates before enabling the pilot:
+PR #52 was the independent schedule-deletion consistency repair.
 
-1. `flutter analyze --fatal-infos --fatal-warnings` is green.
-2. `flutter test` is green.
-3. `flutter build web` is green.
-4. Generator semantic parity tests are green.
-5. Generic report generation for an adapted generator response is green.
-6. Exact-revision offline cache/restart tests are green.
-7. Report artifact RLS/trigger verification is green.
-8. Apply the report-artifact covering-index hardening migration and rerun the
-   Supabase performance advisor.
+## Phase 3 certification gate
 
-Manual pilot gate for one controlled tenant:
+### Automated/code gates — complete
 
-1. In Template Management, install the built-in generator templates.
-2. Build with `VOLTCORE_GENERATOR_TEMPLATE_PILOT=true`.
-3. Sign in as a technician and open `/field-forms/generator-inspection`.
-4. Start a response while online so the published revision is cached.
-5. Disconnect networking and enter inspection data; confirm autosave continues.
-6. Restart the app/browser and reopen the same response; confirm the exact old
-   revision and values are available offline.
-7. Complete the response and verify it becomes immutable.
-8. Generate/open the customer-ready PDF from Documents.
-9. Reconnect and confirm response/file synchronization succeeds.
-10. Publish a newer template revision.
-11. Reopen the completed response and confirm it still uses its original
-    revision.
-12. Compare the template report against the legacy generator report for the
-    same evidence: identity/site data, compliance answers, readings/grade,
-    deficiencies, signatures/photos, and pagination/readability.
-13. Disable the build flag and verify the legacy workflow remains fully usable.
+- [x] `flutter analyze --fatal-infos --fatal-warnings`
+- [x] `flutter test`
+- [x] `flutter build web`
+- [x] generator semantic parity tests
+- [x] generic report generation for adapted generator responses
+- [x] exact-revision offline cache/restart tests
+- [x] report-artifact RLS/trigger verification
+- [x] report-artifact index hardening / advisor follow-up
+- [x] Template Management discoverability
+- [x] tenant-authoritative RBAC/settings hardening
 
-**Phase 3 exit criterion:** a technician can complete a generator inspection
-offline from a published revision, synchronize it safely, produce a
-customer-ready PDF, and reopen the same immutable response after a newer
-revision is published, while legacy reports remain available throughout the
-pilot.
+### Manual A&S Electric pilot — remaining
 
-Do not mark Phase 3 production-certified until the manual pilot above is signed
-off.
+1. Open Template Management and install the built-in generator templates.
+2. Build/run with `VOLTCORE_GENERATOR_TEMPLATE_PILOT=true`.
+3. Run generator inspection online→offline→restart→completion.
+4. Verify exact revision and values recover offline.
+5. Generate/open the customer PDF from Documents.
+6. Reconnect and verify response/file sync.
+7. Publish a newer template revision.
+8. Reopen the completed response and verify it stays on its original revision.
+9. Compare template PDF against the legacy report for identity/site/address, compliance/checklist answers, conclusions, readings/grade, deficiencies, load-test evidence, signatures/photos, pagination, and readability.
+10. Repeat for generator maintenance.
+11. Disable the pilot flag and verify legacy workflows/reports remain usable.
+
+**Phase 3 exit criterion:** a technician can complete generator inspection and maintenance offline from published revisions, synchronize safely, produce customer-ready reports, and reopen immutable responses against their original revisions after newer revisions exist, while legacy workflows remain a verified rollback path.
+
+Do not mark Phase 3 production-certified until this manual pilot is signed off.
 
 ## Phase 4 — First electrical template packs
 
-After Phase 3 pilot certification:
+After Phase 3 certification:
 
-- ATS / transfer switch inspection and maintenance;
+- ATS / transfer-switch inspection and maintenance;
 - switchgear/panel/transformer inspection packs;
-- emergency lighting/exit sign recurring compliance;
+- emergency-lighting/exit-sign recurring compliance;
 - reusable deficiencies, readings, evidence, and signed reports.
 
 ## Phase 5 — Operations and commercial tools
@@ -306,16 +262,27 @@ After Phase 3 pilot certification:
 - UPS;
 - EV charging;
 - energy storage/solar;
-- selected facilities assets.
+- selected facilities assets;
+- additional tenant-configurable packs.
+
+## Retention enforcement track
+
+The tenant retention-policy UI is implemented, but destructive enforcement remains disabled. Archive and deletion eligibility are intentionally separate concepts. The staged plan is:
+
+1. **Safe preview:** eligibility engine, holds, evidence manifests, retention queue; no deletion.
+2. **Controlled disposition:** grace period, pending-purge state, dry-run worker, frozen manifest/audit.
+3. **Certified purge:** begin with archived maintenance jobs only, storage cleanup before database cleanup, idempotent retry, audit, metrics, and explicit enablement.
+
+See [`voltcore_phase3_onward_and_retention_action_plan.md`](voltcore_phase3_onward_and_retention_action_plan.md) for the full model and guardrails.
 
 ## Guardrails
 
-- Never place service-role credentials in the Flutter application.
-- Roles come from `tenant_members`; client role gating cannot replace RLS.
-- New routes are default-deny until explicitly registered in `RouteRoles`.
-- Never substitute a newer template revision when an old response requests an
-  exact revision.
-- Do not infer missing legacy generator values during migration.
-- Keep legacy generator data and PDFs available through the entire pilot and
-  rollback period.
-- Web file workflows must use `WebFileStore` rather than filesystem APIs.
+- Never place service-role credentials in Flutter.
+- Roles come from `tenant_members`; UI gating cannot replace RLS.
+- New routes are default-deny until explicitly registered.
+- Never substitute a newer template revision for a pinned response.
+- Do not infer missing legacy values during migration.
+- Keep legacy generator data and PDFs through pilot/rollback.
+- Web file workflows use `WebFileStore`, not filesystem APIs.
+- Archive is not delete.
+- Destructive retention requires evidence-graph validation, storage-safe execution, audit, and explicit certification.
