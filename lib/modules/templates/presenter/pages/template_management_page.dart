@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:uuid/uuid.dart';
 
+import '../../../../core/constants/feature_flags.dart';
+import '../../../../core/constants/route_paths.dart';
 import '../../../../core/services/sync/sync_context.dart';
 import '../../../../shared/widgets/app_page.dart';
 import '../../domain/entities/template_entities.dart';
+import '../../domain/services/generator_pilot_readiness.dart';
 import '../../domain/services/template_revision_lifecycle.dart';
 import '../../infra/repositories/template_definition_repository.dart';
 import '../../infra/repositories/template_definition_repository_impl.dart';
@@ -31,6 +35,7 @@ class _TemplateManagementPageState extends ConsumerState<TemplateManagementPage>
   List<FormTemplate> _templates = const [];
   FormTemplate? _selectedTemplate;
   List<FormTemplateRevision> _revisions = const [];
+  Map<String, List<FormTemplateRevision>> _pilotRevisionsByTemplateId = const {};
 
   TemplateDefinitionRepository get _definitions =>
       ref.read(templateDefinitionRepositoryProvider);
@@ -50,15 +55,20 @@ class _TemplateManagementPageState extends ConsumerState<TemplateManagementPage>
     });
     try {
       final templates = await _definitions.listTemplates();
+      final pilotRevisions = await _loadPilotRevisionMap(templates);
+      final selected = templates.isEmpty ? null : templates.first;
+      final selectedRevisions = selected == null
+          ? const <FormTemplateRevision>[]
+          : pilotRevisions[selected.id] ??
+                await _management.listRevisions(selected.id);
+
       if (!mounted) return;
       setState(() {
         _templates = templates;
-        _selectedTemplate = templates.isEmpty ? null : templates.first;
-        if (templates.isEmpty) _revisions = const [];
+        _selectedTemplate = selected;
+        _revisions = selectedRevisions;
+        _pilotRevisionsByTemplateId = pilotRevisions;
       });
-      if (_selectedTemplate != null) {
-        await _loadRevisions(_selectedTemplate!);
-      }
     } catch (error) {
       if (!mounted) return;
       setState(() => _error = error.toString());
@@ -66,6 +76,21 @@ class _TemplateManagementPageState extends ConsumerState<TemplateManagementPage>
       if (mounted) setState(() => _loading = false);
     }
   }
+
+  Future<Map<String, List<FormTemplateRevision>>> _loadPilotRevisionMap(
+    Iterable<FormTemplate> templates,
+  ) async {
+    final result = <String, List<FormTemplateRevision>>{};
+    for (final template in templates) {
+      if (!_isGeneratorPilotTemplate(template)) continue;
+      result[template.id] = await _management.listRevisions(template.id);
+    }
+    return result;
+  }
+
+  bool _isGeneratorPilotTemplate(FormTemplate template) =>
+      template.slug == GeneratorPilotReadiness.inspectionSlug ||
+      template.slug == GeneratorPilotReadiness.maintenanceSlug;
 
   Future<void> _installGeneratorPack() async {
     final tenantId = SyncContext.tenantId;
@@ -104,7 +129,15 @@ class _TemplateManagementPageState extends ConsumerState<TemplateManagementPage>
     try {
       final revisions = await _management.listRevisions(template.id);
       if (!mounted) return;
-      setState(() => _revisions = revisions);
+      setState(() {
+        _revisions = revisions;
+        if (_isGeneratorPilotTemplate(template)) {
+          _pilotRevisionsByTemplateId = {
+            ..._pilotRevisionsByTemplateId,
+            template.id: revisions,
+          };
+        }
+      });
     } catch (error) {
       if (!mounted) return;
       setState(() => _error = error.toString());
@@ -186,6 +219,18 @@ class _TemplateManagementPageState extends ConsumerState<TemplateManagementPage>
     await _loadRevisions(_selectedTemplate!);
   }
 
+  void _launchPilot(String slug) {
+    if (!FeatureFlags.generatorTemplatePilotEnabled) {
+      _showMessage(
+        'Rebuild with --dart-define=VOLTCORE_GENERATOR_TEMPLATE_PILOT=true '
+        'before starting the controlled pilot.',
+      );
+      return;
+    }
+    final path = RoutePaths.templateResponse.replaceFirst(':templateSlug', slug);
+    context.push(path);
+  }
+
   void _showMessage(String message) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
@@ -207,7 +252,7 @@ class _TemplateManagementPageState extends ConsumerState<TemplateManagementPage>
           label: const Text('Install generator templates'),
         ),
         IconButton(
-          tooltip: 'Refresh templates',
+          tooltip: 'Refresh templates and pilot readiness',
           onPressed: _loading ? null : _loadTemplates,
           icon: const Icon(Icons.refresh),
         ),
@@ -254,9 +299,23 @@ class _TemplateManagementPageState extends ConsumerState<TemplateManagementPage>
     }
 
     final selected = _selectedTemplate ?? _templates.first;
+    final readiness = GeneratorPilotReadiness.evaluate(
+      tenantId: SyncContext.tenantId,
+      pilotEnabled: FeatureFlags.generatorTemplatePilotEnabled,
+      templates: _templates,
+      revisionsByTemplateId: _pilotRevisionsByTemplateId,
+    );
+
     return LayoutBuilder(
       builder: (context, constraints) {
         final wide = constraints.maxWidth >= 900;
+        final pilotCard = _GeneratorPilotReadinessCard(
+          readiness: readiness,
+          onLaunchInspection: () =>
+              _launchPilot(GeneratorPilotReadiness.inspectionSlug),
+          onLaunchMaintenance: () =>
+              _launchPilot(GeneratorPilotReadiness.maintenanceSlug),
+        );
         final templateList = _TemplateList(
           templates: _templates,
           selectedId: selected.id,
@@ -274,11 +333,21 @@ class _TemplateManagementPageState extends ConsumerState<TemplateManagementPage>
         );
 
         if (wide) {
-          return Row(
+          return Column(
             children: [
-              SizedBox(width: 320, child: templateList),
-              const VerticalDivider(width: 1),
-              Expanded(child: revisionList),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
+                child: pilotCard,
+              ),
+              Expanded(
+                child: Row(
+                  children: [
+                    SizedBox(width: 320, child: templateList),
+                    const VerticalDivider(width: 1),
+                    Expanded(child: revisionList),
+                  ],
+                ),
+              ),
             ],
           );
         }
@@ -286,12 +355,148 @@ class _TemplateManagementPageState extends ConsumerState<TemplateManagementPage>
         return ListView(
           padding: const EdgeInsets.all(16),
           children: [
+            pilotCard,
+            const SizedBox(height: 16),
             templateList,
             const Divider(height: 32),
             revisionList,
           ],
         );
       },
+    );
+  }
+}
+
+class _GeneratorPilotReadinessCard extends StatelessWidget {
+  const _GeneratorPilotReadinessCard({
+    required this.readiness,
+    required this.onLaunchInspection,
+    required this.onLaunchMaintenance,
+  });
+
+  final GeneratorPilotReadiness readiness;
+  final VoidCallback onLaunchInspection;
+  final VoidCallback onLaunchMaintenance;
+
+  @override
+  Widget build(BuildContext context) {
+    final headline = readiness.fullyReady
+        ? 'Ready to launch'
+        : readiness.templateDataReady
+            ? 'Templates ready • pilot build flag required'
+            : 'Pilot prerequisites need attention';
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Wrap(
+              spacing: 12,
+              runSpacing: 8,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                Text(
+                  'Phase 3 Generator Pilot Readiness',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                Chip(label: Text(headline)),
+              ],
+            ),
+            const SizedBox(height: 12),
+            _ReadinessRow(
+              label: 'Active tenant',
+              ready: readiness.tenantConfigured,
+              detail: readiness.tenantConfigured
+                  ? readiness.tenantId!
+                  : 'No active tenant configured',
+            ),
+            _ReadinessRow(
+              label: 'Pilot build',
+              ready: readiness.pilotEnabled,
+              detail: readiness.pilotEnabled
+                  ? 'VOLTCORE_GENERATOR_TEMPLATE_PILOT=true'
+                  : 'Disabled — rebuild with '
+                        '--dart-define=VOLTCORE_GENERATOR_TEMPLATE_PILOT=true',
+            ),
+            _ReadinessRow(
+              label: readiness.inspection.label,
+              ready: readiness.inspection.isReady,
+              detail: readiness.inspection.statusLabel,
+            ),
+            _ReadinessRow(
+              label: readiness.maintenance.label,
+              ready: readiness.maintenance.isReady,
+              detail: readiness.maintenance.statusLabel,
+            ),
+            if (readiness.blockers.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              for (final blocker in readiness.blockers)
+                Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: Text('• $blocker'),
+                ),
+            ],
+            const SizedBox(height: 16),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                FilledButton.icon(
+                  onPressed: readiness.canLaunchInspection
+                      ? onLaunchInspection
+                      : null,
+                  icon: const Icon(Icons.assignment_turned_in_outlined),
+                  label: const Text('Start inspection pilot'),
+                ),
+                OutlinedButton.icon(
+                  onPressed: readiness.canLaunchMaintenance
+                      ? onLaunchMaintenance
+                      : null,
+                  icon: const Icon(Icons.build_circle_outlined),
+                  label: const Text('Start maintenance pilot'),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ReadinessRow extends StatelessWidget {
+  const _ReadinessRow({
+    required this.label,
+    required this.ready,
+    required this.detail,
+  });
+
+  final String label;
+  final bool ready;
+  final String detail;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            ready ? Icons.check_circle_outline : Icons.info_outline,
+            size: 20,
+          ),
+          const SizedBox(width: 8),
+          SizedBox(
+            width: 180,
+            child: Text(label, style: const TextStyle(fontWeight: FontWeight.w600)),
+          ),
+          const SizedBox(width: 8),
+          Expanded(child: Text(detail)),
+        ],
+      ),
     );
   }
 }
