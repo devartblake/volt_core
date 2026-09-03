@@ -28,6 +28,28 @@ void main() {
       expect((restored.payload['row'] as Map)['site_code'], 'S1');
     });
 
+    test('insert-only operation round-trips without becoming an upsert', () {
+      final op = SyncOperation(
+        id: 'artifact-op',
+        type: SyncOpType.insert,
+        entityId: 'form_response_report_artifacts/report-1',
+        payload: const {
+          'table': 'form_response_report_artifacts',
+          'row': {
+            'id': 'report-1',
+            'response_id': 'response-1',
+          },
+        },
+      );
+
+      final restored = SyncOperation.fromJson(op.toJson());
+
+      expect(restored.type, SyncOpType.insert);
+      expect(restored.dedupKey,
+          'insert:form_response_report_artifacts/report-1');
+      expect((restored.payload['row'] as Map)['response_id'], 'response-1');
+    });
+
     test('dedupKey combines type and entityId', () {
       final op = SyncOperation(
         id: 'x',

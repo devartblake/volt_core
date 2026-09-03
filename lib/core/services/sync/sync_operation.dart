@@ -2,6 +2,10 @@ import 'dart:convert';
 
 /// The kind of work a queued [SyncOperation] represents.
 enum SyncOpType {
+  /// Insert a row once. Used for immutable append-only records where UPDATE is
+  /// intentionally not granted (for example generated report artifacts).
+  insert,
+
   /// Insert-or-update a row in a Supabase table.
   upsert,
 
@@ -56,9 +60,11 @@ class SyncOperation {
   String entityId;
 
   /// Operation body. Shape depends on [type]:
+  /// - insert:     `{ 'table': String, 'row': Map }`
   /// - upsert:     `{ 'table': String, 'row': Map }`
   /// - delete:     `{ 'table': String, 'id': String }`
   /// - fileUpload: `{ 'localPath': String, 'remotePath': String, 'contentType': String }`
+  /// - bytesUpload:`{ 'storePath': String, 'remotePath': String, 'contentType': String }`
   final Map<String, dynamic> payload;
 
   final DateTime createdAt;
