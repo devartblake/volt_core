@@ -38,6 +38,10 @@ class RoutePaths {
   // Templates
   static const String templates = '/templates';
   static const String templateResponse = '/field-forms/:templateSlug';
+  static const String generatorInspectionPilot =
+      '/field-forms/generator-inspection';
+  static const String generatorMaintenancePilot =
+      '/field-forms/generator-maintenance';
 
   // Schedule
   static const String schedule = '/schedule';
