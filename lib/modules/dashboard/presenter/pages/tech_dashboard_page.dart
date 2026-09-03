@@ -9,11 +9,12 @@ import 'package:voltcore/modules/dashboard/infra/repositories/dashboard_reposito
 import '../../../../core/constants/feature_flags.dart';
 import '../../../../shared/widgets/widgets.dart';
 import '../../../auth/presenter/controllers/auth_controller.dart';
+import '../../../templates/presenter/widgets/generator_pilot_drafts_panel.dart';
 import '../../../templates/presenter/widgets/generator_pilot_launch_panel.dart';
 
 /// Provide the usecase from the repository.
 final loadDashboardStatsUsecaseProvider =
-Provider<LoadDashboardStatsUsecase>((ref) {
+    Provider<LoadDashboardStatsUsecase>((ref) {
   final repo = ref.watch(dashboardRepositoryProvider);
   return LoadDashboardStatsUsecase(repo);
 });
@@ -71,16 +72,15 @@ class TechDashboardController extends StateNotifier<TechDashboardState> {
 
 /// Provider for the tech dashboard controller.
 final techDashboardControllerProvider =
-StateNotifierProvider<TechDashboardController, TechDashboardState>((ref) {
+    StateNotifierProvider<TechDashboardController, TechDashboardState>((ref) {
   final usecase = ref.watch(loadDashboardStatsUsecaseProvider);
   return TechDashboardController(usecase);
 });
 
 /// Technician-focused dashboard page.
 ///
-/// You can either:
-///  - Route to this directly for techs, or
-///  - Embed its content inside your main DashboardPage later.
+/// The controlled generator pilot controls remain available when the build flag
+/// is enabled even if remote workload statistics cannot load while offline.
 class TechDashboardPage extends ConsumerStatefulWidget {
   const TechDashboardPage({super.key});
 
@@ -94,8 +94,6 @@ class _TechDashboardPageState extends ConsumerState<TechDashboardPage> {
   void initState() {
     super.initState();
 
-    // Schedule the data load to happen AFTER the widget tree is built
-    // This fixes the "Tried to modify a provider while the widget tree was building" error
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final auth = ref.read(authStateProvider);
       final userId = auth.userId ?? 'local-tech';
@@ -109,28 +107,44 @@ class _TechDashboardPageState extends ConsumerState<TechDashboardPage> {
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(techDashboardControllerProvider);
-    final theme = Theme.of(context);
-    final color = theme.colorScheme;
+    final pilotEnabled = FeatureFlags.generatorTemplatePilotEnabled;
 
     return AppPage(
       title: 'Tech Dashboard',
       body: Padding(
         padding: const EdgeInsets.all(16),
-        child: state.isLoading
-            ? const LoadingIndicator()
-            : state.error != null
-            ? Center(
-          child: Text(
-            'Error: ${state.error}',
-            style: TextStyle(color: color.error),
-          ),
-        )
-            : _buildContent(context, state.stats ?? const DashboardStatsEntity.empty()),
+        child: pilotEnabled
+            ? _buildContent(
+                context,
+                state.stats ?? const DashboardStatsEntity.empty(),
+                workloadLoading: state.isLoading,
+                workloadError: state.error,
+              )
+            : state.isLoading
+                ? const LoadingIndicator()
+                : state.error != null
+                    ? Center(
+                        child: Text(
+                          'Error: ${state.error}',
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.error,
+                          ),
+                        ),
+                      )
+                    : _buildContent(
+                        context,
+                        state.stats ?? const DashboardStatsEntity.empty(),
+                      ),
       ),
     );
   }
 
-  Widget _buildContent(BuildContext context, DashboardStatsEntity stats) {
+  Widget _buildContent(
+    BuildContext context,
+    DashboardStatsEntity stats, {
+    bool workloadLoading = false,
+    String? workloadError,
+  }) {
     final textTheme = Theme.of(context).textTheme;
     final colorScheme = Theme.of(context).colorScheme;
 
@@ -150,45 +164,101 @@ class _TechDashboardPageState extends ConsumerState<TechDashboardPage> {
         const SizedBox(height: 24),
         if (FeatureFlags.generatorTemplatePilotEnabled) ...[
           const GeneratorPilotLaunchPanel(),
+          const SizedBox(height: 16),
+          const GeneratorPilotDraftsPanel(),
           const SizedBox(height: 24),
         ],
-        Wrap(
-          spacing: 16,
-          runSpacing: 16,
+        if (workloadLoading)
+          const _WorkloadStatusCard(
+            icon: Icons.sync,
+            message: 'Loading workload statistics…',
+          )
+        else if (workloadError != null)
+          _WorkloadStatusCard(
+            icon: Icons.cloud_off_outlined,
+            message:
+                'Workload statistics are unavailable right now. Pilot drafts '
+                'remain local and can still be resumed offline.\n$workloadError',
+            isError: true,
+          )
+        else
+          Wrap(
+            spacing: 16,
+            runSpacing: 16,
+            children: [
+              _StatCard(
+                label: 'Open Inspections',
+                value: stats.myOpenInspections.toString(),
+                icon: Icons.assignment_late_outlined,
+                color: colorScheme.primary,
+              ),
+              _StatCard(
+                label: 'Completed Inspections',
+                value: stats.myCompletedInspections.toString(),
+                icon: Icons.fact_check_outlined,
+                color: colorScheme.tertiary,
+              ),
+              _StatCard(
+                label: 'Open Maintenance Jobs',
+                value: stats.myOpenMaintenanceJobs.toString(),
+                icon: Icons.build_outlined,
+                color: colorScheme.secondary,
+              ),
+              _StatCard(
+                label: 'Completed Jobs',
+                value: stats.myCompletedMaintenanceJobs.toString(),
+                icon: Icons.task_alt_outlined,
+                color: colorScheme.primaryContainer,
+              ),
+              _StatCard(
+                label: 'Upcoming Tasks',
+                value: stats.upcomingTasks.toString(),
+                icon: Icons.calendar_today_outlined,
+                color: colorScheme.secondaryContainer,
+              ),
+            ],
+          ),
+      ],
+    );
+  }
+}
+
+class _WorkloadStatusCard extends StatelessWidget {
+  const _WorkloadStatusCard({
+    required this.icon,
+    required this.message,
+    this.isError = false,
+  });
+
+  final IconData icon;
+  final String message;
+  final bool isError;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final color = isError
+        ? theme.colorScheme.error
+        : theme.colorScheme.onSurfaceVariant;
+
+    return Card(
+      elevation: 0,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _StatCard(
-              label: 'Open Inspections',
-              value: stats.myOpenInspections.toString(),
-              icon: Icons.assignment_late_outlined,
-              color: colorScheme.primary,
-            ),
-            _StatCard(
-              label: 'Completed Inspections',
-              value: stats.myCompletedInspections.toString(),
-              icon: Icons.fact_check_outlined,
-              color: colorScheme.tertiary,
-            ),
-            _StatCard(
-              label: 'Open Maintenance Jobs',
-              value: stats.myOpenMaintenanceJobs.toString(),
-              icon: Icons.build_outlined,
-              color: colorScheme.secondary,
-            ),
-            _StatCard(
-              label: 'Completed Jobs',
-              value: stats.myCompletedMaintenanceJobs.toString(),
-              icon: Icons.task_alt_outlined,
-              color: colorScheme.primaryContainer,
-            ),
-            _StatCard(
-              label: 'Upcoming Tasks',
-              value: stats.upcomingTasks.toString(),
-              icon: Icons.calendar_today_outlined,
-              color: colorScheme.secondaryContainer,
+            Icon(icon, color: color),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                message,
+                style: theme.textTheme.bodyMedium?.copyWith(color: color),
+              ),
             ),
           ],
         ),
-      ],
+      ),
     );
   }
 }
