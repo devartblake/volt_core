@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 /// A labelled text input with the app's standard spacing and validation copy.
 ///
@@ -27,6 +28,7 @@ class LabeledField extends StatefulWidget {
     this.suffix,
     this.suffixText,
     this.keyboardType,
+    this.inputFormatters,
     this.maxLines = 1,
     this.minLines,
     this.required = false,
@@ -60,6 +62,11 @@ class LabeledField extends StatefulWidget {
   /// text inside the field rather than as a trailing icon.
   final String? suffixText;
   final TextInputType? keyboardType;
+
+  /// Applied to the underlying [TextFormField]. Numeric fields want
+  /// [FilteringTextInputFormatter.digitsOnly] rather than a validator that
+  /// scolds after the fact.
+  final List<TextInputFormatter>? inputFormatters;
   final int maxLines;
   final int? minLines;
 
@@ -164,6 +171,7 @@ class _LabeledFieldState extends State<LabeledField> {
         onTap: widget.onTap,
         autofocus: widget.autofocus,
         keyboardType: widget.keyboardType,
+        inputFormatters: widget.inputFormatters,
         maxLines: widget.maxLines,
         minLines: widget.minLines,
         textCapitalization: widget.textCapitalization,

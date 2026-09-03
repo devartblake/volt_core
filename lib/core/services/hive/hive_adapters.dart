@@ -10,6 +10,10 @@ import '../../../modules/load_test/infra/models/test_interval_record.dart';
 import '../../../modules/maintenance/infra/models/maintenance_record.dart';
 import '../../../modules/schedule/infra/models/schedule_task.dart';
 import '../../../modules/templates/infra/models/form_response_record.dart';
+import '../../../modules/fleet/infra/models/vehicle_asset_catalog_item_record.dart';
+import '../../../modules/fleet/infra/models/vehicle_asset_record.dart';
+import '../../../modules/fleet/infra/models/vehicle_maintenance_check_record.dart';
+import '../../../modules/fleet/infra/models/vehicle_record.dart';
 import '../../../modules/work_orders/infra/models/work_order_record.dart';
 
 /// Central place to register **all** Hive adapters used by the app.
@@ -34,6 +38,14 @@ class HiveAdapters {
     // "HiveError: Cannot write, unknown type".
     _safeRegister<ScheduledTask>(ScheduledTaskAdapter());
     _safeRegister<WorkOrderRecord>(WorkOrderRecordAdapter());
+    _safeRegister<VehicleRecord>(VehicleRecordAdapter());
+    _safeRegister<VehicleMaintenanceCheckRecord>(
+      VehicleMaintenanceCheckRecordAdapter(),
+    );
+    _safeRegister<VehicleAssetCatalogItemRecord>(
+      VehicleAssetCatalogItemRecordAdapter(),
+    );
+    _safeRegister<VehicleAssetRecord>(VehicleAssetRecordAdapter());
     _safeRegister<FormResponseRecord>(FormResponseRecordAdapter());
 
     _registered = true;

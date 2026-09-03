@@ -1,5 +1,9 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hive/hive.dart';
+import 'package:voltcore/modules/fleet/infra/models/vehicle_asset_catalog_item_record.dart';
+import 'package:voltcore/modules/fleet/infra/models/vehicle_asset_record.dart';
+import 'package:voltcore/modules/fleet/infra/models/vehicle_maintenance_check_record.dart';
+import 'package:voltcore/modules/fleet/infra/models/vehicle_record.dart';
 import 'package:voltcore/modules/inspections/domain/entities/inspection_entity.dart';
 import 'package:voltcore/modules/inspections/infra/models/inspection.dart';
 import 'package:voltcore/modules/inspections/infra/models/nameplate_data.dart';
@@ -151,6 +155,62 @@ void main() {
       currentFieldCount: 13,
       fieldCountAtLastRelease: 13,
     ),
+    _AdapterCase<VehicleRecord>(
+      name: 'VehicleRecordAdapter',
+      adapter: VehicleRecordAdapter(),
+      sample: () => VehicleRecord(
+        id: 'v1',
+        tenantId: 'tenant-1',
+        designation: 'Truck A',
+        createdAt: now,
+        updatedAt: now,
+      ),
+      // Phase 2 added last_check_at as field 15.
+      currentFieldCount: 16,
+      fieldCountAtLastRelease: 15,
+    ),
+    _AdapterCase<VehicleMaintenanceCheckRecord>(
+      name: 'VehicleMaintenanceCheckRecordAdapter',
+      adapter: VehicleMaintenanceCheckRecordAdapter(),
+      sample: () => VehicleMaintenanceCheckRecord(
+        id: 'c1',
+        tenantId: 'tenant-1',
+        vehicleId: 'v1',
+        checkedAt: now,
+        createdAt: now,
+        updatedAt: now,
+      ),
+      currentFieldCount: 14,
+      fieldCountAtLastRelease: 14,
+    ),
+    _AdapterCase<VehicleAssetCatalogItemRecord>(
+      name: 'VehicleAssetCatalogItemRecordAdapter',
+      adapter: VehicleAssetCatalogItemRecordAdapter(),
+      sample: () => VehicleAssetCatalogItemRecord(
+        id: 'k1',
+        tenantId: 'tenant-1',
+        name: 'IDEAL 1/2" EMT BENDER',
+        createdAt: now,
+        updatedAt: now,
+      ),
+      currentFieldCount: 9,
+      fieldCountAtLastRelease: 9,
+    ),
+    _AdapterCase<VehicleAssetRecord>(
+      name: 'VehicleAssetRecordAdapter',
+      adapter: VehicleAssetRecordAdapter(),
+      sample: () => VehicleAssetRecord(
+        id: 'a1',
+        tenantId: 'tenant-1',
+        vehicleId: 'v1',
+        catalogId: 'k1',
+        assignedAt: now,
+        createdAt: now,
+        updatedAt: now,
+      ),
+      currentFieldCount: 12,
+      fieldCountAtLastRelease: 12,
+    ),
     _AdapterCase<FormResponseRecord>(
       name: 'FormResponseRecordAdapter',
       adapter: FormResponseRecordAdapter(),
@@ -171,10 +231,10 @@ void main() {
   ];
 
   test('every registered Hive adapter is covered', () {
-    // hive_adapters.dart registers eight. A ninth added without a case here
-    // would get no forward-compatibility guard at all.
-    expect(cases, hasLength(8));
-    expect(cases.map((c) => c.name).toSet(), hasLength(8));
+    // hive_adapters.dart registers twelve. A thirteenth added without a case
+    // here would get no forward-compatibility guard at all.
+    expect(cases, hasLength(12));
+    expect(cases.map((c) => c.name).toSet(), hasLength(12));
   });
 
   for (final adapterCase in cases) {

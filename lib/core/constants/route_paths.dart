@@ -53,6 +53,28 @@ class RoutePaths {
   static const String equipmentSearch = '/equipment/search';
   static const String equipmentHistory = '/equipment/history/:id';
 
+  // Fleet — vehicles, and (later phases) the assets carried in them.
+  // Deliberately not under /equipment: that is the field-service assets we
+  // inspect. See docs/fleet_and_vehicle_assets_plan.md §0.
+  static const String fleet = '/fleet';
+
+  /// Sub-route paths under [fleet]. GoRouter sub-paths must NOT start with '/'.
+  static const String fleetNewSub = 'new';
+  static const String fleetEditSub = 'edit/:id';
+  static const String fleetDetailSub = 'detail/:id';
+
+  /// Nested under [fleetDetailSub], so `:id` is inherited and there is no
+  /// ambiguity with the literal-prefixed `new` / `edit` siblings.
+  static const String fleetMaintenanceNewSub = 'maintenance/new';
+  static const String fleetVehicleAssetsSub = 'assets';
+
+  static const String fleetNew = '$fleet/new';
+  static const String fleetEdit = '$fleet/edit/:id';
+  static const String fleetDetail = '$fleet/detail/:id';
+  static const String fleetMaintenanceNew = '$fleet/detail/:id/maintenance/new';
+  static const String fleetVehicleAssets = '$fleet/detail/:id/assets';
+  static const String fleetCatalog = '$fleet/catalog';
+
   // Customer / service-site directory
   static const String customerSites = '/customers-sites';
 
@@ -109,6 +131,13 @@ class RouteNames {
   static const String nameplateIntervals = 'nameplate_intervals';
   static const String equipmentSearch = 'equipment_search';
   static const String equipmentHistory = 'equipment_history';
+  static const String fleet = 'fleet';
+  static const String fleetNew = 'fleet_vehicle_new';
+  static const String fleetEdit = 'fleet_vehicle_edit';
+  static const String fleetDetail = 'fleet_vehicle_detail';
+  static const String fleetMaintenanceNew = 'fleet_maintenance_new';
+  static const String fleetVehicleAssets = 'fleet_vehicle_assets';
+  static const String fleetCatalog = 'fleet_catalog';
   static const String customerSites = 'customer_sites';
 
   static const String documents = 'documents';

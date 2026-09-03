@@ -151,6 +151,62 @@ class RouteRoles {
       UserRole.admin,
     },
 
+    // ----- Fleet -----
+    //
+    // A technician is stationed to one vehicle: they are responsible for it
+    // and its assets and they sign for it when it is dispatched, so they can
+    // reach the list and the detail page. What they *see* there is narrowed to
+    // their own vehicle by RLS (fleet_vehicles_read) and mirrored locally by
+    // fleetVisibleVehiclesProvider — this map decides which screens open, not
+    // which rows come back.
+    //
+    // Editing the fleet record stays with dispatch. The database agrees:
+    // fleet_vehicles' write policies are gated on can_manage_tenant_work(),
+    // which is exactly admin/supervisor/dispatcher.
+    'fleet': {
+      UserRole.tech,
+      UserRole.supervisor,
+      UserRole.dispatcher,
+      UserRole.admin,
+    },
+    'fleet_vehicle_detail': {
+      UserRole.tech,
+      UserRole.supervisor,
+      UserRole.dispatcher,
+      UserRole.admin,
+    },
+    // Recording a check is data entry, so it follows the same rule as editing
+    // the vehicle. Widening it to let a technician log their own walk-around
+    // is a one-line change here plus one policy in the migration.
+    'fleet_maintenance_new': {
+      UserRole.supervisor,
+      UserRole.dispatcher,
+      UserRole.admin,
+    },
+    // A technician opens their own van's tool list — it is what they signed
+    // for. RLS returns only their vehicle's assets; adding and editing is
+    // gated in the UI and by vehicle_assets' write policies.
+    'fleet_vehicle_assets': {
+      UserRole.tech,
+      UserRole.supervisor,
+      UserRole.dispatcher,
+      UserRole.admin,
+    },
+    // Admin only, unlike the rest of the fleet. A sloppy catalog is exactly
+    // what splitting catalog from assignment exists to prevent, and the
+    // migration gates its writes on has_tenant_role(..., ['admin']).
+    'fleet_catalog': {UserRole.admin},
+    'fleet_vehicle_new': {
+      UserRole.supervisor,
+      UserRole.dispatcher,
+      UserRole.admin,
+    },
+    'fleet_vehicle_edit': {
+      UserRole.supervisor,
+      UserRole.dispatcher,
+      UserRole.admin,
+    },
+
     // ----- Equipment / Nameplate -----
     'nameplate_list': {
       UserRole.tech,

@@ -1,6 +1,9 @@
 import 'package:flutter/foundation.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import '../../../modules/maintenance/infra/datasources/hive_boxes_maintenance.dart';
+import '../../../modules/fleet/infra/datasources/vehicle_asset_boxes.dart';
+import '../../../modules/fleet/infra/datasources/vehicle_maintenance_checks_box.dart';
+import '../../../modules/fleet/infra/datasources/vehicles_box.dart';
 import '../../../modules/work_orders/infra/datasources/work_orders_box.dart';
 import '../../../modules/templates/infra/datasources/form_responses_box.dart';
 import '../../../modules/templates/infra/datasources/template_definitions_box.dart';
@@ -47,6 +50,10 @@ class HiveService {
     await HiveBoxes.init();
     await MaintenanceBoxes.init();
     await WorkOrdersBox.init();
+    await VehiclesBox.init();
+    await VehicleMaintenanceChecksBox.init();
+    await VehicleAssetCatalogBox.init();
+    await VehicleAssetsBox.init();
     await FormResponsesBox.init();
     await TemplateDefinitionsBox.init();
 
@@ -115,6 +122,10 @@ class HiveService {
     // instances and fail on the next read after a reset/reinitialize cycle.
     MaintenanceBoxes.invalidate();
     WorkOrdersBox.invalidate();
+    VehiclesBox.invalidate();
+    VehicleMaintenanceChecksBox.invalidate();
+    VehicleAssetCatalogBox.invalidate();
+    VehicleAssetsBox.invalidate();
     TemplateDefinitionsBox.invalidate();
 
     _initialized = false;
