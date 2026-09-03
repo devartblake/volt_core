@@ -1,27 +1,30 @@
 name: Phase 3 Pilot Certification
 
 on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/phase3-pilot.yml'
+      - 'lib/app/**'
+      - 'lib/core/constants/feature_flags.dart'
+      - 'lib/core/constants/route_paths.dart'
+      - 'lib/core/services/sync/**'
+      - 'lib/modules/dashboard/presenter/pages/tech_dashboard_page.dart'
+      - 'lib/modules/templates/**'
+      - 'test/sync/**'
+      - 'test/templates/**'
   pull_request:
     paths:
       - '.github/workflows/phase3-pilot.yml'
-      - 'lib/app/app_router.dart'
+      - 'lib/app/**'
       - 'lib/core/constants/feature_flags.dart'
       - 'lib/core/constants/route_paths.dart'
-      - 'lib/core/services/sync/sync_operation.dart'
-      - 'lib/core/services/sync/sync_service.dart'
+      - 'lib/core/services/sync/**'
       - 'lib/modules/dashboard/presenter/pages/tech_dashboard_page.dart'
-      - 'lib/modules/templates/domain/services/generator_pilot_readiness.dart'
-      - 'lib/modules/templates/domain/services/generator_pilot_resume.dart'
-      - 'lib/modules/templates/infra/repositories/form_response_report_repository_impl.dart'
-      - 'lib/modules/templates/infra/services/template_report_storage_service.dart'
-      - 'lib/modules/templates/presenter/pages/template_management_page.dart'
-      - 'lib/modules/templates/presenter/pages/template_response_execution_page.dart'
-      - 'lib/modules/templates/presenter/widgets/generator_pilot_drafts_panel.dart'
-      - 'lib/modules/templates/presenter/widgets/generator_pilot_launch_panel.dart'
-      - 'test/sync/sync_operation_test.dart'
-      - 'test/templates/form_response_report_repository_test.dart'
-      - 'test/templates/generator_pilot_launch_panel_test.dart'
-      - 'test/templates/generator_pilot_resume_test.dart'
+      - 'lib/modules/templates/**'
+      - 'test/sync/**'
+      - 'test/templates/**'
 
 jobs:
   pilot-flag-web:
@@ -37,7 +40,7 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
-      - name: Verify pilot flag and durable field workflow
+      - name: Verify pilot flag and complete durable field workflow
         run: >-
           flutter test
           --dart-define=VOLTCORE_GENERATOR_TEMPLATE_PILOT=true
@@ -45,9 +48,19 @@ jobs:
           test/templates/form_response_report_repository_test.dart
           test/templates/generator_pilot_launch_panel_test.dart
           test/templates/generator_pilot_resume_test.dart
+          test/templates/template_report_category_test.dart
+          test/templates/phase3_pilot_certification_test.dart
 
       - name: Build flag-enabled pilot web
         run: >-
           flutter build web
           --no-tree-shake-icons
           --dart-define=VOLTCORE_GENERATOR_TEMPLATE_PILOT=true
+
+      - name: Upload controlled pilot web build
+        uses: actions/upload-artifact@v4
+        with:
+          name: voltcore-phase3-pilot-web
+          path: build/web
+          if-no-files-found: error
+          retention-days: 14
