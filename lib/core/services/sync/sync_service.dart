@@ -103,6 +103,32 @@ class SyncService {
     }
   }
 
+  /// Queue one immutable row for INSERT-only delivery.
+  ///
+  /// This is intentionally separate from [enqueueUpsert]. Append-only evidence
+  /// tables can keep UPDATE revoked while still participating in the durable
+  /// offline outbox. A duplicate primary key is treated as an idempotent
+  /// success when the operation is dispatched.
+  Future<void> enqueueInsert({
+    required String table,
+    required String id,
+    required Map<String, dynamic> payload,
+  }) async {
+    if (table.isEmpty || id.trim().isEmpty) {
+      if (kDebugMode) {
+        debugPrint('[Sync] Skipping insert enqueue with empty table/id ($table)');
+      }
+      return;
+    }
+    await _queue.enqueue(SyncOperation(
+      id: _uuid.v4(),
+      type: SyncOpType.insert,
+      entityId: '$table/$id',
+      payload: {'table': table, 'row': payload},
+    ));
+    await _afterEnqueue();
+  }
+
   Future<void> enqueueUpsert({
     required String table,
     required String id,
@@ -242,15 +268,12 @@ class SyncService {
   }
 
   /// Explain a 42501 in terms of the row that was actually rejected.
-  ///
-  /// This used to print [SyncContext.tenantId] as "tenant_id sent", which is
-  /// the tenant configured *now* rather than the one frozen into the queued
-  /// row. When those disagree — the case that produces the rejection — the
-  /// message contradicted itself, reporting the correct tenant beside a 403.
   static void _debugExplainIfRlsDenied(Object error, SyncOperation op) {
     if (!error.toString().contains('42501')) return;
 
-    final row = op.type == SyncOpType.upsert ? op.payload['row'] : null;
+    final row = op.type == SyncOpType.upsert || op.type == SyncOpType.insert
+        ? op.payload['row']
+        : null;
     final rowTenant = row is Map ? row['tenant_id']?.toString() : null;
     final tenant = SyncContext.tenantId;
     final user = SyncContext.userId;
@@ -310,6 +333,7 @@ class SyncService {
     'job_id',
     'site_id',
     'inspection_id',
+    'response_id',
     'created_by',
     'updated_by',
     'assigned_technician_user_id',
@@ -319,14 +343,43 @@ class SyncService {
 
   bool _isBlank(dynamic v) => v == null || (v is String && v.trim().isEmpty);
 
+  Map<String, dynamic> _cleanRow(Map<dynamic, dynamic> value) =>
+      value.cast<String, dynamic>()
+        ..removeWhere(
+          (k, v) => v == null || (_uuidKeys.contains(k) && _isBlank(v)),
+        );
+
   Future<void> _dispatch(SupabaseClient client, SyncOperation op) async {
     switch (op.type) {
+      case SyncOpType.insert:
+        final table = op.payload['table'] as String;
+        final row = _cleanRow(op.payload['row'] as Map);
+
+        if (kDebugMode) {
+          debugPrint('[Sync] Dispatching immutable insert to "$table":');
+          debugPrint('       Row: $row');
+          debugPrint('       User: ${SyncContext.userId}');
+          debugPrint('       Tenant: ${SyncContext.tenantId}');
+        }
+
+        try {
+          await client.from(table).insert(row);
+        } on PostgrestException catch (error) {
+          // A previous delivery may have succeeded even if the client did not
+          // receive its response. Stable ids make a duplicate-key retry proof
+          // of prior success, so remove the queued operation instead of turning
+          // immutable evidence into an UPDATE-capable upsert.
+          if (error.code != '23505') rethrow;
+          if (kDebugMode) {
+            debugPrint(
+              '[Sync] Immutable insert already exists; treating as delivered.',
+            );
+          }
+        }
+        break;
       case SyncOpType.upsert:
         final table = op.payload['table'] as String;
-        final row = (op.payload['row'] as Map).cast<String, dynamic>()
-          ..removeWhere(
-            (k, v) => v == null || (_uuidKeys.contains(k) && _isBlank(v)),
-          );
+        final row = _cleanRow(op.payload['row'] as Map);
 
         if (kDebugMode) {
           debugPrint('[Sync] Dispatching upsert to "$table":');
