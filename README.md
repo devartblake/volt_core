@@ -128,7 +128,7 @@ Delivered capabilities include:
 - tenant-admin member/role management;
 - inspection address normalization, explicit YES/NO presentation, and per-checklist-item conclusions.
 
-The automated Phase 3 gates and database hardening are complete. The remaining Phase 3 gate is the controlled **A&S Electric generator pilot**.
+Automated Phase 3 gates and database hardening are complete. Live Supabase verification confirms both `generator-inspection` and `generator-maintenance` are installed and published at revision 1 for the A&S Electric pilot tenant. No template responses exist yet, so the remaining Phase 3 gate is to start and certify the controlled pilot.
 
 ## Generator template pilot
 
@@ -148,18 +148,25 @@ flutter build web \
 
 Rollback is the inverse: omit the define or set it to `false`. Legacy inspection/maintenance routes and reports remain available.
 
-Before the pilot, an authorized supervisor/dispatcher/admin should open **Template Management** and use **Install generator templates**. Confirm:
+The generator packs are already installed in the live A&S Electric tenant. Pilot certification must now cover:
 
-- `generator-inspection`
-- `generator-maintenance`
-
-Pilot certification must cover online→offline work, restart recovery, exact-revision reopening, immutable completion, Documents/PDF generation, response/file sync, newer-revision compatibility, legacy-vs-template PDF parity, generator maintenance parity, and rollback with the build flag disabled.
+- first generator-inspection response;
+- online→offline work and autosave;
+- restart recovery;
+- exact-revision reopening;
+- immutable completion;
+- Documents/PDF generation;
+- response/file synchronization;
+- newer-revision compatibility;
+- legacy-vs-template PDF parity;
+- generator-maintenance parity;
+- rollback with the build flag disabled.
 
 See [`docs/voltcore_fieldops_roadmap.md`](docs/voltcore_fieldops_roadmap.md) for the concise roadmap and [`docs/voltcore_phase3_onward_and_retention_action_plan.md`](docs/voltcore_phase3_onward_and_retention_action_plan.md) for the detailed action plan and retention-enforcement design.
 
 ## Retention policy vs retention enforcement
 
-Voltcore now stores tenant retention targets for archived maintenance and generated reports. Saving a policy is deliberately **non-destructive**.
+Voltcore stores tenant retention targets for archived maintenance and generated reports. Saving a policy is deliberately **non-destructive**.
 
 Archive does not mean “safe to delete.” Destructive enforcement will be implemented separately as a staged evidence-lifecycle track:
 
