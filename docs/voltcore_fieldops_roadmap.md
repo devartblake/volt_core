@@ -28,7 +28,7 @@ flowchart TD
 | --- | --- | --- | --- |
 | Phase 1 | Complete | Tenant-safe scheduling, generic asset vocabulary, local-first persistence, durable sync conventions. | Environment-by-environment operational verification only. |
 | Phase 2 | Complete / rollout validation | Customer/site directory, generic asset registration, work-order lifecycle, schedule details, audit events, dispatch views, maintenance handoff. | Continue real-user rollout verification. |
-| Phase 3 | Automated implementation complete / manual pilot pending | Versioned templates, management UI, generic renderer, offline response lifecycle, generator packs/adapters, generic PDFs, Documents integration, report links, technician runtime, RBAC/settings hardening. | Install generator templates in A&S Electric and complete the controlled inspection/maintenance pilot, PDF parity, sync, exact-revision, and rollback certification. |
+| Phase 3 | Automated implementation complete / manual pilot pending | Versioned templates, management UI, generic renderer, offline response lifecycle, generator packs/adapters, generic PDFs, Documents integration, report links, technician runtime, RBAC/settings hardening. Generator inspection and maintenance revision 1 are installed/published in A&S Electric. | Start the controlled inspection/maintenance pilot, then complete offline/restart, PDF parity, sync, exact-revision, and rollback certification. |
 | Phase 4 | Planned | First reusable electrical template packs. | Begins only after Phase 3 pilot signoff. |
 | Phase 5 | Planned | Operations and commercial tooling. | Follows Phase 4 foundation. |
 | Phase 6 | Planned | Additional service verticals. | Follows stabilization of earlier phases. |
@@ -222,20 +222,23 @@ PR #52 was the independent schedule-deletion consistency repair.
 - [x] report-artifact index hardening / advisor follow-up
 - [x] Template Management discoverability
 - [x] tenant-authoritative RBAC/settings hardening
+- [x] generator inspection template installed/published in A&S Electric
+- [x] generator maintenance template installed/published in A&S Electric
 
 ### Manual A&S Electric pilot — remaining
 
-1. Open Template Management and install the built-in generator templates.
-2. Build/run with `VOLTCORE_GENERATOR_TEMPLATE_PILOT=true`.
-3. Run generator inspection online→offline→restart→completion.
-4. Verify exact revision and values recover offline.
-5. Generate/open the customer PDF from Documents.
-6. Reconnect and verify response/file sync.
-7. Publish a newer template revision.
-8. Reopen the completed response and verify it stays on its original revision.
-9. Compare template PDF against the legacy report for identity/site/address, compliance/checklist answers, conclusions, readings/grade, deficiencies, load-test evidence, signatures/photos, pagination, and readability.
-10. Repeat for generator maintenance.
-11. Disable the pilot flag and verify legacy workflows/reports remain usable.
+1. Build/run with `VOLTCORE_GENERATOR_TEMPLATE_PILOT=true`.
+2. Start the first generator-inspection response while online.
+3. Continue work offline and verify autosave.
+4. Restart and verify exact revision/value recovery.
+5. Complete and verify immutability.
+6. Generate/open the customer PDF from Documents.
+7. Reconnect and verify response/file sync.
+8. Publish a newer template revision.
+9. Reopen the completed response and verify it remains pinned to its original revision.
+10. Compare the template report against the legacy report for identity/site/address, compliance/checklist answers, conclusions, readings/grade, deficiencies, load-test evidence, signatures/photos, pagination, and readability.
+11. Repeat for generator maintenance.
+12. Disable the pilot flag and verify legacy workflows/reports remain usable.
 
 **Phase 3 exit criterion:** a technician can complete generator inspection and maintenance offline from published revisions, synchronize safely, produce customer-ready reports, and reopen immutable responses against their original revisions after newer revisions exist, while legacy workflows remain a verified rollback path.
 
