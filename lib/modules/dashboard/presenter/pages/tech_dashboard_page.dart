@@ -6,8 +6,10 @@ import 'package:voltcore/modules/dashboard/domain/entities/dashboard_stats_entit
 import 'package:voltcore/modules/dashboard/domain/usecases/load_dashboard_stats_usecase.dart';
 import 'package:voltcore/modules/dashboard/infra/repositories/dashboard_repository_impl.dart';
 
-import '../../../auth/presenter/controllers/auth_controller.dart';
+import '../../../../core/constants/feature_flags.dart';
 import '../../../../shared/widgets/widgets.dart';
+import '../../../auth/presenter/controllers/auth_controller.dart';
+import '../../../templates/presenter/widgets/generator_pilot_launch_panel.dart';
 
 /// Provide the usecase from the repository.
 final loadDashboardStatsUsecaseProvider =
@@ -146,6 +148,10 @@ class _TechDashboardPageState extends ConsumerState<TechDashboardPage> {
           style: textTheme.bodyMedium,
         ),
         const SizedBox(height: 24),
+        if (FeatureFlags.generatorTemplatePilotEnabled) ...[
+          const GeneratorPilotLaunchPanel(),
+          const SizedBox(height: 24),
+        ],
         Wrap(
           spacing: 16,
           runSpacing: 16,
