@@ -7,13 +7,19 @@ on:
       - 'lib/app/app_router.dart'
       - 'lib/core/constants/feature_flags.dart'
       - 'lib/core/constants/route_paths.dart'
+      - 'lib/core/services/sync/sync_operation.dart'
+      - 'lib/core/services/sync/sync_service.dart'
       - 'lib/modules/dashboard/presenter/pages/tech_dashboard_page.dart'
       - 'lib/modules/templates/domain/services/generator_pilot_readiness.dart'
       - 'lib/modules/templates/domain/services/generator_pilot_resume.dart'
+      - 'lib/modules/templates/infra/repositories/form_response_report_repository_impl.dart'
+      - 'lib/modules/templates/infra/services/template_report_storage_service.dart'
       - 'lib/modules/templates/presenter/pages/template_management_page.dart'
       - 'lib/modules/templates/presenter/pages/template_response_execution_page.dart'
       - 'lib/modules/templates/presenter/widgets/generator_pilot_drafts_panel.dart'
       - 'lib/modules/templates/presenter/widgets/generator_pilot_launch_panel.dart'
+      - 'test/sync/sync_operation_test.dart'
+      - 'test/templates/form_response_report_repository_test.dart'
       - 'test/templates/generator_pilot_launch_panel_test.dart'
       - 'test/templates/generator_pilot_resume_test.dart'
 
@@ -31,10 +37,12 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
-      - name: Verify pilot flag and technician launch gate
+      - name: Verify pilot flag and durable field workflow
         run: >-
           flutter test
           --dart-define=VOLTCORE_GENERATOR_TEMPLATE_PILOT=true
+          test/sync/sync_operation_test.dart
+          test/templates/form_response_report_repository_test.dart
           test/templates/generator_pilot_launch_panel_test.dart
           test/templates/generator_pilot_resume_test.dart
 
