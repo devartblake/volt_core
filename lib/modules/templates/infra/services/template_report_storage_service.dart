@@ -13,6 +13,35 @@ import 'template_pdf_report_service.dart';
 
 enum TemplateReportCategory { inspection, maintenance, other }
 
+/// Resolve the storage/Documents category from the immutable definition first,
+/// then fall back to response relationships for generic templates.
+///
+/// The controlled generator pilot can be launched without relationship query
+/// parameters, so its response may still carry the generic `asset` subject
+/// default. The template slug is authoritative enough to keep generator
+/// inspection and maintenance reports in their expected document categories.
+TemplateReportCategory templateReportCategoryFor({
+  required FormTemplateDefinition definition,
+  required FormResponse response,
+}) {
+  switch (definition.template.slug) {
+    case 'generator-inspection':
+      return TemplateReportCategory.inspection;
+    case 'generator-maintenance':
+      return TemplateReportCategory.maintenance;
+  }
+
+  if ((response.inspectionId?.isNotEmpty ?? false) ||
+      response.subjectType.contains('inspection')) {
+    return TemplateReportCategory.inspection;
+  }
+  if ((response.maintenanceRecordId?.isNotEmpty ?? false) ||
+      response.subjectType.contains('maintenance')) {
+    return TemplateReportCategory.maintenance;
+  }
+  return TemplateReportCategory.other;
+}
+
 class TemplateReportArtifact {
   const TemplateReportArtifact({
     required this.path,
@@ -65,7 +94,10 @@ class TemplateReportStorageService {
       response: response,
       attachmentResolver: attachmentResolver,
     );
-    final category = _categoryFor(response);
+    final category = templateReportCategoryFor(
+      definition: definition,
+      response: response,
+    );
     final filename = 'template_${response.id}.pdf';
     final logicalPath = 'pdfs/${_folderFor(category)}/$filename';
 
@@ -152,18 +184,6 @@ class TemplateReportStorageService {
       contentType: 'application/pdf',
     );
     return storedPath;
-  }
-
-  static TemplateReportCategory _categoryFor(FormResponse response) {
-    if ((response.inspectionId?.isNotEmpty ?? false) ||
-        response.subjectType.contains('inspection')) {
-      return TemplateReportCategory.inspection;
-    }
-    if ((response.maintenanceRecordId?.isNotEmpty ?? false) ||
-        response.subjectType.contains('maintenance')) {
-      return TemplateReportCategory.maintenance;
-    }
-    return TemplateReportCategory.other;
   }
 
   static String _folderFor(TemplateReportCategory category) => switch (category) {
