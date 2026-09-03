@@ -2,28 +2,27 @@
 
 **Project:** A&S Electric / VoltCore FieldOps  
 **Repository:** `devartblake/volt_core`  
-**Status baseline:** `main` through merged PR #68, with the Phase 3 platform work through PR #64 complete.  
-**Purpose:** Define the remaining Phase 3 exit work, the Phase 4–6 roadmap, and the staged retention-enforcement track to implement without risking compliance evidence.
-
-> This plan is the current execution reference. Historical audit documents remain useful as snapshots, but the roadmap and this file are authoritative for current sequencing.
+**Status baseline:** `main` through merged PR #68; Phase 3 platform work through PR #64 is complete.  
+**Live pilot state verified 3 September 2026:** both generator templates are installed and published at revision 1; no template responses exist yet.  
+**Purpose:** Define the remaining Phase 3 exit work, the Phase 4–6 roadmap, and the staged retention-enforcement track without risking compliance evidence.
 
 ---
 
 ## 1. Executive summary
 
-VoltCore has completed the major engineering build-out for Phase 3: versioned templates, template management, generic rendering, offline response lifecycle, generator template packs and legacy adapters, generic reports, Documents integration, downstream report links, technician execution runtime, rollback gating, tenant-authoritative RBAC, persistent settings, export/cache controls, retention-policy configuration, and privacy-aware advanced logging.
+VoltCore has completed the major Phase 3 engineering build-out: versioned templates, management UI, generic rendering, offline response lifecycle, generator packs/adapters, generic reports, Documents integration, downstream links, technician execution runtime, rollback gating, tenant-authoritative RBAC, persistent settings, export/cache controls, retention-policy configuration, and privacy-aware logging.
 
-Subsequent merged hardening also repaired unsaved-form navigation, stale queued tenant IDs, tenant-admin member/role management, and the legacy inspection form's address/checklist-conclusion capture.
+Post-Phase-3 hardening also fixed unsaved-form navigation, stale queued tenant IDs, tenant-admin member/role management, and inspection address/checklist-conclusion capture.
 
-Phase 3 is **not yet production-certified**. The remaining gate is the controlled A&S Electric generator pilot. That pilot must prove exact-revision offline execution, restart recovery, synchronization, PDF parity, immutable completion, and rollback to the legacy workflow.
+Phase 3 is **not production-certified yet** because no template-driven generator response has been executed in the controlled A&S Electric pilot. The remaining work is certification, not another major foundation build.
 
 After Phase 3 certification:
 
 - **Phase 4:** first electrical template packs;
 - **Phase 5:** operations and commercial tools;
-- **Phase 6:** further vertical expansion.
+- **Phase 6:** additional vertical expansion.
 
-Retention enforcement is a cross-cutting evidence-lifecycle track. The retention-policy UI exists today, but automatic destructive deletion remains disabled until dependency-safe, storage-safe, auditable purge execution is certified.
+Retention enforcement remains a cross-cutting evidence-lifecycle track. The policy UI exists, but destructive deletion stays disabled until dependency-safe, storage-safe, auditable purge execution is certified.
 
 ---
 
@@ -31,149 +30,69 @@ Retention enforcement is a cross-cutting evidence-lifecycle track. The retention
 
 ## Phase 1 — Complete
 
-Delivered:
-
 - tenant-safe scheduling;
-- authenticated Supabase/Data API access;
-- generic equipment/asset vocabulary;
-- asset metadata mapping;
+- authenticated Supabase access;
+- generic asset vocabulary;
 - local-first persistence;
-- durable synchronization conventions.
-
-Remaining: environment-by-environment operational verification only.
+- durable sync conventions.
 
 ## Phase 2 — Complete / rollout validation
 
+- customer/site directory;
+- generic asset registration/reassignment;
+- QR/barcode search and history;
+- work-order lifecycle;
+- technician assignment and dispatch views;
+- schedule details and maintenance handoff;
+- database-owned audit events;
+- legacy maintenance/archive access;
+- schedule-deletion tombstones preventing stale remote rehydration.
+
+## Phase 3 — Automated implementation complete / manual pilot pending
+
 Delivered:
 
-- customer/site directory;
-- customer-to-site ownership;
-- generic asset registration and reassignment;
-- QR/barcode lookup and asset history;
-- work-order create/edit/list/detail;
-- one-way work-order lifecycle transitions;
-- technician assignment, priority, and schedule;
-- customer/site/asset links;
-- database-owned audit events;
-- workload summary;
-- inspection-to-maintenance handoff;
-- legacy maintenance record access;
-- shared schedule-deletion tombstones so a stale remote refresh cannot resurrect a deleted task.
+- `form_templates`, revisions, sections, fields, options, responses, report artifacts;
+- exact revision pinning and completed-response immutability;
+- role-gated Template Management;
+- draft clone/edit/publish/archive;
+- generic renderer for text, number, reading, date, select, boolean, checklist, photo, signature;
+- conditional visibility and validation;
+- local-first autosave, restart recovery, completion locking;
+- exact-revision Hive cache with no-newer-substitution protection;
+- `generator-inspection` and `generator-maintenance` packs;
+- legacy adapters preserving semantic values, `_legacyPayload`, provenance, boolean ambiguity, load-test/photo evidence;
+- generic PDF renderer;
+- native/web report persistence and Documents integration;
+- durable report-artifact links;
+- technician runtime at `/field-forms/:templateSlug` behind a default-off build flag;
+- tenant-authoritative RBAC and last-admin protection;
+- persistent app settings, export/cache controls, retention-policy settings, advanced logging privacy controls.
 
-Remaining: real-user rollout verification.
+Additional hardening through PR #68:
+
+- safe unsaved-form navigation;
+- stale-tenant queued-sync healing;
+- tenant-admin user/role management;
+- split inspection address with legacy one-line compatibility;
+- explicit YES/NO checklist presentation;
+- per-item inspection conclusions carried into the PDF.
 
 ---
 
-# 3. Phase 3 — Template engine and generator migration
+# 3. Live A&S Electric Phase 3 pilot state
 
-## Objective
+Verified against the connected VoltCore Supabase project:
 
-Replace generator-specific form/PDF branching with a versioned, tenant-safe engine while preserving legacy generator records and reports through controlled cutover and rollback.
+- [x] `generator-inspection` installed;
+- [x] `generator-inspection` published revision 1;
+- [x] `generator-maintenance` installed;
+- [x] `generator-maintenance` published revision 1;
+- [ ] any `form_responses` for either generator template — **none yet**.
 
-## Delivered architecture
+Therefore the next step is to **start the pilot**, not install the packs.
 
-### Template/data contract
-
-Delivered tables and relationships include:
-
-- `form_templates`
-- `form_template_revisions`
-- `form_template_sections`
-- `form_template_fields`
-- `form_template_field_options`
-- `form_responses`
-- `form_response_report_artifacts`
-
-Key guarantees:
-
-- every response is pinned to the exact template revision used;
-- completed responses are immutable;
-- report links derive from the completed response rather than trusting client-supplied relationship IDs;
-- tenant authorization remains database-owned through RLS.
-
-### Template management
-
-Delivered:
-
-- role-gated template list and revision history;
-- clone-as-draft;
-- draft editing for sections, fields, options, validation, visibility, and order;
-- atomic draft graph save;
-- atomic publish and prior-revision archival;
-- draft archival;
-- non-destructive built-in generator template installation.
-
-### Generic renderer
-
-Supported field types:
-
-- text;
-- number;
-- reading with unit;
-- date;
-- select;
-- boolean;
-- checklist;
-- photo;
-- signature.
-
-Capabilities include conditional visibility, validation, editable/read-only rendering, and pluggable evidence capture.
-
-### Offline response lifecycle
-
-Delivered:
-
-- local-first response writes;
-- durable sync enqueue;
-- debounced autosave;
-- serialized saves;
-- retryable save failures;
-- exact-revision pinning;
-- completion validation;
-- mutation lock after completion;
-- restart recovery;
-- exact-revision Hive definition cache;
-- no-newer-revision substitution.
-
-### Generator packs and compatibility
-
-Canonical packs:
-
-- `generator-inspection`
-- `generator-maintenance`
-
-Legacy adapters preserve:
-
-- stable semantic values;
-- the complete JSON-safe legacy payload under `_legacyPayload`;
-- provenance metadata;
-- legacy boolean ambiguity rather than guessing;
-- load-test/photo evidence links;
-- draft/completed state;
-- legacy source/revision provenance.
-
-### PDF/report and Documents path
-
-Delivered:
-
-- exact revision validation before rendering;
-- Noto Sans, US Letter, multi-page output;
-- metadata, grade, deficiencies, readings, units, photos, signatures, pagination, provenance;
-- native report storage;
-- web/IndexedDB report persistence;
-- Documents discovery/open/share/delete;
-- durable upload enqueue;
-- immutable report-artifact metadata and downstream lookup indexes.
-
-### Technician execution runtime
-
-Route:
-
-```text
-/field-forms/:templateSlug
-```
-
-Pilot build flag:
+Pilot build:
 
 ```bash
 flutter run -d edge \
@@ -187,86 +106,58 @@ flutter build web \
   --dart-define=VOLTCORE_GENERATOR_TEMPLATE_PILOT=true
 ```
 
-Without the define, the template execution path is not registered and the legacy generator workflow remains active.
-
 ---
 
-# 4. Additional Phase 3 hardening already merged
+# 4. What remains in Phase 3
 
-Supporting work completed around the Phase 3 platform includes:
+## 4.1 Pilot readiness
 
-- Template Management navigation discoverability;
-- change-password and sign-out controls;
-- persisted theme, notification, auto-sync, language, and date-format settings;
-- cross-platform export and safe cache cleanup;
-- `tenant_members` as the authoritative role model;
-- last-active-admin protection;
-- tenant role-change audit;
-- tenant retention-policy configuration;
-- privacy-aware advanced network logging;
-- credential/query-secret redaction;
-- removal of audited production-facing Settings/Admin “Coming soon” placeholders;
-- safe navigation guards for unsaved forms;
-- queued sync-row healing when an old record was stamped with a stale tenant ID;
-- tenant-admin member/role management for registered users;
-- split inspection address fields with legacy one-line-address compatibility;
-- explicit YES/NO checklist presentation and per-item inspection conclusions.
+- [ ] Confirm the pilot build reports `VOLTCORE_GENERATOR_TEMPLATE_PILOT=true`.
+- [ ] Confirm the active tenant is A&S Electric.
+- [ ] Confirm both generator templates are visible and published.
+- [ ] Confirm the signed-in operator can execute published field forms.
+- [ ] Start the first generator-inspection response while online.
 
----
-
-# 5. What remains in Phase 3
-
-Phase 3 is now primarily certification and controlled rollout.
-
-## 5.1 A&S Electric pilot setup
-
-- [ ] Sign in with the active A&S Electric admin account.
-- [ ] Open **Template Management**.
-- [ ] Install the built-in generator template pack.
-- [ ] Confirm published templates:
-  - [ ] `generator-inspection`
-  - [ ] `generator-maintenance`
-- [ ] Run/build with `VOLTCORE_GENERATOR_TEMPLATE_PILOT=true`.
-
-## 5.2 Generator inspection pilot
+## 4.2 Generator inspection pilot
 
 - [ ] Open `/field-forms/generator-inspection`.
-- [ ] Create a response while online so the exact published revision is cached.
+- [ ] Create the response online so the published definition is cached.
 - [ ] Disconnect networking.
-- [ ] Enter inspection data and verify autosave continues.
+- [ ] Enter inspection data and confirm autosave continues.
 - [ ] Restart the app/browser.
-- [ ] Reopen the response and verify values plus exact revision recovery.
+- [ ] Reopen the response and confirm values plus exact revision recover.
 - [ ] Complete the response.
 - [ ] Confirm it becomes immutable.
 - [ ] Generate the customer-ready PDF.
 - [ ] Confirm the PDF appears in Documents.
 - [ ] Reconnect.
-- [ ] Confirm response and file synchronization succeed.
+- [ ] Confirm response sync succeeds.
+- [ ] Confirm file/report sync succeeds.
 
-## 5.3 Revision immutability
+## 4.3 Revision immutability
 
-- [ ] Publish a newer generator-inspection revision.
-- [ ] Reopen the completed response.
-- [ ] Confirm it still resolves the original revision.
-- [ ] Confirm its report remains reproducible.
+- [ ] Publish generator-inspection revision 2.
+- [ ] Reopen the completed revision-1 response.
+- [ ] Confirm it still resolves revision 1.
+- [ ] Confirm the revision-1 report remains reproducible.
 
-## 5.4 Legacy vs template PDF parity
+## 4.4 Legacy vs template PDF parity
 
-Compare equivalent evidence:
+Compare:
 
-- [ ] generator identity;
-- [ ] site/customer identity;
-- [ ] address;
-- [ ] compliance/checklist answers;
-- [ ] per-item conclusions;
-- [ ] readings and grade;
-- [ ] deficiencies;
-- [ ] load-test evidence;
-- [ ] signatures/photos;
-- [ ] pagination/readability;
-- [ ] provenance.
+- generator identity;
+- site/customer identity;
+- split/composed address;
+- compliance/checklist YES/NO answers;
+- checklist conclusions;
+- readings and grade;
+- deficiencies;
+- load-test evidence;
+- signatures/photos;
+- pagination/readability;
+- provenance.
 
-Classify every difference as:
+Classify differences as:
 
 - intentional improvement;
 - equivalent representation;
@@ -276,9 +167,9 @@ Classify every difference as:
 
 Blocking regressions must be repaired before broader rollout.
 
-## 5.5 Generator maintenance pilot
+## 4.5 Generator maintenance pilot
 
-Repeat the lifecycle for:
+Repeat the same lifecycle for:
 
 ```text
 /field-forms/generator-maintenance
@@ -286,7 +177,7 @@ Repeat the lifecycle for:
 
 Verify battery, filters, coolant, hoses, service actions, parts/materials, post-service checks, signatures, follow-up state, PDF output, synchronization, offline recovery, and revision immutability.
 
-## 5.6 Rollback certification
+## 4.6 Rollback certification
 
 - [ ] Disable `VOLTCORE_GENERATOR_TEMPLATE_PILOT`.
 - [ ] Confirm legacy inspection remains usable.
@@ -296,94 +187,93 @@ Verify battery, filters, coolant, hoses, service actions, parts/materials, post-
 
 ## Phase 3 exit criterion
 
-Phase 3 is production-certified when a technician can complete generator inspection and maintenance offline from a published revision, recover after restart, synchronize safely, generate customer-ready reports, and reopen immutable responses against their original revisions after newer revisions exist—while the legacy workflow remains a verified rollback path.
+Phase 3 is production-certified when a technician can complete generator inspection and maintenance offline from published revisions, recover after restart, synchronize safely, generate customer-ready reports, and reopen immutable responses against their original revisions after newer revisions exist, while the legacy workflow remains a verified rollback path.
 
 ---
 
-# 6. Phase 4 — First electrical template packs
+# 5. Phase 4 — First electrical template packs
 
 Begin only after Phase 3 pilot signoff.
 
 ## ATS / transfer switch
 
-- [ ] ATS inspection template;
-- [ ] ATS maintenance template;
-- [ ] transfer-position/source checks;
-- [ ] exercise/transfer test;
-- [ ] mechanical/contact/connection condition;
-- [ ] readings;
-- [ ] deficiencies;
-- [ ] photos/signatures;
-- [ ] signed report.
+- ATS inspection template;
+- ATS maintenance template;
+- source/position checks;
+- transfer/exercise testing;
+- mechanical/contact/connection condition;
+- readings;
+- deficiencies;
+- photos/signatures;
+- signed report.
 
 ## Switchgear / panels / transformers
 
-- [ ] equipment identity/nameplate;
-- [ ] physical condition;
-- [ ] applicable electrical/thermal observations;
-- [ ] voltage/current readings;
-- [ ] grounding/bonding observations;
-- [ ] deficiencies/evidence;
-- [ ] signed customer report.
+- identity/nameplate;
+- physical condition;
+- applicable electrical/thermal observations;
+- voltage/current readings;
+- grounding/bonding observations;
+- deficiencies/evidence;
+- signed report.
 
 ## Emergency lighting / exit signs
 
-- [ ] recurring compliance template;
-- [ ] fixture identity/location;
-- [ ] function/illumination;
-- [ ] battery/emergency runtime;
-- [ ] obstruction/damage;
-- [ ] corrective action;
-- [ ] recurring schedule handoff;
-- [ ] signed compliance report.
+- recurring compliance template;
+- fixture location/identity;
+- function/illumination;
+- battery/emergency runtime;
+- obstruction/damage;
+- corrective action;
+- recurring schedule handoff;
+- signed report.
 
-**Rule:** prefer reusable template-engine capabilities over one-off feature screens.
+**Rule:** improve the generic template engine rather than creating one-off screens unless a field truly cannot be modeled generically.
 
 ---
 
-# 7. Phase 5 — Operations and commercial tools
+# 6. Phase 5 — Operations and commercial tools
 
 ## Parts and truck inventory
 
-- [ ] parts catalog;
-- [ ] truck/technician stock;
-- [ ] issue/consume parts;
-- [ ] replenishment/low-stock alerts;
-- [ ] work-order and maintenance linkage;
-- [ ] cost tracking and inventory audit.
+- parts catalog;
+- truck/technician stock;
+- issue/consume parts;
+- replenishment/low-stock alerts;
+- work-order/maintenance linkage;
+- cost tracking and inventory audit.
 
 ## Estimates and approvals
 
-- [ ] estimates from deficiencies/work orders;
-- [ ] labor and materials;
-- [ ] customer estimate PDF;
-- [ ] approval/rejection;
-- [ ] revision history;
-- [ ] conversion to authorized work.
+- estimates from deficiencies/work orders;
+- labor/materials;
+- customer estimate PDF;
+- approval/rejection;
+- revision history;
+- conversion to authorized work.
 
 ## Customer portal
 
-- [ ] secure customer access;
-- [ ] sites/assets;
-- [ ] reports and deficiencies;
-- [ ] estimates/approvals;
-- [ ] document download;
-- [ ] service history.
+- secure access;
+- sites/assets;
+- inspection/maintenance reports;
+- deficiencies;
+- estimates/approvals;
+- document download;
+- service history.
 
 ## Reliability/service dashboards
 
-- [ ] failure trends;
-- [ ] recurring deficiencies;
-- [ ] compliance and maintenance completion;
-- [ ] technician workload;
-- [ ] site reliability;
-- [ ] response/report metrics.
+- failure trends;
+- recurring deficiencies;
+- compliance and maintenance completion;
+- technician workload;
+- site reliability;
+- response/report metrics.
 
 ---
 
-# 8. Phase 6 — Further vertical expansion
-
-Planned verticals:
+# 7. Phase 6 — Further vertical expansion
 
 - UPS;
 - EV charging;
@@ -392,7 +282,7 @@ Planned verticals:
 - selected facilities assets;
 - additional tenant-configurable packs.
 
-Shared architecture remains:
+Shared architecture:
 
 ```text
 Customer
@@ -407,53 +297,38 @@ Customer
 
 ---
 
-# 9. Retention enforcement — current distinction
+# 8. Retention enforcement — critical distinction
 
-VoltCore now stores tenant retention policy intent for archived maintenance and generated reports, including indefinite, 1, 3, 5, 7, and 10 year targets.
+VoltCore stores tenant retention-policy intent for archived maintenance and generated reports, with indefinite, 1, 3, 5, 7, and 10 year choices.
 
-Those values do **not** currently trigger automatic deletion.
+Those values do **not** automatically delete evidence.
 
 ## Archive is not deletion eligibility
 
-**Archive** means remove a record from normal active workflow while keeping its evidence.
+Archive means remove a record from the normal active workflow while preserving evidence.
 
-**Retention eligibility** means a record has passed every prerequisite for controlled disposition.
-
-Recommended rule:
+Retention eligibility requires all of:
 
 ```text
-eligible =
-    explicitly archived
-    AND retention age expired
-    AND no legal/compliance hold
-    AND dependency inventory complete
-    AND evidence relationships valid
-    AND deletion class certified
+explicitly archived
+AND retention age expired
+AND no legal/compliance hold
+AND dependency inventory complete
+AND evidence relationships valid
+AND deletion class certified
 ```
 
 Age alone is never sufficient.
 
----
+`maintenance_jobs` is the first viable enforcement class because it has `is_archived` and `archived_at`. Completed template responses, legacy records, reports, photos, signatures, and inspections do not yet have equally safe disposition semantics.
 
-# 10. Why automatic purge remains disabled
-
-`maintenance_jobs` has explicit `is_archived` and `archived_at`, making it the first viable retention class.
-
-Other evidence is not yet equally safe:
-
-- completed template responses are immutable evidence but lack a separate disposition lifecycle;
-- legacy maintenance records may be children of a maintenance job;
-- report metadata and underlying storage files are separate resources;
-- photos/signatures are primary evidence and may exist independently in storage;
-- inspections may require different business/regulatory rules.
-
-Do not implement a generic `DELETE WHERE created_at < cutoff` job.
+Never implement retention as a generic `DELETE WHERE created_at < cutoff` job.
 
 ---
 
-# 11. Retention Enforcement Phase 1 — Safe preview
+# 9. Retention Enforcement Phase 1 — Safe preview
 
-No destructive behavior.
+**No destructive behavior.**
 
 ## Eligibility engine
 
@@ -466,17 +341,17 @@ eligible_at = archived_at + configured_retention_period
 
 Deliver:
 
-- [ ] retention eligibility domain model;
-- [ ] policy resolver;
-- [ ] retention-start resolver;
-- [ ] eligible timestamp;
-- [ ] exclusion reason;
-- [ ] tenant isolation;
-- [ ] tests for indefinite policies and boundaries.
+- retention eligibility domain model;
+- policy resolver;
+- retention-start resolver;
+- eligible timestamp;
+- exclusion reason;
+- tenant isolation;
+- indefinite-policy and boundary tests.
 
 ## Legal/compliance holds
 
-Add a tenant-safe hold model such as:
+Recommended model:
 
 ```text
 retention_hold
@@ -486,13 +361,13 @@ hold_created_by
 hold_until
 ```
 
-Possible reasons include disputes, regulatory audits, warranty/insurance cases, internal investigations, or customer contractual requirements.
+Possible reasons: dispute, regulatory audit, warranty/insurance case, investigation, contractual requirement.
 
 An active hold always overrides expiration.
 
 ## Dependency/evidence manifest
 
-Before any purge, inventory:
+Inventory before any purge:
 
 - maintenance job;
 - maintenance records;
@@ -507,25 +382,9 @@ Before any purge, inventory:
 - signatures;
 - storage objects.
 
-Example:
-
-```json
-{
-  "sourceType": "maintenance_job",
-  "sourceId": "...",
-  "databaseRows": 12,
-  "reports": 2,
-  "photos": 8,
-  "signatures": 1,
-  "storageObjects": 11,
-  "holds": [],
-  "eligible": true
-}
-```
-
 ## Retention Queue / Preview UI
 
-Suggested navigation:
+Suggested path:
 
 ```text
 Admin
@@ -533,16 +392,7 @@ Admin
     -> Retention Queue
 ```
 
-Display:
-
-- entity/site/customer;
-- archive date;
-- policy;
-- eligible date;
-- hold status;
-- dependency count;
-- storage-object count;
-- state.
+Show entity/site/customer, archive date, policy, eligible date, hold status, dependency count, storage-object count, and state.
 
 Initial actions:
 
@@ -552,29 +402,27 @@ Initial actions:
 - Exclude;
 - Recalculate.
 
-**Do not add Delete Now in this phase.**
+**No “Delete Now” action in Phase 1.**
 
-### Phase 1 exit criterion
-
-Admins can accurately see what would become eligible and exactly what would be affected without deleting any evidence.
+Exit criterion: administrators can accurately see what would become eligible and what would be affected without deleting evidence.
 
 ---
 
-# 12. Retention Enforcement Phase 2 — Controlled disposition queue
+# 10. Retention Enforcement Phase 2 — Controlled disposition
 
 Add:
 
-- [ ] `pending_purge`;
-- [ ] configurable grace period;
-- [ ] cancel disposition;
-- [ ] hold during grace period;
-- [ ] frozen manifest/checksum;
-- [ ] execution audit;
-- [ ] dry-run worker.
+- `pending_purge`;
+- configurable grace period;
+- cancel disposition;
+- hold during grace period;
+- frozen manifest/checksum;
+- execution audit;
+- dry-run worker.
 
 Recommended initial grace period: **30 days**.
 
-State flow:
+State model:
 
 ```text
 eligible
@@ -586,15 +434,13 @@ eligible
 
 Failures enter a retryable `failed` state.
 
-### Phase 2 exit criterion
-
-The entire purge state machine can be simulated and audited without destroying evidence.
+Exit criterion: the full state machine can be simulated and audited without destroying evidence.
 
 ---
 
-# 13. Retention Enforcement Phase 3 — Certified purge execution
+# 11. Retention Enforcement Phase 3 — Certified purge execution
 
-Start with one evidence class only:
+Start with one class only:
 
 ```text
 archived maintenance jobs
@@ -602,18 +448,18 @@ archived maintenance jobs
 
 Requirements:
 
-- [ ] storage cleanup;
-- [ ] database cleanup;
-- [ ] cascade verification;
-- [ ] idempotent retry;
-- [ ] failure recovery;
-- [ ] metrics/alerting;
-- [ ] immutable purge audit;
-- [ ] staging certification;
-- [ ] controlled A&S Electric test data;
-- [ ] explicit production enablement flag.
+- storage cleanup;
+- database cleanup;
+- cascade verification;
+- idempotent retry;
+- failure recovery;
+- metrics/alerting;
+- immutable purge audit;
+- staging certification;
+- controlled A&S Electric test data;
+- explicit production enablement flag.
 
-Storage deletion and Postgres deletion cannot be one native ACID transaction. Therefore the purge worker must delete/verify storage first and only then perform destructive database cleanup. If storage cleanup fails, source database evidence stays intact and the job retries.
+Because Supabase Storage deletion and Postgres deletion are not one ACID transaction, storage cleanup must succeed and be verified before destructive database cleanup. If storage cleanup fails, source database evidence remains and the job retries.
 
 Recommended purge-audit metadata:
 
@@ -634,16 +480,16 @@ error_code
 manifest_checksum
 ```
 
-Do not store the deleted evidence payload inside the purge audit.
+Do not store deleted evidence payloads inside the purge audit.
 
 ---
 
-# 14. Recommended retention behavior by data class
+# 12. Recommended retention behavior by data class
 
 | Data class | Recommended behavior |
 | --- | --- |
 | Active maintenance jobs | Never retention purge |
-| Completed but not archived maintenance | Retain |
+| Completed, not archived maintenance | Retain |
 | Archived maintenance jobs | First enforceable class |
 | Maintenance records/parts/attachments | Purge only with owning job |
 | Inspections | Add separate lifecycle before purge |
@@ -656,47 +502,49 @@ Do not store the deleted evidence payload inside the purge audit.
 
 ---
 
-# 15. Recommended execution sequence
+# 13. Recommended execution sequence
 
 ## Immediate
 
-1. Complete the A&S Electric Phase 3 generator pilot.
-2. Repair pilot regressions.
-3. Sign off Phase 3 production certification.
+1. Add pilot-readiness diagnostics/guided launch tooling.
+2. Start the A&S Electric generator-inspection pilot.
+3. Repair pilot regressions.
+4. Run generator-maintenance pilot.
+5. Sign off Phase 3 production certification.
 
 ## Next
 
-4. Begin Phase 4 ATS inspection/maintenance.
-5. Add switchgear/panel/transformer packs.
-6. Add emergency-lighting/exit-sign recurring compliance.
+6. Begin Phase 4 ATS inspection/maintenance.
+7. Add switchgear/panel/transformer packs.
+8. Add emergency-lighting/exit-sign recurring compliance.
 
 ## Parallel architecture work
 
-7. Implement Retention Enforcement Phase 1 as a **non-destructive preview system**.
-8. Do not enable purge execution while new template verticals are still exposing evidence-model gaps.
+9. Implement Retention Enforcement Phase 1 as a non-destructive preview system.
+10. Keep purge execution disabled while new verticals expose evidence-model gaps.
 
 ## Then
 
-9. Proceed into Phase 5 operations/commercial tools.
-10. Advance retention into controlled disposition when evidence relationships are mature.
-11. Certify purge execution one evidence class at a time.
+11. Proceed into Phase 5 operations/commercial tools.
+12. Advance retention into controlled disposition when evidence relationships are mature.
+13. Certify purge execution one evidence class at a time.
 
 ## Later
 
-12. Phase 6 vertical expansion.
-13. Add retention classes only after each vertical gets explicit lifecycle semantics.
+14. Phase 6 vertical expansion.
+15. Add retention classes only after each vertical has explicit lifecycle semantics.
 
 ---
 
-# 16. Guardrails
+# 14. Guardrails
 
 - Never place service-role credentials in Flutter.
 - `tenant_members` is authoritative for roles.
-- UI role gating never replaces RLS.
+- UI gating never replaces RLS.
 - New routes are default-deny until explicitly registered.
 - Never substitute a newer template revision for a pinned response.
 - Never invent missing legacy evidence.
-- Keep legacy generator data and PDFs available through pilot/rollback.
+- Keep legacy generator data/PDFs through pilot and rollback.
 - Use web-safe storage abstractions on web.
 - Archive is not delete.
 - Age alone does not make evidence safe to delete.
@@ -704,16 +552,17 @@ Do not store the deleted evidence payload inside the purge audit.
 - Photos/signatures/reports are purged only as part of their evidence graph.
 - Storage cleanup must succeed before destructive database cleanup.
 - Every permanent purge must be auditable.
-- Purge audit must not retain the deleted payload.
+- Purge audit must not retain deleted payloads.
 - Destructive retention requires explicit enablement and separate certification.
 
 ---
 
-# 17. Milestone checklist
+# 15. Milestone checklist
 
 ## Phase 3
 
-- [ ] Install generator packs in A&S Electric tenant.
+- [x] Generator packs installed/published in A&S Electric.
+- [ ] Pilot-readiness diagnostics/guided launch.
 - [ ] Inspection pilot.
 - [ ] Maintenance pilot.
 - [ ] Offline/restart certification.
@@ -759,8 +608,8 @@ Do not store the deleted evidence payload inside the purge audit.
 
 ---
 
-# 18. Definition of overall success
+# 16. Definition of overall success
 
-VoltCore reaches the intended FieldOps architecture when multiple field-service verticals can operate through one tenant-safe platform while preserving offline execution, exact revision history, immutable completed records, traceable evidence, signed reports, scheduling, asset/service history, secure authorization, safe rollout/rollback, explicit retention policy, and controlled auditable eventual disposition.
+VoltCore reaches the intended FieldOps architecture when multiple field-service verticals operate through one tenant-safe platform while preserving offline execution, exact revision history, immutable completed records, traceable evidence, signed reports, scheduling, service history, secure authorization, safe rollout/rollback, explicit retention policy, and controlled auditable eventual disposition.
 
-**Next implementation action:** finish the Phase 3 controlled generator pilot and supporting readiness tooling. Do not begin destructive retention enforcement yet.
+**Next implementation action:** pilot-readiness diagnostics and guided launch, followed by the first A&S Electric generator-inspection response. Destructive retention enforcement remains deferred.
