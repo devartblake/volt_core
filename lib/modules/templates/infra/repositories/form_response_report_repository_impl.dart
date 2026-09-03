@@ -2,15 +2,58 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
 
+import '../../../../core/services/sync/sync_context.dart';
+import '../../../../core/services/sync/sync_service.dart';
 import '../../domain/entities/form_response_report_artifact.dart';
+import '../../domain/entities/template_entities.dart';
+import 'form_response_repository.dart';
+import 'form_response_repository_impl.dart';
 import 'form_response_report_repository.dart';
 
+typedef ReportArtifactQueueWriter = Future<void> Function(
+  String id,
+  Map<String, dynamic> row,
+);
+typedef ReportArtifactIdFactory = String Function(
+  String responseId,
+  String storagePath,
+);
+typedef ReportArtifactClock = DateTime Function();
+
 class FormResponseReportRepositoryImpl implements FormResponseReportRepository {
-  FormResponseReportRepositoryImpl({SupabaseClient? client})
-      : _client = client ?? Supabase.instance.client;
+  FormResponseReportRepositoryImpl({
+    SupabaseClient? client,
+    FormResponseRepository? responses,
+    ReportArtifactQueueWriter? queueWriter,
+    ReportArtifactIdFactory? idFactory,
+    ReportArtifactClock? clock,
+  })  : _client = client ?? Supabase.instance.client,
+        _responses = responses ?? FormResponseRepositoryImpl(),
+        _queueWriter = queueWriter ?? _enqueueInsert,
+        _idFactory = idFactory ?? _stableArtifactId,
+        _clock = clock ?? (() => DateTime.now().toUtc());
 
   static const table = 'form_response_report_artifacts';
+  static const _artifactNamespace = 'b2c191c1-173f-4df8-8427-1c5315ca8f9b';
+
   final SupabaseClient _client;
+  final FormResponseRepository _responses;
+  final ReportArtifactQueueWriter _queueWriter;
+  final ReportArtifactIdFactory _idFactory;
+  final ReportArtifactClock _clock;
+
+  static Future<void> _enqueueInsert(
+    String id,
+    Map<String, dynamic> row,
+  ) =>
+      SyncService.instance.enqueueInsert(
+        table: table,
+        id: id,
+        payload: row,
+      );
+
+  static String _stableArtifactId(String responseId, String storagePath) =>
+      const Uuid().v5(_artifactNamespace, '$responseId|$storagePath');
 
   @override
   Future<FormResponseReportArtifact> create({
@@ -21,21 +64,75 @@ class FormResponseReportRepositoryImpl implements FormResponseReportRepository {
     String mediaType = 'application/pdf',
     String? checksumSha256,
   }) async {
-    final row = await _client
-        .from(table)
-        .insert({
-          'id': const Uuid().v4(),
-          'response_id': responseId,
-          'storage_path': storagePath,
-          'file_name': fileName,
-          'media_type': mediaType,
-          'byte_size': byteSize,
-          if (checksumSha256 != null) 'checksum_sha256': checksumSha256,
-        })
-        .select()
-        .single();
-    return _fromJson(row);
+    final response = await _responses.getById(responseId);
+    if (response == null) {
+      throw StateError(
+        'The completed form response is not available in the active tenant.',
+      );
+    }
+    if (!response.isComplete) {
+      throw StateError('Reports may only be linked to completed responses.');
+    }
+
+    final id = _idFactory(responseId, storagePath);
+    final createdAt = _clock();
+    final row = <String, dynamic>{
+      'id': id,
+      'response_id': responseId,
+      'storage_path': storagePath,
+      'file_name': fileName,
+      'media_type': mediaType,
+      'byte_size': byteSize,
+      if (checksumSha256 != null) 'checksum_sha256': checksumSha256,
+    };
+
+    // Queue after the completed response and report upload have already been
+    // enqueued. SyncQueue drains oldest-first, so the response normally reaches
+    // the trigger before this immutable link. If an earlier dependency fails,
+    // this insert remains retryable instead of losing the report relationship.
+    await _queueWriter(id, row);
+
+    return _localArtifact(
+      id: id,
+      response: response,
+      storagePath: storagePath,
+      fileName: fileName,
+      mediaType: mediaType,
+      byteSize: byteSize,
+      checksumSha256: checksumSha256,
+      createdAt: createdAt,
+    );
   }
+
+  static FormResponseReportArtifact _localArtifact({
+    required String id,
+    required FormResponse response,
+    required String storagePath,
+    required String fileName,
+    required String mediaType,
+    required int byteSize,
+    required DateTime createdAt,
+    String? checksumSha256,
+  }) =>
+      FormResponseReportArtifact(
+        id: id,
+        tenantId: response.tenantId,
+        responseId: response.id,
+        templateRevisionId: response.templateRevisionId,
+        customerId: response.customerId,
+        siteId: response.siteId,
+        assetId: response.assetId,
+        workOrderId: response.workOrderId,
+        inspectionId: response.inspectionId,
+        maintenanceRecordId: response.maintenanceRecordId,
+        storagePath: storagePath,
+        fileName: fileName,
+        mediaType: mediaType,
+        byteSize: byteSize,
+        checksumSha256: checksumSha256,
+        createdByUserId: SyncContext.userId,
+        createdAt: createdAt,
+      );
 
   @override
   Future<List<FormResponseReportArtifact>> listLinked({
@@ -60,8 +157,12 @@ class FormResponseReportRepositoryImpl implements FormResponseReportRepository {
     }
 
     var query = _client.from(table).select();
-    if (responseId?.isNotEmpty ?? false) query = query.eq('response_id', responseId!);
-    if (customerId?.isNotEmpty ?? false) query = query.eq('customer_id', customerId!);
+    if (responseId?.isNotEmpty ?? false) {
+      query = query.eq('response_id', responseId!);
+    }
+    if (customerId?.isNotEmpty ?? false) {
+      query = query.eq('customer_id', customerId!);
+    }
     if (siteId?.isNotEmpty ?? false) query = query.eq('site_id', siteId!);
     if (assetId?.isNotEmpty ?? false) query = query.eq('asset_id', assetId!);
     if (workOrderId?.isNotEmpty ?? false) {
@@ -103,6 +204,9 @@ class FormResponseReportRepositoryImpl implements FormResponseReportRepository {
       );
 }
 
-final formResponseReportRepositoryProvider = Provider<FormResponseReportRepository>(
-  (ref) => FormResponseReportRepositoryImpl(),
-);
+final formResponseReportRepositoryProvider =
+    Provider<FormResponseReportRepository>((ref) {
+  return FormResponseReportRepositoryImpl(
+    responses: ref.watch(formResponseRepositoryProvider),
+  );
+});
