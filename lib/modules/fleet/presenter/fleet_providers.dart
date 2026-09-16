@@ -4,9 +4,13 @@ import '../../admin/domain/entities/tenant_member_entity.dart';
 import '../../admin/infra/repositories/admin_repository_impl.dart';
 import '../../auth/domain/user_role.dart';
 import '../../auth/presenter/controllers/auth_controller.dart';
+import '../domain/entities/asset_disclaimer.dart';
+import '../domain/entities/fleet_depot.dart';
 import '../domain/entities/vehicle_entity.dart';
 import '../domain/entities/vehicle_maintenance_check.dart';
 import '../domain/entities/vehicle_asset_catalog_item.dart';
+import '../domain/entities/vehicle_asset_check.dart';
+import '../infra/repositories/vehicle_asset_check_repository.dart';
 import '../infra/repositories/vehicle_asset_repository.dart';
 import '../infra/repositories/vehicle_check_repository.dart';
 import '../infra/repositories/vehicle_repository_impl.dart';
@@ -112,3 +116,93 @@ final vehicleAssetsProvider =
   (ref, vehicleId) =>
       ref.watch(vehicleAssetRepositoryProvider).listForVehicle(vehicleId),
 );
+
+/// Signed asset receipts for one vehicle, newest first.
+final vehicleReceiptsProvider =
+    FutureProvider.family<List<VehicleAssetCheck>, String>(
+  (ref, vehicleId) =>
+      ref.watch(vehicleAssetCheckRepositoryProvider).listForVehicle(vehicleId),
+);
+
+/// The wording a driver is asked to accept. Cached per tenant by the
+/// repository, with the built-in transcription as the offline fallback.
+final assetDisclaimerProvider = FutureProvider<AssetDisclaimer>(
+  (ref) => ref.watch(vehicleAssetCheckRepositoryProvider).currentDisclaimer(),
+);
+
+/// Depots. One today, so the vehicle form auto-selects rather than making
+/// somebody pick from a list of one.
+final fleetDepotsProvider = FutureProvider<List<FleetDepot>>(
+  (ref) => ref.watch(vehicleAssetCheckRepositoryProvider).listDepots(),
+);
+
+/// What dispatch needs to act on across the whole fleet.
+///
+/// This is the in-app half of "a missing tool raises a notification": no push
+/// infrastructure exists, so the signal is a badge and a dashboard tile that
+/// appear as soon as the signed receipt reaches the device. It reads the
+/// **standing state** on each tool rather than replaying every receipt ever
+/// signed — the receipt is what changes that state, so one read answers it.
+class FleetAttention {
+  const FleetAttention({
+    required this.missingByVehicle,
+    required this.nmcByVehicle,
+    required this.awaitingCountersign,
+  });
+
+  static const empty = FleetAttention(
+    missingByVehicle: {},
+    nmcByVehicle: {},
+    awaitingCountersign: 0,
+  );
+
+  /// vehicleId -> how many of its tools are missing.
+  final Map<String, int> missingByVehicle;
+
+  /// vehicleId -> how many of its tools are present but not serviceable.
+  final Map<String, int> nmcByVehicle;
+
+  /// Receipts the driver has signed and dispatch has not yet verified.
+  final int awaitingCountersign;
+
+  int missingFor(String vehicleId) => missingByVehicle[vehicleId] ?? 0;
+  int nmcFor(String vehicleId) => nmcByVehicle[vehicleId] ?? 0;
+  bool needsAttention(String vehicleId) =>
+      missingFor(vehicleId) > 0 || nmcFor(vehicleId) > 0;
+
+  int get vehiclesWithMissing => missingByVehicle.length;
+  int get totalMissing =>
+      missingByVehicle.values.fold(0, (sum, count) => sum + count);
+  bool get isQuiet => missingByVehicle.isEmpty && awaitingCountersign == 0;
+}
+
+final fleetAttentionProvider = FutureProvider<FleetAttention>((ref) async {
+  final vehicles = await ref.watch(fleetVisibleVehiclesProvider.future);
+  final assets = ref.watch(vehicleAssetRepositoryProvider);
+  final receipts = ref.watch(vehicleAssetCheckRepositoryProvider);
+
+  final missing = <String, int>{};
+  final nmc = <String, int>{};
+  var awaiting = 0;
+
+  for (final vehicle in vehicles) {
+    final tools = await assets.listForVehicle(vehicle.id);
+    final missingCount = tools.where((t) => t.asset.isMissing).length;
+    final nmcCount = tools
+        .where((t) => !t.asset.isMissing && t.asset.needsAttention)
+        .length;
+
+    if (missingCount > 0) missing[vehicle.id] = missingCount;
+    if (nmcCount > 0) nmc[vehicle.id] = nmcCount;
+
+    for (final receipt in await receipts.listForVehicle(vehicle.id)) {
+      if (receipt.stage == ReceiptStage.awaitingCountersign) awaiting++;
+    }
+  }
+
+  return FleetAttention(
+    missingByVehicle: missing,
+    nmcByVehicle: nmc,
+    awaitingCountersign: awaiting,
+  );
+});

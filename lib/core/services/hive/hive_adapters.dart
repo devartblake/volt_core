@@ -10,7 +10,9 @@ import '../../../modules/load_test/infra/models/test_interval_record.dart';
 import '../../../modules/maintenance/infra/models/maintenance_record.dart';
 import '../../../modules/schedule/infra/models/schedule_task.dart';
 import '../../../modules/templates/infra/models/form_response_record.dart';
+import '../../../modules/fleet/infra/models/fleet_reference_records.dart';
 import '../../../modules/fleet/infra/models/vehicle_asset_catalog_item_record.dart';
+import '../../../modules/fleet/infra/models/vehicle_asset_check_record.dart';
 import '../../../modules/fleet/infra/models/vehicle_asset_record.dart';
 import '../../../modules/fleet/infra/models/vehicle_maintenance_check_record.dart';
 import '../../../modules/fleet/infra/models/vehicle_record.dart';
@@ -46,6 +48,12 @@ class HiveAdapters {
       VehicleAssetCatalogItemRecordAdapter(),
     );
     _safeRegister<VehicleAssetRecord>(VehicleAssetRecordAdapter());
+    _safeRegister<VehicleAssetCheckRecord>(VehicleAssetCheckRecordAdapter());
+    _safeRegister<VehicleAssetCheckLineRecord>(
+      VehicleAssetCheckLineRecordAdapter(),
+    );
+    _safeRegister<AssetDisclaimerRecord>(AssetDisclaimerRecordAdapter());
+    _safeRegister<FleetDepotRecord>(FleetDepotRecordAdapter());
     _safeRegister<FormResponseRecord>(FormResponseRecordAdapter());
 
     _registered = true;

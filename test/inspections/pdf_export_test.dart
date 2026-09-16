@@ -69,7 +69,7 @@ Future<InspectionEntity?> _awaitSettled(
 
   fail(
     'Timed out after ${timeout.inSeconds}s waiting for the background write. '
-    'Last read: ${value == null ? 'null' : 'pdfPath="\${value.pdfPath}"'}',
+    'Last read: ${value == null ? 'null' : 'pdfPath="${value.pdfPath}"'}',
   );
 }
 

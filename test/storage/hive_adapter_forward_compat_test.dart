@@ -1,6 +1,10 @@
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hive/hive.dart';
+import 'package:voltcore/modules/fleet/infra/models/fleet_reference_records.dart';
 import 'package:voltcore/modules/fleet/infra/models/vehicle_asset_catalog_item_record.dart';
+import 'package:voltcore/modules/fleet/infra/models/vehicle_asset_check_record.dart';
 import 'package:voltcore/modules/fleet/infra/models/vehicle_asset_record.dart';
 import 'package:voltcore/modules/fleet/infra/models/vehicle_maintenance_check_record.dart';
 import 'package:voltcore/modules/fleet/infra/models/vehicle_record.dart';
@@ -213,6 +217,60 @@ void main() {
       currentFieldCount: 12,
       fieldCountAtLastRelease: 12,
     ),
+    _AdapterCase<VehicleAssetCheckRecord>(
+      name: 'VehicleAssetCheckRecordAdapter',
+      adapter: VehicleAssetCheckRecordAdapter(),
+      sample: () => VehicleAssetCheckRecord(
+        id: 'c1',
+        tenantId: 'tenant-1',
+        vehicleId: 'v1',
+        checkedAt: now,
+        disclaimerVersion: 1,
+        createdAt: now,
+        updatedAt: now,
+      ),
+      currentFieldCount: 18,
+      fieldCountAtLastRelease: 18,
+    ),
+    _AdapterCase<VehicleAssetCheckLineRecord>(
+      name: 'VehicleAssetCheckLineRecordAdapter',
+      adapter: VehicleAssetCheckLineRecordAdapter(),
+      sample: () => VehicleAssetCheckLineRecord(
+        id: 'l1',
+        checkId: 'c1',
+        tenantId: 'tenant-1',
+        assetName: 'WERNER 8FT LADDER',
+        createdAt: now,
+        updatedAt: now,
+      ),
+      currentFieldCount: 14,
+      fieldCountAtLastRelease: 14,
+    ),
+    _AdapterCase<AssetDisclaimerRecord>(
+      name: 'AssetDisclaimerRecordAdapter',
+      adapter: AssetDisclaimerRecordAdapter(),
+      sample: () => AssetDisclaimerRecord(
+        id: 'd1',
+        tenantId: 'tenant-1',
+        version: 1,
+        publishedAt: now,
+      ),
+      currentFieldCount: 8,
+      fieldCountAtLastRelease: 8,
+    ),
+    _AdapterCase<FleetDepotRecord>(
+      name: 'FleetDepotRecordAdapter',
+      adapter: FleetDepotRecordAdapter(),
+      sample: () => FleetDepotRecord(
+        id: 'dep1',
+        tenantId: 'tenant-1',
+        name: 'Brooklyn Yard',
+        createdAt: now,
+        updatedAt: now,
+      ),
+      currentFieldCount: 8,
+      fieldCountAtLastRelease: 8,
+    ),
     _AdapterCase<FormResponseRecord>(
       name: 'FormResponseRecordAdapter',
       adapter: FormResponseRecordAdapter(),
@@ -233,10 +291,26 @@ void main() {
   ];
 
   test('every registered Hive adapter is covered', () {
-    // hive_adapters.dart registers twelve. A thirteenth added without a case
-    // here would get no forward-compatibility guard at all.
-    expect(cases, hasLength(12));
-    expect(cases.map((c) => c.name).toSet(), hasLength(12));
+    // Read the registration list rather than hard-coding a number. The count
+    // used to be a literal, which meant registering a new adapter and
+    // forgetting a case here still passed — the one thing this test exists to
+    // prevent.
+    final registered = RegExp(r'_safeRegister<[^>]+>\(\s*(\w+)\s*\(')
+        .allMatches(File('lib/core/services/hive/hive_adapters.dart')
+            .readAsStringSync())
+        .map((m) => m.group(1)!)
+        .toSet();
+
+    final covered = cases.map((c) => c.name).toSet();
+
+    expect(
+      registered.difference(covered),
+      isEmpty,
+      reason: 'these adapters are registered but have no forward-compatibility '
+          'case, so a field added to one would break every device that '
+          'already has rows',
+    );
+    expect(covered, hasLength(cases.length), reason: 'duplicate case name');
   });
 
   for (final adapterCase in cases) {
