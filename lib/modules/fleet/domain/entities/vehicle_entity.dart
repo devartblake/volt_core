@@ -80,6 +80,7 @@ class VehicleEntity {
     this.odometer = 0,
     this.status = VehicleStatus.active,
     this.assignedToUserId,
+    this.depotId,
     this.notes = '',
     this.lastCheckAt,
   });
@@ -117,6 +118,13 @@ class VehicleEntity {
   /// is dispatched. This is also what scopes a tech's visibility: RLS lets a
   /// technician read only the vehicle whose id matches theirs.
   final String? assignedToUserId;
+
+  /// The yard this vehicle lives in.
+  ///
+  /// Not a `site` — that is a customer's premises. Nullable because A&S runs
+  /// one depot today, so a vehicle recorded before depots existed simply has
+  /// none, and guessing would be worse than leaving it blank.
+  final String? depotId;
 
   final String notes;
 
@@ -160,6 +168,8 @@ class VehicleEntity {
     VehicleStatus? status,
     String? assignedToUserId,
     bool clearAssignee = false,
+    String? depotId,
+    bool clearDepot = false,
     String? notes,
     DateTime? lastCheckAt,
     DateTime? updatedAt,
@@ -178,6 +188,7 @@ class VehicleEntity {
       status: status ?? this.status,
       assignedToUserId:
           clearAssignee ? null : (assignedToUserId ?? this.assignedToUserId),
+      depotId: clearDepot ? null : (depotId ?? this.depotId),
       notes: notes ?? this.notes,
       lastCheckAt: lastCheckAt ?? this.lastCheckAt,
       createdAt: createdAt,

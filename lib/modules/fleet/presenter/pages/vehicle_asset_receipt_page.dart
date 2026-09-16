@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:open_filex/open_filex.dart';
 
+import '../../../../core/constants/route_paths.dart';
 import '../../../../core/services/storage/file_storage_service.dart';
 import '../../../../core/theme/status_colors.dart';
 import '../../../../shared/widgets/widgets.dart';
@@ -9,6 +12,7 @@ import '../../domain/entities/asset_disclaimer.dart';
 import '../../domain/entities/vehicle_asset.dart';
 import '../../domain/entities/vehicle_asset_check.dart';
 import '../../infra/repositories/vehicle_asset_check_repository.dart';
+import '../../infra/services/asset_receipt_pdf_service.dart';
 import '../fleet_providers.dart';
 import '../widgets/asset_disclaimer_dialog.dart';
 import '../widgets/signature_pad_dialog.dart';
@@ -108,6 +112,14 @@ class _VehicleAssetReceiptPageState
       title: vehicle.asData?.value == null
           ? 'Asset Receipt'
           : 'Receipt · ${vehicle.asData!.value!.displayTitle}',
+      actions: [
+        if (check != null && check.isSignedByOperator)
+          IconButton(
+            tooltip: 'Print receipt',
+            icon: const Icon(Icons.picture_as_pdf_outlined),
+            onPressed: _busy ? null : _print,
+          ),
+      ],
       body: error != null
           ? EmptyState.error(
               message: '$error',
@@ -197,6 +209,12 @@ class _VehicleAssetReceiptPageState
                   enabled: !linesLocked,
                   onChanged: (updated) => _mutate((c) => c.withLine(updated)),
                   onToggled: () => setState(() {}),
+                  // Raising the job is dispatch's call, and only once the
+                  // receipt is signed — before that the line is still being
+                  // argued about in the yard.
+                  onRaiseWorkOrder: isManager && check.isSignedByOperator
+                      ? () => _raiseWorkOrder(check, line)
+                      : null,
                 ),
           ],
         ),
@@ -414,6 +432,81 @@ class _VehicleAssetReceiptPageState
     if (announce) AppSnackBar.success(context, 'Draft saved.');
   }
 
+  /// Open a prefilled work-order draft for one problem line.
+  ///
+  /// Nothing is created here. Dispatch reviews the draft and saves it, because
+  /// auto-creating a job for every reported problem is how a job list stops
+  /// being read.
+  Future<void> _raiseWorkOrder(
+    VehicleAssetCheck check,
+    VehicleAssetCheckLine line,
+  ) async {
+    final vehicle = await ref.read(vehicleProvider(widget.vehicleId).future);
+    if (!mounted) return;
+
+    final where = vehicle?.displayTitle ?? 'vehicle';
+    final what = line.isMissing ? 'Missing' : 'Not mission capable';
+
+    final description = [
+      '$what: ${line.displayLabel}',
+      if (line.serialNumber.isNotEmpty) 'Serial: ${line.serialNumber}',
+      if (line.reason.trim().isNotEmpty) 'Reported reason: ${line.reason.trim()}',
+      'From the asset receipt signed '
+          '${formatReceiptStamp(check.operatorSignedAt ?? check.checkedAt)}'
+          '${check.operatorName.trim().isEmpty ? '' : ' by ${check.operatorName.trim()}'}.',
+    ].join('\n');
+
+    if (!mounted) return;
+    context.push(
+      Uri(
+        path: RoutePaths.workOrderNew,
+        queryParameters: {
+          'title': '$what: ${line.assetName} · $where',
+          'description': description,
+          'vehicleId': check.vehicleId,
+          'assetCheckLineId': line.id,
+        },
+      ).toString(),
+    );
+  }
+
+  Future<void> _print() async {
+    final check = _check;
+    final disclaimer = _disclaimer;
+    if (check == null || disclaimer == null) return;
+
+    setState(() => _busy = true);
+    try {
+      // The version that was SIGNED, not the current one. Reprinting an old
+      // receipt with today's clauses would misstate what the person agreed to.
+      final signedVersion = disclaimer.version == check.disclaimerVersion
+          ? disclaimer
+          : await ref
+              .read(vehicleAssetCheckRepositoryProvider)
+              .disclaimerVersion(check.disclaimerVersion);
+
+      final path = await AssetReceiptPdfService.instance.generate(
+        check: check,
+        vehicle: await ref.read(vehicleProvider(widget.vehicleId).future),
+        disclaimer: signedVersion,
+      );
+      if (!mounted) return;
+
+      AppSnackBar.success(
+        context,
+        'Receipt saved.',
+        action: SnackBarAction(
+          label: 'Open',
+          onPressed: () => OpenFilex.open(path),
+        ),
+      );
+    } catch (error) {
+      if (mounted) AppSnackBar.error(context, 'Could not build the PDF: $error');
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
   void _showProblems(String title, List<String> problems) {
     showDialog<void>(
       context: context,
@@ -578,11 +671,15 @@ class _LineTile extends StatefulWidget {
     required this.enabled,
     required this.onChanged,
     required this.onToggled,
+    this.onRaiseWorkOrder,
   });
 
   final VehicleAssetCheckLine line;
   final bool enabled;
   final ValueChanged<VehicleAssetCheckLine> onChanged;
+
+  /// Null when this person cannot raise jobs, or the receipt is not signed yet.
+  final VoidCallback? onRaiseWorkOrder;
 
   /// Called when something that changes the tile's shape is toggled, so the
   /// page can rebuild. Text edits deliberately do not.
@@ -676,6 +773,18 @@ class _LineTileState extends State<_LineTile> {
                     maxLines: 2,
                     onChanged: (v) =>
                         _update(_line.copyWith(reason: v), rebuild: false),
+                  ),
+                ),
+              if (_line.isException && widget.onRaiseWorkOrder != null)
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: TextButton.icon(
+                      onPressed: widget.onRaiseWorkOrder,
+                      icon: const Icon(Icons.assignment_add, size: 18),
+                      label: const Text('Raise work order'),
+                    ),
                   ),
                 ),
             ],

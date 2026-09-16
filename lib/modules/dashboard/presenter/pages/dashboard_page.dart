@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../auth/domain/user_role.dart';
 import '../../../auth/presenter/controllers/auth_controller.dart';
+import '../../../fleet/presenter/widgets/fleet_attention_card.dart';
 import '../../../schedule/domain/entities/task_schedule_entity.dart';
 import '../../../schedule/presenter/controllers/schedule_controller.dart';
 import '../../../../shared/widgets/widgets.dart';
@@ -154,6 +155,9 @@ class DashboardPage extends ConsumerWidget {
           // Stats overview (if authenticated)
           if (isAuthed) ...[
             _buildStatsGrid(theme, tasks, role),
+            const SizedBox(height: 16),
+            // Renders nothing unless the fleet actually needs something.
+            const FleetAttentionCard(),
             const SizedBox(height: 32),
           ],
 
@@ -211,6 +215,8 @@ class DashboardPage extends ConsumerWidget {
           // Stats overview (if authenticated)
           if (isAuthed) ...[
             _buildStatsGrid(theme, tasks, role),
+            const SizedBox(height: 12),
+            const FleetAttentionCard(),
             const SizedBox(height: 24),
           ],
 

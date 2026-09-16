@@ -583,6 +583,49 @@ class FileStorageService {
     return file.path;
   }
 
+  /// Get directory for fleet asset-receipt PDFs
+  ///
+  /// Returns: [AppData]/pdfs/fleet/
+  Future<Directory> getFleetPdfsDirectory() async {
+    final pdfs = await getPdfsDirectory();
+    final dir = Directory(path.join(pdfs.path, _dirFleet));
+
+    if (!await dir.exists()) {
+      await dir.create(recursive: true);
+    }
+
+    return dir;
+  }
+
+  /// Save an asset-receipt PDF. Returns the path it was written to.
+  ///
+  /// On web there is no filesystem, so the bytes go to [WebFileStore] under a
+  /// logical path and that is what comes back — the caller shares or opens
+  /// whatever it is handed either way.
+  Future<String> saveFleetReceiptPdf({
+    required String checkId,
+    required Uint8List pdfBytes,
+  }) async {
+    final name = 'receipt-$checkId.pdf';
+
+    if (kIsWeb) {
+      final logicalPath = 'pdfs/$_dirFleet/$name';
+      await WebFileStore.instance.put(logicalPath, pdfBytes);
+      return logicalPath;
+    }
+
+    final dir = await getFleetPdfsDirectory();
+    final file = File(path.join(dir.path, name));
+
+    await file.writeAsBytes(pdfBytes);
+
+    if (kDebugMode) {
+      debugPrint('[FileStorage] Saved fleet receipt PDF: ${file.path}');
+    }
+
+    return file.path;
+  }
+
   /// Save a maintenance PDF
   Future<String> saveMaintenancePdf({
     required String jobId,

@@ -158,7 +158,9 @@ void main() {
         createdAt: now,
         updatedAt: now,
       ),
-      currentFieldCount: 13,
+      // Phase 4 added vehicle_id and asset_check_line_id as 13 and 14, so a
+      // work order written before the fleet receipt existed has 13.
+      currentFieldCount: 15,
       fieldCountAtLastRelease: 13,
     ),
     _AdapterCase<VehicleRecord>(
@@ -171,8 +173,8 @@ void main() {
         createdAt: now,
         updatedAt: now,
       ),
-      // Phase 2 added last_check_at as field 15.
-      currentFieldCount: 16,
+      // Phase 2 added last_check_at as 15; phase 4 added depot_id as 16.
+      currentFieldCount: 17,
       fieldCountAtLastRelease: 15,
     ),
     _AdapterCase<VehicleMaintenanceCheckRecord>(

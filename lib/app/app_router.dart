@@ -176,7 +176,20 @@ final goRouterProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: 'new',
             name: RouteNames.workOrderNew,
-            builder: (_, __) => const TechShell(child: WorkOrderFormPage()),
+            builder: (_, state) {
+              // Query parameters rather than `extra`: a job raised from a
+              // missing tool has to survive the deep link being reopened, and
+              // `extra` is dropped on a browser refresh or a restore.
+              final query = state.uri.queryParameters;
+              return TechShell(
+                child: WorkOrderFormPage(
+                  prefillTitle: query['title'],
+                  prefillDescription: query['description'],
+                  vehicleId: query['vehicleId'],
+                  assetCheckLineId: query['assetCheckLineId'],
+                ),
+              );
+            },
           ),
           GoRoute(
             path: 'edit/:id',

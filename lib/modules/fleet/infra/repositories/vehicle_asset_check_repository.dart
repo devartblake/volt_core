@@ -42,6 +42,13 @@ abstract class VehicleAssetCheckRepository {
   /// still gets shown the terms rather than a blank modal.
   Future<AssetDisclaimer> currentDisclaimer();
 
+  /// The exact wording a stored receipt was signed under.
+  ///
+  /// Used when reprinting: a receipt signed against version 1 must print
+  /// version 1's clauses even after version 2 exists, or the paper misstates
+  /// what the person agreed to.
+  Future<AssetDisclaimer> disclaimerVersion(int version);
+
   /// A draft receipt for [vehicleId], one line per tool currently assigned,
   /// prefilled from each tool's standing state.
   Future<VehicleAssetCheck> startReceipt(String vehicleId);
@@ -326,6 +333,37 @@ class VehicleAssetCheckRepositoryImpl implements VehicleAssetCheckRepository {
     // stops a driver being asked to sign next to an empty box on their first
     // morning with a new tablet.
     return AssetDisclaimer.builtIn(tenantId: tenantId);
+  }
+
+  @override
+  Future<AssetDisclaimer> disclaimerVersion(int version) async {
+    await _hydrate(kFleetDisclaimersTable);
+    final tenantId = _tenantIdReader() ?? '';
+
+    for (final record in _disclaimerBox.values) {
+      if (record.version != version) continue;
+      if (tenantId.isNotEmpty && record.tenantId != tenantId) continue;
+      return _toDisclaimer(record);
+    }
+
+    // The signed version is not on this device. The built-in text is the right
+    // answer only when it IS that version; otherwise say so on the printout
+    // rather than quietly substituting different clauses.
+    if (version == kBuiltInDisclaimerVersion) {
+      return AssetDisclaimer.builtIn(tenantId: tenantId);
+    }
+
+    return AssetDisclaimer(
+      id: 'unavailable-v$version',
+      tenantId: tenantId,
+      version: version,
+      title: kBuiltInDisclaimerTitle,
+      intro: 'Version $version of the asset disclaimer is not available on '
+          'this device. The signature below was given against that version.',
+      clauses: const [],
+      closing: '',
+      publishedAt: DateTime.now().toUtc(),
+    );
   }
 
   // ---- receipts ----
