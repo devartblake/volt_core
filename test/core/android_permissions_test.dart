@@ -90,30 +90,53 @@ void main() {
   });
 
   group('location', () {
-    test('is declared but deliberately unused', () {
-      // Declared so the manifest is ready; NOT wired, because no location
-      // package exists. If this test starts failing because something now
-      // calls ensureLocation(), that is the moment to add geolocator and a
-      // Data Safety entry — not to delete the assertion.
+    test('is declared, and something actually uses it', () {
+      // This assertion is the inverse of what it was when the permission was
+      // first declared: it used to guard that NOTHING called ensureLocation,
+      // because no location package existed and a prompt would have bought
+      // nothing. Site check-in is that feature, so the rule flips — the
+      // permission and a real caller now travel together, exactly like CAMERA.
       expect(declares('ACCESS_FINE_LOCATION'), isTrue);
+      expect(declares('ACCESS_COARSE_LOCATION'), isTrue);
 
-      final libDir = Directory('lib');
-      final callers = libDir
+      expect(
+        File('pubspec.yaml').readAsStringSync().contains('geolocator:'),
+        isTrue,
+        reason: 'location is declared but no package can read a position',
+      );
+
+      final callers = Directory('lib')
           .listSync(recursive: true)
           .whereType<File>()
           .where((f) => f.path.endsWith('.dart'))
           .where((f) => !f.path.endsWith('app_permissions.dart'))
           .where((f) => f.readAsStringSync().contains('ensureLocation'))
-          .map((f) => f.path)
           .toList();
 
       expect(
         callers,
-        isEmpty,
-        reason: 'Something now asks for location. Add a location package and '
-            'a Play Data Safety declaration before shipping: the permission '
-            'currently yields no position, so the prompt buys nothing.',
+        isNotEmpty,
+        reason: 'ACCESS_FINE_LOCATION is declared but nothing requests it — '
+            'either wire the feature or drop the permission, because a '
+            'declared-and-unused location permission is a Play Data Safety '
+            'question with no answer',
       );
+    });
+
+    test('check-in reaches both forms, not just inspections', () {
+      // Maintenance is work done at a place too. Wiring one and not the other
+      // is the kind of asymmetry that gets noticed months later by whoever is
+      // reading the reports.
+      for (final form in [
+        'lib/modules/inspections/presenter/pages/inspection_form_page.dart',
+        'lib/modules/maintenance/presenter/pages/maintenance_form_page.dart',
+      ]) {
+        expect(
+          File(form).readAsStringSync().contains('SiteCheckInTile'),
+          isTrue,
+          reason: '$form lost its site check-in',
+        );
+      }
     });
   });
 }

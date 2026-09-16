@@ -91,7 +91,8 @@ void main() {
       sample: () => inspectionFromEntity(
         InspectionEntity.newDraft().copyWith(address: 'Legacy row'),
       ),
-      currentFieldCount: 66,
+      // Site check-in added fields 66-69.
+      currentFieldCount: 70,
       // The release before the address split.
       fieldCountAtLastRelease: 61,
     ),
@@ -120,7 +121,8 @@ void main() {
       name: 'MaintenanceRecordAdapter',
       adapter: MaintenanceRecordAdapter(),
       sample: () => MaintenanceRecord(id: 'm1'),
-      currentFieldCount: 117,
+      // Site check-in added fields 117-120.
+      currentFieldCount: 121,
       fieldCountAtLastRelease: 117,
     ),
     _AdapterCase<ScheduledTask>(

@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+
+import '../../../../shared/presenter/widgets/site_check_in_tile.dart';
+import '../../infra/mappers/maintenance_supabase_mapper.dart';
 import 'package:flutter/services.dart' show Uint8List;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../app/nav_extensions.dart';
@@ -296,9 +299,22 @@ class _MaintenanceFormPageState extends ConsumerState<MaintenanceFormPage> {
     _FormSection(
       title: 'Site Information',
       icon: Icons.location_on_outlined,
-      widget: SectionMaintSiteInfo(
-        model: m,
-        onChanged: (_) => _update(() {}),
+      widget: Column(
+        children: [
+          // Same tile the inspection form uses, in the same place: it
+          // evidences the address in the section below it.
+          SiteCheckInTile(
+            checkIn: maintenanceCheckIn(m),
+            onChanged: (checkIn) => _update(
+              () => applyMaintenanceCheckIn(m, checkIn),
+            ),
+          ),
+          const SizedBox(height: 8),
+          SectionMaintSiteInfo(
+            model: m,
+            onChanged: (_) => _update(() {}),
+          ),
+        ],
       ),
     ),
     _FormSection(
