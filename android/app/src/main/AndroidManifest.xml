@@ -1,7 +1,29 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- ===== Network ===== -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- connectivity_plus reads the active network to decide online/offline.
+         Without this it reports "none" on some OEM builds, which makes the
+         sync queue think the device is permanently offline. -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
     <uses-permission android:name="android.permission.WRITE_CALENDAR" />
     <uses-permission android:name="android.permission.READ_CALENDAR" />
+
+    <!-- ===== Camera ===== -->
+    <!-- image_picker's ImageSource.camera path, used by the photo attachment
+         widget on inspections and maintenance.
+
+         NOTE: declaring CAMERA changes the contract. ACTION_IMAGE_CAPTURE
+         works WITHOUT this permission, but once an app declares it Android
+         requires the runtime grant as well, or the capture fails with a
+         SecurityException. AppPermissions.ensureCamera() is what asks; do not
+         remove one without the other. -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-feature
+        android:name="android.hardware.camera"
+        android:required="false" />
+
+    <!-- ===== Storage / media ===== -->
     <!-- Needed for saving PDFs to device internal storage -->
     <uses-permission
         android:name="android.permission.WRITE_EXTERNAL_STORAGE"
@@ -10,9 +32,31 @@
         android:name="android.permission.READ_EXTERNAL_STORAGE"
         android:maxSdkVersion="32"
         />
+    <!-- Android 13+ replaced READ_EXTERNAL_STORAGE with per-type media reads.
+         This is what image_picker's gallery path needs on a modern device. -->
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
 
     <!-- Required for accessing app-specific external directories on Android 10+ -->
     <uses-permission android:name="android.permission.ACCESS_MEDIA_LOCATION"/>
+
+    <!-- ===== Location ===== -->
+    <!-- ⚠️ DECLARED BUT NOT YET USED. Nothing in lib/ reads a position: there
+         is no geolocator/location package in pubspec.yaml, so these grant a
+         capability no code can exercise today. They are here so the manifest
+         is ready when site check-in or vehicle tracking lands.
+
+         Two consequences while that is true:
+           1. Google Play asks about location in the Data Safety form and may
+              query why a build requests it with no visible feature.
+           2. Users see a location prompt for nothing if anything ever calls
+              AppPermissions.ensureLocation() before the feature exists.
+         Removing these two lines is safe and reverts to the previous
+         behaviour exactly. -->
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-feature
+        android:name="android.hardware.location.gps"
+        android:required="false" />
 
     <!-- Local notifications for schedule reminders -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
