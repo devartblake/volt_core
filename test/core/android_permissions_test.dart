@@ -23,7 +23,7 @@ void main() {
       // INTERNET: Supabase and the sync queue.
       expect(declares('INTERNET'), isTrue);
       // ACCESS_NETWORK_STATE: connectivity_plus reports "none" without it on
-      // some OEM builds, which makes the queue think it is永 offline.
+      // some OEM builds, which makes the queue think it is permanently offline.
       expect(declares('ACCESS_NETWORK_STATE'), isTrue);
       // CAMERA + media: the photo attachment widget.
       expect(declares('CAMERA'), isTrue);
