@@ -4,15 +4,14 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/constants/route_paths.dart';
 import '../../../../shared/widgets/widgets.dart';
+import '../../domain/entities/vehicle_asset_check.dart';
 import '../../domain/entities/vehicle_entity.dart';
 import '../../domain/entities/vehicle_maintenance_check.dart';
 import '../fleet_providers.dart';
 import 'vehicle_maintenance_form_page.dart' show formatShortDate;
 
-/// One vehicle.
-///
-/// Phase 3 adds the tool manifest. The signed receipt for it arrives with
-/// phase 4.
+/// One vehicle: its facts, who drives it, its maintenance history, the tools
+/// it carries, and the signed receipts for them.
 class VehicleDetailPage extends ConsumerWidget {
   const VehicleDetailPage({super.key, required this.id});
 
@@ -94,7 +93,98 @@ class _VehicleBody extends ConsumerWidget {
         _MaintenanceHistory(vehicle: vehicle),
         const SizedBox(height: 8),
         _AssetsCard(vehicle: vehicle),
+        const SizedBox(height: 8),
+        _ReceiptsCard(vehicle: vehicle),
       ],
+    );
+  }
+}
+
+/// Signed asset receipts for this vehicle, and the way to start today's.
+class _ReceiptsCard extends ConsumerWidget {
+  const _ReceiptsCard({required this.vehicle});
+
+  final VehicleEntity vehicle;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final receipts = ref.watch(vehicleReceiptsProvider(vehicle.id));
+
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        children: [
+          ListTile(
+            leading: Icon(
+              Icons.receipt_long_outlined,
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+            title: Text('Asset receipts', style: theme.textTheme.titleSmall),
+            subtitle: Text(
+              receipts.when(
+                loading: () => 'Loading…',
+                error: (_, __) => 'Could not load receipts',
+                data: (list) {
+                  if (list.isEmpty) return 'None signed yet';
+                  final latest = list.first;
+                  return '${list.length} on record · latest '
+                      '${formatShortDate(latest.checkedAt.toLocal())} · '
+                      '${latest.stage.label}';
+                },
+              ),
+              style: theme.textTheme.bodySmall,
+            ),
+          ),
+          for (final receipt
+              in (receipts.asData?.value ?? const <VehicleAssetCheck>[])
+                  .take(3))
+            ListTile(
+              dense: true,
+              leading: Icon(
+                receipt.isCounterSigned
+                    ? Icons.check_circle_outline
+                    : Icons.hourglass_bottom,
+                size: 20,
+                color: receipt.hasMissing
+                    ? theme.colorScheme.error
+                    : theme.colorScheme.onSurfaceVariant,
+              ),
+              title: Text(formatShortDate(receipt.checkedAt.toLocal())),
+              subtitle: Text(
+                [
+                  receipt.stage.label,
+                  if (receipt.operatorName.trim().isNotEmpty)
+                    receipt.operatorName.trim(),
+                  if (receipt.missingCount > 0)
+                    '${receipt.missingCount} missing',
+                ].join('  ·  '),
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: receipt.hasMissing ? theme.colorScheme.error : null,
+                ),
+              ),
+              trailing: const Icon(Icons.chevron_right, size: 20),
+              onTap: () => context.push(
+                RoutePaths.fleetReceipt
+                    .replaceFirst(':id', vehicle.id)
+                    .replaceFirst(':checkId', receipt.id),
+              ),
+            ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: FilledButton.tonalIcon(
+                onPressed: () => context.push(
+                  RoutePaths.fleetReceiptNew.replaceFirst(':id', vehicle.id),
+                ),
+                icon: const Icon(Icons.draw_outlined),
+                label: const Text('New asset receipt'),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -230,7 +320,8 @@ class _MaintenanceHistory extends ConsumerWidget {
             subtitle: Text(
               vehicle.lastCheckAt == null
                   ? 'No check recorded yet'
-                  : 'Last checked \${formatShortDate(vehicle.lastCheckAt!.toLocal())}',
+                  : 'Last checked '
+                      '${formatShortDate(vehicle.lastCheckAt!.toLocal())}',
               style: theme.textTheme.bodySmall,
             ),
             trailing: isManager
@@ -252,7 +343,7 @@ class _MaintenanceHistory extends ConsumerWidget {
             error: (error, _) => Padding(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
               child: Text(
-                'Could not load history. \$error',
+                'Could not load history. $error',
                 style: theme.textTheme.bodySmall
                     ?.copyWith(color: theme.colorScheme.error),
               ),
@@ -307,12 +398,12 @@ class _CheckTile extends StatelessWidget {
       title: Text(formatShortDate(check.checkedAt.toLocal())),
       subtitle: Text(
         [
-          '\${check.odometer} mi',
-          if (since != null) '\$since mi since service',
+          '${check.odometer} mi',
+          if (since != null) '$since mi since service',
           if (check.brakeStatus.needsFollowUp)
-            'Brakes: \${check.brakeStatus.label}',
+            'Brakes: ${check.brakeStatus.label}',
           if (check.batteryStatus.needsFollowUp)
-            'Battery: \${check.batteryStatus.label}',
+            'Battery: ${check.batteryStatus.label}',
         ].join('  ·  '),
         style: theme.textTheme.bodySmall,
       ),

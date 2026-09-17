@@ -299,6 +299,22 @@ class MaintenanceRecord extends HiveObject {
   @HiveField(116)
   String? customerSignaturePath;
 
+  // Site check-in. Four primitives rather than a nested adapter, matching how
+  // the inspection record stores it: no second typeId to register, and no
+  // cross-record migration if the shape changes. All nullable, so rows written
+  // before this feature read back as null.
+  @HiveField(117)
+  double? checkInLatitude;
+
+  @HiveField(118)
+  double? checkInLongitude;
+
+  @HiveField(119)
+  double? checkInAccuracyM;
+
+  @HiveField(120)
+  DateTime? checkInAt;
+
   MaintenanceRecord({
     required this.id,
     this.inspectionId,
@@ -413,6 +429,10 @@ class MaintenanceRecord extends HiveObject {
     this.completed = false,
     this.requiresFollowUp = false,
     this.followUpNotes = '',
+    this.checkInLatitude,
+    this.checkInLongitude,
+    this.checkInAccuracyM,
+    this.checkInAt,
     this.technicianSignaturePath = '',
     this.customerSignaturePath = '',
     DateTime? createdAt,

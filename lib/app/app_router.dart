@@ -34,6 +34,7 @@ import '../modules/maintenance/presenter/pages/maintenance_detail_page.dart';
 import '../modules/maintenance/presenter/pages/maintenance_form_page.dart';
 import '../modules/maintenance/presenter/pages/maintenance_list_page.dart';
 import '../modules/fleet/presenter/pages/vehicle_asset_catalog_page.dart';
+import '../modules/fleet/presenter/pages/vehicle_asset_receipt_page.dart';
 import '../modules/fleet/presenter/pages/vehicle_assets_page.dart';
 import '../modules/fleet/presenter/pages/vehicle_detail_page.dart';
 import '../modules/fleet/presenter/pages/vehicle_form_page.dart';
@@ -175,7 +176,20 @@ final goRouterProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: 'new',
             name: RouteNames.workOrderNew,
-            builder: (_, __) => const TechShell(child: WorkOrderFormPage()),
+            builder: (_, state) {
+              // Query parameters rather than `extra`: a job raised from a
+              // missing tool has to survive the deep link being reopened, and
+              // `extra` is dropped on a browser refresh or a restore.
+              final query = state.uri.queryParameters;
+              return TechShell(
+                child: WorkOrderFormPage(
+                  prefillTitle: query['title'],
+                  prefillDescription: query['description'],
+                  vehicleId: query['vehicleId'],
+                  assetCheckLineId: query['assetCheckLineId'],
+                ),
+              );
+            },
           ),
           GoRoute(
             path: 'edit/:id',
@@ -231,6 +245,28 @@ final goRouterProvider = Provider<GoRouter>((ref) {
                 builder: (_, state) => TechShell(
                   child: VehicleAssetsPage(
                     vehicleId: state.pathParameters['id']!,
+                  ),
+                ),
+              ),
+              // `receipt/new` is declared before `receipt/:checkId` so the
+              // literal wins; otherwise "new" would be matched as a checkId and
+              // every new receipt would open as "not on this device".
+              GoRoute(
+                path: RoutePaths.fleetReceiptNewSub,
+                name: RouteNames.fleetReceiptNew,
+                builder: (_, state) => TechShell(
+                  child: VehicleAssetReceiptPage(
+                    vehicleId: state.pathParameters['id']!,
+                  ),
+                ),
+              ),
+              GoRoute(
+                path: RoutePaths.fleetReceiptSub,
+                name: RouteNames.fleetReceipt,
+                builder: (_, state) => TechShell(
+                  child: VehicleAssetReceiptPage(
+                    vehicleId: state.pathParameters['id']!,
+                    checkId: state.pathParameters['checkId'],
                   ),
                 ),
               ),

@@ -66,6 +66,7 @@ class FileStorageService {
 
   static const String _dirInspections = 'inspections';
   static const String _dirMaintenance = 'maintenance';
+  static const String _dirFleet = 'fleet';
 
   /// Folder created inside the project during local development so all
   /// app-produced data is hosted in one place (git-ignored).
@@ -257,6 +258,94 @@ class FileStorageService {
     }
 
     return dir;
+  }
+
+  /// Get directory for fleet asset-receipt signatures
+  ///
+  /// Returns: [AppData]/signatures/fleet/
+  Future<Directory> getFleetSignaturesDirectory() async {
+    final signatures = await getSignaturesDirectory();
+    final dir = Directory(path.join(signatures.path, _dirFleet));
+
+    if (!await dir.exists()) {
+      await dir.create(recursive: true);
+    }
+
+    return dir;
+  }
+
+  /// The storage path for one signature on an asset receipt.
+  ///
+  /// Deterministic, so a retried save overwrites rather than littering the
+  /// bucket with near-duplicates of the same signature.
+  static String fleetSignaturePath({
+    required String checkId,
+    required String role,
+  }) =>
+      'signatures/$_dirFleet/${checkId}_$role.png';
+
+  /// Save a signature from an asset receipt.
+  ///
+  /// **Returns the logical path, not the device path** — deliberately unlike
+  /// [saveInspectionSignature]. An asset receipt is printed in the office from
+  /// a different machine than the one it was signed on, and a stored
+  /// `/data/user/0/com.example/...` means nothing there: the reprint would come
+  /// out with an empty signature box and nobody would know why. The logical
+  /// path is the same string in the bucket and on every device, so
+  /// [readFleetSignatureBytes] can resolve it locally and the office can fetch
+  /// it remotely.
+  Future<String> saveFleetSignature({
+    required String checkId,
+    required String role,
+    required Uint8List signatureBytes,
+  }) async {
+    final logicalPath = fleetSignaturePath(checkId: checkId, role: role);
+
+    if (kIsWeb) {
+      await WebFileStore.instance.put(logicalPath, signatureBytes);
+      _queueSignatureBackup(logicalPath, logicalPath, web: true);
+      return logicalPath;
+    }
+
+    final dir = await getFleetSignaturesDirectory();
+    final file = File(path.join(dir.path, '${checkId}_$role.png'));
+
+    await file.writeAsBytes(signatureBytes);
+
+    if (kDebugMode) {
+      debugPrint('[FileStorage] Saved fleet signature: ${file.path}');
+    }
+
+    _queueSignatureBackup(file.path, logicalPath);
+    return logicalPath;
+  }
+
+  /// Bytes for a signature saved by [saveFleetSignature], or null when this
+  /// device does not have them.
+  ///
+  /// Null is not an error: a receipt signed on the driver's tablet and opened
+  /// in the office has to be fetched from storage instead. Callers that print
+  /// should say "signature not on this device" rather than drawing a blank box.
+  Future<Uint8List?> readFleetSignatureBytes(String logicalPath) async {
+    if (logicalPath.isEmpty) return null;
+
+    final fromStore = WebFileStore.instance.getSync(logicalPath);
+    if (fromStore != null) return fromStore;
+    if (kIsWeb) return null;
+
+    try {
+      final dir = await getFleetSignaturesDirectory();
+      final file = File(path.join(dir.path, path.basename(logicalPath)));
+      // Awaited inside the try on purpose: returning the future unawaited would
+      // let a read error escape this catch and surface as an unhandled
+      // exception while a receipt is being printed.
+      if (await file.exists()) return await file.readAsBytes();
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('[FileStorage] Could not read fleet signature: $e');
+      }
+    }
+    return null;
   }
 
   /// Save an inspection signature
@@ -489,6 +578,49 @@ class FileStorageService {
 
     if (kDebugMode) {
       debugPrint('[FileStorage] Saved inspection PDF: ${file.path}');
+    }
+
+    return file.path;
+  }
+
+  /// Get directory for fleet asset-receipt PDFs
+  ///
+  /// Returns: [AppData]/pdfs/fleet/
+  Future<Directory> getFleetPdfsDirectory() async {
+    final pdfs = await getPdfsDirectory();
+    final dir = Directory(path.join(pdfs.path, _dirFleet));
+
+    if (!await dir.exists()) {
+      await dir.create(recursive: true);
+    }
+
+    return dir;
+  }
+
+  /// Save an asset-receipt PDF. Returns the path it was written to.
+  ///
+  /// On web there is no filesystem, so the bytes go to [WebFileStore] under a
+  /// logical path and that is what comes back — the caller shares or opens
+  /// whatever it is handed either way.
+  Future<String> saveFleetReceiptPdf({
+    required String checkId,
+    required Uint8List pdfBytes,
+  }) async {
+    final name = 'receipt-$checkId.pdf';
+
+    if (kIsWeb) {
+      final logicalPath = 'pdfs/$_dirFleet/$name';
+      await WebFileStore.instance.put(logicalPath, pdfBytes);
+      return logicalPath;
+    }
+
+    final dir = await getFleetPdfsDirectory();
+    final file = File(path.join(dir.path, name));
+
+    await file.writeAsBytes(pdfBytes);
+
+    if (kDebugMode) {
+      debugPrint('[FileStorage] Saved fleet receipt PDF: ${file.path}');
     }
 
     return file.path;

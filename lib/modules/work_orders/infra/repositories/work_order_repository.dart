@@ -10,6 +10,11 @@ abstract class WorkOrderRepository {
     String? customerId,
     String? siteId,
     String? assetId,
+
+    /// Set when the job was raised from a fleet asset receipt: the van, and the
+    /// receipt line that reported the problem.
+    String? vehicleId,
+    String? assetCheckLineId,
     String? assignedToUserId,
     DateTime? scheduledFor,
     String description = '',

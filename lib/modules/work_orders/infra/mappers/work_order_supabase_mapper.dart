@@ -9,6 +9,10 @@ Map<String, dynamic> workOrderToSupabaseJson(WorkOrderEntity order) => {
   'customer_id': order.customerId,
   'site_id': order.siteId,
   'asset_id': order.assetId,
+  // Added with the fleet asset receipt. Null for every work order that did not
+  // come from one, which is most of them.
+  'vehicle_id': order.vehicleId,
+  'asset_check_line_id': order.assetCheckLineId,
   'assigned_to_user_id': order.assignedToUserId,
   'scheduled_for': order.scheduledFor?.toIso8601String(),
   'description': order.description,
@@ -29,6 +33,8 @@ WorkOrderEntity workOrderFromSupabaseJson(Map<String, dynamic> row) {
     customerId: _nullableString(row['customer_id']),
     siteId: _nullableString(row['site_id']),
     assetId: _nullableString(row['asset_id']),
+    vehicleId: _nullableString(row['vehicle_id']),
+    assetCheckLineId: _nullableString(row['asset_check_line_id']),
     assignedToUserId: _nullableString(row['assigned_to_user_id']),
     scheduledFor: _dateTime(row['scheduled_for']),
     description: (row['description'] ?? '').toString(),

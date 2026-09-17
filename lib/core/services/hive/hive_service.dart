@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import '../../../modules/maintenance/infra/datasources/hive_boxes_maintenance.dart';
 import '../../../modules/fleet/infra/datasources/vehicle_asset_boxes.dart';
+import '../../../modules/fleet/infra/datasources/vehicle_asset_check_boxes.dart';
 import '../../../modules/fleet/infra/datasources/vehicle_maintenance_checks_box.dart';
 import '../../../modules/fleet/infra/datasources/vehicles_box.dart';
 import '../../../modules/work_orders/infra/datasources/work_orders_box.dart';
@@ -54,6 +55,10 @@ class HiveService {
     await VehicleMaintenanceChecksBox.init();
     await VehicleAssetCatalogBox.init();
     await VehicleAssetsBox.init();
+    await VehicleAssetChecksBox.init();
+    await VehicleAssetCheckLinesBox.init();
+    await AssetDisclaimersBox.init();
+    await FleetDepotsBox.init();
     await FormResponsesBox.init();
     await TemplateDefinitionsBox.init();
 
@@ -126,6 +131,10 @@ class HiveService {
     VehicleMaintenanceChecksBox.invalidate();
     VehicleAssetCatalogBox.invalidate();
     VehicleAssetsBox.invalidate();
+    VehicleAssetChecksBox.invalidate();
+    VehicleAssetCheckLinesBox.invalidate();
+    AssetDisclaimersBox.invalidate();
+    FleetDepotsBox.invalidate();
     TemplateDefinitionsBox.invalidate();
 
     _initialized = false;
