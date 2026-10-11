@@ -63,6 +63,7 @@ class VehicleRepositoryImpl implements VehicleRepository {
         assignedToUserId: value.assignedToUserId,
         notes: value.notes,
         lastCheckAt: value.lastCheckAt,
+        depotId: value.depotId,
         createdAt: value.createdAt,
         updatedAt: value.updatedAt,
       );
@@ -82,6 +83,7 @@ class VehicleRepositoryImpl implements VehicleRepository {
         assignedToUserId: value.assignedToUserId,
         notes: value.notes,
         lastCheckAt: value.lastCheckAt,
+        depotId: value.depotId,
         createdAt: value.createdAt,
         updatedAt: value.updatedAt,
       );

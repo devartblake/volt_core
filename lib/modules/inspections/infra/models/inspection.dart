@@ -1,4 +1,5 @@
 import 'package:hive/hive.dart';
+import '../../../../core/services/location/site_check_in.dart';
 import '../../domain/entities/inspection_entity.dart';
 
 part 'inspection.g.dart';
@@ -120,6 +121,15 @@ class Inspection extends HiveObject {
   /// Per-checklist-item conclusions, keyed by InspectionChecklistItem.key.
   @HiveField(65) Map<String, String> checklistNotes;
 
+  // Site check-in. Stored as four primitives rather than a nested adapter so
+  // there is no second typeId to register and no cross-record migration if the
+  // shape ever changes. All nullable, so the generator-free adapter reads them
+  // back as null on rows written before this feature.
+  @HiveField(66) double? checkInLatitude;
+  @HiveField(67) double? checkInLongitude;
+  @HiveField(68) double? checkInAccuracyM;
+  @HiveField(69) DateTime? checkInAt;
+
   Inspection({
     required this.id,
     required this.createdAt,
@@ -187,6 +197,10 @@ class Inspection extends HiveObject {
     this.state = '',
     this.postalCode = '',
     Map<String, String>? checklistNotes,
+    this.checkInLatitude,
+    this.checkInLongitude,
+    this.checkInAccuracyM,
+    this.checkInAt,
   })  : checklistNotes = checklistNotes ?? <String, String>{},
         serviceDate = serviceDate ?? DateTime.now(),
         technicianSigDate = technicianSigDate ?? DateTime.now(),
@@ -278,6 +292,12 @@ extension InspectionHiveMapper on Inspection {
       customerName: customerName,
       pdfPath: pdfPath,
       checklistNotes: Map<String, String>.of(checklistNotes),
+      siteCheckIn: _checkInFromFields(
+        checkInLatitude,
+        checkInLongitude,
+        checkInAccuracyM,
+        checkInAt,
+      ),
     );
   }
 }
@@ -351,5 +371,30 @@ Inspection inspectionFromEntity(InspectionEntity e) {
     customerName: e.customerName,
     pdfPath: e.pdfPath,
     checklistNotes: Map<String, String>.of(e.checklistNotes),
+    checkInLatitude: e.siteCheckIn?.latitude,
+    checkInLongitude: e.siteCheckIn?.longitude,
+    checkInAccuracyM: e.siteCheckIn?.accuracyMeters,
+    checkInAt: e.siteCheckIn?.capturedAt,
+  );
+}
+
+/// Rebuild a [SiteCheckIn] from the flat Hive columns.
+///
+/// Returns null unless both coordinates are present *and* plausible, so a row
+/// written before the feature — or one holding a (0, 0) failed fix — reads back
+/// as "no check-in" rather than as a position in the Gulf of Guinea.
+SiteCheckIn? _checkInFromFields(
+  double? latitude,
+  double? longitude,
+  double? accuracyM,
+  DateTime? capturedAt,
+) {
+  if (latitude == null || longitude == null) return null;
+  if (!SiteCheckIn.isPlausible(latitude, longitude)) return null;
+  return SiteCheckIn(
+    latitude: latitude,
+    longitude: longitude,
+    accuracyMeters: accuracyM,
+    capturedAt: capturedAt ?? DateTime.now().toUtc(),
   );
 }

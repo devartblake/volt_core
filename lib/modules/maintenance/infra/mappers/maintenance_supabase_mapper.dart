@@ -1,5 +1,6 @@
 import '../../../../core/services/sync/sync_context.dart';
 import '../../../../core/services/sync/sync_service.dart';
+import '../../../../core/services/location/site_check_in.dart';
 import '../models/maintenance_record.dart';
 
 /// Supabase tables that mirror a [MaintenanceRecord].
@@ -172,7 +173,36 @@ Map<String, dynamic> maintenanceRecordData(MaintenanceRecord r) {
     'follow_up_notes': r.followUpNotes,
     'technician_signature_path': r.technicianSignaturePath,
     'customer_signature_path': r.customerSignaturePath,
+    // Site check-in rides in the `data` jsonb like every other detail field,
+    // so this needs no migration.
+    'site_check_in': maintenanceCheckIn(r)?.toJson(),
   };
+}
+
+/// The site check-in held on a [MaintenanceRecord], or null when there is none.
+///
+/// The record stores four flat primitives; this is the one place that turns
+/// them back into a value object, so the plausibility rule lives in a single
+/// spot rather than at each reader.
+SiteCheckIn? maintenanceCheckIn(MaintenanceRecord r) {
+  final latitude = r.checkInLatitude;
+  final longitude = r.checkInLongitude;
+  if (latitude == null || longitude == null) return null;
+  if (!SiteCheckIn.isPlausible(latitude, longitude)) return null;
+  return SiteCheckIn(
+    latitude: latitude,
+    longitude: longitude,
+    accuracyMeters: r.checkInAccuracyM,
+    capturedAt: r.checkInAt ?? DateTime.now().toUtc(),
+  );
+}
+
+/// Copy [checkIn] onto [r]'s flat columns, clearing them when it is null.
+void applyMaintenanceCheckIn(MaintenanceRecord r, SiteCheckIn? checkIn) {
+  r.checkInLatitude = checkIn?.latitude;
+  r.checkInLongitude = checkIn?.longitude;
+  r.checkInAccuracyM = checkIn?.accuracyMeters;
+  r.checkInAt = checkIn?.capturedAt;
 }
 
 /// Restores a full Hive record from the two Supabase rows used by maintenance
@@ -304,6 +334,10 @@ MaintenanceRecord maintenanceRecordFromSupabaseRows({
   ..followUpNotes = _nullableText(data['follow_up_notes'])
   ..technicianSignaturePath = _nullableText(data['technician_signature_path'])
   ..customerSignaturePath = _nullableText(data['customer_signature_path']);
+
+  // Restore the check-in through the same value object the writer used, so an
+  // implausible stored pair reads back as "no check-in" on both sides.
+  applyMaintenanceCheckIn(record, SiteCheckIn.fromJson(data['site_check_in']));
   return record;
 }
 

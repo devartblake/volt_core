@@ -21,6 +21,12 @@ void main() {
     'fleet',
     'fleet_vehicle_detail',
     'fleet_vehicle_assets',
+    // The receipt is the one fleet screen a technician WRITES to: they are the
+    // driver, and the signature is theirs. vehicle_asset_checks' insert and
+    // update policies allow the same two — the manager set, plus the user the
+    // vehicle is assigned to.
+    'fleet_receipt_new',
+    'fleet_receipt',
   ];
   const managerOnly = [
     'fleet_vehicle_new',

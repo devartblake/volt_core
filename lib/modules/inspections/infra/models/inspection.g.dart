@@ -83,13 +83,17 @@ class InspectionAdapter extends TypeAdapter<Inspection> {
       state: fields[63] == null ? '' : fields[63] as String,
       postalCode: fields[64] == null ? '' : fields[64] as String,
       checklistNotes: (fields[65] as Map?)?.cast<String, String>(),
+      checkInLatitude: fields[66] as double?,
+      checkInLongitude: fields[67] as double?,
+      checkInAccuracyM: fields[68] as double?,
+      checkInAt: fields[69] as DateTime?,
     );
   }
 
   @override
   void write(BinaryWriter writer, Inspection obj) {
     writer
-      ..writeByte(66)
+      ..writeByte(70)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -221,7 +225,15 @@ class InspectionAdapter extends TypeAdapter<Inspection> {
       ..writeByte(64)
       ..write(obj.postalCode)
       ..writeByte(65)
-      ..write(obj.checklistNotes);
+      ..write(obj.checklistNotes)
+      ..writeByte(66)
+      ..write(obj.checkInLatitude)
+      ..writeByte(67)
+      ..write(obj.checkInLongitude)
+      ..writeByte(68)
+      ..write(obj.checkInAccuracyM)
+      ..writeByte(69)
+      ..write(obj.checkInAt);
   }
 
   @override

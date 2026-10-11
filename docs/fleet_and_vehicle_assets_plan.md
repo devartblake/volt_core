@@ -304,11 +304,14 @@ Ordered so each phase is independently useful and independently revertable.
 | **1** ✅ | Migration for `fleet_vehicles` + RLS; entity, Hive model, repo, sync; list / detail / form; RBAC + drawer | Done — see §11 |
 | **2** ✅ | `vehicle_maintenance_checks`; checklist form; history tab; latest-values denormalisation | Done — see §12 |
 | **3** ✅ | `vehicle_asset_catalog` + `vehicle_assets`; catalog admin screen; per-vehicle assignment | Done — see §13 |
-| **4** | `vehicle_asset_checks` + lines; receipt screen; signature; PDF | Largest of the asset work |
+| **4** ✅ | `vehicle_asset_checks` + lines; receipt screen; dual signature; PDF; depots; disclaimer versioning | Done — see §14 |
 | **5** | Service-due rules (odometer or elapsed time), dashboard tile, out-of-service surfacing | Small, high visibility |
 
 Phase 5 is where this stops being a filing cabinet and starts preventing a
 missed brake service. Do not let it fall off the end.
+
+Phase 6, added during phase 4, is real push notification — see §9.2 for why
+it is separate and what the app does instead until then.
 
 ---
 
@@ -329,17 +332,42 @@ missed brake service. Do not let it fall off the end.
 
 1. ~~Tech access vs. the driver's signature.~~ **Settled** — see §3. The tech
    is the driver, signs daily, and dispatch does the data entry.
-2. **Does a missing tool raise anything?** A missing ladder on a signed receipt
-   is currently just ink. It could open a work order, notify dispatch, or mark
-   the vehicle `out_of_service`. Cheap to add at Phase 4, awkward to retrofit.
-3. **Do vehicles belong to a depot or site,** or only to the tenant? Affects
-   whether `fleet_vehicles` needs a `site_id`.
-4. **Retention.** Inspections keep everything; `tenant_retention_policy` exists
-   for archived maintenance. Do asset receipts fall under it?
+2. ~~Does a missing tool raise anything?~~ **Settled** — it is recorded on the
+   receipt, it raises a notification, and admin or dispatch then creates a work
+   order from it. Note what "notification" can mean today: the app has no push
+   infrastructure at all (`NotificationService` is `flutter_local_notifications`,
+   which only reaches the device that scheduled the reminder), so phase 4 ships
+   the in-app half — a dashboard card, a fleet-list banner and a per-vehicle
+   badge, all fed by `fleetAttentionProvider`. Real push is **phase 6**: FCM,
+   APNs, a device-token table and an edge function, plus its own store
+   disclosure. Do not let the word "notification" hide that gap.
+3. ~~Do vehicles belong to a depot or site?~~ **Settled** — a depot, which is
+   *not* a `site`. `sites` holds customers' service locations; a depot is the
+   tenant's own yard. Phase 4 adds `fleet_depots` and `fleet_vehicles.depot_id`
+   rather than reusing `site_id`, which would have put A&S's own garage in the
+   customer list. A&S runs one depot, so the vehicle form states it and selects
+   it instead of offering a dropdown of one; add a second row and the field
+   becomes a chooser with no code change.
+4. ~~Retention.~~ **Settled** — asset receipts are *not* covered by
+   `tenant_retention_policies`. They belong to a vehicle, and they are evidence
+   of what somebody signed for, so nothing deletes them on a timer. Retiring or
+   deleting a vehicle does not remove its receipts. No retention period was
+   specified, so none is enforced; if one is ever wanted it is a new policy
+   column and a job, not a change to this table.
 5. ~~Odometer trust.~~ **Settled** — refused by default, overridable with an
    explicit confirmation. See §12.
-6. **Disclaimer wording** — who owns revisions, and does an existing signature
-   need re-acceptance when it changes?
+6. ~~Disclaimer wording.~~ **Settled** — the admin owns it. Wording lives in
+   `fleet_disclaimers`, admin-only to publish, and **a published version is
+   never edited**: `authenticated` holds `select` and `insert` on that table and
+   nothing else, so revising means inserting version N+1. An existing signature
+   is never re-accepted; it keeps pointing at the version it was given for, and
+   a reprint fetches that version's text rather than today's.
+
+Still open after phase 4:
+
+7. **Retention period**, if one is ever required (see 4).
+8. **Push notifications** (see 2) — whether phase 6 is worth its own store
+   disclosure and Apple account work.
 
 ---
 
@@ -519,3 +547,66 @@ does **not** log their own walk-around.
   about.
 - Anything missing or NMC **sorts to the top** and gets a banner. That is why
   somebody opened the screen.
+
+---
+
+## 14. Phase 4 — what was built
+
+The signed asset receipt: the phase that actually replaces the paper.
+
+| Area | Files |
+| --- | --- |
+| Migration | `supabase/migrations/20260825200000_vehicle_asset_checks.sql` |
+| Seeds | `supabase/manual/seed_asset_disclaimer.sql`, `supabase/manual/seed_fleet_depot.sql` |
+| Domain | `domain/entities/vehicle_asset_check.dart`, `asset_disclaimer.dart`, `fleet_depot.dart` |
+| Storage | `infra/models/vehicle_asset_check_record.dart` (typeIds 79, 80), `fleet_reference_records.dart` (81, 82), `infra/datasources/vehicle_asset_check_boxes.dart` |
+| Sync | `infra/mappers/vehicle_asset_check_supabase_mapper.dart` |
+| Repository | `infra/repositories/vehicle_asset_check_repository.dart` |
+| PDF | `infra/services/asset_receipt_pdf_service.dart` |
+| Presenter | `presenter/pages/vehicle_asset_receipt_page.dart`, `presenter/widgets/{asset_disclaimer_dialog,signature_pad_dialog,fleet_attention_card}.dart` |
+| Tests | `test/fleet/asset_receipt_test.dart` (26 cases), `test/lint/no_escaped_interpolation_test.dart`, extended RBAC + forward-compat suites |
+
+### The flow, in order — the order is the point
+
+1. dispatch fills the header and walks the tool list with the driver;
+2. the driver is shown the disclaimer in a **blocking modal** whose Accept
+   button only enables once the text has been scrolled to the end;
+3. the driver signs, and each line's answer becomes the van's standing state;
+4. dispatch counter-signs as a second verification, which freezes the receipt.
+
+Step 2 is not a checkbox labelled "I agree". A checkbox reproduces the signature
+without reproducing the reading, which is the one thing the paper's boxed
+clauses above the signature line actually achieve.
+
+### Decisions worth knowing
+
+- **Every line snapshots the tool's name, part number and serial.** Not a join.
+  A receipt records what somebody signed for on a particular morning; correcting
+  a catalog typo in 2027 must not retroactively edit the 2026 paper.
+- **Immutability is a trigger, not an RLS policy.** The client writes through a
+  retrying offline outbox, so an identical re-send of a finalised row has to be
+  allowed through — a blanket "reject every update" would jam the queue behind a
+  write that can never succeed. The trigger compares `to_jsonb(new) - 'updated_at'`
+  against the old row and only raises when something actually differs. Putting
+  the rule in the policy instead would turn that retry into a permanent `42501`.
+- **No unique index on (vehicle, date).** Vans go out twice and drivers swap
+  mid-shift; a uniqueness rule here would surface as a `23505` in a yard with no
+  signal, which is the worst possible place to hit one.
+- **Signatures store the LOGICAL path**, unlike inspection signatures, which
+  store the device path. A receipt is reprinted in the office from a different
+  machine than it was signed on, where `/data/user/0/...` resolves to nothing and
+  the box prints empty with nothing to explain it. The PDF says either "Not
+  signed" or "Signed — image not on this device", which call for different
+  reactions.
+- **Lines carry `is_missing` → reason as a database check constraint**, not only
+  a UI rule. A missing ladder with no explanation tells nobody anything.
+- **The receipt prefills FMC and present**, and carries yesterday's problem
+  forward rather than resetting it. Making a driver re-report the same broken
+  ladder every morning is how a form starts being signed without being read.
+  The trade-off is real: prefilling makes rubber-stamping easy, and that was
+  accepted deliberately because the paper is a checklist, not a survey.
+- **The disclaimer has two sources on purpose** — `kBuiltInDisclaimerClauses` in
+  Dart so a device that has never synced can still show the terms, and the seed
+  SQL for the database. `test/fleet/asset_receipt_test.dart` fails on a
+  one-comma difference between them, because two sources of a legal clause is
+  one too many.

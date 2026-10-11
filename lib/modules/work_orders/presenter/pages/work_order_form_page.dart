@@ -13,8 +13,27 @@ import '../work_order_providers.dart';
 import 'work_order_list_page.dart' show priorityLabel;
 
 class WorkOrderFormPage extends ConsumerStatefulWidget {
-  const WorkOrderFormPage({super.key, this.id});
+  const WorkOrderFormPage({
+    super.key,
+    this.id,
+    this.prefillTitle,
+    this.prefillDescription,
+    this.vehicleId,
+    this.assetCheckLineId,
+  });
+
   final String? id;
+
+  /// Seeded when the job is raised from somewhere else — today, from a missing
+  /// tool on a signed asset receipt. Editable: dispatch still decides what the
+  /// job actually says, and nothing is saved until they press Save.
+  final String? prefillTitle;
+  final String? prefillDescription;
+
+  /// Carried through to the saved row so "the ladder is missing" stays attached
+  /// to the job raised about it.
+  final String? vehicleId;
+  final String? assetCheckLineId;
   @override
   ConsumerState<WorkOrderFormPage> createState() => _WorkOrderFormPageState();
 }
@@ -31,6 +50,20 @@ class _WorkOrderFormPageState extends ConsumerState<WorkOrderFormPage> {
   DateTime? _scheduledFor;
   bool _initialized = false;
   bool _saving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Only for a new job. An existing one is filled from the stored record in
+    // _load, which must never be overwritten by a prefill.
+    if (widget.id == null) {
+      _title.text = widget.prefillTitle ?? '';
+      _description.text = widget.prefillDescription ?? '';
+      // A missing tool is not routine paperwork; start it above normal so it
+      // does not sit in a draft list behind a lightbulb replacement.
+      if (widget.assetCheckLineId != null) _priority = WorkOrderPriority.high;
+    }
+  }
 
   @override
   void dispose() { _title.dispose(); _description.dispose(); super.dispose(); }
@@ -162,7 +195,18 @@ class _WorkOrderFormPageState extends ConsumerState<WorkOrderFormPage> {
     try {
       final repo = ref.read(workOrderRepositoryProvider);
       if (existing == null) {
-        await repo.create(title: _title.text, priority: _priority, customerId: _customerId, siteId: _siteId, assetId: _assetId, assignedToUserId: _assignedToUserId, scheduledFor: _scheduledFor, description: _description.text);
+        await repo.create(
+          title: _title.text,
+          priority: _priority,
+          customerId: _customerId,
+          siteId: _siteId,
+          assetId: _assetId,
+          vehicleId: widget.vehicleId,
+          assetCheckLineId: widget.assetCheckLineId,
+          assignedToUserId: _assignedToUserId,
+          scheduledFor: _scheduledFor,
+          description: _description.text,
+        );
       } else {
         await repo.save(existing.copyWith(
           title: _title.text.trim(), priority: _priority,

@@ -192,6 +192,23 @@ class RouteRoles {
       UserRole.dispatcher,
       UserRole.admin,
     },
+    // The asset receipt is the one fleet screen a technician WRITES to: they
+    // are the driver, and the signature is theirs. Dispatch does the data
+    // entry and counter-signs, but a receipt nobody can sign is a form.
+    // vehicle_asset_checks' insert/update policies allow the same two — the
+    // manager set, plus the user the vehicle is assigned to.
+    'fleet_receipt_new': {
+      UserRole.tech,
+      UserRole.supervisor,
+      UserRole.dispatcher,
+      UserRole.admin,
+    },
+    'fleet_receipt': {
+      UserRole.tech,
+      UserRole.supervisor,
+      UserRole.dispatcher,
+      UserRole.admin,
+    },
     // Admin only, unlike the rest of the fleet. A sloppy catalog is exactly
     // what splitting catalog from assignment exists to prevent, and the
     // migration gates its writes on has_tenant_role(..., ['admin']).

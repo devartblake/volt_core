@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../../../core/services/location/site_check_in.dart';
 import '../../../../core/services/sync/sync_context.dart';
 import '../../domain/entities/inspection_entity.dart';
 import '../../domain/entities/nameplate_entity.dart';
@@ -142,6 +143,7 @@ class InspectionRemoteDatasource {
       loadbankDone: m['loadbank_done'] ?? false,
       atsVerified: m['ats_verified'] ?? false,
       fuelStoredOver1Yr: m['fuel_stored_over_1yr'] ?? false,
+      siteCheckIn: SiteCheckIn.fromJson(m['site_check_in']),
       checklistNotes: (m['checklist_notes'] as Map?)?.map(
             (key, value) => MapEntry(key.toString(), value.toString()),
           ) ??
@@ -233,6 +235,9 @@ class InspectionRemoteDatasource {
       'address_state': e.state,
       'address_postal_code': e.postalCode,
       'checklist_notes': e.checklistNotes,
+      // Site check-in rides in the payload jsonb like every other detail
+      // field, so this needs no migration.
+      'site_check_in': e.siteCheckIn?.toJson(),
       'genset_runs_under_load': e.gensetRunsUnderLoad,
       'voltage_frequency_ok': e.voltageFrequencyOk,
       'exhaust_ok': e.exhaustOk,

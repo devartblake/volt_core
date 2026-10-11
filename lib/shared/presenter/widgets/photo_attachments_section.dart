@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path/path.dart' as p;
 
+import '../../../core/services/permissions/app_permissions.dart';
 import '../../../core/services/photos/photo_attachment.dart';
 import '../../../core/services/photos/photo_service.dart';
 
@@ -51,6 +52,27 @@ class _PhotoAttachmentsSectionState extends State<PhotoAttachmentsSection> {
 
   Future<void> _capture(ImageSource source) async {
     if (_busy) return;
+
+    // The manifest declares CAMERA, which means Android now *requires* the
+    // runtime grant before ACTION_IMAGE_CAPTURE will hand a photo back. Ask
+    // first and say why if the technician declines, rather than opening a
+    // picker that fails with a SecurityException.
+    final allowed = source == ImageSource.camera
+        ? await AppPermissions.ensureCamera()
+        : await AppPermissions.ensurePhotoLibrary();
+
+    if (!allowed) {
+      if (!mounted) return;
+      _snack(
+        source == ImageSource.camera
+            ? 'Camera access is off for this app. Turn it on in Settings to '
+                'take photos.'
+            : 'Photo access is off for this app. Turn it on in Settings to '
+                'attach photos.',
+      );
+      return;
+    }
+
     setState(() => _busy = true);
     try {
       final XFile? picked = await _picker.pickImage(

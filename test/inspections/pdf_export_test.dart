@@ -45,16 +45,32 @@ class _ControllablePdfDriver extends InspectionPdfDriver {
 ///
 /// The write happens in an unawaited future, so there is no handle to await —
 /// poll rather than guess a fixed number of microtasks.
+/// Poll [read] until [until] holds, or the deadline passes.
+///
+/// Deadline-based rather than a fixed iteration count. The old version gave up
+/// after 100 × 5 ms and then returned whatever it happened to have, so under
+/// the full suite — where several files run in parallel — a background write
+/// that took longer than half a second failed the assertion with a confusing
+/// "pdfPath is empty" rather than a timeout. The happy path still returns as
+/// soon as the write lands, so the longer budget costs nothing.
 Future<InspectionEntity?> _awaitSettled(
   Future<InspectionEntity?> Function() read, {
   required bool Function(InspectionEntity?) until,
+  Duration timeout = const Duration(seconds: 5),
 }) async {
-  for (var i = 0; i < 100; i++) {
-    final value = await read();
+  final deadline = DateTime.now().add(timeout);
+  InspectionEntity? value;
+
+  while (DateTime.now().isBefore(deadline)) {
+    value = await read();
     if (until(value)) return value;
     await Future<void>.delayed(const Duration(milliseconds: 5));
   }
-  return read();
+
+  fail(
+    'Timed out after ${timeout.inSeconds}s waiting for the background write. '
+    'Last read: ${value == null ? 'null' : 'pdfPath="${value.pdfPath}"'}',
+  );
 }
 
 void main() {

@@ -26,6 +26,8 @@ class WorkOrderEntity {
     this.customerId,
     this.siteId,
     this.assetId,
+    this.vehicleId,
+    this.assetCheckLineId,
     this.assignedToUserId,
     this.scheduledFor,
     this.description = '',
@@ -41,6 +43,15 @@ class WorkOrderEntity {
   final String? customerId;
   final String? siteId;
   final String? assetId;
+
+  /// The fleet vehicle this work order concerns, when it was raised from an
+  /// asset receipt. Distinct from [assetId], which is field-service equipment.
+  final String? vehicleId;
+
+  /// The receipt line that raised it. Keeps "the ladder is missing" attached to
+  /// the work order about it, rather than relying on the van's name being typed
+  /// into the title and never changing.
+  final String? assetCheckLineId;
   final String? assignedToUserId;
   final DateTime? scheduledFor;
   final String description;
@@ -85,6 +96,10 @@ class WorkOrderEntity {
     bool clearSiteId = false,
     String? assetId,
     bool clearAssetId = false,
+    String? vehicleId,
+    bool clearVehicleId = false,
+    String? assetCheckLineId,
+    bool clearAssetCheckLineId = false,
     String? assignedToUserId,
     bool clearAssignedToUserId = false,
     DateTime? scheduledFor,
@@ -100,6 +115,10 @@ class WorkOrderEntity {
     customerId: clearCustomerId ? null : (customerId ?? this.customerId),
     siteId: clearSiteId ? null : (siteId ?? this.siteId),
     assetId: clearAssetId ? null : (assetId ?? this.assetId),
+    vehicleId: clearVehicleId ? null : (vehicleId ?? this.vehicleId),
+    assetCheckLineId: clearAssetCheckLineId
+        ? null
+        : (assetCheckLineId ?? this.assetCheckLineId),
     assignedToUserId: clearAssignedToUserId
         ? null
         : (assignedToUserId ?? this.assignedToUserId),
