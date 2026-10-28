@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../utils/maintenance_pdf_actions.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -146,26 +147,12 @@ class MaintenanceListPage extends ConsumerWidget {
                                   Icons.picture_as_pdf_outlined,
                                 ),
                                 tooltip: 'Export PDF',
-                                onPressed: () async {
-                                  final repo =
-                                  ref.read(maintenanceRepoProvider);
-                                  await repo.exportMaintenancePdf(m);
-
-                                  if (context.mounted) {
-                                    ScaffoldMessenger.of(context)
-                                        .showSnackBar(
-                                      SnackBar(
-                                        content: const Text(
-                                            'PDF export started'),
-                                        behavior: SnackBarBehavior.floating,
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius:
-                                          BorderRadius.circular(8),
-                                        ),
-                                      ),
-                                    );
-                                  }
-                                },
+                                onPressed: () =>
+                                    exportMaintenancePdfWithFeedback(
+                                  context,
+                                  ref.read(maintenanceRepoProvider),
+                                  m,
+                                ),
                               ),
                               const SizedBox(width: 8),
                               // ⭐ NEW: Schedule button

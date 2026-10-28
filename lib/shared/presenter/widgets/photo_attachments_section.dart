@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
-import 'package:path/path.dart' as p;
 
 import '../../../core/services/photos/photo_attachment.dart';
 import '../../../core/services/photos/photo_service.dart';
+import 'photo_gallery_sheet.dart';
 
 /// Reusable "Photos" section for inspection and maintenance forms.
 ///
@@ -15,6 +14,7 @@ class PhotoAttachmentsSection extends StatefulWidget {
     required this.ownerType,
     required this.ownerId,
     this.title = 'Photos',
+    this.allowVideo = false,
   });
 
   /// [PhotoAttachment.ownerInspection] or [PhotoAttachment.ownerMaintenance].
@@ -22,16 +22,20 @@ class PhotoAttachmentsSection extends StatefulWidget {
   final String ownerId;
   final String title;
 
+  /// Also offer video capture (native only).
+  final bool allowVideo;
+
   @override
   State<PhotoAttachmentsSection> createState() =>
       _PhotoAttachmentsSectionState();
 }
 
 class _PhotoAttachmentsSectionState extends State<PhotoAttachmentsSection> {
-  final ImagePicker _picker = ImagePicker();
+  /// Thumbnails shown inline; the rest are behind the gallery modal.
+  static const int _previewCount = 5;
+
   List<PhotoAttachment> _photos = const [];
   bool _loading = true;
-  bool _busy = false;
 
   @override
   void initState() {
@@ -39,91 +43,51 @@ class _PhotoAttachmentsSectionState extends State<PhotoAttachmentsSection> {
     _load();
   }
 
+  @override
+  void didUpdateWidget(PhotoAttachmentsSection oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // A different record must never keep showing the previous record's photos.
+    if (oldWidget.ownerId != widget.ownerId ||
+        oldWidget.ownerType != widget.ownerType) {
+      setState(() {
+        _photos = const [];
+        _loading = true;
+      });
+      _load();
+    }
+  }
+
   Future<void> _load() async {
-    final photos = await PhotoService.instance
-        .listForOwner(widget.ownerType, widget.ownerId);
-    if (!mounted) return;
+    final ownerType = widget.ownerType;
+    final ownerId = widget.ownerId;
+    final photos = await PhotoService.instance.listForOwner(ownerType, ownerId);
+    // Drop results for an owner we've since moved away from.
+    if (!mounted || ownerId != widget.ownerId || ownerType != widget.ownerType) {
+      return;
+    }
     setState(() {
       _photos = photos;
       _loading = false;
     });
   }
 
-  Future<void> _capture(ImageSource source) async {
-    if (_busy) return;
-    setState(() => _busy = true);
-    try {
-      final XFile? picked = await _picker.pickImage(
-        source: source,
-        imageQuality: 70,
-        maxWidth: 1600,
-      );
-      if (picked == null) return;
-
-      final bytes = await picked.readAsBytes();
-      final ext = p.extension(picked.name).replaceAll('.', '');
-      await PhotoService.instance.addPhoto(
-        ownerType: widget.ownerType,
-        ownerId: widget.ownerId,
-        bytes: bytes,
-        extension: ext.isEmpty ? 'jpg' : ext,
-      );
-      await _load();
-    } catch (e) {
-      _snack('Could not add photo: $e');
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
-  }
-
-  void _showSourceSheet() {
-    showModalBottomSheet<void>(
-      context: context,
-      builder: (ctx) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: const Icon(Icons.camera_alt_outlined),
-              title: const Text('Take photo'),
-              onTap: () {
-                Navigator.pop(ctx);
-                _capture(ImageSource.camera);
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.photo_library_outlined),
-              title: const Text('Choose from gallery'),
-              onTap: () {
-                Navigator.pop(ctx);
-                _capture(ImageSource.gallery);
-              },
-            ),
-          ],
-        ),
-      ),
+  Future<void> _openGallery() async {
+    await showPhotoGallery(
+      context,
+      ownerType: widget.ownerType,
+      ownerId: widget.ownerId,
+      title: widget.title,
+      allowVideo: widget.allowVideo,
     );
-  }
-
-  Future<void> _openPhoto(PhotoAttachment photo) async {
-    final changed = await Navigator.of(context).push<bool>(
-      MaterialPageRoute(
-        builder: (_) => _PhotoDetailPage(photo: photo),
-      ),
-    );
-    if (changed == true) await _load();
-  }
-
-  void _snack(String message) {
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
+    if (mounted) await _load();
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final preview = _photos.take(_previewCount).toList();
+    final extra = _photos.length - preview.length;
+
     return Card(
       elevation: 0,
       shape: RoundedRectangleBorder(
@@ -141,17 +105,21 @@ class _PhotoAttachmentsSectionState extends State<PhotoAttachmentsSection> {
                     color: theme.colorScheme.primary),
                 const SizedBox(width: 8),
                 Text(
-                  widget.title,
+                  _photos.isEmpty
+                      ? widget.title
+                      : '${widget.title} (${_photos.length})',
                   style: theme.textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.w600,
                   ),
                 ),
                 const Spacer(),
-                if (_photos.isNotEmpty)
-                  Text(
-                    '${_photos.length}',
-                    style: theme.textTheme.bodySmall,
-                  ),
+                TextButton.icon(
+                  onPressed: _loading ? null : _openGallery,
+                  icon: Icon(_photos.isEmpty
+                      ? Icons.add_a_photo_outlined
+                      : Icons.photo_library_outlined),
+                  label: Text(_photos.isEmpty ? 'Add' : 'Manage'),
+                ),
               ],
             ),
             const SizedBox(height: 12),
@@ -162,14 +130,19 @@ class _PhotoAttachmentsSectionState extends State<PhotoAttachmentsSection> {
                   child: CircularProgressIndicator(),
                 ),
               )
+            else if (_photos.isEmpty)
+              Text(
+                'No photos yet for this record.',
+                style: theme.textTheme.bodySmall,
+              )
             else
               Wrap(
                 spacing: 8,
                 runSpacing: 8,
                 children: [
-                  for (final photo in _photos)
-                    _Thumbnail(photo: photo, onTap: () => _openPhoto(photo)),
-                  _AddTile(busy: _busy, onTap: _showSourceSheet),
+                  for (final photo in preview)
+                    _Thumbnail(photo: photo, onTap: _openGallery),
+                  if (extra > 0) _MoreTile(count: extra, onTap: _openGallery),
                 ],
               ),
           ],
@@ -188,7 +161,8 @@ class _Thumbnail extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // Bytes-based render works on web (WebFileStore) and native (filesystem).
-    final bytes = PhotoService.instance.loadBytesSync(photo);
+    final bytes =
+        photo.isVideo ? null : PhotoService.instance.loadBytesSync(photo);
 
     // Without a label a screen reader announces nothing for an image tile; the
     // caption is the only description the photo carries.
@@ -208,7 +182,13 @@ class _Thumbnail extends StatelessWidget {
           child: SizedBox(
             width: 84,
             height: 84,
-            child: bytes != null
+            child: photo.isVideo
+                ? Container(
+                    color: Colors.black87,
+                    child: const Icon(Icons.play_circle_outline,
+                        color: Colors.white, size: 36),
+                  )
+                : bytes != null
                 ? Image.memory(bytes, fit: BoxFit.cover)
                 : Container(
                     color:
@@ -222,145 +202,31 @@ class _Thumbnail extends StatelessWidget {
   }
 }
 
-class _AddTile extends StatelessWidget {
-  const _AddTile({required this.busy, required this.onTap});
+class _MoreTile extends StatelessWidget {
+  const _MoreTile({required this.count, required this.onTap});
 
-  final bool busy;
+  final int count;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return InkWell(
-      onTap: busy ? null : onTap,
-      borderRadius: BorderRadius.circular(8),
-      child: Container(
-        width: 84,
-        height: 84,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: theme.colorScheme.outline),
+    return Semantics(
+      button: true,
+      label: '$count more photos',
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(8),
+        child: Container(
+          width: 84,
+          height: 84,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(8),
+            color: theme.colorScheme.surfaceContainerHighest,
+          ),
+          child: Text('+$count', style: theme.textTheme.titleMedium),
         ),
-        child: busy
-            ? const Center(
-                child: SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                ),
-              )
-            : Icon(Icons.add_a_photo_outlined, color: theme.colorScheme.primary),
-      ),
-    );
-  }
-}
-
-/// Full-screen photo view with caption editing and delete.
-class _PhotoDetailPage extends StatefulWidget {
-  const _PhotoDetailPage({required this.photo});
-
-  final PhotoAttachment photo;
-
-  @override
-  State<_PhotoDetailPage> createState() => _PhotoDetailPageState();
-}
-
-class _PhotoDetailPageState extends State<_PhotoDetailPage> {
-  late final TextEditingController _caption =
-      TextEditingController(text: widget.photo.caption);
-
-  @override
-  void dispose() {
-    _caption.dispose();
-    super.dispose();
-  }
-
-  Future<void> _saveCaption() async {
-    await PhotoService.instance.updateCaption(widget.photo.id, _caption.text);
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Caption saved')),
-      );
-    }
-  }
-
-  Future<void> _delete() async {
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Delete photo'),
-        content: const Text('Remove this photo from the record?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(
-              backgroundColor: Theme.of(ctx).colorScheme.error,
-            ),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
-    );
-    if (ok == true) {
-      await PhotoService.instance.deletePhoto(widget.photo);
-      if (mounted) Navigator.of(context).pop(true);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final bytes = PhotoService.instance.loadBytesSync(widget.photo);
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Photo'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.delete_outline),
-            tooltip: 'Delete',
-            onPressed: _delete,
-          ),
-        ],
-      ),
-      body: Column(
-        children: [
-          Expanded(
-            child: Container(
-              color: Colors.black,
-              width: double.infinity,
-              child: bytes != null
-                  ? InteractiveViewer(child: Image.memory(bytes))
-                  : const Center(
-                      child: Icon(Icons.broken_image_outlined,
-                          color: Colors.white54, size: 64),
-                    ),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _caption,
-                    decoration: const InputDecoration(
-                      labelText: 'Caption',
-                      hintText: 'e.g. Corroded battery terminal',
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                FilledButton(
-                  onPressed: _saveCaption,
-                  child: const Text('Save'),
-                ),
-              ],
-            ),
-          ),
-        ],
       ),
     );
   }

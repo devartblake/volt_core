@@ -186,6 +186,14 @@ class RouteRoles {
     // A technician opens their own van's tool list — it is what they signed
     // for. RLS returns only their vehicle's assets; adding and editing is
     // gated in the UI and by vehicle_assets' write policies.
+    // Weekly / monthly walk-arounds are done by whoever drives the vehicle, so
+    // every role may open the form (techs only see their own vehicle anyway).
+    'fleet_inspection_new': {
+      UserRole.tech,
+      UserRole.supervisor,
+      UserRole.dispatcher,
+      UserRole.admin,
+    },
     'fleet_vehicle_assets': {
       UserRole.tech,
       UserRole.supervisor,

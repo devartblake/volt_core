@@ -37,6 +37,8 @@ import '../modules/fleet/presenter/pages/vehicle_asset_catalog_page.dart';
 import '../modules/fleet/presenter/pages/vehicle_assets_page.dart';
 import '../modules/fleet/presenter/pages/vehicle_detail_page.dart';
 import '../modules/fleet/presenter/pages/vehicle_form_page.dart';
+import '../modules/fleet/presenter/pages/vehicle_inspection_form_page.dart';
+import '../modules/fleet/domain/entities/vehicle_inspection.dart';
 import '../modules/fleet/presenter/pages/vehicle_list_page.dart';
 import '../modules/fleet/presenter/pages/vehicle_maintenance_form_page.dart';
 import '../modules/work_orders/presenter/pages/work_order_form_page.dart';
@@ -222,6 +224,18 @@ final goRouterProvider = Provider<GoRouter>((ref) {
                 builder: (_, state) => TechShell(
                   child: VehicleMaintenanceFormPage(
                     vehicleId: state.pathParameters['id']!,
+                  ),
+                ),
+              ),
+              GoRoute(
+                path: RoutePaths.fleetInspectionNewSub,
+                name: RouteNames.fleetInspectionNew,
+                builder: (_, state) => TechShell(
+                  child: VehicleInspectionFormPage(
+                    vehicleId: state.pathParameters['id']!,
+                    cadence: InspectionCadenceX.fromWire(
+                      state.uri.queryParameters['cadence'],
+                    ),
                   ),
                 ),
               ),

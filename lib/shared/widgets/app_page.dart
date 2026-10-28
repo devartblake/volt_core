@@ -2,6 +2,34 @@ import 'package:flutter/material.dart';
 
 import '../presenter/widgets/sync_status_indicator.dart';
 
+/// Default cap on page body width; keeps portrait and landscape balanced.
+const double kDefaultMaxContentWidth = 960;
+
+/// Centres [child] with equal side margins once the space exceeds [maxWidth].
+///
+/// Uses padding rather than an Align/ConstrainedBox so the child keeps tight
+/// constraints (a body that fills the screen still fills it).
+class _CenteredBody extends StatelessWidget {
+  const _CenteredBody({required this.maxWidth, required this.child});
+
+  final double maxWidth;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final extra = constraints.maxWidth - maxWidth;
+        if (!extra.isFinite || extra <= 0) return child;
+        return Padding(
+          padding: EdgeInsets.symmetric(horizontal: extra / 2),
+          child: child,
+        );
+      },
+    );
+  }
+}
+
 /// Navigation chrome published by the surrounding app shell.
 ///
 /// The shell decides *how* navigation is presented (drawer on phones, rail on
@@ -66,6 +94,7 @@ class AppPage extends StatelessWidget {
     this.appBarBottom,
     this.backgroundColor,
     this.resizeToAvoidBottomInset,
+    this.maxContentWidth = kDefaultMaxContentWidth,
   });
 
   /// Page title shown in the app bar. Ignored when [titleWidget] is given.
@@ -98,6 +127,12 @@ class AppPage extends StatelessWidget {
   final Color? backgroundColor;
   final bool? resizeToAvoidBottomInset;
 
+  /// Widest the body is allowed to get. On a tablet in landscape (or a desktop
+  /// window) full-width forms and lists stretch into hard-to-read lines, so the
+  /// body is centred with equal margins instead. Pass `double.infinity` for
+  /// content that should bleed edge to edge.
+  final double maxContentWidth;
+
   @override
   Widget build(BuildContext context) {
     final scope = AppShellScope.maybeOf(context);
@@ -119,7 +154,7 @@ class AppPage extends StatelessWidget {
         ],
       ),
       drawer: drawer,
-      body: body,
+      body: _CenteredBody(maxWidth: maxContentWidth, child: body),
       floatingActionButton: fab,
       floatingActionButtonLocation: fabLocation,
       bottomNavigationBar: bottomBar,

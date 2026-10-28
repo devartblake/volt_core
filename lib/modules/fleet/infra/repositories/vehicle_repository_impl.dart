@@ -38,6 +38,12 @@ class VehicleRepositoryImpl implements VehicleRepository {
   final TenantIdReader _tenantIdReader;
   final VehicleRemoteDatasource? _remote;
 
+  static const Duration _remoteTimeout = Duration(seconds: 8);
+  static const Duration _remoteBackoff = Duration(seconds: 60);
+
+  /// Earliest time to try the cloud again after a failed pull.
+  DateTime? _remoteRetryAt;
+
   static String? _readActiveTenantId() => SyncContext.tenantId;
 
   static Future<void> _enqueueToSync(VehicleEntity vehicle) {
@@ -93,14 +99,23 @@ class VehicleRepositoryImpl implements VehicleRepository {
     final remote = _remote;
     if (remote == null) return;
 
+    // Offline (no signal, DNS failure): every screen refresh used to retry the
+    // request and wait for it to fail. After one failure, stay on local data
+    // for a minute instead of hammering the network and delaying the list.
+    final retryAt = _remoteRetryAt;
+    if (retryAt != null && DateTime.now().isBefore(retryAt)) return;
+
     try {
-      for (final vehicle in await remote.list()) {
+      final vehicles = await remote.list().timeout(_remoteTimeout);
+      _remoteRetryAt = null;
+      for (final vehicle in vehicles) {
         final local = _box.get(vehicle.id);
         if (local == null || vehicle.updatedAt.isAfter(local.updatedAt)) {
           await _box.put(vehicle.id, _toRecord(vehicle));
         }
       }
     } catch (error) {
+      _remoteRetryAt = DateTime.now().add(_remoteBackoff);
       if (kDebugMode) {
         debugPrint('[Fleet] remote hydrate failed (using local only): $error');
       }

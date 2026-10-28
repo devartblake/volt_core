@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart' show kReleaseMode;
+
 /// Compile-time switches for features that are not ready for users.
 ///
 /// A flag here means the implementation may exist in the codebase while its
@@ -24,5 +26,18 @@ class FeatureFlags {
   static const bool generatorTemplatePilotEnabled = bool.fromEnvironment(
     'VOLTCORE_GENERATOR_TEMPLATE_PILOT',
     defaultValue: false,
+  );
+
+  /// TEMPORARY: lets the login page sign in as any role without credentials.
+  ///
+  /// On by default in debug/profile builds and OFF in release builds. For a
+  /// release APK it must be requested explicitly:
+  /// `--dart-define=VOLTCORE_DEV_LOGIN_BYPASS=true` (and `=false` turns it off
+  /// in debug). The session is local only, with no Supabase identity, so cloud
+  /// sync and anything behind row-level security will not work while bypassed.
+  /// Remove this flag once real login is dependable.
+  static const bool devLoginBypassEnabled = bool.fromEnvironment(
+    'VOLTCORE_DEV_LOGIN_BYPASS',
+    defaultValue: !kReleaseMode,
   );
 }

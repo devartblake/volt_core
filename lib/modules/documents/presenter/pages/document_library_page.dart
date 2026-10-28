@@ -171,9 +171,11 @@ class _DocumentLibraryPageState extends State<DocumentLibraryPage> {
       _reload();
       return;
     }
-    await Share.shareXFiles(
-      [XFile(doc.path, mimeType: 'application/pdf')],
-      subject: doc.name,
+    await SharePlus.instance.share(
+      ShareParams(
+        files: [XFile(doc.path, mimeType: 'application/pdf')],
+        subject: doc.name,
+      ),
     );
   }
 
@@ -296,6 +298,7 @@ class _CategoryFilterBar extends StatelessWidget {
           chip('All', null),
           chip('Inspection', PdfCategory.inspection),
           chip('Maintenance', PdfCategory.maintenance),
+          chip('Vehicle', PdfCategory.vehicle),
         ],
       ),
     );

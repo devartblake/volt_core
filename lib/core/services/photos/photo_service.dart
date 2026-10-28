@@ -88,6 +88,40 @@ class PhotoService {
     return photo;
   }
 
+  /// Store a recorded/picked video for the given owner.
+  ///
+  /// Native only: the file is copied from [sourcePath] without loading it into
+  /// memory (videos are large), and is not queued for cloud backup. Web has no
+  /// filesystem to hold a video, so callers must not offer this there.
+  Future<PhotoAttachment> addVideo({
+    required String ownerType,
+    required String ownerId,
+    required String sourcePath,
+    String caption = '',
+  }) async {
+    if (kIsWeb) {
+      throw UnsupportedError('Video capture is not supported on web.');
+    }
+    final id = _uuid.v4();
+    final ext = _normalizeExt(p.extension(sourcePath));
+    final dir = await FileStorageService.instance
+        .getOwnerPhotosDirectory(ownerType, ownerId);
+    final target = File(p.join(dir.path, '$id.${ext == 'jpg' ? 'mp4' : ext}'));
+    await File(sourcePath).copy(target.path);
+
+    final video = PhotoAttachment(
+      id: id,
+      ownerType: ownerType,
+      ownerId: ownerId,
+      localPath: target.path,
+      caption: caption,
+      sizeBytes: await target.length(),
+      mediaType: PhotoAttachment.mediaVideo,
+    );
+    await PhotoRepository.instance.put(video);
+    return video;
+  }
+
   /// Read a photo's bytes on any platform: [WebFileStore] on web, the
   /// filesystem (with stale-path re-anchoring) on native. Null if missing.
   Future<Uint8List?> loadBytes(PhotoAttachment photo) async {

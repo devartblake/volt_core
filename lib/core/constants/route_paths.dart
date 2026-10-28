@@ -71,12 +71,16 @@ class RoutePaths {
   /// ambiguity with the literal-prefixed `new` / `edit` siblings.
   static const String fleetMaintenanceNewSub = 'maintenance/new';
   static const String fleetVehicleAssetsSub = 'assets';
+  static const String fleetInspectionNewSub = 'inspection/new';
 
   static const String fleetNew = '$fleet/new';
   static const String fleetEdit = '$fleet/edit/:id';
   static const String fleetDetail = '$fleet/detail/:id';
   static const String fleetMaintenanceNew = '$fleet/detail/:id/maintenance/new';
   static const String fleetVehicleAssets = '$fleet/detail/:id/assets';
+
+  /// Takes `?cadence=weekly|monthly`.
+  static const String fleetInspectionNew = '$fleet/detail/:id/inspection/new';
   static const String fleetCatalog = '$fleet/catalog';
 
   // Customer / service-site directory
@@ -141,6 +145,7 @@ class RouteNames {
   static const String fleetDetail = 'fleet_vehicle_detail';
   static const String fleetMaintenanceNew = 'fleet_maintenance_new';
   static const String fleetVehicleAssets = 'fleet_vehicle_assets';
+  static const String fleetInspectionNew = 'fleet_inspection_new';
   static const String fleetCatalog = 'fleet_catalog';
   static const String customerSites = 'customer_sites';
 

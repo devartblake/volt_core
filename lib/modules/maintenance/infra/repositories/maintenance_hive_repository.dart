@@ -60,20 +60,28 @@ class MaintenanceRepo {
   Future<void> _queueUpsert(MaintenanceRecord rec) =>
       enqueueMaintenanceSync(rec);
 
-  Future<void> exportMaintenancePdf(MaintenanceRecord record) async {
+  /// Generates the report PDF for [record] and stores it in the managed PDF
+  /// library (so it also shows up under Documents).
+  ///
+  /// [share] opens the share sheet when the user has allowed emailing. Pass
+  /// false for the automatic post-save report so saving never pops a sheet.
+  Future<PdfExportResult> exportMaintenancePdf(
+    MaintenanceRecord record, {
+    bool share = true,
+  }) async {
     final prefsService = PdfPrefsService.instance;
     final emailAllowed = await prefsService.getEmailAllowed();
     final customDir = await prefsService.getCustomDirectoryPath();
     final defaultRecipient = await prefsService.getDefaultRecipient();
 
     final exportPrefs = PdfExportPrefs(
-      emailAllowed: emailAllowed,
+      emailAllowed: share && emailAllowed,
       customDirectoryPath: customDir,
       defaultRecipient: defaultRecipient,
       appSubfolder: 'AandSElectric/Maintenance',
     );
 
-    await _pdfService.generateMaintenancePdf(
+    return _pdfService.generateMaintenancePdf(
       record,
       prefs: exportPrefs,
     );

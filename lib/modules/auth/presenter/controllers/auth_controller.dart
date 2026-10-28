@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
+import '../../../../core/constants/feature_flags.dart';
 import '../../domain/user_role.dart';
 import '../../state/auth_state.dart';
 
@@ -56,6 +57,23 @@ class AuthController extends StateNotifier<AuthState> {
       debugPrint('AuthController.login ERROR: $e\n$st');
       rethrow;
     }
+  }
+
+  /// TEMPORARY: sign in locally as [role] with no credentials. Gated by
+  /// [FeatureFlags.devLoginBypassEnabled]; remove with the flag.
+  void devBypassLogin(UserRole role) {
+    if (!FeatureFlags.devLoginBypassEnabled) return;
+    state = AuthState(
+      isAuthenticated: true,
+      currentRole: role,
+      userId: 'dev-bypass',
+      email: 'dev-bypass@local',
+      displayName: 'Dev bypass (${role.name})',
+      // Only the chosen role: dashboards and routes follow it, and the
+      // role switcher must not offer the others.
+      grantedRoles: {role},
+    );
+    debugPrint('AuthController.devBypassLogin → $state');
   }
 
   Future<void> restoreSession(AuthState? restored) async {

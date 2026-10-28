@@ -11,6 +11,16 @@ import 'route_roles.dart';
 const double kCompactBreakpoint = 800.0;
 const double kExpandedBreakpoint = 1200.0;
 
+/// Below this height (a phone held sideways) a persistent rail would eat the
+/// little vertical and horizontal room there is, so navigation stays a drawer.
+const double kShortHeightBreakpoint = 500.0;
+
+/// Whether navigation should be a slide-out drawer rather than a fixed rail.
+/// Shared by the shell and the drawer so they always agree, in portrait and
+/// landscape.
+bool isCompactLayout(Size size) =>
+    size.width < kCompactBreakpoint || size.height < kShortHeightBreakpoint;
+
 /// Navigation item model
 class NavItem {
   final String label;
@@ -346,8 +356,9 @@ class AppDrawer extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final width = MediaQuery.sizeOf(context).width;
-    final isCompact = width < kCompactBreakpoint;
+    final size = MediaQuery.sizeOf(context);
+    final width = size.width;
+    final isCompact = isCompactLayout(size);
     final isExtended = width >= kExpandedBreakpoint;
     final current = _currentLocation(context);
 

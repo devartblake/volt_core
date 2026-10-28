@@ -4,9 +4,15 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/constants/route_paths.dart';
 import '../../../../shared/widgets/widgets.dart';
+import '../../../../core/services/photos/photo_attachment.dart';
+import '../../../../shared/presenter/widgets/photo_attachments_section.dart';
 import '../../domain/entities/vehicle_entity.dart';
+import '../../domain/entities/vehicle_inspection.dart';
+import '../../infra/repositories/vehicle_inspection_repository.dart';
+import '../../infra/repositories/vehicle_repository_impl.dart';
 import '../../domain/entities/vehicle_maintenance_check.dart';
 import '../fleet_providers.dart';
+import '../vehicle_pdf_actions.dart';
 import 'vehicle_maintenance_form_page.dart' show formatShortDate;
 
 /// One vehicle.
@@ -26,6 +32,16 @@ class VehicleDetailPage extends ConsumerWidget {
     return AppPage(
       title: vehicle.asData?.value?.displayTitle ?? 'Vehicle',
       actions: [
+        if (vehicle.asData?.value != null)
+          IconButton(
+            tooltip: 'Generate PDF',
+            icon: const Icon(Icons.picture_as_pdf_outlined),
+            onPressed: () => generateVehiclePdfWithFeedback(
+              context,
+              ref,
+              vehicle.asData!.value!,
+            ),
+          ),
         if (isManager)
           IconButton(
             tooltip: 'Edit vehicle',
@@ -90,6 +106,15 @@ class _VehicleBody extends ConsumerWidget {
             ),
           ),
         ],
+        const SizedBox(height: 16),
+        PhotoAttachmentsSection(
+          ownerType: PhotoAttachment.ownerVehicle,
+          ownerId: vehicle.id,
+          title: 'Photos & videos',
+          allowVideo: true,
+        ),
+        const SizedBox(height: 16),
+        _InspectionsCard(vehicle: vehicle),
         const SizedBox(height: 16),
         _MaintenanceHistory(vehicle: vehicle),
         const SizedBox(height: 8),
@@ -200,6 +225,190 @@ class _AssignmentCard extends ConsumerWidget {
           style: theme.textTheme.bodySmall,
         ),
         isThreeLine: true,
+        trailing: ref.watch(fleetManagerProvider)
+            ? _AssignDriverButton(vehicle: vehicle)
+            : null,
+      ),
+    );
+  }
+}
+
+/// Add-menu for the stationed driver: pick any active team member, or clear.
+class _AssignDriverButton extends ConsumerWidget {
+  const _AssignDriverButton({required this.vehicle});
+
+  final VehicleEntity vehicle;
+
+  static const String _clear = '__unassign__';
+
+  Future<void> _assign(
+    BuildContext context,
+    WidgetRef ref,
+    String selection,
+  ) async {
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      await ref
+          .read(vehicleRepositoryProvider)
+          .assign(vehicle.id, selection == _clear ? null : selection);
+      ref.invalidate(vehicleProvider(vehicle.id));
+      ref.invalidate(fleetVisibleVehiclesProvider);
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+            selection == _clear ? 'Driver removed' : 'Driver assigned',
+          ),
+        ),
+      );
+    } catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text('Could not assign: $e')));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final members = ref.watch(fleetAssignableMembersProvider);
+
+    return members.when(
+      loading: () => const SizedBox(
+        width: 24,
+        height: 24,
+        child: CircularProgressIndicator(strokeWidth: 2),
+      ),
+      error: (_, __) => IconButton(
+        tooltip: 'Retry loading team members',
+        icon: const Icon(Icons.refresh),
+        onPressed: () => ref.invalidate(fleetAssignableMembersProvider),
+      ),
+      data: (list) => PopupMenuButton<String>(
+        tooltip: 'Assign driver',
+        icon: const Icon(Icons.person_add_alt_1_outlined),
+        onSelected: (value) => _assign(context, ref, value),
+        itemBuilder: (_) => [
+          for (final member in list)
+            CheckedPopupMenuItem<String>(
+              value: member.userId,
+              checked: member.userId == vehicle.assignedToUserId,
+              child: Text(member.displayName),
+            ),
+          if (vehicle.isAssigned) ...[
+            const PopupMenuDivider(),
+            const PopupMenuItem<String>(
+              value: _clear,
+              child: Text('Unassign driver'),
+            ),
+          ],
+          if (list.isEmpty)
+            const PopupMenuItem<String>(
+              enabled: false,
+              value: '',
+              child: Text('No active team members'),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Weekly and monthly walk-arounds: what is due, start one, recent history.
+class _InspectionsCard extends ConsumerWidget {
+  const _InspectionsCard({required this.vehicle});
+
+  final VehicleEntity vehicle;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final history = ref.watch(vehicleInspectionsProvider(vehicle.id));
+
+    Widget cadenceRow(
+      InspectionCadence cadence,
+      List<VehicleInspection> list,
+    ) {
+      final status = InspectionStatus.compute(cadence, list);
+      final (text, color) = switch (status.state) {
+        InspectionDueState.never => ('Not done yet', theme.colorScheme.error),
+        InspectionDueState.overdue => (
+            'Overdue – was due ${formatShortDate(status.dueAt!)}',
+            theme.colorScheme.error
+          ),
+        InspectionDueState.dueSoon => (
+            'Due ${formatShortDate(status.dueAt!)}',
+            theme.colorScheme.tertiary
+          ),
+        InspectionDueState.ok => (
+            'Next due ${formatShortDate(status.dueAt!)}',
+            theme.colorScheme.onSurfaceVariant
+          ),
+      };
+      return ListTile(
+        dense: true,
+        title: Text('${cadence.label} inspection'),
+        subtitle: Text(text, style: TextStyle(color: color)),
+        trailing: FilledButton.tonal(
+          onPressed: () => context.push(
+            '${RoutePaths.fleetInspectionNew.replaceFirst(':id', vehicle.id)}'
+            '?cadence=${cadence.name}',
+          ),
+          child: const Text('Start'),
+        ),
+      );
+    }
+
+    return Card(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          ListTile(
+            leading: Icon(Icons.fact_check_outlined,
+                color: theme.colorScheme.onSurfaceVariant),
+            title: Text('Vehicle inspections', style: theme.textTheme.titleSmall),
+          ),
+          history.when(
+            loading: () => const Padding(
+              padding: EdgeInsets.all(16),
+              child: LinearProgressIndicator(minHeight: 2),
+            ),
+            error: (e, _) => Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              child: Text('Could not load inspections. $e',
+                  style: theme.textTheme.bodySmall
+                      ?.copyWith(color: theme.colorScheme.error)),
+            ),
+            data: (list) => Column(
+              children: [
+                cadenceRow(InspectionCadence.weekly, list),
+                cadenceRow(InspectionCadence.monthly, list),
+                if (list.isNotEmpty) const Divider(height: 1),
+                for (final i in list.take(5))
+                  ListTile(
+                    dense: true,
+                    leading: Icon(
+                      i.hasIssues
+                          ? Icons.warning_amber_outlined
+                          : Icons.check_circle_outline,
+                      size: 20,
+                      color: i.hasIssues
+                          ? theme.colorScheme.error
+                          : theme.colorScheme.onSurfaceVariant,
+                    ),
+                    title: Text(
+                      '${i.cadence.label} · ${formatShortDate(i.inspectedAt)}',
+                    ),
+                    subtitle: Text(
+                      [
+                        if (i.inspectorName.isNotEmpty) i.inspectorName,
+                        if (i.odometer > 0) '${i.odometer} mi',
+                        i.hasIssues ? '${i.issueCount} flagged' : 'No issues',
+                      ].join('  ·  '),
+                      style: theme.textTheme.bodySmall,
+                    ),
+                  ),
+                const SizedBox(height: 4),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -230,7 +439,7 @@ class _MaintenanceHistory extends ConsumerWidget {
             subtitle: Text(
               vehicle.lastCheckAt == null
                   ? 'No check recorded yet'
-                  : 'Last checked \${formatShortDate(vehicle.lastCheckAt!.toLocal())}',
+                  : 'Last checked ${formatShortDate(vehicle.lastCheckAt!.toLocal())}',
               style: theme.textTheme.bodySmall,
             ),
             trailing: isManager
@@ -252,7 +461,7 @@ class _MaintenanceHistory extends ConsumerWidget {
             error: (error, _) => Padding(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
               child: Text(
-                'Could not load history. \$error',
+                'Could not load history. $error',
                 style: theme.textTheme.bodySmall
                     ?.copyWith(color: theme.colorScheme.error),
               ),
@@ -307,12 +516,12 @@ class _CheckTile extends StatelessWidget {
       title: Text(formatShortDate(check.checkedAt.toLocal())),
       subtitle: Text(
         [
-          '\${check.odometer} mi',
-          if (since != null) '\$since mi since service',
+          '${check.odometer} mi',
+          if (since != null) '$since mi since service',
           if (check.brakeStatus.needsFollowUp)
-            'Brakes: \${check.brakeStatus.label}',
+            'Brakes: ${check.brakeStatus.label}',
           if (check.batteryStatus.needsFollowUp)
-            'Battery: \${check.batteryStatus.label}',
+            'Battery: ${check.batteryStatus.label}',
         ].join('  ·  '),
         style: theme.textTheme.bodySmall,
       ),

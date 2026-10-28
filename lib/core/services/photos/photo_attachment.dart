@@ -14,12 +14,20 @@ class PhotoAttachment {
     this.remotePath,
     this.caption = '',
     this.sizeBytes = 0,
+    this.mediaType = mediaPhoto,
     DateTime? createdAt,
   }) : createdAt = createdAt ?? DateTime.now();
 
   /// Owner types used across the app.
   static const String ownerInspection = 'inspection';
   static const String ownerMaintenance = 'maintenance';
+  static const String ownerVehicle = 'vehicle';
+  static const String ownerVehicleInspection = 'vehicle_inspection';
+
+  /// [mediaType] values. Records saved before videos existed have no
+  /// `mediaType` and read back as photos.
+  static const String mediaPhoto = 'photo';
+  static const String mediaVideo = 'video';
 
   final String id;
 
@@ -36,7 +44,10 @@ class PhotoAttachment {
 
   String caption;
   final int sizeBytes;
+  final String mediaType;
   final DateTime createdAt;
+
+  bool get isVideo => mediaType == mediaVideo;
 
   PhotoAttachment copyWith({String? caption, String? remotePath}) =>
       PhotoAttachment(
@@ -47,6 +58,7 @@ class PhotoAttachment {
         remotePath: remotePath ?? this.remotePath,
         caption: caption ?? this.caption,
         sizeBytes: sizeBytes,
+        mediaType: mediaType,
         createdAt: createdAt,
       );
 
@@ -58,6 +70,7 @@ class PhotoAttachment {
         'remotePath': remotePath,
         'caption': caption,
         'sizeBytes': sizeBytes,
+        'mediaType': mediaType,
         'createdAt': createdAt.toIso8601String(),
       };
 
@@ -69,6 +82,7 @@ class PhotoAttachment {
         remotePath: map['remotePath'] as String?,
         caption: map['caption'] as String? ?? '',
         sizeBytes: (map['sizeBytes'] as num?)?.toInt() ?? 0,
+        mediaType: map['mediaType'] as String? ?? mediaPhoto,
         createdAt: DateTime.tryParse(map['createdAt'] as String? ?? ''),
       );
 

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../utils/maintenance_pdf_actions.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -57,26 +58,8 @@ class MaintenanceDetailPage extends ConsumerWidget {
           IconButton(
             tooltip: 'Export PDF',
             icon: const Icon(Icons.picture_as_pdf_outlined),
-            onPressed: () async {
-              await repo.exportMaintenancePdf(rec);
-              if (context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: const Row(
-                      children: [
-                        Icon(Icons.check_circle_outline, color: Colors.white),
-                        SizedBox(width: 12),
-                        Text('PDF export started'),
-                      ],
-                    ),
-                    behavior: SnackBarBehavior.floating,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                );
-              }
-            },
+            onPressed: () =>
+                exportMaintenancePdfWithFeedback(context, repo, rec),
           ),
           IconButton(
             tooltip: 'Edit',

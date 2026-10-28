@@ -16,6 +16,9 @@ import 'package:pdf/widgets.dart' as pw;
 // import '../../features/inspections/data/models/test_interval_record.dart';
 // import '../../features/inspections/data/sources/hive_boxes.dart';
 // import '../../features/maintenance/data/models/maintenance_record.dart';
+import '../../../modules/fleet/domain/entities/vehicle_entity.dart';
+import '../../../modules/fleet/domain/entities/vehicle_inspection.dart';
+import '../../../modules/fleet/domain/entities/vehicle_maintenance_check.dart';
 import '../../../modules/inspections/infra/models/inspection.dart';
 import '../../../modules/inspections/infra/models/nameplate_data.dart';
 import '../../../modules/load_test/infra/models/load_test_record.dart';
@@ -24,6 +27,7 @@ import '../../../modules/maintenance/infra/models/maintenance_record.dart';
 import '../../../shared/presenter/layout/pdf/pdf_template.dart';
 import '../../services/hive/hive_boxes.dart';
 import '../photos/photo_attachment.dart';
+import 'vehicle_report_data.dart';
 import '../photos/photo_service.dart';
 import '../storage/file_storage_service.dart';
 import '../storage/web_file_store.dart';
@@ -154,6 +158,25 @@ class PdfService {
     // Page 3: Post-Inspection, Parts, Signatures
     pdf.addPage(_buildPage3(ins));
 
+    // Full notes when they don't fit the fixed box on page 2, so nothing the
+    // technician typed is cut off.
+    if (_notesOverflow(ins.notes)) {
+      pdf.addPage(
+        pw.MultiPage(
+          pageFormat: PdfPageFormat.letter,
+          margin: const pw.EdgeInsets.all(24),
+          build: (ctx) => [
+            pw.Text(
+              'Additional Notes',
+              style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold),
+            ),
+            pw.SizedBox(height: 8),
+            pw.Text(ins.notes.trim(), style: const pw.TextStyle(fontSize: 10)),
+          ],
+        ),
+      );
+    }
+
     // Page 4: Detailed Information & Fuel Monitoring
     pdf.addPage(_buildPage4(ins));
 
@@ -256,6 +279,7 @@ class PdfService {
     } catch (_) {
       return;
     }
+    photos = photos.where((ph) => !ph.isVideo).toList();
     if (photos.isEmpty) return;
 
     final items = <_PdfPhoto>[];
@@ -353,7 +377,7 @@ class PdfService {
   /// - Saves the PDF under an app folder.
   /// - Optionally opens share/email sheet if [prefs.emailAllowed] is true.
   /// - Copies signature images (if you wire those fields in the model).
-  Future<void> generateMaintenancePdf(
+  Future<PdfExportResult> generateMaintenancePdf(
     MaintenanceRecord m, {
     PdfExportPrefs? prefs,
   }) async {
@@ -371,13 +395,18 @@ class PdfService {
       final folder = p.dirname(result.filePath!);
       await _copySignaturesIfAny(maintenance: m, folderPath: folder);
     }
+
+    return result;
   }
 
   String _buildMaintenanceFileName(MaintenanceRecord m) {
     final site = (m.siteCode.isNotEmpty ? m.siteCode : 'maintenance')
         .replaceAll(' ', '_');
     final date = _fmtDate(m.dateOfService ?? m.createdAt);
-    return 'Maintenance_${site}_$date.pdf';
+    // The id suffix keeps two records for the same site on the same day from
+    // overwriting each other's report.
+    final shortId = m.id.length > 8 ? m.id.substring(0, 8) : m.id;
+    return 'Maintenance_${site}_${date}_$shortId.pdf';
   }
 
   /// PAGE 1: Site and Generator Information, Location & Safety
@@ -657,13 +686,13 @@ class PdfService {
                 pw.SizedBox(height: 4),
                 pw.Container(
                   width: double.infinity,
-                  height: 60,
+                  constraints: const pw.BoxConstraints(minHeight: 60),
                   decoration: pw.BoxDecoration(
                     border: pw.Border.all(color: PdfColors.grey600),
                   ),
                   padding: const pw.EdgeInsets.all(6),
                   child: pw.Text(
-                    ins.notes,
+                    _notesPreview(ins.notes),
                     style: const pw.TextStyle(fontSize: 9),
                   ),
                 ),
@@ -675,6 +704,27 @@ class PdfService {
         ],
       ),
     );
+  }
+
+  static const int _notesPreviewMaxChars = 450;
+  static const int _notesPreviewMaxLines = 6;
+
+  bool _notesOverflow(String notes) {
+    final t = notes.trim();
+    return t.length > _notesPreviewMaxChars ||
+        '\n'.allMatches(t).length >= _notesPreviewMaxLines;
+  }
+
+  /// What fits in the page-2 notes box; the rest continues on the
+  /// "Additional Notes" page (see [_notesOverflow]).
+  String _notesPreview(String notes) {
+    final t = notes.trim();
+    if (!_notesOverflow(t)) return t;
+    var preview = t.split('\n').take(_notesPreviewMaxLines).join('\n');
+    if (preview.length > _notesPreviewMaxChars) {
+      preview = preview.substring(0, _notesPreviewMaxChars);
+    }
+    return '${preview.trimRight()}…\n(continued on the Additional Notes page)';
   }
 
   /// PAGE 3: Post-Inspection Checklist, Parts, Signatures
@@ -2019,12 +2069,14 @@ class PdfService {
       name: p.basename(savePath),
     );
 
-    await Share.shareXFiles(
-      [xFile],
-      subject: 'Generator Service Report',
-      text: prefs.defaultRecipient != null
-          ? 'Please see attached generator report for your records.'
-          : 'Please see attached generator report.',
+    await SharePlus.instance.share(
+      ShareParams(
+        files: [xFile],
+        subject: 'Generator Service Report',
+        text: prefs.defaultRecipient != null
+            ? 'Please see attached generator report for your records.'
+            : 'Please see attached generator report.',
+      ),
     );
 
     return PdfExportResult(filePath: savePath, emailed: true);
@@ -2103,6 +2155,175 @@ class PdfService {
     return await FileStorageService.instance.saveMaintenancePdf(
       jobId: jobId,
       pdfBytes: pdfBytes,
+    );
+  }
+
+
+  // ---------- Vehicle report ----------
+
+  /// Build the vehicle report: facts, driver, inspections (with every flagged
+  /// item), maintenance history, tools, then photo appendices.
+  Future<Uint8List> buildVehiclePdfBytes(VehicleReportData data) async {
+    final v = data.vehicle;
+    final pdf = pw.Document();
+
+    pw.Widget heading(String text) => pw.Padding(
+          padding: const pw.EdgeInsets.only(top: 12, bottom: 4),
+          child: pw.Text(
+            text,
+            style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold),
+          ),
+        );
+
+    final facts = <(String, String)>[
+      ('Designation', v.designation.trim().isEmpty ? v.displayTitle : v.designation),
+      ('Type', v.vehicleType.label),
+      if (v.makeModel.isNotEmpty) ('Make / Model', v.makeModel),
+      if (v.modelYear != null) ('Year', '${v.modelYear}'),
+      ('VIN', v.vin ?? 'Not recorded'),
+      ('License plate',
+          v.licensePlate.trim().isEmpty ? 'Not recorded' : v.licensePlate.trim()),
+      ('Odometer', '${v.odometer} mi'),
+      ('Status', v.status.label),
+      ('Assigned driver', data.driverName ?? 'Unassigned'),
+    ];
+
+    pdf.addPage(
+      pw.MultiPage(
+        pageFormat: PdfPageFormat.letter,
+        margin: const pw.EdgeInsets.all(24),
+        build: (ctx) => [
+          pw.Text(
+            'Vehicle Report',
+            style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold),
+          ),
+          pw.SizedBox(height: 4),
+          pw.Text(
+            'A&S Electric – Generated ${_fmtDate(DateTime.now())}',
+            style: const pw.TextStyle(fontSize: 10),
+          ),
+          pw.Divider(),
+          for (final (label, value) in facts)
+            pw.Padding(
+              padding: const pw.EdgeInsets.symmetric(vertical: 1.5),
+              child: _maintLabelValueRow(label, value, wrap: true),
+            ),
+          if (v.notes.trim().isNotEmpty) ...[
+            heading('Notes'),
+            pw.Text(v.notes.trim(), style: const pw.TextStyle(fontSize: 9)),
+          ],
+
+          heading('Inspections'),
+          if (data.inspections.isEmpty)
+            pw.Text('No inspections recorded.',
+                style: const pw.TextStyle(fontSize: 9))
+          else ...[
+            PdfTemplate.dataTable(
+              headers: ['Date', 'Type', 'Inspector', 'Odometer', 'Flagged'],
+              rows: [
+                for (final i in data.inspections.take(12))
+                  [
+                    _fmtDate(i.inspectedAt),
+                    i.cadence.label,
+                    i.inspectorName,
+                    i.odometer > 0 ? '${i.odometer} mi' : '',
+                    i.hasIssues ? '${i.issueCount}' : 'None',
+                  ],
+              ],
+            ),
+            // Spell out every flagged item on the most recent inspections so
+            // the PDF says what was wrong, not just that something was.
+            for (final i in data.inspections.take(3))
+              if (i.hasIssues) ...[
+                pw.SizedBox(height: 8),
+                pw.Text(
+                  '${i.cadence.label} inspection ${_fmtDate(i.inspectedAt)} – flagged items',
+                  style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold),
+                ),
+                for (final item in inspectionItemsFor(i.cadence))
+                  if ((i.results[item.key]?.needsFollowUp) ?? false)
+                    pw.Padding(
+                      padding: const pw.EdgeInsets.only(left: 8, top: 2),
+                      child: pw.Text(
+                        '• ${item.label}: ${i.results[item.key]!.label}'
+                        '${(i.itemNotes[item.key] ?? '').isEmpty ? '' : ' – ${i.itemNotes[item.key]}'}',
+                        style: const pw.TextStyle(fontSize: 9),
+                      ),
+                    ),
+                if (i.notes.isNotEmpty)
+                  pw.Padding(
+                    padding: const pw.EdgeInsets.only(left: 8, top: 2),
+                    child: pw.Text('Notes: ${i.notes}',
+                        style: const pw.TextStyle(fontSize: 9)),
+                  ),
+              ],
+          ],
+
+          heading('Maintenance history'),
+          if (data.checks.isEmpty)
+            pw.Text('No maintenance checks recorded.',
+                style: const pw.TextStyle(fontSize: 9))
+          else
+            PdfTemplate.dataTable(
+              headers: ['Date', 'Odometer', 'Brakes', 'Battery', 'Notes'],
+              rows: [
+                for (final c in data.checks.take(12))
+                  [
+                    _fmtDate(c.checkedAt.toLocal()),
+                    '${c.odometer} mi',
+                    c.brakeStatus.label,
+                    c.batteryStatus.label,
+                    c.notes,
+                  ],
+              ],
+            ),
+
+          heading('Tools and equipment'),
+          if (data.assets.isEmpty)
+            pw.Text('No tools assigned.', style: const pw.TextStyle(fontSize: 9))
+          else
+            PdfTemplate.dataTable(
+              headers: ['Tool', 'Serial', 'Status', 'Notes'],
+              rows: [
+                for (final a in data.assets)
+                  [a.label, a.serial, a.status, a.notes],
+              ],
+            ),
+        ],
+      ),
+    );
+
+    // Photos taken on the vehicle itself, then those from the latest inspection.
+    await _addPhotosAppendix(pdf, PhotoAttachment.ownerVehicle, v.id);
+    if (data.inspections.isNotEmpty) {
+      await _addPhotosAppendix(
+        pdf,
+        PhotoAttachment.ownerVehicleInspection,
+        data.inspections.first.id,
+      );
+    }
+
+    return pdf.save();
+  }
+
+  /// Generate the vehicle report and store it in the PDF library.
+  Future<PdfExportResult> generateVehiclePdf(
+    VehicleReportData data, {
+    PdfExportPrefs? prefs,
+  }) async {
+    final bytes = await buildVehiclePdfBytes(data);
+    final name = data.vehicle.displayTitle
+        .replaceAll(RegExp(r'[^A-Za-z0-9_-]+'), '_');
+    final shortId =
+        data.vehicle.id.length > 8 ? data.vehicle.id.substring(0, 8) : data.vehicle.id;
+    final fileName = p.join(
+      'vehicles',
+      'Vehicle_${name}_${_fmtDate(DateTime.now())}_$shortId.pdf',
+    );
+    return _saveAndMaybeEmailPdf(
+      bytes: bytes,
+      fileName: fileName,
+      prefs: prefs ?? const PdfExportPrefs(emailAllowed: false),
     );
   }
 

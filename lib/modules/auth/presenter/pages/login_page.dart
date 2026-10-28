@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../core/constants/feature_flags.dart';
 import '../../domain/user_role.dart';
 import '../../state/auth_state.dart';
 import '../controllers/auth_controller.dart';
@@ -190,8 +191,10 @@ class _LoginPageState extends ConsumerState<LoginPage> {
           ),
 
           // Content
+          // Scrolls instead of overflowing when the panel is short (a tablet
+          // in landscape, or a small window).
           Center(
-            child: Padding(
+            child: SingleChildScrollView(
               padding: const EdgeInsets.all(48),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -396,6 +399,12 @@ class _LoginPageState extends ConsumerState<LoginPage> {
               // Login button (unchanged functionality)
               _buildLoginButton(),
 
+              // TEMPORARY: skip credentials for the selected role.
+              if (FeatureFlags.devLoginBypassEnabled) ...[
+                const SizedBox(height: 12),
+                _buildDevBypassButton(),
+              ],
+
               // Logout button when authenticated (unchanged functionality)
               if (auth.isAuthenticated) ...[
                 const SizedBox(height: 12),
@@ -410,6 +419,25 @@ class _LoginPageState extends ConsumerState<LoginPage> {
           ),
         ),
       ],
+    );
+  }
+
+  // TEMPORARY dev bypass: signs in locally as the role picked above.
+  Widget _buildDevBypassButton() {
+    return OutlinedButton.icon(
+      onPressed: _isLoading
+          ? null
+          : () {
+              ref.read(authStateProvider.notifier).devBypassLogin(_selectedRole);
+              context.go('/');
+            },
+      icon: const Icon(Icons.bug_report_outlined),
+      label: Text('Skip login as ${_selectedRole.name} (dev)'),
+      style: OutlinedButton.styleFrom(
+        foregroundColor: Colors.white,
+        side: BorderSide(color: Colors.white.withValues(alpha: 0.5)),
+        padding: const EdgeInsets.symmetric(vertical: 14),
+      ),
     );
   }
 

@@ -61,8 +61,11 @@ class PdfViewerPage extends StatelessWidget {
       }
       return;
     }
-    await Share.shareXFiles([
-      XFile(filePath!, mimeType: 'application/pdf'),
-    ], subject: title);
+    await SharePlus.instance.share(
+      ShareParams(
+        files: [XFile(filePath!, mimeType: 'application/pdf')],
+        subject: title,
+      ),
+    );
   }
 }

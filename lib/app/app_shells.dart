@@ -36,8 +36,7 @@ class DefaultShell extends ConsumerWidget {
     final tenants = ref.watch(tenantsProvider);
     final profile = _buildProfileFromAuth(auth, tenants);
 
-    final width = MediaQuery.sizeOf(context).width;
-    final isCompact = width < kCompactBreakpoint;
+    final isCompact = isCompactLayout(MediaQuery.sizeOf(context));
 
     // The shell owns *navigation only*. The page inside builds the single
     // Scaffold + AppBar via AppPage, using the drawer published here — that is

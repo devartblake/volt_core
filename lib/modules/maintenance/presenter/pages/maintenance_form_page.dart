@@ -1,15 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart' show Uint8List;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../app/nav_extensions.dart';
-import 'package:open_filex/open_filex.dart';
 
-import '../../../../core/services/pdf/pdf_prefs_service.dart';
-import '../../../../core/services/pdf/pdf_service.dart';
+import '../../../../core/services/pdf/pdf_service.dart' show PdfExportResult;
 import '../../../../core/services/photos/photo_attachment.dart';
 import '../../../../shared/presenter/widgets/photo_attachments_section.dart';
 import '../controllers/maintenance_form_controller.dart';
 import '../controllers/maintenance_providers.dart';
+import '../utils/maintenance_pdf_actions.dart';
 import '../../infra/models/maintenance_record.dart';
 import '../widgets/section_maint_site_info.dart';
 import '../widgets/section_maint_walkthrough.dart';
@@ -38,7 +36,7 @@ class _MaintenanceFormPageState extends ConsumerState<MaintenanceFormPage> {
   int _currentStep = 0;
   bool _isSaving = false;
   bool _isGeneratingPdf = false;
-  String? _savedPdfPath;
+  PdfExportResult? _savedPdf;
 
   /// True once a section has edited the record — drives the unsaved guard.
   bool _dirty = false;
@@ -126,76 +124,58 @@ class _MaintenanceFormPageState extends ConsumerState<MaintenanceFormPage> {
 
       if (!mounted) return;
 
-      // Step 2: Generate and save PDF
-      setState(() => _isGeneratingPdf = true);
-
-      _savedPdfPath = await _generateAndSavePdf(savedRecord);
-
-      // Step 3: Refresh the list provider so list updates when navigating back
+      // The record is on disk from here on. Mark it saved before the PDF so a
+      // PDF failure can never make the technician re-enter or lose the record.
       ref.invalidate(maintenanceListProvider);
-
-      if (!mounted) return;
-
       setState(() {
         _isSaving = false;
-        _isGeneratingPdf = false;
-        // Saved for real — the unsaved-changes guard can stand down.
         _dirty = false;
         _saved = true;
       });
 
-      // Show success message
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Row(
-            children: [
-              Icon(Icons.check_circle_outline, color: Colors.white),
-              SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      'Maintenance record saved successfully',
-                      style: TextStyle(fontWeight: FontWeight.w600),
-                    ),
-                    SizedBox(height: 4),
-                    Text(
-                      'PDF generated and saved',
-                      style: TextStyle(fontSize: 12),
-                    ),
-                  ],
-                ),
+      // Step 2: Generate the PDF into the managed library.
+      final messenger = ScaffoldMessenger.of(context);
+      final navigator = Navigator.of(context, rootNavigator: true);
+      final repo = ref.read(maintenanceRepoProvider);
+
+      setState(() => _isGeneratingPdf = true);
+      try {
+        _savedPdf = await repo.exportMaintenancePdf(savedRecord, share: false);
+      } catch (e, st) {
+        debugPrint('Error generating maintenance PDF: $e\n$st');
+        if (mounted) setState(() => _isGeneratingPdf = false);
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text('Record saved, but the PDF could not be generated: $e'),
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 8),
+            action: SnackBarAction(
+              label: 'Retry',
+              onPressed: () => exportMaintenancePdfWithFeedback(
+                navigator.context,
+                repo,
+                savedRecord,
               ),
-            ],
+            ),
           ),
-          behavior: SnackBarBehavior.floating,
-          duration: const Duration(seconds: 4),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
-          ),
-          action: SnackBarAction(
-            label: 'View',
-            textColor: Colors.white,
-            onPressed: () {
-              final path = _savedPdfPath;
-              if (path != null) {
-                OpenFilex.open(path);
-              }
-            },
-          ),
-        ),
+        );
+        // Stay on the form so the technician sees the failure and can retry.
+        return;
+      }
+
+      if (mounted) setState(() => _isGeneratingPdf = false);
+
+      showMaintenancePdfSavedSnack(
+        messenger,
+        navigator,
+        _savedPdf!,
+        message: 'Maintenance record saved and PDF generated',
       );
 
-      // Navigate back after brief delay. popOrGo, not pop: the record is
-      // saved and the technician must not be stranded on the form, so when
-      // there is nothing to pop we send them to the list rather than throw.
-      Future.delayed(const Duration(milliseconds: 500), () {
-        if (mounted) {
-          context.popOrGo('/maintenance');
-        }
-      });
+      // popOrGo, not pop: the record is saved and the technician must not be
+      // stranded on the form, so when there is nothing to pop we send them to
+      // the list rather than throw.
+      if (mounted) context.popOrGo('/maintenance');
 
     } catch (e) {
       setState(() {
@@ -236,59 +216,6 @@ class _MaintenanceFormPageState extends ConsumerState<MaintenanceFormPage> {
           ),
         ),
       );
-    }
-  }
-
-  /// Generate PDF with signatures and save to storage.
-  /// Returns the saved file path.
-  /// Throws if generation fails.
-  Future<String> _generateAndSavePdf(MaintenanceRecord record) async {
-    try {
-      debugPrint('Generating PDF for maintenance record: ${record.id}');
-
-      // Generate PDF bytes with the maintenance record data
-      final Uint8List pdfBytes = await PdfService.instance
-          .buildMaintenancePdfBytes(record);
-
-      debugPrint('PDF generated successfully, size: ${pdfBytes.length} bytes');
-
-      // Save PDF to file storage
-      final String pdfPath = await PdfService.instance.saveMaintenancePdf(
-        jobId: record.id,
-        pdfBytes: pdfBytes,
-      );
-
-      debugPrint('PDF saved to: $pdfPath');
-
-      // Optionally, you can also trigger email/share if preferences allow
-      final prefs = await _getPdfPreferences();
-      if (prefs.emailAllowed) {
-        debugPrint('Email sharing is enabled');
-      }
-
-      return pdfPath;
-    } catch (e) {
-      debugPrint('Error generating/saving PDF: $e');
-      rethrow; // Let the caller handle the error
-    }
-  }
-
-  /// Load PDF export preferences from storage
-  Future<PdfExportPrefs> _getPdfPreferences() async {
-    try {
-      final emailAllowed = await PdfPrefsService.instance.getEmailAllowed();
-      final customDir = await PdfPrefsService.instance.getCustomDirectoryPath();
-      final defaultRecipient = await PdfPrefsService.instance.getDefaultRecipient();
-
-      return PdfExportPrefs(
-        emailAllowed: emailAllowed,
-        customDirectoryPath: customDir,
-        defaultRecipient: defaultRecipient,
-        appSubfolder: 'AandSElectric/Maintenance',
-      );
-    } catch (e) {
-      debugPrint('Error loading PDF preferences: $e');
-      return const PdfExportPrefs(emailAllowed: false);
     }
   }
 
