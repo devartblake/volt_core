@@ -11,6 +11,7 @@ class PdfPrefsService {
   static const String _keyEmailAllowed = 'pdf_email_allowed';
   static const String _keyCustomDirectoryPath = 'pdf_custom_dir';
   static const String _keyDefaultRecipient = 'pdf_default_recipient';
+  static const String _keyInspectionSummary = 'pdf_inspection_summary';
 
   Box<dynamic>? _box;
 
@@ -39,6 +40,18 @@ class PdfPrefsService {
   Future<void> setEmailAllowed(bool value) async {
     final box = await _ensureBox();
     await box.put(_keyEmailAllowed, value);
+  }
+
+  /// Whether the inspection PDF ends with an Inspection Summary page.
+  /// Off by default: the summary is an optional extra.
+  Future<bool> getIncludeInspectionSummary() async {
+    final box = await _ensureBox();
+    return box.get(_keyInspectionSummary, defaultValue: false) == true;
+  }
+
+  Future<void> setIncludeInspectionSummary(bool value) async {
+    final box = await _ensureBox();
+    await box.put(_keyInspectionSummary, value);
   }
 
   /// Optional: custom directory path chosen by the user (desktop, etc.).

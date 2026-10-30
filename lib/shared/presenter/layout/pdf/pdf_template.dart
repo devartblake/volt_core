@@ -162,22 +162,22 @@ class PdfTemplate {
       children: [
         checkbox(isYes),
         pw.SizedBox(width: 2),
-        pw.Text('Yes', style: const pw.TextStyle(fontSize: 8)),
+        pw.Text('Yes', style: const pw.TextStyle(fontSize: 9)),
         pw.SizedBox(width: 6),
         checkbox(isNo),
         pw.SizedBox(width: 2),
-        pw.Text('No', style: const pw.TextStyle(fontSize: 8)),
+        pw.Text('No', style: const pw.TextStyle(fontSize: 9)),
         if (isUnknown || isNA) ...[
           pw.SizedBox(width: 6),
           checkbox(isUnknown),
           pw.SizedBox(width: 2),
-          pw.Text('Unknown', style: const pw.TextStyle(fontSize: 8)),
+          pw.Text('Unknown', style: const pw.TextStyle(fontSize: 9)),
         ],
         if (isNA) ...[
           pw.SizedBox(width: 6),
           checkbox(isNA),
           pw.SizedBox(width: 2),
-          pw.Text('N/A', style: const pw.TextStyle(fontSize: 8)),
+          pw.Text('N/A', style: const pw.TextStyle(fontSize: 9)),
         ],
       ],
     );
@@ -426,7 +426,7 @@ class PdfTemplate {
   }
 
   /// Footer for each page
-  static pw.Widget pageFooter(int pageNumber) {
+  static pw.Widget pageFooter(int pageNumber, {int? total}) {
     return pw.Container(
       alignment: pw.Alignment.center,
       padding: const pw.EdgeInsets.only(top: 8),
@@ -436,15 +436,19 @@ class PdfTemplate {
         ),
       ),
       child: pw.Text(
-        'Page $pageNumber',
+        total == null ? 'Page $pageNumber' : 'Page $pageNumber of $total',
         style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey),
       ),
     );
   }
 
   /// Load test readings table (complex grid)
+  /// [fillHeight], when given, stretches the data rows so the whole table is
+  /// at least that tall (used to fill most of the page for hand-written
+  /// readings). Without it the rows keep their compact height.
   static pw.Widget loadTestTable({
     required List<Map<String, String>> readings,
+    double? fillHeight,
   }) {
     final headers = [
       'TEST READING INTERVALS',
@@ -478,6 +482,12 @@ class PdfTemplate {
       'FUEL PRESSURE',
     ];
 
+    const headerHeight = 24.0;
+    final rowHeight = fillHeight == null
+        ? 0.0
+        : ((fillHeight - headerHeight) / rows.length).ceilToDouble();
+    final fontSize = fillHeight == null ? 7.0 : 8.0;
+
     return pw.Table(
       border: pw.TableBorder.all(color: PdfColors.grey600),
       columnWidths: {
@@ -495,7 +505,7 @@ class PdfTemplate {
               child: pw.Text(
                 h,
                 style: pw.TextStyle(
-                  fontSize: 7,
+                  fontSize: fontSize,
                   fontWeight: pw.FontWeight.bold,
                   color: PdfColors.white,
                 ),
@@ -510,12 +520,14 @@ class PdfTemplate {
               (label) => pw.TableRow(
             decoration: const pw.BoxDecoration(color: lightGray),
             children: [
-              pw.Padding(
+              pw.Container(
+                constraints: pw.BoxConstraints(minHeight: rowHeight),
+                alignment: pw.Alignment.centerLeft,
                 padding: const pw.EdgeInsets.all(3),
                 child: pw.Text(
                   label,
                   style: pw.TextStyle(
-                    fontSize: 7,
+                    fontSize: fontSize,
                     fontWeight: pw.FontWeight.bold,
                   ),
                 ),
@@ -523,9 +535,10 @@ class PdfTemplate {
               // Empty cells for data entry
               for (int i = 1; i < headers.length; i++)
                 pw.Container(
+                  constraints: pw.BoxConstraints(minHeight: rowHeight),
                   color: PdfColors.white,
                   padding: const pw.EdgeInsets.all(3),
-                  child: pw.Text('', style: const pw.TextStyle(fontSize: 7)),
+                  child: pw.Text('', style: pw.TextStyle(fontSize: fontSize)),
                 ),
             ],
           ),

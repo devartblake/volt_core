@@ -3,9 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:path/path.dart' as p;
+import 'package:share_plus/share_plus.dart';
 
 import '../../../core/services/photos/photo_attachment.dart';
 import '../../../core/services/photos/photo_service.dart';
+import '../../../core/services/storage/path_resolver.dart';
 
 /// Opens the photo gallery modal for one inspection / maintenance record.
 ///
@@ -262,6 +264,18 @@ class _PhotoGalleryState extends State<_PhotoGallery> {
                   ),
                 ),
                 IconButton(
+                  tooltip: 'Share selected',
+                  icon: const Icon(Icons.ios_share),
+                  onPressed: _busy
+                      ? null
+                      : () => _sharePhotos(
+                            context,
+                            _photos
+                                .where((ph) => _selected.contains(ph.id))
+                                .toList(),
+                          ),
+                ),
+                IconButton(
                   tooltip: 'Delete selected',
                   icon: Icon(Icons.delete_outline,
                       color: theme.colorScheme.error),
@@ -459,6 +473,60 @@ class _GridTile extends StatelessWidget {
   }
 }
 
+/// Share one or more gallery items through the system share sheet.
+///
+/// Native shares the stored file; web builds have no file path, so the bytes
+/// are shared directly.
+Future<void> _sharePhotos(
+  BuildContext context,
+  List<PhotoAttachment> photos,
+) async {
+  final messenger = ScaffoldMessenger.of(context);
+  try {
+    final files = <XFile>[];
+    for (final photo in photos) {
+      final name = p.basename(photo.localPath);
+      final mime = photo.isVideo ? 'video/mp4' : _imageMime(name);
+
+      if (kIsWeb) {
+        final bytes = await PhotoService.instance.loadBytes(photo);
+        if (bytes == null) continue;
+        files.add(XFile.fromData(bytes, mimeType: mime, name: name));
+        continue;
+      }
+
+      final file = await PathResolver.resolveFile(photo.localPath);
+      if (file == null) continue;
+      files.add(XFile(file.path, mimeType: mime, name: name));
+    }
+
+    if (files.isEmpty) {
+      messenger.showSnackBar(
+        const SnackBar(content: Text('The file is no longer available')),
+      );
+      return;
+    }
+
+    final caption = photos.length == 1 ? photos.first.caption.trim() : '';
+    await SharePlus.instance.share(
+      ShareParams(files: files, text: caption.isEmpty ? null : caption),
+    );
+  } catch (e) {
+    messenger.showSnackBar(SnackBar(content: Text('Could not share: $e')));
+  }
+}
+
+String _imageMime(String fileName) {
+  final ext = p.extension(fileName).toLowerCase();
+  return switch (ext) {
+    '.png' => 'image/png',
+    '.webp' => 'image/webp',
+    '.gif' => 'image/gif',
+    '.heic' => 'image/heic',
+    _ => 'image/jpeg',
+  };
+}
+
 Future<bool?> _confirmDelete(BuildContext context, String title) {
   return showDialog<bool>(
     context: context,
@@ -591,6 +659,13 @@ class _PhotoEditorPageState extends State<_PhotoEditorPage> {
       appBar: AppBar(
         title: Text(isVideo ? 'Edit video' : 'Edit photo'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.ios_share),
+            tooltip: 'Share',
+            onPressed: _busy
+                ? null
+                : () => _sharePhotos(context, [widget.photo]),
+          ),
           if (!isVideo)
             IconButton(
             icon: const Icon(Icons.published_with_changes_outlined),

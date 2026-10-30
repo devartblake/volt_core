@@ -27,9 +27,12 @@ import '../../../modules/maintenance/infra/models/maintenance_record.dart';
 import '../../../shared/presenter/layout/pdf/pdf_template.dart';
 import '../../services/hive/hive_boxes.dart';
 import '../photos/photo_attachment.dart';
+import 'maintenance_report_pdf.dart';
+import 'pdf_prefs_service.dart';
 import 'vehicle_report_data.dart';
 import '../photos/photo_service.dart';
 import '../storage/file_storage_service.dart';
+import '../storage/path_resolver.dart';
 import '../storage/web_file_store.dart';
 import '../sync/sync_service.dart';
 
@@ -119,11 +122,25 @@ class PdfService {
     return result.filePath ?? '';
   }
 
+  /// Public entry to the inspection renderer, for tests and callers that
+  /// store the bytes themselves.
+  ///
+  /// [includeSummary] adds the optional Inspection Summary page; when null
+  /// the device setting decides.
+  Future<Uint8List> buildInspectionPdfBytes(
+    Inspection ins, {
+    bool? includeSummary,
+  }) =>
+      _buildInspectionPdfBytes(ins, includeSummary: includeSummary);
+
   /// Build the inspection PDF as raw bytes.
   ///
   /// Used internally by [generatePdfForInspection], but you can also call it
   /// directly if you need to do custom storage controllers.
-  Future<Uint8List> _buildInspectionPdfBytes(Inspection ins) async {
+  Future<Uint8List> _buildInspectionPdfBytes(
+    Inspection ins, {
+    bool? includeSummary,
+  }) async {
     // Load fonts
     final baseFont = await rootBundle.load(
       'assets/fonts/NotoSans/NotoSans-Regular.ttf',
@@ -259,6 +276,17 @@ class PdfService {
     // PHOTO APPENDIX (attached inspection photos, if any)
     await _addPhotosAppendix(pdf, PhotoAttachment.ownerInspection, ins.id);
 
+    // OPTIONAL closing summary (off unless asked for or enabled in Settings).
+    var wantSummary = includeSummary;
+    if (wantSummary == null) {
+      try {
+        wantSummary = await PdfPrefsService.instance.getIncludeInspectionSummary();
+      } catch (_) {
+        wantSummary = false;
+      }
+    }
+    if (wantSummary) pdf.addPage(_buildInspectionSummaryPage(ins));
+
     return pdf.save();
   }
 
@@ -342,28 +370,23 @@ class PdfService {
   Future<Uint8List> buildMaintenancePdfBytes(MaintenanceRecord m) async {
     final pdf = pw.Document();
 
-    pdf.addPage(
-      pw.MultiPage(
-        pageFormat: PdfPageFormat.letter,
-        margin: const pw.EdgeInsets.all(24),
-        build: (ctx) => [
-          _buildMaintenanceHeader(),
-          pw.SizedBox(height: 8),
-          _buildMaintenanceSiteInfo(m),
-          pw.SizedBox(height: 12),
-          _buildMaintenanceWalkthrough(m),
-          pw.SizedBox(height: 12),
-          _buildMaintenanceGeneral(m),
-          pw.SizedBox(height: 12),
-          _buildMaintenanceActions(m),
-          pw.SizedBox(height: 12),
-          _buildMaintenancePostService(m),
-          pw.SizedBox(height: 12),
-          _buildMaintenanceParts(m),
-          pw.SizedBox(height: 12),
-          _buildMaintenanceSignatures(m),
-        ],
-      ),
+    final techSignature = await _loadMaintenanceSignature(m, 'technician');
+    final customerSignature = await _loadMaintenanceSignature(m, 'customer');
+
+    pw.MemoryImage? logo;
+    try {
+      final logoData = await rootBundle.load('assets/images/company_logo.png');
+      logo = pw.MemoryImage(logoData.buffer.asUint8List());
+    } catch (_) {
+      logo = null; // The template draws a text mark when there is no logo.
+    }
+
+    MaintenanceReportPdf.addTo(
+      pdf,
+      m,
+      logo: logo,
+      technicianSignature: techSignature,
+      customerSignature: customerSignature,
     );
 
     // PHOTO APPENDIX (attached maintenance photos, if any)
@@ -411,12 +434,14 @@ class PdfService {
 
   /// PAGE 1: Site and Generator Information, Location & Safety
   pw.Page _buildPage1(Inspection ins, pw.MemoryImage? logo) {
-    return pw.Page(
+    return pw.MultiPage(
       pageFormat: PdfPageFormat.letter,
       margin: const pw.EdgeInsets.all(24),
-      build: (context) => pw.Column(
-        crossAxisAlignment: pw.CrossAxisAlignment.start,
-        children: [
+      footer: (context) => PdfTemplate.pageFooter(
+        context.pageNumber,
+        total: context.pagesCount,
+      ),
+      build: (context) => [
           PdfTemplate.companyHeader(logo: logo),
           pw.SizedBox(height: 8),
           PdfTemplate.documentTitle('Generator Compliance Checklist'),
@@ -521,21 +546,20 @@ class PdfService {
               ],
             ),
           ),
-          pw.Spacer(),
-          PdfTemplate.pageFooter(1),
-        ],
-      ),
+    ],
     );
   }
 
   /// PAGE 2: Fuel Storage, DEP, Operational Use
   pw.Page _buildPage2(Inspection ins) {
-    return pw.Page(
+    return pw.MultiPage(
       pageFormat: PdfPageFormat.letter,
       margin: const pw.EdgeInsets.all(24),
-      build: (context) => pw.Column(
-        crossAxisAlignment: pw.CrossAxisAlignment.start,
-        children: [
+      footer: (context) => PdfTemplate.pageFooter(
+        context.pageNumber,
+        total: context.pagesCount,
+      ),
+      build: (context) => [
           // Fuel Storage & FDNY Compliance
           PdfTemplate.sectionHeader('Fuel Storage & FDNY Compliance'),
           pw.SizedBox(height: 8),
@@ -699,10 +723,7 @@ class PdfService {
               ],
             ),
           ),
-          pw.Spacer(),
-          PdfTemplate.pageFooter(2),
-        ],
-      ),
+    ],
     );
   }
 
@@ -727,14 +748,147 @@ class PdfService {
     return '${preview.trimRight()}…\n(continued on the Additional Notes page)';
   }
 
-  /// PAGE 3: Post-Inspection Checklist, Parts, Signatures
-  pw.Page _buildPage3(Inspection ins) {
-    return pw.Page(
+  /// Optional closing page: the result of the inspection at a glance.
+  ///
+  /// Counts what passed, then lists only what needs attention, so a reader can
+  /// act on it without re-reading the five-page form.
+  pw.Page _buildInspectionSummaryPage(Inspection ins) {
+    final checks = <(String, bool, String)>[
+      ('Genset runs under load', ins.gensetRunsUnderLoad, 'genset_runs_under_load'),
+      ('Voltage and frequency OK', ins.voltageFrequencyOk, 'voltage_frequency_ok'),
+      ('Exhaust OK', ins.exhaustOk, 'exhaust_ok'),
+      ('Grounding and bonding OK', ins.groundingBondingOk, 'grounding_bonding_ok'),
+      ('Control panel OK', ins.controlPanelOk, 'control_panel_ok'),
+      ('Safety devices OK', ins.safetyDevicesOk, 'safety_devices_ok'),
+      ('Deficiencies documented', ins.deficienciesDocumented, 'deficiencies_documented'),
+      ('Load-bank test done', ins.loadbankDone, 'loadbank_done'),
+      ('ATS verified', ins.atsVerified, 'ats_verified'),
+    ];
+    final failed = checks.where((c) => !c.$2).toList();
+
+    final site = <(String, bool)>[
+      ('Dedicated 2-hour room', ins.dedicatedRoom2hr),
+      ('Separate from main service', ins.separateFromMainService),
+      ('Area clear', ins.areaClear),
+      ('Labels and E-stop visible', ins.labelsAndEStopVisible),
+      ('Fire extinguisher present', ins.extinguisherPresent),
+    ];
+    final siteIssues = site.where((s) => !s.$2).map((s) => s.$1).toList();
+
+    final regulatory = <(String, String)>[
+      ('FDNY permit', ins.fdnyPermit),
+      ('C-92 on site', ins.c92OnSite),
+      ('DEP registered', ins.depRegisteredCats),
+      ('DEP certificate to operate', ins.depCertificateOperate),
+      ('Tier 4 compliant', ins.tier4Compliant),
+      ('Smoke / stack test', ins.smokeOrStackTest),
+    ];
+    final regulatoryIssues =
+        regulatory.where((r) => r.$2 == 'No' || r.$2 == 'Unknown').toList();
+
+    final attention = failed.length +
+        siteIssues.length +
+        regulatoryIssues.length +
+        (ins.fuelStoredOver1Yr ? 1 : 0);
+
+    pw.Widget bullet(String text, {String? note}) => pw.Padding(
+          padding: const pw.EdgeInsets.symmetric(vertical: 2),
+          child: pw.Column(
+            crossAxisAlignment: pw.CrossAxisAlignment.start,
+            children: [
+              pw.Row(
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                children: [
+                  PdfTemplate.checkbox(false),
+                  pw.SizedBox(width: 6),
+                  pw.Expanded(
+                    child: pw.Text(text, style: const pw.TextStyle(fontSize: 10)),
+                  ),
+                ],
+              ),
+              if (note != null && note.trim().isNotEmpty)
+                pw.Padding(
+                  padding: const pw.EdgeInsets.only(left: 16, top: 1),
+                  child: pw.Text(note.trim(),
+                      style: const pw.TextStyle(fontSize: 9)),
+                ),
+            ],
+          ),
+        );
+
+    return pw.MultiPage(
       pageFormat: PdfPageFormat.letter,
       margin: const pw.EdgeInsets.all(24),
-      build: (context) => pw.Column(
-        crossAxisAlignment: pw.CrossAxisAlignment.start,
-        children: [
+      footer: (context) => PdfTemplate.pageFooter(
+        context.pageNumber,
+        total: context.pagesCount,
+      ),
+      build: (context) => [
+        PdfTemplate.documentTitle('Inspection Summary'),
+        PdfTemplate.labelValue('Site', ins.siteCode, bold: true),
+        PdfTemplate.labelValue('Address', ins.address),
+        PdfTemplate.labelValue('Service date', _formatDate(ins.serviceDate)),
+        PdfTemplate.labelValue('Technician', ins.technicianName),
+        PdfTemplate.labelValue(
+          'Site grade',
+          ins.siteGrade.isEmpty ? 'Not graded' : ins.siteGrade,
+        ),
+        pw.SizedBox(height: 10),
+        PdfTemplate.sectionHeader(
+          attention == 0
+              ? 'Result: no items need attention'
+              : 'Result: $attention item(s) need attention',
+        ),
+        pw.SizedBox(height: 8),
+        pw.Text(
+          'Post-inspection checks passed: '
+          '${checks.length - failed.length} of ${checks.length}',
+          style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold),
+        ),
+        pw.SizedBox(height: 6),
+        if (failed.isNotEmpty) ...[
+          pw.Text('Not passed', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
+          for (final c in failed) bullet(c.$1, note: ins.checklistNotes[c.$3]),
+        ],
+        if (siteIssues.isNotEmpty) ...[
+          pw.SizedBox(height: 8),
+          pw.Text('Site and safety', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
+          for (final s in siteIssues) bullet(s),
+        ],
+        if (regulatoryIssues.isNotEmpty) ...[
+          pw.SizedBox(height: 8),
+          pw.Text('Regulatory', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
+          for (final r in regulatoryIssues) bullet('${r.$1}: ${r.$2}'),
+        ],
+        if (ins.fuelStoredOver1Yr) ...[
+          pw.SizedBox(height: 8),
+          bullet('Fuel stored longer than one year (consider testing / conditioning)'),
+        ],
+        if (attention == 0) ...[
+          pw.SizedBox(height: 4),
+          pw.Text('Every recorded check passed.', style: const pw.TextStyle(fontSize: 10)),
+        ],
+        pw.SizedBox(height: 12),
+        PdfTemplate.sectionHeader('Notes'),
+        pw.SizedBox(height: 6),
+        pw.Text(
+          ins.notes.trim().isEmpty ? 'None recorded.' : ins.notes.trim(),
+          style: const pw.TextStyle(fontSize: 10),
+        ),
+      ],
+    );
+  }
+
+  /// PAGE 3: Post-Inspection Checklist, Parts, Signatures
+  pw.Page _buildPage3(Inspection ins) {
+    return pw.MultiPage(
+      pageFormat: PdfPageFormat.letter,
+      margin: const pw.EdgeInsets.all(24),
+      footer: (context) => PdfTemplate.pageFooter(
+        context.pageNumber,
+        total: context.pagesCount,
+      ),
+      build: (context) => [
           // Post-Inspection check list
           PdfTemplate.sectionHeader('Post-Inspection check list'),
           pw.SizedBox(height: 8),
@@ -858,21 +1012,20 @@ class PdfService {
               ),
             ],
           ),
-          pw.Spacer(),
-          PdfTemplate.pageFooter(3),
-        ],
-      ),
+    ],
     );
   }
 
   /// PAGE 4: Detailed Site Information & Fuel Monitoring
   pw.Page _buildPage4(Inspection ins) {
-    return pw.Page(
+    return pw.MultiPage(
       pageFormat: PdfPageFormat.letter,
       margin: const pw.EdgeInsets.all(24),
-      build: (context) => pw.Column(
-        crossAxisAlignment: pw.CrossAxisAlignment.start,
-        children: [
+      footer: (context) => PdfTemplate.pageFooter(
+        context.pageNumber,
+        total: context.pagesCount,
+      ),
+      build: (context) => [
           PdfTemplate.sectionHeader('Post-Inspection check list'),
           pw.SizedBox(height: 12),
 
@@ -1003,29 +1156,29 @@ class PdfService {
           pw.Row(
             children: [
               _labelValueRow('Volume', '', width: 50),
-              pw.Text('GAL', style: const pw.TextStyle(fontSize: 8)),
+              pw.Text('GAL', style: const pw.TextStyle(fontSize: 9)),
               pw.SizedBox(width: 12),
               _labelValueRow('Ullage', '', width: 40),
-              pw.Text('GAL', style: const pw.TextStyle(fontSize: 8)),
+              pw.Text('GAL', style: const pw.TextStyle(fontSize: 9)),
               pw.SizedBox(width: 12),
               _labelValueRow('90% Ullage', '', width: 50),
-              pw.Text('GAL', style: const pw.TextStyle(fontSize: 8)),
+              pw.Text('GAL', style: const pw.TextStyle(fontSize: 9)),
               pw.SizedBox(width: 12),
               _labelValueRow('TC Volume', '', width: 50),
-              pw.Text('GAL', style: const pw.TextStyle(fontSize: 8)),
+              pw.Text('GAL', style: const pw.TextStyle(fontSize: 9)),
             ],
           ),
           pw.SizedBox(height: 8),
           pw.Row(
             children: [
               _labelValueRow('Height', '', width: 50),
-              pw.Text('GAL', style: const pw.TextStyle(fontSize: 8)),
+              pw.Text('GAL', style: const pw.TextStyle(fontSize: 9)),
               pw.SizedBox(width: 12),
               _labelValueRow('Water', '', width: 40),
-              pw.Text('GAL', style: const pw.TextStyle(fontSize: 8)),
+              pw.Text('GAL', style: const pw.TextStyle(fontSize: 9)),
               pw.SizedBox(width: 12),
               _labelValueRow('Water', '', width: 50),
-              pw.Text('Inches', style: const pw.TextStyle(fontSize: 8)),
+              pw.Text('Inches', style: const pw.TextStyle(fontSize: 9)),
               pw.SizedBox(width: 12),
               _labelValueRow('Temp °F', '', width: 50),
             ],
@@ -1092,10 +1245,7 @@ class PdfService {
               ],
             ),
           ),
-          pw.Spacer(),
-          PdfTemplate.pageFooter(4),
-        ],
-      ),
+    ],
     );
   }
 
@@ -1141,9 +1291,14 @@ class PdfService {
             ],
           ),
           pw.SizedBox(height: 16),
-          PdfTemplate.loadTestTable(readings: []),
+          // Rows are stretched so the grid fills at least three quarters
+          // of the landscape page, leaving room to write readings by hand.
+          PdfTemplate.loadTestTable(
+            readings: [],
+            fillHeight: PdfPageFormat.letter.landscape.height * 0.75,
+          ),
           pw.Spacer(),
-          PdfTemplate.pageFooter(5),
+          PdfTemplate.pageFooter(context.pageNumber),
         ],
       ),
     );
@@ -1229,10 +1384,10 @@ class PdfService {
   ) {
     return pw.Row(
       children: [
-        pw.Text('$label1 ', style: const pw.TextStyle(fontSize: 8)),
+        pw.Text('$label1 ', style: const pw.TextStyle(fontSize: 9)),
         PdfTemplate.inputField(value1, width: 80),
         pw.SizedBox(width: 12),
-        pw.Text('$label2 ', style: const pw.TextStyle(fontSize: 8)),
+        pw.Text('$label2 ', style: const pw.TextStyle(fontSize: 9)),
         PdfTemplate.inputField(value2, width: 80),
         pw.SizedBox(width: 12),
         pw.Text('$label3 ', style: const pw.TextStyle(fontSize: 8)),
@@ -1418,32 +1573,12 @@ class PdfService {
 
   // -------- Maintenance helpers --------
 
-  pw.Widget _buildMaintenanceHeader() {
-    return pw.Column(
-      crossAxisAlignment: pw.CrossAxisAlignment.start,
-      children: [
-        pw.Text(
-          'Generator Maintenance & Repair Checklist',
-          style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold),
-        ),
-        pw.SizedBox(height: 4),
-        pw.Text(
-          'A&S Electric – Generator Service Division',
-          style: const pw.TextStyle(fontSize: 10),
-        ),
-        pw.Divider(),
-      ],
-    );
-  }
-
   String _fmtDate(DateTime d) {
     final y = d.year.toString().padLeft(4, '0');
     final m = d.month.toString().padLeft(2, '0');
     final day = d.day.toString().padLeft(2, '0');
     return '$y-$m-$day';
   }
-
-  String _yesNo(bool value) => value ? 'Yes' : 'No';
 
   pw.Widget _maintLabelValueRow(
     String label,
@@ -1473,516 +1608,45 @@ class PdfService {
     );
   }
 
-  pw.Widget _bulletRow(String label, bool value) {
-    return pw.Row(
-      children: [
-        pw.Text(value ? '• ' : '○ ', style: const pw.TextStyle(fontSize: 9)),
-        pw.Expanded(
-          child: pw.Text(label, style: const pw.TextStyle(fontSize: 9)),
-        ),
-      ],
-    );
-  }
+  /// The drawn signature for [type] ('technician' | 'customer') as an image,
+  /// or null when none was captured.
+  ///
+  /// Tries, in order: bytes still in memory from this session, the stored path
+  /// on the record (web store or filesystem, re-anchored if the app folder
+  /// moved), then the canonical per-record signature file.
+  Future<pw.MemoryImage?> _loadMaintenanceSignature(
+    MaintenanceRecord m,
+    String type,
+  ) async {
+    try {
+      final isTech = type == 'technician';
+      Uint8List? bytes =
+          isTech ? m.technicianSignatureBytes : m.customerSignatureBytes;
 
-  pw.Widget _buildMaintenanceSiteInfo(MaintenanceRecord m) {
-    return pw.Column(
-      crossAxisAlignment: pw.CrossAxisAlignment.start,
-      children: [
-        pw.Text(
-          'Site & Generator Information',
-          style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold),
-        ),
-        pw.SizedBox(height: 4),
-        _maintLabelValueRow('Site Code:', m.siteCode),
-        _maintLabelValueRow('Address:', m.address, wrap: true),
-        _maintLabelValueRow(
-          'Date of Service:',
-          m.dateOfService != null ? _fmtDate(m.dateOfService!) : '',
-        ),
-        _maintLabelValueRow('Technician:', m.technicianName),
-        _maintLabelValueRow('Generator Make:', m.generatorMake),
-        _maintLabelValueRow('Generator Model:', m.generatorModel),
-        _maintLabelValueRow('Serial #:', m.generatorSerial),
-        _maintLabelValueRow('Generator kW:', m.generatorKw),
-        _maintLabelValueRow('Engine Hours:', m.engineHours),
-        _maintLabelValueRow('Fuel Type:', m.fuelType),
-        _maintLabelValueRow('Last Fuel Delivery:', m.lastFuelDeliveryDate),
-        _maintLabelValueRow('Voltage Rating:', m.voltageRating),
-      ],
-    );
-  }
+      final path = isTech ? m.technicianSignaturePath : m.customerSignaturePath;
+      if ((bytes == null || bytes.isEmpty) && path != null && path.isNotEmpty) {
+        bytes = WebFileStore.instance.getSync(path);
+        if (bytes == null && !kIsWeb) {
+          final file = await PathResolver.resolveFile(path);
+          bytes = await file?.readAsBytes();
+        }
+      }
 
-  pw.Widget _buildMaintenanceWalkthrough(MaintenanceRecord m) {
-    final loc = m.generatorLocation;
-    final locOther = m.generatorLocationOther;
+      if ((bytes == null || bytes.isEmpty) && !kIsWeb) {
+        final file =
+            await FileStorageService.instance.getMaintenanceSignature(m.id, type);
+        bytes = await file?.readAsBytes();
+      }
 
-    return pw.Column(
-      crossAxisAlignment: pw.CrossAxisAlignment.start,
-      children: [
-        pw.SizedBox(height: 4),
-        pw.Text(
-          'Initial Walkthrough & Location',
-          style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold),
-        ),
-        pw.SizedBox(height: 4),
-        _maintLabelValueRow(
-          'Generator Location:',
-          loc == 'Other' && locOther.isNotEmpty ? '$loc ($locOther)' : loc,
-        ),
-        pw.SizedBox(height: 4),
-        pw.Text(
-          'Enclosure Condition:',
-          style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 9),
-        ),
-        pw.SizedBox(height: 2),
-        _bulletRow('Enclosure intact', m.enclosureIntact),
-        _bulletRow('Enclosure damaged', m.enclosureDamaged),
-        _bulletRow('No enclosure', m.noEnclosure),
-        pw.SizedBox(height: 4),
-        pw.Text(
-          'Safety & Hazards:',
-          style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 9),
-        ),
-        pw.SizedBox(height: 2),
-        _bulletRow('Visible damage or leaks', m.visibleDamageOrLeaks),
-        _bulletRow(
-          'Area clear of debris / tripping hazards',
-          m.areaClearOfHazards,
-        ),
-        _bulletRow('Warning / safety labels visible', m.warningLabelsVisible),
-        _bulletRow(
-          'Fire extinguisher present & accessible',
-          m.fireExtinguisherPresent,
-        ),
-      ],
-    );
-  }
-
-  pw.Widget _buildMaintenanceGeneral(MaintenanceRecord m) {
-    return pw.Column(
-      crossAxisAlignment: pw.CrossAxisAlignment.start,
-      children: [
-        pw.SizedBox(height: 4),
-        pw.Text(
-          'General Maintenance',
-          style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold),
-        ),
-        pw.SizedBox(height: 4),
-        pw.Text(
-          'Battery',
-          style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 9),
-        ),
-        _maintLabelValueRow(
-          'Needs replacement:',
-          _yesNo(m.batteryNeedsReplace),
-        ),
-        _maintLabelValueRow(
-          'Recently replaced:',
-          _yesNo(m.batteryRecentlyReplaced),
-        ),
-        _maintLabelValueRow('Mfg. Date:', m.batteryMfgDate),
-        _maintLabelValueRow('Part No.:', m.batteryPartNo),
-        _maintLabelValueRow('Type:', m.batteryType),
-        pw.SizedBox(height: 4),
-        pw.Text(
-          'Air Filter',
-          style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 9),
-        ),
-        _maintLabelValueRow(
-          'Needs replacement:',
-          _yesNo(m.airFilterNeedsReplace),
-        ),
-        _maintLabelValueRow(
-          'Recently replaced:',
-          _yesNo(m.airFilterRecentlyReplaced),
-        ),
-        _maintLabelValueRow('Last replaced:', m.airFilterLastReplacedDate),
-        _maintLabelValueRow('Part No.:', m.airFilterPartNo),
-        pw.SizedBox(height: 4),
-        pw.Text(
-          'Coolant',
-          style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 9),
-        ),
-        _maintLabelValueRow('Level:', m.coolantLevel),
-        _maintLabelValueRow('Color:', m.coolantColor),
-        pw.SizedBox(height: 4),
-        pw.Text(
-          'Hoses',
-          style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 9),
-        ),
-        _buildHoseRow(
-          'Coolant hoses',
-          compromised: m.coolantHosesCompromised,
-          recommendChange: m.coolantHosesRecommendChange,
-          notes: m.coolantHosesInfo,
-        ),
-        _buildHoseRow(
-          'Fuel hoses',
-          compromised: m.fuelHosesCompromised,
-          recommendChange: m.fuelHosesRecommendChange,
-          notes: m.fuelHosesInfo,
-        ),
-        _buildHoseRow(
-          'Air intake hoses',
-          compromised: m.airIntakeHosesCompromised,
-          recommendChange: m.airIntakeHosesRecommendChange,
-          notes: m.airIntakeHosesInfo,
-        ),
-        _buildHoseRow(
-          'Oil hoses',
-          compromised: m.oilHosesCompromised,
-          recommendChange: m.oilHosesRecommendChange,
-          notes: m.oilHosesInfo,
-        ),
-        _buildHoseRow(
-          'Additional hoses',
-          compromised: m.additionalHosesCompromised,
-          recommendChange: m.additionalHosesRecommendChange,
-          notes: m.additionalHosesInfo,
-        ),
-        pw.SizedBox(height: 4),
-        pw.Text(
-          'Cannisters / Filters Needed',
-          style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 9),
-        ),
-        _buildCanRow('Lube filter', m.canLube, m.canLubePartNo),
-        _buildCanRow('Fuel filter', m.canFuel, m.canFuelPartNo),
-        _buildCanRow('Water separator', m.canWaterSep, m.canWaterSepPartNo),
-        _buildCanRow('Oil filter', m.canOil, m.canOilPartNo),
-        _buildCanRow(
-          m.canOther1Label.isEmpty ? 'Other 1' : m.canOther1Label,
-          m.canOther1,
-          m.canOther1PartNo,
-        ),
-        _buildCanRow(
-          m.canOther2Label.isEmpty ? 'Other 2' : m.canOther2Label,
-          m.canOther2,
-          m.canOther2PartNo,
-        ),
-      ],
-    );
-  }
-
-  pw.Widget _buildHoseRow(
-    String label, {
-    required bool compromised,
-    required bool recommendChange,
-    required String notes,
-  }) {
-    return pw.Column(
-      crossAxisAlignment: pw.CrossAxisAlignment.start,
-      children: [
-        pw.Text(label, style: const pw.TextStyle(fontSize: 9)),
-        _maintLabelValueRow(
-          'Compromised:',
-          _yesNo(compromised),
-          labelWidth: 80,
-        ),
-        _maintLabelValueRow(
-          'Recommend change:',
-          _yesNo(recommendChange),
-          labelWidth: 80,
-        ),
-        if (notes.isNotEmpty)
-          _maintLabelValueRow('Notes:', notes, labelWidth: 80, wrap: true),
-        pw.SizedBox(height: 2),
-      ],
-    );
-  }
-
-  pw.Widget _buildCanRow(String label, bool checked, String partNo) {
-    return pw.Row(
-      crossAxisAlignment: pw.CrossAxisAlignment.start,
-      children: [
-        pw.Container(
-          width: 120,
-          child: pw.Text(label, style: const pw.TextStyle(fontSize: 9)),
-        ),
-        pw.SizedBox(width: 4),
-        pw.Text(
-          checked ? '[x]' : '[ ]',
-          style: const pw.TextStyle(fontSize: 9),
-        ),
-        pw.SizedBox(width: 8),
-        pw.Text('Part No: $partNo', style: const pw.TextStyle(fontSize: 9)),
-      ],
-    );
-  }
-
-  pw.Widget _buildMaintenanceActions(MaintenanceRecord m) {
-    pw.Widget action(String label, bool value, String notes) {
-      return pw.Column(
-        crossAxisAlignment: pw.CrossAxisAlignment.start,
-        children: [
-          pw.Row(
-            children: [
-              pw.Text(
-                value ? '[x] ' : '[ ] ',
-                style: const pw.TextStyle(fontSize: 9),
-              ),
-              pw.Expanded(
-                child: pw.Text(label, style: const pw.TextStyle(fontSize: 9)),
-              ),
-            ],
-          ),
-          if (notes.isNotEmpty)
-            pw.Padding(
-              padding: const pw.EdgeInsets.only(left: 16, bottom: 2),
-              child: pw.Text(
-                'Notes: $notes',
-                style: const pw.TextStyle(fontSize: 8),
-              ),
-            ),
-        ],
-      );
+      if (bytes == null || bytes.isEmpty) return null;
+      return pw.MemoryImage(bytes);
+    } catch (e) {
+      debugPrint('[PdfService] Could not load $type signature: $e');
+      return null;
     }
-
-    return pw.Column(
-      crossAxisAlignment: pw.CrossAxisAlignment.start,
-      children: [
-        pw.SizedBox(height: 4),
-        pw.Text(
-          'Maintenance Actions Performed',
-          style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold),
-        ),
-        pw.SizedBox(height: 4),
-        action('Oil filter changed', m.oilFilterChanged, m.oilFilterNotes),
-        action('Fuel filter replaced', m.fuelFilterReplaced, m.fuelFilterNotes),
-        action(
-          'Coolant flushed / topped off',
-          m.coolantFlushed,
-          m.coolantNotes,
-        ),
-        action(
-          'Battery replaced / serviced',
-          m.batteryReplaced,
-          m.batteryNotes,
-        ),
-        action('Air filter replaced', m.airFilterReplaced, m.airFilterNotes),
-        action(
-          'Belts / hoses replaced',
-          m.beltsHosesReplaced,
-          m.beltsHosesNotes,
-        ),
-        action(
-          'Block heater tested & functional',
-          m.blockHeaterTested,
-          m.blockHeaterNotes,
-        ),
-        action(
-          'Racor / fuel-water separator serviced',
-          m.racorServiced,
-          m.racorNotes,
-        ),
-        action(
-          'ATS / controller inspected',
-          m.atsControllerInspected,
-          m.atsControllerNotes,
-        ),
-        action('CDVR programmed / calibrated', m.cdvrProgrammed, m.cdvrNotes),
-        action(
-          'Under-voltage issue repaired',
-          m.undervoltageRepaired,
-          m.undervoltageNotes,
-        ),
-        action(
-          'Hazardous material removed / disposed',
-          m.hazmatRemoved,
-          m.hazmatNotes,
-        ),
-        pw.SizedBox(height: 4),
-        pw.Text(
-          'Service Observations / Notes:',
-          style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 9),
-        ),
-        if (m.serviceObservations.isNotEmpty)
-          pw.Text(
-            m.serviceObservations,
-            style: const pw.TextStyle(fontSize: 9),
-          ),
-      ],
-    );
   }
 
-  pw.Widget _buildMaintenancePostService(MaintenanceRecord m) {
-    return pw.Column(
-      crossAxisAlignment: pw.CrossAxisAlignment.start,
-      children: [
-        pw.SizedBox(height: 4),
-        pw.Text(
-          'Post-Service Checklist',
-          style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold),
-        ),
-        pw.SizedBox(height: 4),
-        _bulletRow(
-          'Verified generator runs under load',
-          m.postVerifyRunsUnderLoad,
-        ),
-        _bulletRow('Checked voltage & frequency', m.postCheckVoltFreq),
-        _bulletRow('Inspected exhaust system', m.postInspectExhaust),
-        _bulletRow('Verified grounding & bonding', m.postVerifyGrounding),
-        _bulletRow('Checked control panel operation', m.postCheckControlPanel),
-        _bulletRow(
-          'Ensured safety devices are in place & functional',
-          m.postEnsureSafetyDevices,
-        ),
-        _bulletRow(
-          'Documented all deficiencies & recommendations',
-          m.postDocumentDeficiencies,
-        ),
-        _bulletRow(
-          'Performed load-bank test (if applicable)',
-          m.postLoadbankTest,
-        ),
-        _bulletRow('Verified ATS functionality', m.postAtsFunctionality),
-        pw.SizedBox(height: 4),
-        pw.Text(
-          'Fuel Storage',
-          style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 9),
-        ),
-        _bulletRow(
-          'Fuel stored longer than recommended (consider testing / conditioning)',
-          m.fuelStoredLong,
-        ),
-      ],
-    );
-  }
-
-  pw.Widget _buildMaintenanceParts(MaintenanceRecord m) {
-    return pw.Column(
-      crossAxisAlignment: pw.CrossAxisAlignment.start,
-      children: [
-        pw.SizedBox(height: 4),
-        pw.Text(
-          'Parts & Materials Used',
-          style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold),
-        ),
-        pw.SizedBox(height: 4),
-        _maintLabelValueRow(
-          'Oil – type & quantity:',
-          m.partsOilTypeQty,
-          wrap: true,
-        ),
-        _maintLabelValueRow(
-          'Coolant – type & quantity:',
-          m.partsCoolantTypeQty,
-          wrap: true,
-        ),
-        _maintLabelValueRow(
-          'Filters – types installed:',
-          m.partsFilterTypes,
-          wrap: true,
-        ),
-        _maintLabelValueRow(
-          'Battery – type / install date:',
-          m.partsBatteryTypeDate,
-          wrap: true,
-        ),
-        _maintLabelValueRow(
-          'Belts / hoses replaced:',
-          m.partsBeltsHosesReplaced,
-          wrap: true,
-        ),
-        _maintLabelValueRow(
-          'Block heater – wattage / details:',
-          m.partsBlockHeaterWattage,
-          wrap: true,
-        ),
-        _maintLabelValueRow(
-          'CDVR – serial / part info:',
-          m.partsCdvrSerial,
-          wrap: true,
-        ),
-      ],
-    );
-  }
-
-  pw.Widget _buildMaintenanceSignatures(MaintenanceRecord m) {
-    final techDate = m.technicianSignatureDate != null
-        ? _fmtDate(m.technicianSignatureDate!)
-        : '';
-    final custDate = m.customerSignatureDate != null
-        ? _fmtDate(m.customerSignatureDate!)
-        : '';
-
-    return pw.Column(
-      crossAxisAlignment: pw.CrossAxisAlignment.start,
-      children: [
-        pw.SizedBox(height: 4),
-        pw.Text(
-          'Signatures',
-          style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold),
-        ),
-        pw.SizedBox(height: 4),
-        pw.Row(
-          crossAxisAlignment: pw.CrossAxisAlignment.start,
-          children: [
-            pw.Expanded(
-              child: pw.Column(
-                crossAxisAlignment: pw.CrossAxisAlignment.start,
-                children: [
-                  pw.Text(
-                    'Technician',
-                    style: pw.TextStyle(
-                      fontWeight: pw.FontWeight.bold,
-                      fontSize: 9,
-                    ),
-                  ),
-                  pw.SizedBox(height: 2),
-                  _maintLabelValueRow(
-                    'Name:',
-                    m.technicianSignatureName,
-                    labelWidth: 40,
-                  ),
-                  _maintLabelValueRow('Date:', techDate, labelWidth: 40),
-                  pw.SizedBox(height: 16),
-                  pw.Container(height: 0.5, color: PdfColors.grey600),
-                  pw.Text(
-                    'Technician Signature',
-                    style: const pw.TextStyle(fontSize: 7),
-                  ),
-                ],
-              ),
-            ),
-            pw.SizedBox(width: 24),
-            pw.Expanded(
-              child: pw.Column(
-                crossAxisAlignment: pw.CrossAxisAlignment.start,
-                children: [
-                  pw.Text(
-                    'Customer / Site Representative',
-                    style: pw.TextStyle(
-                      fontWeight: pw.FontWeight.bold,
-                      fontSize: 9,
-                    ),
-                  ),
-                  pw.SizedBox(height: 2),
-                  _maintLabelValueRow(
-                    'Name:',
-                    m.customerSignatureName,
-                    labelWidth: 40,
-                  ),
-                  _maintLabelValueRow('Date:', custDate, labelWidth: 40),
-                  pw.SizedBox(height: 16),
-                  pw.Container(height: 0.5, color: PdfColors.grey600),
-                  pw.Text(
-                    'Customer Signature',
-                    style: const pw.TextStyle(fontSize: 7),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-        pw.SizedBox(height: 4),
-        pw.Text(
-          'Note: Drawn signatures may be captured digitally and overlaid or attached separately.',
-          style: const pw.TextStyle(fontSize: 7),
-        ),
-      ],
-    );
-  }
-
+  /// One signature box: the drawn image sitting on the signature line.
   // ---------- Storage + email/share helper ----------
 
   Future<PdfExportResult> _saveAndMaybeEmailPdf({
