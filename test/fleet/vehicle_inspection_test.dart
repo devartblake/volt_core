@@ -20,6 +20,7 @@ VehicleInspection _inspection(
     );
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
   final now = DateTime(2026, 6, 15, 12);
 
   late Directory hiveDir;

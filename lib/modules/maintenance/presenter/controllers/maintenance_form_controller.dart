@@ -97,8 +97,13 @@ class MaintenanceFormController
 }
 
 /// Provider factory with optional maintenance record id.
+///
+/// `autoDispose` matters: a new record is keyed by a null id, so without it the
+/// first "new" form stays cached and every later "new" form reopens that same
+/// record (and saving would overwrite it and print its PDF). Each visit to the
+/// form now starts from fresh state.
 final maintenanceFormControllerProvider =
-StateNotifierProvider.family<MaintenanceFormController,
+StateNotifierProvider.autoDispose.family<MaintenanceFormController,
     MaintenanceFormState?, String?>(
       (ref, id) {
     final repo = ref.watch(maintenanceRepoProvider);

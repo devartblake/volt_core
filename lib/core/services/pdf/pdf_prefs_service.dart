@@ -1,5 +1,11 @@
 import 'package:hive/hive.dart';
 
+/// Which inspection PDF layout to produce.
+///
+/// [standard] is the print-ready layout (pages flow, larger type); [classic] is
+/// the original fixed five-page layout. Both carry the branded footer.
+enum InspectionPdfStyle { standard, classic }
+
 /// Simple Hive-backed service to store PDF export preferences
 /// on a **per-device** basis (no backend, no shared_prefs).
 class PdfPrefsService {
@@ -12,6 +18,7 @@ class PdfPrefsService {
   static const String _keyCustomDirectoryPath = 'pdf_custom_dir';
   static const String _keyDefaultRecipient = 'pdf_default_recipient';
   static const String _keyInspectionSummary = 'pdf_inspection_summary';
+  static const String _keyInspectionStyle = 'pdf_inspection_style';
 
   Box<dynamic>? _box;
 
@@ -52,6 +59,20 @@ class PdfPrefsService {
   Future<void> setIncludeInspectionSummary(bool value) async {
     final box = await _ensureBox();
     await box.put(_keyInspectionSummary, value);
+  }
+
+  /// The inspection PDF layout used when none is asked for explicitly.
+  Future<InspectionPdfStyle> getInspectionStyle() async {
+    final box = await _ensureBox();
+    final v = box.get(_keyInspectionStyle);
+    return v == InspectionPdfStyle.classic.name
+        ? InspectionPdfStyle.classic
+        : InspectionPdfStyle.standard;
+  }
+
+  Future<void> setInspectionStyle(InspectionPdfStyle style) async {
+    final box = await _ensureBox();
+    await box.put(_keyInspectionStyle, style.name);
   }
 
   /// Optional: custom directory path chosen by the user (desktop, etc.).

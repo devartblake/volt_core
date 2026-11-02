@@ -10,6 +10,7 @@ import '../../../../core/services/storage/cache_maintenance_service.dart';
 import '../../../../core/services/storage/user_data_export_service.dart';
 import '../../../../core/theme/theme_mode_provider.dart';
 import '../../../../shared/presenter/widgets/pdf_inspection_summary_tile.dart';
+import '../../../../shared/presenter/widgets/pdf_inspection_template_tile.dart';
 import '../../../../shared/widgets/widgets.dart';
 import '../../../auth/presenter/controllers/auth_controller.dart';
 import '../../../inspections/presenter/controllers/user_profile_controller.dart';
@@ -128,6 +129,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                     .read(appPreferencesProvider.notifier)
                     .setAutoSyncEnabled(value),
               ),
+              const Divider(height: 1),
+              const PdfInspectionTemplateTile(),
               const Divider(height: 1),
               const PdfInspectionSummaryTile(),
               const Divider(height: 1),

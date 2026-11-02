@@ -34,7 +34,15 @@ class MaintenanceReportPdf {
     pw.MemoryImage? logo,
     pw.MemoryImage? technicianSignature,
     pw.MemoryImage? customerSignature,
+    bool keepSectionsTogether = true,
   }) {
+    // A section header must never be stranded at the bottom of a page while
+    // its table starts on the next, so each bounded section is laid out as one
+    // unit. [keepSectionsTogether] is switched off as a fallback if a section
+    // ever turns out taller than a page.
+    pw.Widget keep(pw.Widget child) =>
+        keepSectionsTogether ? pw.Inseparable(child: child) : child;
+
     final shortId = m.id.length > 8 ? m.id.substring(0, 8) : m.id;
     final site = m.siteCode.isEmpty ? 'No site code' : m.siteCode;
 
@@ -51,20 +59,20 @@ class MaintenanceReportPdf {
           PdfTemplate.documentTitle('Generator Maintenance & Repair Report'),
           _metaStrip(m, shortId),
           pw.SizedBox(height: 10),
-          _summary(m),
+          keep(_summary(m)),
           pw.SizedBox(height: 12),
-          _siteAndEquipment(m),
+          keep(_siteAndEquipment(m)),
           pw.SizedBox(height: 12),
-          _walkthrough(m),
+          keep(_walkthrough(m)),
           pw.SizedBox(height: 12),
-          _findings(m),
+          keep(_findings(m)),
           pw.SizedBox(height: 12),
-          _partsNeeded(m),
-          _workPerformed(m),
+          keep(_partsNeeded(m)),
+          keep(_workPerformed(m)),
           pw.SizedBox(height: 12),
-          _postService(m),
+          keep(_postService(m)),
           pw.SizedBox(height: 12),
-          _partsUsed(m),
+          keep(_partsUsed(m)),
           pw.SizedBox(height: 12),
           _followUp(m),
           pw.SizedBox(height: 14),
@@ -102,26 +110,14 @@ class MaintenanceReportPdf {
   }
 
   static pw.Widget _footer(pw.Context ctx, String shortId, String site) {
-    return pw.Container(
-      margin: const pw.EdgeInsets.only(top: 8),
-      padding: const pw.EdgeInsets.only(top: 6),
-      decoration: const pw.BoxDecoration(
-        border: pw.Border(
-          top: pw.BorderSide(color: PdfColors.grey300, width: 1),
-        ),
-      ),
-      child: pw.Row(
-        mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-        children: [
-          pw.Text(
-            'Report $shortId   $site',
-            style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey),
-          ),
-          pw.Text(
-            'Page ${ctx.pageNumber} of ${ctx.pagesCount}',
-            style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey),
-          ),
-        ],
+    return pw.Padding(
+      padding: const pw.EdgeInsets.only(top: 8),
+      child: PdfTemplate.brandFooter(
+        segments: ['A&S ELECTRIC INC', 'Maintenance Report', site, 'No. $shortId'],
+        pageNumber: ctx.pageNumber,
+        total: ctx.pagesCount,
+        bleedX: 24, // page margins: 24 left/right, 28 bottom
+        bleedBottom: 28,
       ),
     );
   }

@@ -94,6 +94,7 @@ flutter:
     - assets/fonts/Faustina/
     - assets/pdf/Modified Comp Checklist With Load Test.pdf
     - assets/images/company_logo.png
+    - assets/images/pdf_footer.svg
   #   - images/a_dot_ham.jpeg
 
   # An image asset can refer to one or more resolution-specific "variants", see

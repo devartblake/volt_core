@@ -16,9 +16,6 @@ import 'package:pdf/widgets.dart' as pw;
 // import '../../features/inspections/data/models/test_interval_record.dart';
 // import '../../features/inspections/data/sources/hive_boxes.dart';
 // import '../../features/maintenance/data/models/maintenance_record.dart';
-import '../../../modules/fleet/domain/entities/vehicle_entity.dart';
-import '../../../modules/fleet/domain/entities/vehicle_inspection.dart';
-import '../../../modules/fleet/domain/entities/vehicle_maintenance_check.dart';
 import '../../../modules/inspections/infra/models/inspection.dart';
 import '../../../modules/inspections/infra/models/nameplate_data.dart';
 import '../../../modules/load_test/infra/models/load_test_record.dart';
@@ -30,6 +27,7 @@ import '../photos/photo_attachment.dart';
 import 'maintenance_report_pdf.dart';
 import 'pdf_prefs_service.dart';
 import 'vehicle_report_data.dart';
+import 'vehicle_report_pdf.dart';
 import '../photos/photo_service.dart';
 import '../storage/file_storage_service.dart';
 import '../storage/path_resolver.dart';
@@ -130,8 +128,9 @@ class PdfService {
   Future<Uint8List> buildInspectionPdfBytes(
     Inspection ins, {
     bool? includeSummary,
+    InspectionPdfStyle? style,
   }) =>
-      _buildInspectionPdfBytes(ins, includeSummary: includeSummary);
+      _buildInspectionPdfBytes(ins, includeSummary: includeSummary, style: style);
 
   /// Build the inspection PDF as raw bytes.
   ///
@@ -140,7 +139,10 @@ class PdfService {
   Future<Uint8List> _buildInspectionPdfBytes(
     Inspection ins, {
     bool? includeSummary,
+    InspectionPdfStyle? style,
   }) async {
+    await PdfTemplate.loadFooterArt();
+
     // Load fonts
     final baseFont = await rootBundle.load(
       'assets/fonts/NotoSans/NotoSans-Regular.ttf',
@@ -166,14 +168,26 @@ class PdfService {
       ),
     );
 
+    // Which of the two inspection templates to use: the explicit argument,
+    // else the device setting, else the standard one.
+    var template = style;
+    if (template == null) {
+      try {
+        template = await PdfPrefsService.instance.getInspectionStyle();
+      } catch (_) {
+        template = InspectionPdfStyle.standard;
+      }
+    }
+    final classic = template == InspectionPdfStyle.classic;
+
     // Page 1: Site and Generator Information
-    pdf.addPage(_buildPage1(ins, logo));
+    pdf.addPage(classic ? _buildClassicPage1(ins, logo) : _buildPage1(ins, logo));
 
     // Page 2: Fuel Storage, DEP, Operational
-    pdf.addPage(_buildPage2(ins));
+    pdf.addPage(classic ? _buildClassicPage2(ins) : _buildPage2(ins));
 
     // Page 3: Post-Inspection, Parts, Signatures
-    pdf.addPage(_buildPage3(ins));
+    pdf.addPage(classic ? _buildClassicPage3(ins) : _buildPage3(ins));
 
     // Full notes when they don't fit the fixed box on page 2, so nothing the
     // technician typed is cut off.
@@ -195,10 +209,10 @@ class PdfService {
     }
 
     // Page 4: Detailed Information & Fuel Monitoring
-    pdf.addPage(_buildPage4(ins));
+    pdf.addPage(classic ? _buildClassicPage4(ins) : _buildPage4(ins));
 
     // Page 5: Load Test Table
-    pdf.addPage(_buildPage5(ins));
+    pdf.addPage(classic ? _buildClassicPage5(ins) : _buildPage5(ins));
 
     // NAMEPLATE SUMMARY (one compact page)
     final nameplate = HiveBoxes.nameplates.values
@@ -368,7 +382,8 @@ class PdfService {
 
   /// Build the maintenance PDF and return bytes (for saving/emailing/etc.)
   Future<Uint8List> buildMaintenancePdfBytes(MaintenanceRecord m) async {
-    final pdf = pw.Document();
+    await PdfTemplate.loadFooterArt();
+    final theme = await _loadNotoTheme();
 
     final techSignature = await _loadMaintenanceSignature(m, 'technician');
     final customerSignature = await _loadMaintenanceSignature(m, 'customer');
@@ -381,19 +396,41 @@ class PdfService {
       logo = null; // The template draws a text mark when there is no logo.
     }
 
-    MaintenanceReportPdf.addTo(
-      pdf,
-      m,
-      logo: logo,
-      technicianSignature: techSignature,
-      customerSignature: customerSignature,
-    );
+    Future<Uint8List> build({required bool keepTogether}) async {
+      final pdf = pw.Document(theme: theme);
+      MaintenanceReportPdf.addTo(
+        pdf,
+        m,
+        logo: logo,
+        technicianSignature: techSignature,
+        customerSignature: customerSignature,
+        keepSectionsTogether: keepTogether,
+      );
+      await _addPhotosAppendix(pdf, PhotoAttachment.ownerMaintenance, m.id);
+      return pdf.save();
+    }
 
-    // PHOTO APPENDIX (attached maintenance photos, if any)
-    await _addPhotosAppendix(pdf, PhotoAttachment.ownerMaintenance, m.id);
-
-    return pdf.save();
+    try {
+      return await build(keepTogether: true);
+    } catch (e) {
+      // A section taller than a page cannot be kept whole; let it flow.
+      debugPrint('[PdfService] Keep-together layout failed, flowing: $e');
+      return build(keepTogether: false);
+    }
   }
+
+  /// Noto Sans, so every character prints (the built-in font lacks bullets and
+  /// dashes). Null when the asset cannot be loaded, which falls back cleanly.
+  Future<pw.ThemeData?> _loadNotoTheme() async {
+    try {
+      final base = await rootBundle.load('assets/fonts/NotoSans/NotoSans-Regular.ttf');
+      final bold = await rootBundle.load('assets/fonts/NotoSans/NotoSans-Bold.ttf');
+      return pw.ThemeData.withFont(base: pw.Font.ttf(base), bold: pw.Font.ttf(bold));
+    } catch (_) {
+      return null;
+    }
+  }
+
 
   /// Backward-compatible wrapper you can call from `MaintenanceRepo.exportPdf(rec)`.
   ///
@@ -440,6 +477,8 @@ class PdfService {
       footer: (context) => PdfTemplate.pageFooter(
         context.pageNumber,
         total: context.pagesCount,
+        bleedX: 24,
+        bleedBottom: 24,
       ),
       build: (context) => [
           PdfTemplate.companyHeader(logo: logo),
@@ -558,6 +597,8 @@ class PdfService {
       footer: (context) => PdfTemplate.pageFooter(
         context.pageNumber,
         total: context.pagesCount,
+        bleedX: 24,
+        bleedBottom: 24,
       ),
       build: (context) => [
           // Fuel Storage & FDNY Compliance
@@ -727,6 +768,755 @@ class PdfService {
     );
   }
 
+  // ===================================================================
+  // CLASSIC inspection template
+  //
+  // The original five-page layout, as it was before the standard template was
+  // reworked for print (fixed pages, smaller type). Selected in Settings. It
+  // uses the same branded footer as every other report.
+  // ===================================================================
+
+  /// CLASSIC PAGE 1: Site and Generator Information, Location & Safety
+  pw.Page _buildClassicPage1(Inspection ins, pw.MemoryImage? logo) {
+    return pw.Page(
+      pageFormat: PdfPageFormat.letter,
+      margin: const pw.EdgeInsets.all(24),
+      build: (context) => pw.Column(
+        crossAxisAlignment: pw.CrossAxisAlignment.start,
+        children: [
+          PdfTemplate.companyHeader(logo: logo),
+          pw.SizedBox(height: 8),
+          PdfTemplate.documentTitle('Generator Compliance Checklist'),
+          pw.SizedBox(height: 8),
+
+          // Site And Generator Information
+          PdfTemplate.sectionHeader('Site And Generator Information'),
+          pw.SizedBox(height: 8),
+          // Site Grade with checkboxes
+          pw.Padding(
+            padding: const pw.EdgeInsets.symmetric(horizontal: 8),
+            child: pw.Row(
+              children: [
+                pw.Text(
+                  'Site Grade (Load Testing): ',
+                  style: pw.TextStyle(
+                    fontSize: 9,
+                    fontWeight: pw.FontWeight.bold,
+                  ),
+                ),
+                PdfTemplate.checkboxWithLabel(
+                  'Green',
+                  ins.siteGrade == 'Green',
+                ),
+                pw.SizedBox(width: 12),
+                PdfTemplate.checkboxWithLabel(
+                  'Amber',
+                  ins.siteGrade == 'Amber',
+                ),
+                pw.SizedBox(width: 12),
+                PdfTemplate.checkboxWithLabel('Red', ins.siteGrade == 'Red'),
+              ],
+            ),
+          ),
+          pw.SizedBox(height: 8),
+          PdfTemplate.formFieldsTable({
+            'Site Code': ins.siteCode,
+            'Address': ins.formattedAddress,
+            'Date of Service': _formatDate(ins.serviceDate),
+            'Technician Name': ins.technicianName,
+            'Generator Make': ins.generatorMake,
+            'Generator Model': ins.generatorModel,
+            'Generator Serial #': ins.generatorSerial,
+            'Generator KW': ins.generatorKw,
+            'Engine Hours': ins.engineHours,
+            'Fuel Type': ins.fuelType,
+            'Voltage Rating': ins.voltageRating,
+          }),
+          pw.SizedBox(height: 16),
+
+          // Location and Safety
+          PdfTemplate.sectionHeader('Location and Safety'),
+          pw.SizedBox(height: 8),
+          pw.Padding(
+            padding: const pw.EdgeInsets.symmetric(horizontal: 8),
+            child: pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                pw.Row(
+                  children: [
+                    pw.Text(
+                      'Generator Location: ',
+                      style: pw.TextStyle(
+                        fontSize: 9,
+                        fontWeight: pw.FontWeight.bold,
+                      ),
+                    ),
+                    PdfTemplate.locationCheckboxes(
+                      indoors: ins.locIndoors,
+                      outdoors: ins.locOutdoors,
+                      roof: ins.locRoof,
+                      basement: ins.locBasement,
+                      other: ins.locOther,
+                    ),
+                  ],
+                ),
+                pw.SizedBox(height: 12),
+                _yesNoQuestion(
+                  'Is the generator housed in a dedicated room with a 2-hour fire-resistance rating?',
+                  ins.dedicatedRoom2hr,
+                ),
+                pw.SizedBox(height: 8),
+                _yesNoQuestion(
+                  'Is the generator room separate from the building\'s main electrical service?',
+                  ins.separateFromMainService,
+                ),
+                pw.SizedBox(height: 8),
+                _yesNoQuestion(
+                  'Is the area around the generator clear of hazards and obstructions?',
+                  ins.areaClear,
+                ),
+                pw.SizedBox(height: 8),
+                _yesNoQuestion(
+                  'Are warning labels and emergency stop buttons clearly visible?',
+                  ins.labelsAndEStopVisible,
+                ),
+                pw.SizedBox(height: 8),
+                _yesNoQuestion(
+                  'Is a fire extinguisher present near the generator?',
+                  ins.extinguisherPresent,
+                ),
+              ],
+            ),
+          ),
+          pw.Spacer(),
+          PdfTemplate.pageFooter(
+            1,
+            bleedX: 24,
+            bleedBottom: 24,
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// CLASSIC PAGE 2: Fuel Storage, DEP, Operational Use
+  pw.Page _buildClassicPage2(Inspection ins) {
+    return pw.Page(
+      pageFormat: PdfPageFormat.letter,
+      margin: const pw.EdgeInsets.all(24),
+      build: (context) => pw.Column(
+        crossAxisAlignment: pw.CrossAxisAlignment.start,
+        children: [
+          // Fuel Storage & FDNY Compliance
+          PdfTemplate.sectionHeader('Fuel Storage & FDNY Compliance'),
+          pw.SizedBox(height: 8),
+          pw.Padding(
+            padding: const pw.EdgeInsets.symmetric(horizontal: 8),
+            child: pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                pw.Row(
+                  children: [
+                    pw.Text(
+                      'Type of fuel stored on-site: ',
+                      style: const pw.TextStyle(fontSize: 9),
+                    ),
+                    PdfTemplate.checkboxWithLabel(
+                      'Diesel',
+                      ins.fuelStoredType == 'Diesel',
+                    ),
+                    pw.SizedBox(width: 8),
+                    PdfTemplate.checkboxWithLabel(
+                      'Gasoline',
+                      ins.fuelStoredType == 'Gasoline',
+                    ),
+                    pw.SizedBox(width: 8),
+                    PdfTemplate.checkboxWithLabel(
+                      'None',
+                      ins.fuelStoredType == 'None',
+                    ),
+                  ],
+                ),
+                pw.SizedBox(height: 8),
+                pw.Row(
+                  children: [
+                    pw.Text(
+                      'Approximate quantity of fuel stored: ',
+                      style: const pw.TextStyle(fontSize: 9),
+                    ),
+                    PdfTemplate.inputField(ins.fuelQtyGallons, width: 50),
+                    pw.SizedBox(width: 4),
+                    pw.Text('gallons', style: const pw.TextStyle(fontSize: 9)),
+                  ],
+                ),
+                pw.SizedBox(height: 12),
+                _yesNoUnknownQuestion(
+                  'Is there an FDNY permit for flammable/combustible liquids?',
+                  ins.fdnyPermit,
+                ),
+                pw.SizedBox(height: 8),
+                _yesNoUnknownQuestion(
+                  'Is there a Certificate of Fitness (C-92) holder on-site?',
+                  ins.c92OnSite,
+                ),
+                pw.SizedBox(height: 8),
+                _yesNoNAQuestion(
+                  'For natural gas systems: Is there a dedicated gas cut-off valve installed?',
+                  ins.gasCutoffValve,
+                ),
+              ],
+            ),
+          ),
+          pw.SizedBox(height: 16),
+
+          // DEP Emissions & Registration
+          PdfTemplate.sectionHeader('DEP Emissions & Registration'),
+          pw.SizedBox(height: 8),
+          pw.Padding(
+            padding: const pw.EdgeInsets.symmetric(horizontal: 8),
+            child: pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                pw.Row(
+                  children: [
+                    pw.Text(
+                      'Generator size (kW): ',
+                      style: const pw.TextStyle(fontSize: 9),
+                    ),
+                    PdfTemplate.inputField(ins.depSizeKw, width: 80),
+                  ],
+                ),
+                pw.SizedBox(height: 12),
+                _yesNoUnknownQuestion(
+                  'Is the generator registered in the DEP Clean Air Tracking System (CATS)?',
+                  ins.depRegisteredCats,
+                ),
+                pw.SizedBox(height: 8),
+                _yesNoUnknownQuestion(
+                  'Does the generator have a DEP Certificate to Operate?',
+                  ins.depCertificateOperate,
+                ),
+                pw.SizedBox(height: 8),
+                _yesNoUnknownQuestion(
+                  'Is the generator Tier 4 compliant (EPA standard)?',
+                  ins.tier4Compliant,
+                ),
+                pw.SizedBox(height: 8),
+                _yesNoUnknownQuestion(
+                  'If not Tier 4, has a smoke or stack test (EPA Method 9 or 5) been performed?',
+                  ins.smokeOrStackTest,
+                ),
+                pw.SizedBox(height: 8),
+                _yesNoQuestion(
+                  'Are operational and maintenance records kept for at least 5 years?',
+                  ins.recordsKept5Years,
+                ),
+              ],
+            ),
+          ),
+          pw.SizedBox(height: 16),
+
+          // Operational Use
+          PdfTemplate.sectionHeader('Operational Use'),
+          pw.SizedBox(height: 8),
+          pw.Padding(
+            padding: const pw.EdgeInsets.symmetric(horizontal: 8),
+            child: pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                _yesNoQuestion(
+                  'Is the generator used only for emergency purposes?',
+                  ins.emergencyOnly,
+                ),
+                pw.SizedBox(height: 8),
+                pw.Row(
+                  children: [
+                    pw.Text(
+                      'Estimated annual runtime (hours): ',
+                      style: const pw.TextStyle(fontSize: 9),
+                    ),
+                    PdfTemplate.inputField(
+                      ins.estimatedAnnualRuntimeHours,
+                      width: 50,
+                    ),
+                  ],
+                ),
+                pw.SizedBox(height: 12),
+                _yesNoNAQuestion(
+                  'Is there on-site fuel sufficient for 6 hours of full-load operation?',
+                  ins.fuelFor6hrs,
+                ),
+                pw.SizedBox(height: 16),
+                pw.Text(
+                  'Notes:',
+                  style: pw.TextStyle(
+                    fontSize: 9,
+                    fontWeight: pw.FontWeight.bold,
+                  ),
+                ),
+                pw.SizedBox(height: 4),
+                pw.Container(
+                  width: double.infinity,
+                  height: 60,
+                  decoration: pw.BoxDecoration(
+                    border: pw.Border.all(color: PdfColors.grey600),
+                  ),
+                  padding: const pw.EdgeInsets.all(6),
+                  child: pw.Text(
+                    _notesPreview(ins.notes),
+                    style: const pw.TextStyle(fontSize: 9),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          pw.Spacer(),
+          PdfTemplate.pageFooter(
+            2,
+            bleedX: 24,
+            bleedBottom: 24,
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// CLASSIC PAGE 3: Post-Inspection Checklist, Parts, Signatures
+  pw.Page _buildClassicPage3(Inspection ins) {
+    return pw.Page(
+      pageFormat: PdfPageFormat.letter,
+      margin: const pw.EdgeInsets.all(24),
+      build: (context) => pw.Column(
+        crossAxisAlignment: pw.CrossAxisAlignment.start,
+        children: [
+          // Post-Inspection check list
+          PdfTemplate.sectionHeader('Post-Inspection check list'),
+          pw.SizedBox(height: 8),
+          PdfTemplate.dataTable(
+            headers: ['Inspection Item', 'Yes', 'No', 'Conclusions'],
+            rows: [
+              [
+                'Verify generator starts and runs under load',
+                PdfTemplate.checkbox(ins.gensetRunsUnderLoad),
+                PdfTemplate.checkbox(!ins.gensetRunsUnderLoad),
+                ins.checklistNotes['genset_runs_under_load'] ?? '',
+              ],
+              [
+                'Check voltage and frequency output',
+                PdfTemplate.checkbox(ins.voltageFrequencyOk),
+                PdfTemplate.checkbox(!ins.voltageFrequencyOk),
+                ins.checklistNotes['voltage_frequency_ok'] ?? '',
+              ],
+              [
+                'Inspect exhaust system',
+                PdfTemplate.checkbox(ins.exhaustOk),
+                PdfTemplate.checkbox(!ins.exhaustOk),
+                ins.checklistNotes['exhaust_ok'] ?? '',
+              ],
+              [
+                'Verify grounding and bonding',
+                PdfTemplate.checkbox(ins.groundingBondingOk),
+                PdfTemplate.checkbox(!ins.groundingBondingOk),
+                ins.checklistNotes['grounding_bonding_ok'] ?? '',
+              ],
+              [
+                'Check control panel functionality',
+                PdfTemplate.checkbox(ins.controlPanelOk),
+                PdfTemplate.checkbox(!ins.controlPanelOk),
+                ins.checklistNotes['control_panel_ok'] ?? '',
+              ],
+              [
+                'Ensure all safety devices are operational',
+                PdfTemplate.checkbox(ins.safetyDevicesOk),
+                PdfTemplate.checkbox(!ins.safetyDevicesOk),
+                ins.checklistNotes['safety_devices_ok'] ?? '',
+              ],
+              [
+                'Document any deficiencies',
+                PdfTemplate.checkbox(ins.deficienciesDocumented),
+                PdfTemplate.checkbox(!ins.deficienciesDocumented),
+                ins.checklistNotes['deficiencies_documented'] ?? '',
+              ],
+              [
+                'Loadbank test performed (if applicable)',
+                PdfTemplate.checkbox(ins.loadbankDone),
+                PdfTemplate.checkbox(!ins.loadbankDone),
+                ins.checklistNotes['loadbank_done'] ?? '',
+              ],
+              [
+                'ATS functionality verified (if applicable)',
+                PdfTemplate.checkbox(ins.atsVerified),
+                PdfTemplate.checkbox(!ins.atsVerified),
+                ins.checklistNotes['ats_verified'] ?? '',
+              ],
+              [
+                'Has the fuel been stored over (1Yr)',
+                PdfTemplate.checkbox(ins.fuelStoredOver1Yr),
+                PdfTemplate.checkbox(!ins.fuelStoredOver1Yr),
+                ins.checklistNotes['fuel_stored_over_1yr'] ?? '',
+              ],
+            ],
+            columnWidths: [3, 0.4, 0.4, 2],
+          ),
+          pw.SizedBox(height: 16),
+
+          // Parts and Materials Used
+          PdfTemplate.sectionHeader('Parts and Materials Used'),
+          pw.SizedBox(height: 8),
+          pw.Padding(
+            padding: const pw.EdgeInsets.symmetric(horizontal: 8),
+            child: pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                pw.Row(
+                  children: [
+                    pw.Text(
+                      'Date of last generator service: ',
+                      style: const pw.TextStyle(fontSize: 9),
+                    ),
+                    PdfTemplate.inputField(ins.lastServiceDate, width: 100),
+                  ],
+                ),
+                pw.SizedBox(height: 8),
+                pw.Text(
+                  'Has the generator undergone any of the following in the past year?',
+                  style: const pw.TextStyle(fontSize: 9),
+                ),
+                pw.SizedBox(height: 6),
+                _serviceItem('Oil and filter change', ins.oilFilterChangeDate),
+                _serviceItem('Fuel filter replacement', ins.fuelFilterDate),
+                _serviceItem('Coolant flush', ins.coolantFlushDate),
+                _serviceItem('Battery replacement', ins.batteryReplaceDate),
+                _serviceItem('Air filter replacement', ins.airFilterDate),
+              ],
+            ),
+          ),
+          pw.SizedBox(height: 24),
+
+          // Signatures
+          pw.Row(
+            crossAxisAlignment: pw.CrossAxisAlignment.start,
+            mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+            children: [
+              PdfTemplate.signatureBlock(
+                label: 'Technician Signature',
+                name: ins.technicianName,
+                signaturePath: ins.technicianSignaturePath,
+                date: _formatDate(ins.serviceDate),
+              ),
+              PdfTemplate.signatureBlock(
+                label: 'Customer Signature',
+                name: ins.customerName,
+                signaturePath: ins.customerSignaturePath,
+                date: _formatDate(ins.serviceDate),
+              ),
+            ],
+          ),
+          pw.Spacer(),
+          PdfTemplate.pageFooter(
+            3,
+            bleedX: 24,
+            bleedBottom: 24,
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// CLASSIC PAGE 4: Detailed Site Information & Fuel Monitoring
+  pw.Page _buildClassicPage4(Inspection ins) {
+    return pw.Page(
+      pageFormat: PdfPageFormat.letter,
+      margin: const pw.EdgeInsets.all(24),
+      build: (context) => pw.Column(
+        crossAxisAlignment: pw.CrossAxisAlignment.start,
+        children: [
+          PdfTemplate.sectionHeader('Post-Inspection check list'),
+          pw.SizedBox(height: 12),
+
+          // Site details
+          pw.Row(
+            children: [
+              pw.Expanded(
+                child: pw.Column(
+                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+                  children: [
+                    _labelValueRow('Site', ins.siteCode),
+                    _labelValueRow('Technician', ins.technicianName),
+                  ],
+                ),
+              ),
+              pw.Expanded(
+                child: pw.Column(
+                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+                  children: [
+                    _labelValueRow('Date', _formatDate(ins.serviceDate)),
+                    _labelValueRow('Custodial Staff', ''),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          pw.SizedBox(height: 8),
+          pw.Row(
+            children: [
+              _labelValueRow('TEMPERATURE', '', width: 60),
+              pw.Text('°F', style: const pw.TextStyle(fontSize: 9)),
+              pw.SizedBox(width: 24),
+              _labelValueRow('HUMIDITY', '', width: 60),
+              pw.Text('%', style: const pw.TextStyle(fontSize: 9)),
+            ],
+          ),
+          pw.SizedBox(height: 12),
+
+          // Locations
+          pw.Row(
+            children: [
+              pw.Text(
+                'Generator Location: ',
+                style: const pw.TextStyle(fontSize: 9),
+              ),
+              PdfTemplate.locationCheckboxes(
+                indoors: ins.locIndoors,
+                outdoors: ins.locOutdoors,
+                roof: ins.locRoof,
+                basement: ins.locBasement,
+                other: ins.locOther,
+              ),
+            ],
+          ),
+          pw.SizedBox(height: 8),
+          pw.Row(
+            children: [
+              pw.Text('ATS Location: ', style: const pw.TextStyle(fontSize: 9)),
+              PdfTemplate.checkboxWithLabel('Rooftop', false),
+              pw.SizedBox(width: 8),
+              PdfTemplate.checkboxWithLabel('Basement', false),
+              pw.SizedBox(width: 8),
+              PdfTemplate.checkboxWithLabel('Electrical Room', false),
+              pw.SizedBox(width: 8),
+              pw.Text('Other: _______', style: const pw.TextStyle(fontSize: 9)),
+            ],
+          ),
+          pw.SizedBox(height: 16),
+
+          // Nameplate Data
+          pw.Text(
+            'Nameplate Data',
+            style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold),
+            textAlign: pw.TextAlign.right,
+          ),
+          pw.SizedBox(height: 8),
+          _nameplateRow(
+            'GENERATOR MFR.',
+            ins.generatorMake,
+            'MODEL NO.',
+            ins.generatorModel,
+            'SN',
+            ins.generatorSerial,
+          ),
+          pw.SizedBox(height: 4),
+          _nameplateRow(
+            'KVA:',
+            '',
+            'KW:',
+            ins.generatorKw,
+            'VOLTS:',
+            ins.voltageRating,
+          ),
+          pw.SizedBox(height: 4),
+          pw.Row(
+            children: [
+              _labelValueRow('AMPS', '', width: 60),
+              pw.SizedBox(width: 16),
+              _labelValueRow('PHASE', '', width: 60),
+              pw.SizedBox(width: 16),
+              _labelValueRow('CYCLES', '', width: 60),
+            ],
+          ),
+          pw.SizedBox(height: 4),
+          _labelValueRow('RPM', '', width: 80),
+          pw.SizedBox(height: 8),
+          _nameplateRow(
+            'GENERATOR CONTROL MFR.',
+            '',
+            'MODEL NO.',
+            '',
+            'S/N',
+            '',
+          ),
+          pw.SizedBox(height: 4),
+          _nameplateRow('GOVERNOR MFR.', '', 'MODEL NO.', '', 'S/N', ''),
+          pw.SizedBox(height: 4),
+          _nameplateRow('VOLTAGE REG.MFR.', '', 'MODEL NO.', '', 'S/N', ''),
+          pw.SizedBox(height: 16),
+
+          // Fuel Monitoring Data
+          pw.Text(
+            'Fuel Monitoring Data',
+            style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold),
+            textAlign: pw.TextAlign.right,
+          ),
+          pw.SizedBox(height: 8),
+          pw.Row(
+            children: [
+              _labelValueRow('Volume', '', width: 50),
+              pw.Text('GAL', style: const pw.TextStyle(fontSize: 8)),
+              pw.SizedBox(width: 12),
+              _labelValueRow('Ullage', '', width: 40),
+              pw.Text('GAL', style: const pw.TextStyle(fontSize: 8)),
+              pw.SizedBox(width: 12),
+              _labelValueRow('90% Ullage', '', width: 50),
+              pw.Text('GAL', style: const pw.TextStyle(fontSize: 8)),
+              pw.SizedBox(width: 12),
+              _labelValueRow('TC Volume', '', width: 50),
+              pw.Text('GAL', style: const pw.TextStyle(fontSize: 8)),
+            ],
+          ),
+          pw.SizedBox(height: 8),
+          pw.Row(
+            children: [
+              _labelValueRow('Height', '', width: 50),
+              pw.Text('GAL', style: const pw.TextStyle(fontSize: 8)),
+              pw.SizedBox(width: 12),
+              _labelValueRow('Water', '', width: 40),
+              pw.Text('GAL', style: const pw.TextStyle(fontSize: 8)),
+              pw.SizedBox(width: 12),
+              _labelValueRow('Water', '', width: 50),
+              pw.Text('Inches', style: const pw.TextStyle(fontSize: 8)),
+              pw.SizedBox(width: 12),
+              _labelValueRow('Temp °F', '', width: 50),
+            ],
+          ),
+          pw.SizedBox(height: 8),
+          _labelValueRow('Time', '', width: 100),
+          pw.SizedBox(height: 16),
+
+          // Comments and Deficiencies
+          pw.Container(
+            width: double.infinity,
+            height: 60,
+            decoration: pw.BoxDecoration(
+              border: pw.Border.all(color: PdfColors.grey600),
+            ),
+            child: pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                pw.Container(
+                  padding: const pw.EdgeInsets.all(4),
+                  decoration: const pw.BoxDecoration(
+                    border: pw.Border(
+                      bottom: pw.BorderSide(color: PdfColors.grey600),
+                    ),
+                  ),
+                  child: pw.Text(
+                    'Comments:',
+                    style: pw.TextStyle(
+                      fontSize: 9,
+                      fontWeight: pw.FontWeight.bold,
+                    ),
+                  ),
+                ),
+                pw.Expanded(child: pw.SizedBox()),
+              ],
+            ),
+          ),
+          pw.SizedBox(height: 8),
+          pw.Container(
+            width: double.infinity,
+            height: 60,
+            decoration: pw.BoxDecoration(
+              border: pw.Border.all(color: PdfColors.grey600),
+            ),
+            child: pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                pw.Container(
+                  padding: const pw.EdgeInsets.all(4),
+                  decoration: const pw.BoxDecoration(
+                    border: pw.Border(
+                      bottom: pw.BorderSide(color: PdfColors.grey600),
+                    ),
+                  ),
+                  child: pw.Text(
+                    'Deficiencies:',
+                    style: pw.TextStyle(
+                      fontSize: 9,
+                      fontWeight: pw.FontWeight.bold,
+                    ),
+                  ),
+                ),
+                pw.Expanded(child: pw.SizedBox()),
+              ],
+            ),
+          ),
+          pw.Spacer(),
+          PdfTemplate.pageFooter(
+            4,
+            bleedX: 24,
+            bleedBottom: 24,
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// CLASSIC PAGE 5: Load Test Table
+  pw.Page _buildClassicPage5(Inspection ins) {
+    return pw.Page(
+      pageFormat: PdfPageFormat.letter.landscape,
+      margin: const pw.EdgeInsets.all(16),
+      build: (context) => pw.Column(
+        crossAxisAlignment: pw.CrossAxisAlignment.start,
+        children: [
+          pw.Row(
+            mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+            children: [
+              pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                children: [
+                  pw.Row(
+                    children: [
+                      pw.Text(
+                        'EQPT. INVENTORY NO. ',
+                        style: const pw.TextStyle(fontSize: 9),
+                      ),
+                      PdfTemplate.inputField('', width: 120),
+                    ],
+                  ),
+                ],
+              ),
+              pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                children: [
+                  pw.Row(
+                    children: [
+                      pw.Text(
+                        'TESTED BY: ',
+                        style: const pw.TextStyle(fontSize: 9),
+                      ),
+                      PdfTemplate.inputField(ins.technicianName, width: 120),
+                    ],
+                  ),
+                ],
+              ),
+            ],
+          ),
+          pw.SizedBox(height: 16),
+          PdfTemplate.loadTestTable(readings: []),
+          pw.Spacer(),
+          PdfTemplate.pageFooter(
+            5,
+            bleedX: 16,
+            bleedBottom: 16,
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ---------- Helper widgets & utilities ----------
+
   static const int _notesPreviewMaxChars = 450;
   static const int _notesPreviewMaxLines = 6;
 
@@ -822,6 +1612,8 @@ class PdfService {
       footer: (context) => PdfTemplate.pageFooter(
         context.pageNumber,
         total: context.pagesCount,
+        bleedX: 24,
+        bleedBottom: 24,
       ),
       build: (context) => [
         PdfTemplate.documentTitle('Inspection Summary'),
@@ -841,13 +1633,13 @@ class PdfService {
         ),
         pw.SizedBox(height: 8),
         pw.Text(
-          'Post-inspection checks passed: '
+          'Post-inspection checks confirmed: '
           '${checks.length - failed.length} of ${checks.length}',
           style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold),
         ),
         pw.SizedBox(height: 6),
         if (failed.isNotEmpty) ...[
-          pw.Text('Not passed', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
+          pw.Text('Not confirmed', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
           for (final c in failed) bullet(c.$1, note: ins.checklistNotes[c.$3]),
         ],
         if (siteIssues.isNotEmpty) ...[
@@ -887,6 +1679,8 @@ class PdfService {
       footer: (context) => PdfTemplate.pageFooter(
         context.pageNumber,
         total: context.pagesCount,
+        bleedX: 24,
+        bleedBottom: 24,
       ),
       build: (context) => [
           // Post-Inspection check list
@@ -1024,6 +1818,8 @@ class PdfService {
       footer: (context) => PdfTemplate.pageFooter(
         context.pageNumber,
         total: context.pagesCount,
+        bleedX: 24,
+        bleedBottom: 24,
       ),
       build: (context) => [
           PdfTemplate.sectionHeader('Post-Inspection check list'),
@@ -1298,7 +2094,11 @@ class PdfService {
             fillHeight: PdfPageFormat.letter.landscape.height * 0.75,
           ),
           pw.Spacer(),
-          PdfTemplate.pageFooter(context.pageNumber),
+          PdfTemplate.pageFooter(
+            context.pageNumber,
+            bleedX: 16,
+            bleedBottom: 16,
+          ),
         ],
       ),
     );
@@ -1580,34 +2380,6 @@ class PdfService {
     return '$y-$m-$day';
   }
 
-  pw.Widget _maintLabelValueRow(
-    String label,
-    String value, {
-    bool wrap = false,
-    double labelWidth = 120,
-  }) {
-    return pw.Row(
-      crossAxisAlignment: pw.CrossAxisAlignment.start,
-      children: [
-        pw.Container(
-          width: labelWidth,
-          child: pw.Text(
-            label,
-            style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 9),
-          ),
-        ),
-        pw.SizedBox(width: 4),
-        pw.Expanded(
-          child: pw.Text(
-            value,
-            style: const pw.TextStyle(fontSize: 9),
-            softWrap: wrap,
-          ),
-        ),
-      ],
-    );
-  }
-
   /// The drawn signature for [type] ('technician' | 'customer') as an image,
   /// or null when none was captured.
   ///
@@ -1829,133 +2601,20 @@ class PdfService {
   /// item), maintenance history, tools, then photo appendices.
   Future<Uint8List> buildVehiclePdfBytes(VehicleReportData data) async {
     final v = data.vehicle;
-    final pdf = pw.Document();
+    await PdfTemplate.loadFooterArt();
 
-    pw.Widget heading(String text) => pw.Padding(
-          padding: const pw.EdgeInsets.only(top: 12, bottom: 4),
-          child: pw.Text(
-            text,
-            style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold),
-          ),
-        );
+    final theme = await _loadNotoTheme();
+    final pdf = pw.Document(theme: theme);
 
-    final facts = <(String, String)>[
-      ('Designation', v.designation.trim().isEmpty ? v.displayTitle : v.designation),
-      ('Type', v.vehicleType.label),
-      if (v.makeModel.isNotEmpty) ('Make / Model', v.makeModel),
-      if (v.modelYear != null) ('Year', '${v.modelYear}'),
-      ('VIN', v.vin ?? 'Not recorded'),
-      ('License plate',
-          v.licensePlate.trim().isEmpty ? 'Not recorded' : v.licensePlate.trim()),
-      ('Odometer', '${v.odometer} mi'),
-      ('Status', v.status.label),
-      ('Assigned driver', data.driverName ?? 'Unassigned'),
-    ];
+    pw.MemoryImage? logo;
+    try {
+      final logoData = await rootBundle.load('assets/images/company_logo.png');
+      logo = pw.MemoryImage(logoData.buffer.asUint8List());
+    } catch (_) {
+      logo = null;
+    }
 
-    pdf.addPage(
-      pw.MultiPage(
-        pageFormat: PdfPageFormat.letter,
-        margin: const pw.EdgeInsets.all(24),
-        build: (ctx) => [
-          pw.Text(
-            'Vehicle Report',
-            style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold),
-          ),
-          pw.SizedBox(height: 4),
-          pw.Text(
-            'A&S Electric – Generated ${_fmtDate(DateTime.now())}',
-            style: const pw.TextStyle(fontSize: 10),
-          ),
-          pw.Divider(),
-          for (final (label, value) in facts)
-            pw.Padding(
-              padding: const pw.EdgeInsets.symmetric(vertical: 1.5),
-              child: _maintLabelValueRow(label, value, wrap: true),
-            ),
-          if (v.notes.trim().isNotEmpty) ...[
-            heading('Notes'),
-            pw.Text(v.notes.trim(), style: const pw.TextStyle(fontSize: 9)),
-          ],
-
-          heading('Inspections'),
-          if (data.inspections.isEmpty)
-            pw.Text('No inspections recorded.',
-                style: const pw.TextStyle(fontSize: 9))
-          else ...[
-            PdfTemplate.dataTable(
-              headers: ['Date', 'Type', 'Inspector', 'Odometer', 'Flagged'],
-              rows: [
-                for (final i in data.inspections.take(12))
-                  [
-                    _fmtDate(i.inspectedAt),
-                    i.cadence.label,
-                    i.inspectorName,
-                    i.odometer > 0 ? '${i.odometer} mi' : '',
-                    i.hasIssues ? '${i.issueCount}' : 'None',
-                  ],
-              ],
-            ),
-            // Spell out every flagged item on the most recent inspections so
-            // the PDF says what was wrong, not just that something was.
-            for (final i in data.inspections.take(3))
-              if (i.hasIssues) ...[
-                pw.SizedBox(height: 8),
-                pw.Text(
-                  '${i.cadence.label} inspection ${_fmtDate(i.inspectedAt)} – flagged items',
-                  style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold),
-                ),
-                for (final item in inspectionItemsFor(i.cadence))
-                  if ((i.results[item.key]?.needsFollowUp) ?? false)
-                    pw.Padding(
-                      padding: const pw.EdgeInsets.only(left: 8, top: 2),
-                      child: pw.Text(
-                        '• ${item.label}: ${i.results[item.key]!.label}'
-                        '${(i.itemNotes[item.key] ?? '').isEmpty ? '' : ' – ${i.itemNotes[item.key]}'}',
-                        style: const pw.TextStyle(fontSize: 9),
-                      ),
-                    ),
-                if (i.notes.isNotEmpty)
-                  pw.Padding(
-                    padding: const pw.EdgeInsets.only(left: 8, top: 2),
-                    child: pw.Text('Notes: ${i.notes}',
-                        style: const pw.TextStyle(fontSize: 9)),
-                  ),
-              ],
-          ],
-
-          heading('Maintenance history'),
-          if (data.checks.isEmpty)
-            pw.Text('No maintenance checks recorded.',
-                style: const pw.TextStyle(fontSize: 9))
-          else
-            PdfTemplate.dataTable(
-              headers: ['Date', 'Odometer', 'Brakes', 'Battery', 'Notes'],
-              rows: [
-                for (final c in data.checks.take(12))
-                  [
-                    _fmtDate(c.checkedAt.toLocal()),
-                    '${c.odometer} mi',
-                    c.brakeStatus.label,
-                    c.batteryStatus.label,
-                    c.notes,
-                  ],
-              ],
-            ),
-
-          heading('Tools and equipment'),
-          if (data.assets.isEmpty)
-            pw.Text('No tools assigned.', style: const pw.TextStyle(fontSize: 9))
-          else
-            PdfTemplate.dataTable(
-              headers: ['Tool', 'Serial', 'Status', 'Notes'],
-              rows: [
-                for (final a in data.assets)
-                  [a.label, a.serial, a.status, a.notes],
-              ],
-            ),
-        ],
-      ),
-    );
+    VehicleReportPdf.addTo(pdf, data, logo: logo);
 
     // Photos taken on the vehicle itself, then those from the latest inspection.
     await _addPhotosAppendix(pdf, PhotoAttachment.ownerVehicle, v.id);

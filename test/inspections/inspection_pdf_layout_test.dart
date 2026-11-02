@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:hive/hive.dart';
 import 'package:voltcore/core/services/hive/hive_adapters.dart';
 import 'package:voltcore/core/services/hive/hive_boxes.dart';
+import 'package:voltcore/core/services/pdf/pdf_prefs_service.dart';
 import 'package:voltcore/core/services/pdf/pdf_service.dart';
 import 'package:voltcore/modules/inspections/infra/models/inspection.dart';
 
@@ -95,5 +96,36 @@ void main() {
         .buildInspectionPdfBytes(base, includeSummary: true);
 
     expect(pagesFor(withSummary), pagesFor(without) + 1);
+  });
+
+  test('the classic template builds the original five pages', () async {
+    int pagesFor(List<int> bytes) => RegExp(r'/Type\s*/Page[^s]')
+        .allMatches(latin1.decode(bytes, allowInvalid: true))
+        .length;
+
+    final ins = Inspection(
+      id: 'ins-classic',
+      createdAt: DateTime(2026, 10, 30),
+      siteCode: 'BK-1',
+    );
+    final classic = await PdfService.instance.buildInspectionPdfBytes(
+      ins,
+      includeSummary: false,
+      style: InspectionPdfStyle.classic,
+    );
+    expect(String.fromCharCodes(classic.take(4)), '%PDF');
+    expect(pagesFor(classic), 5);
+  });
+
+  test('the template choice is stored per device and defaults to standard',
+      () async {
+    expect(await PdfPrefsService.instance.getInspectionStyle(),
+        InspectionPdfStyle.standard);
+    await PdfPrefsService.instance
+        .setInspectionStyle(InspectionPdfStyle.classic);
+    expect(await PdfPrefsService.instance.getInspectionStyle(),
+        InspectionPdfStyle.classic);
+    await PdfPrefsService.instance
+        .setInspectionStyle(InspectionPdfStyle.standard);
   });
 }
