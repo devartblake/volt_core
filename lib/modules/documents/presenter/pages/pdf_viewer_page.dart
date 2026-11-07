@@ -66,7 +66,9 @@ class PdfViewerPage extends StatelessWidget {
         ),
       );
     } catch (e) {
-      AppSnackBar.errorOn(messenger, 'Could not share the PDF: $e');
+      debugPrint('[PdfViewerPage] share failed: $e');
+      AppSnackBar.errorOn(
+          messenger, 'Could not share the PDF. Please try again.');
     }
   }
 }

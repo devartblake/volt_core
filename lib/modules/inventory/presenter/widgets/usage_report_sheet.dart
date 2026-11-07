@@ -7,7 +7,7 @@ import 'package:intl/intl.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../../../../core/theme/app_tokens.dart';
-import '../../../../shared/widgets/app_snack_bar.dart';
+import '../../../../shared/widgets/action_runner.dart';
 import '../../../../shared/widgets/empty_state.dart';
 import '../../../../shared/widgets/stat_card.dart';
 import '../../domain/catalog_part.dart';
@@ -78,15 +78,17 @@ class _UsageReportViewState extends ConsumerState<UsageReportView> {
   }
 
   Future<void> _export(UsageReport report) async {
-    final messenger = ScaffoldMessenger.of(context);
     final now = (widget.now ?? DateTime.now)();
     final name = 'parts-usage-${DateFormat('yyyyMMdd').format(now)}.csv';
-    try {
-      await ref
-          .read(usageCsvExporterProvider)(name, usageReportCsv(report));
-    } catch (_) {
-      AppSnackBar.errorOn(messenger, 'Could not export the report.');
-    }
+    final export = ref.read(usageCsvExporterProvider);
+    await runUserAction(
+      context,
+      label: 'export the report',
+      action: () async {
+        await export(name, usageReportCsv(report));
+        return true;
+      },
+    );
   }
 
   @override

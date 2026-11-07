@@ -231,14 +231,24 @@ Done:
 - [x] **Timeline month layout** has the Assign / Reassign button on task cards.
 - [x] **Testability seam** for opening, printing and sharing documents (`documentActionsProvider`), with tests for the hub and the vehicle Documents tab.
 - [x] A share failure in the PDF viewer now shows an error message.
+- [x] **Signature pads in dark mode**: a signature is a document artifact (exported as a PNG and printed on PDFs), so it is always black ink on a white "paper" surface whatever the app theme. The pads therefore stay light in dark mode but get a visible mid-grey outline (3:1 against the dark and light surfaces), a baseline and a "Sign here" hint (4.5:1 on the paper); the caption and buttons around them use theme colours. Saved signatures are previewed on the same paper so dark ink never lands on a dark background. One shared widget set (`shared/widgets/signature_surface.dart`: `SignaturePaper`, `SignatureImagePreview`) and tokens (`core/theme/signature_palette.dart`) are used by the maintenance, inspection and vehicle-inspection pads and the vehicle detail sheet. The pad fills the width up to 560 dp with a 140 to 240 dp height. Pen and export colours are unchanged, so stored PNG bytes are identical in both themes. Tested in `test/shared/signature_surface_test.dart` (contrast, phone and both tablet orientations, 1.3x text, rotation, exported pixels).
 
-## 10. Still open
+## 10. Follow-up round (2026-11-07) and what is still open
 
-- Hard-coded colours in feature pages that were not reviewed for dark mode: `section_maint_signatures.dart`, `vehicle_inspection_detail_sheet.dart`, `vehicle_inspection_form_page.dart`, `section_signatures.dart` (inspections), `schedule_dialog.dart`, `inspection_form_page.dart`, `inspection_detail_page.dart`, `equipment_search_bar.dart`. The signature pads are probably meant to stay white.
-- `sharePdfDocument` / `shareManyPdfDocuments` (documents `document_actions.dart`) have no error handling or progress; the data export in Settings was not checked for feedback.
-- Lists left as plain `ListView`: purchase orders, documents hub, equipment results, vehicle list, maintenance list, schedule day list (modest size). The Documents hub and inspections history are not paged.
+Done:
+
+- [x] **Share, export, print and email actions** all catch failures (`lib/shared/widgets/action_runner.dart`, `runUserAction`): a failure shows "Could not <action>. Please try again." (details only in the log), a cancelled save or share shows nothing, and email, PDF generation and Settings export show busy feedback. Covered: document share / print / share-many, document email, PDF viewer share, Settings Export Data, usage report CSV, purchase order share, maintenance PDF export and print, inspection detail PDF, and the share step after a PDF is saved (a failing share sheet no longer makes a saved PDF look failed).
+- [x] **Lists build lazily** everywhere a user-data list can grow: purchase orders, schedule day list and daily agenda, Jobs list, customer directory, Shortages and Job Needs were converted; the Documents hub, equipment results, vehicle list and maintenance list were already lazy. Eight laziness tests (300 generated rows, fewer than 60 built).
+- [x] **Vehicle inspections upload** and show the "Not uploaded yet" badge on the Vehicle Inspection Log and the vehicle's Inspections tab (see `offline_sync_and_backup.md`).
+- [x] **Hard-coded colours** reviewed; signature pads and previews use one theme-independent paper surface (section 9). Intentionally left fixed: black 5% shadows (`inspection_form_page.dart`, `inspection_detail_page.dart`, `equipment_search_bar.dart`), the `Colors.black54` saving scrim, and photo overlays and the full-screen photo viewer. PDF colours are separate from the app theme.
+
+Still open:
+
+- Migration `supabase/migrations/20261109100000_vehicle_inspections.sql` is written but **to run** (not applied). Until it is run, vehicle inspections queue and show the badge but the upload fails and retries.
+- A second device sees an uploaded vehicle inspection record, but its signature and photo file paths point at the first device's files; the image files are backed up separately and how they display on another device is not verified.
 - Transitions: a section change that keeps the old page underneath may slide instead of fading; not checked on a device.
-- Inspections: the "unanswered" rule is a first definition; the swipe-right schedule action is not widget-tested; delete is limited to admin and supervisor.
+- Inspections: the "unanswered" rule in the form is a first definition (site code, grade, address, unticked checklist items without a note, customer name, both signatures); the swipe-right schedule action is not widget-tested; delete is limited to admin and supervisor.
 - Settings keeps an "Advanced" group outside the five planned groups.
-- "Not uploaded yet" badge on vehicle inspection rows (vehicle inspections are not queued for sync).
-- The dev sign-in code in `auth_controller.dart` is still gated only by the build flag (the button itself is debug-only).
+- The dev sign-in code in `auth_controller.dart` is still gated only by the build flag (the login button itself is debug-only).
+- Pages not converted to lazy lists on purpose: Settings, About, admin and debug pages, template management, profile approvals, the week-bounded calendar list, and the inspections lists.
+- `test/inspections/pdf_export_test.dart` is flaky when run inside the full suite (a temp directory is removed while the sync queue writes); it passes alone.

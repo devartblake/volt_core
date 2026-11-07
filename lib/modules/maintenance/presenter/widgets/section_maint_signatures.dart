@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:signature/signature.dart';
 import '../../../schedule/presenter/pages/schedule_task_page.dart';
 import '../../../schedule/presenter/widgets/dialogs/schedule_dialog.dart';
+import '../../../../core/theme/signature_palette.dart';
 import '../../../../shared/widgets/widgets.dart';
 import '../../presenter/widgets/utils/form_fields.dart';
 import '../../../../core/services/storage/file_storage_service.dart';
@@ -51,14 +52,14 @@ class _SectionMaintSignaturesState extends State<SectionMaintSignatures> {
 
     _technicianController = SignatureController(
       penStrokeWidth: 2,
-      penColor: Colors.black,
-      exportBackgroundColor: Colors.white,
+      penColor: SignaturePalette.ink,
+      exportBackgroundColor: SignaturePalette.paper,
     );
 
     _customerController = SignatureController(
       penStrokeWidth: 2,
-      penColor: Colors.black,
-      exportBackgroundColor: Colors.white,
+      penColor: SignaturePalette.ink,
+      exportBackgroundColor: SignaturePalette.paper,
     );
 
     // Load existing signatures if available
@@ -653,34 +654,13 @@ class _SignatureCard extends StatelessWidget {
           const SizedBox(height: 8),
 
           // Signature pad
-          Semantics(
-            label: '$title signature pad',
-            hint: 'Draw the signature here',
-            container: true,
-            child: Container(
-            height: 220,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: colorScheme.outline.withValues(alpha: 0.5),
-                width: 2,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.05),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(10),
-              child: Signature(
-                controller: signatureController,
-                backgroundColor: Colors.white,
-              ),
-            ),
+          SignaturePaper(
+            semanticLabel: '$title signature pad',
+            semanticHint: 'Draw the signature here',
+            hint: readOnly ? null : 'Sign here',
+            child: Signature(
+              controller: signatureController,
+              backgroundColor: Colors.transparent,
             ),
           ),
           const SizedBox(height: 12),

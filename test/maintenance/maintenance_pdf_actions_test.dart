@@ -73,7 +73,7 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
 
-    expect(find.textContaining('Could not generate PDF'), findsOneWidget);
+    expect(find.textContaining('Could not generate the PDF'), findsOneWidget);
     expect(find.text('Retry'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });

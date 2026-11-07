@@ -199,9 +199,11 @@ class _ScheduleTaskDialogState extends ConsumerState<ScheduleTaskDialog> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final taskColor = widget.taskType == TaskType.inspection
-        ? Colors.blue
-        : theme.status.warning;
+    final isInspection = widget.taskType == TaskType.inspection;
+    final taskColor =
+        isInspection ? theme.colorScheme.primary : theme.status.warning;
+    final onTaskColor =
+        isInspection ? theme.colorScheme.onPrimary : theme.status.onWarning;
 
     return Padding(
       padding: EdgeInsets.only(
@@ -353,12 +355,12 @@ class _ScheduleTaskDialogState extends ConsumerState<ScheduleTaskDialog> {
                   child: FilledButton.icon(
                     onPressed: _isSaving ? null : _handleSchedule,
                     icon: _isSaving
-                        ? const SizedBox(
+                        ? SizedBox(
                       width: 16,
                       height: 16,
                       child: CircularProgressIndicator(
                         strokeWidth: 2,
-                        color: Colors.white,
+                        color: onTaskColor,
                       ),
                     )
                         : const Icon(Icons.schedule),
@@ -366,6 +368,7 @@ class _ScheduleTaskDialogState extends ConsumerState<ScheduleTaskDialog> {
                     style: FilledButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       backgroundColor: taskColor,
+                      foregroundColor: onTaskColor,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),

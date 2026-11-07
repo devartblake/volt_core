@@ -4,6 +4,8 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/constants/route_paths.dart';
 import '../../../../shared/widgets/widgets.dart';
+import '../../../../shared/widgets/pending_upload_badge.dart';
+import '../../infra/mappers/vehicle_inspection_supabase_mapper.dart' show kVehicleInspectionsTable;
 import '../../../../core/services/photos/photo_attachment.dart';
 import '../../../../shared/presenter/widgets/photo_attachments_section.dart';
 import '../../domain/entities/vehicle_entity.dart';
@@ -612,7 +614,14 @@ class _InspectionsCard extends ConsumerWidget {
                   ListTile(
                     dense: true,
                     onTap: () => showVehicleInspectionDetail(context, i),
-                    trailing: const Icon(Icons.chevron_right, size: 18),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        PendingUploadBadge(
+                            table: kVehicleInspectionsTable, recordId: i.id),
+                        const Icon(Icons.chevron_right, size: 18),
+                      ],
+                    ),
                     leading: Icon(
                       i.hasIssues
                           ? Icons.warning_amber_outlined

@@ -17,6 +17,7 @@ String friendlyTableName(String table) {
     'vehicle_assets': 'Vehicle assets',
     'vehicle_asset_catalog': 'Vehicle asset catalog',
     'vehicle_maintenance_checks': 'Vehicle checks',
+    'vehicle_inspections': 'Vehicle inspections',
     'fleet_vehicles': 'Vehicles',
     'form_responses': 'Inspections',
     'form_templates': 'Inspection templates',

@@ -5,9 +5,11 @@ import 'package:intl/intl.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../../../../core/theme/app_tokens.dart';
+import '../../../../shared/widgets/action_runner.dart';
 import '../../../../shared/widgets/app_page.dart';
 import '../../../../shared/widgets/app_snack_bar.dart';
 import '../../../../shared/widgets/empty_state.dart';
+import '../../../../shared/widgets/lazy_head_list.dart';
 import '../../../../shared/widgets/status_chip.dart';
 import '../../domain/catalog_part.dart';
 import '../../domain/purchase_order.dart';
@@ -84,9 +86,9 @@ class _PurchaseOrdersPageState extends ConsumerState<PurchaseOrdersPage> {
           final openCents = all
               .where((o) => o.status.isOpen)
               .fold<int>(0, (s, o) => s + o.totalCents);
-          return ListView(
+          return LazyHeadList(
             padding: const EdgeInsets.all(AppSpacing.lg),
-            children: [
+            head: [
               Wrap(
                 spacing: AppSpacing.sm,
                 children: [
@@ -117,37 +119,39 @@ class _PurchaseOrdersPageState extends ConsumerState<PurchaseOrdersPage> {
               const SizedBox(height: AppSpacing.md),
               if (shown.isEmpty)
                 const EmptyState(
-                    icon: Icons.search_off, title: 'Nothing here', compact: true)
-              else
-                for (final o in shown)
-                  Card(
-                    elevation: 0,
-                    margin: const EdgeInsets.only(bottom: AppSpacing.sm),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: AppRadius.cardAll,
-                      side: BorderSide(color: theme.colorScheme.outlineVariant),
-                    ),
-                    child: ListTile(
-                      key: ValueKey('po_${o.id}'),
-                      onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(
-                        builder: (_) => PurchaseOrderDetailPage(orderId: o.id),
-                      )),
-                      title: Text(
-                        '${o.number} · ${vendorNames[o.vendorId] ?? 'Vendor'}',
-                        style: const TextStyle(fontWeight: FontWeight.w600),
-                      ),
-                      subtitle: Text([
-                        '${o.lines.length} ${o.lines.length == 1 ? 'line' : 'lines'}',
-                        '${o.unitsReceived}/${o.unitsOrdered} received',
-                        formatCents(o.totalCents),
-                        if (o.expectedOn != null)
-                          'due ${_dateFmt.format(o.expectedOn!.toLocal())}',
-                      ].join(' · ')),
-                      trailing:
-                          StatusChip(label: o.status.label, tone: poTone(o.status)),
-                    ),
-                  ),
+                    icon: Icons.search_off, title: 'Nothing here', compact: true),
             ],
+            rowCount: shown.length,
+            rowBuilder: (context, i) {
+              final o = shown[i];
+              return Card(
+                elevation: 0,
+                margin: const EdgeInsets.only(bottom: AppSpacing.sm),
+                shape: RoundedRectangleBorder(
+                  borderRadius: AppRadius.cardAll,
+                  side: BorderSide(color: theme.colorScheme.outlineVariant),
+                ),
+                child: ListTile(
+                  key: ValueKey('po_${o.id}'),
+                  onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(
+                    builder: (_) => PurchaseOrderDetailPage(orderId: o.id),
+                  )),
+                  title: Text(
+                    '${o.number} · ${vendorNames[o.vendorId] ?? 'Vendor'}',
+                    style: const TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                  subtitle: Text([
+                    '${o.lines.length} ${o.lines.length == 1 ? 'line' : 'lines'}',
+                    '${o.unitsReceived}/${o.unitsOrdered} received',
+                    formatCents(o.totalCents),
+                    if (o.expectedOn != null)
+                      'due ${_dateFmt.format(o.expectedOn!.toLocal())}',
+                  ].join(' · ')),
+                  trailing:
+                      StatusChip(label: o.status.label, tone: poTone(o.status)),
+                ),
+              );
+            },
           );
         },
       ),
@@ -241,8 +245,15 @@ class _PurchaseOrderDetailPageState
       money: formatCents,
       date: (d) => _dateFmt.format(d.toLocal()),
     );
-    await SharePlus.instance
-        .share(ShareParams(text: text, subject: 'Purchase order ${o.number}'));
+    await runUserAction(
+      context,
+      label: 'share the purchase order',
+      action: () async {
+        await SharePlus.instance.share(
+            ShareParams(text: text, subject: 'Purchase order ${o.number}'));
+        return true;
+      },
+    );
   }
 
   @override

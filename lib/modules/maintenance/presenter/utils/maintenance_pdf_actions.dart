@@ -62,9 +62,10 @@ Future<void> exportMaintenancePdfWithFeedback(
     showMaintenancePdfSavedSnack(messenger, navigator, result);
   } catch (e) {
     messenger.hideCurrentSnackBar();
+    debugPrint('[maintenance_pdf_actions] export failed: $e');
     AppSnackBar.errorOn(
       messenger,
-      'Could not generate PDF: $e',
+      'Could not generate the PDF. Please try again.',
       duration: const Duration(seconds: 6),
       action: SnackBarAction(
         label: 'Retry',
@@ -145,7 +146,8 @@ Future<void> printMaintenancePdfWithFeedback(
       say('A new PDF was generated for this print.');
     }
   } catch (e) {
-    say('Could not print: $e');
+    debugPrint('[maintenance_pdf_actions] print failed: $e');
+    say('Could not print the report. Please try again.');
   }
 }
 

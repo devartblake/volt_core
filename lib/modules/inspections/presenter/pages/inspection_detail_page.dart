@@ -390,7 +390,8 @@ Future<void> _openPdf(
 
   final result = await OpenFilex.open(resolvedPdfPath);
   if (result.type != ResultType.done && context.mounted) {
-    AppSnackBar.error(context, 'Could not open PDF: ${result.message}');
+    debugPrint('[InspectionDetail] open failed: ${result.message}');
+    AppSnackBar.error(context, 'Could not open the PDF. Is a PDF viewer installed?');
   }
 }
 
@@ -453,7 +454,8 @@ class _PdfActionButtonState extends ConsumerState<_PdfActionButton> {
 
     final result = await OpenFilex.open(widget.resolvedPdfPath);
     if (result.type != ResultType.done && mounted) {
-      AppSnackBar.error(context, 'Could not open PDF: ${result.message}');
+      debugPrint('[InspectionDetail] open failed: ${result.message}');
+    AppSnackBar.error(context, 'Could not open the PDF. Is a PDF viewer installed?');
     }
   }
 
@@ -461,7 +463,12 @@ class _PdfActionButtonState extends ConsumerState<_PdfActionButton> {
     setState(() => _generating = true);
     final repo = ref.read(inspectionRepositoryProvider);
 
-    final result = await repo.generatePdf(widget.inspection.toEntity());
+    InspectionEntity? result;
+    try {
+      result = await repo.generatePdf(widget.inspection.toEntity());
+    } catch (e) {
+      debugPrint('[InspectionDetail] generatePdf failed: $e');
+    }
 
     if (!mounted) return;
     setState(() => _generating = false);

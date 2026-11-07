@@ -57,11 +57,11 @@ class JobNeedsPage extends ConsumerWidget {
           }
           return RefreshIndicator(
             onRefresh: () async => ref.invalidate(jobNeedsProvider),
-            child: ListView(
+            child: ListView.builder(
               padding: const EdgeInsets.all(AppSpacing.lg),
-              children: [
-                for (final j in jobs) _JobCard(job: j, canAct: canAct),
-              ],
+              itemCount: jobs.length,
+              itemBuilder: (context, i) =>
+                  _JobCard(job: jobs[i], canAct: canAct),
             ),
           );
         },

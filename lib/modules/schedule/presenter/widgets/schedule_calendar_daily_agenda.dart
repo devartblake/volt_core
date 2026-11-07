@@ -218,11 +218,11 @@ class ScheduleCalendarDailyAgenda extends StatelessWidget {
           Expanded(
             child: tasksForDay.isEmpty
                 ? _buildEmptyState(theme)
-                : ListView(
+                : ListView.builder(
               padding: const EdgeInsets.all(16),
-              children: tasksForDay.map((task) {
-                return _buildAgendaItem(task, theme);
-              }).toList(),
+              itemCount: tasksForDay.length,
+              itemBuilder: (context, i) =>
+                  _buildAgendaItem(tasksForDay[i], theme),
             ),
           ),
 

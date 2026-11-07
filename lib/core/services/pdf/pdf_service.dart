@@ -2545,15 +2545,22 @@ class PdfService {
       name: p.basename(savePath),
     );
 
-    await SharePlus.instance.share(
-      ShareParams(
-        files: [xFile],
-        subject: 'Generator Service Report',
-        text: prefs.defaultRecipient != null
-            ? 'Please see attached generator report for your records.'
-            : 'Please see attached generator report.',
-      ),
-    );
+    try {
+      await SharePlus.instance.share(
+        ShareParams(
+          files: [xFile],
+          subject: 'Generator Service Report',
+          text: prefs.defaultRecipient != null
+              ? 'Please see attached generator report for your records.'
+              : 'Please see attached generator report.',
+        ),
+      );
+    } catch (e) {
+      // The PDF is already saved; a failed share sheet must not make the
+      // export look like it failed.
+      debugPrint('[PdfService] share after save failed: $e');
+      return PdfExportResult(filePath: savePath, emailed: false);
+    }
 
     return PdfExportResult(filePath: savePath, emailed: true);
   }

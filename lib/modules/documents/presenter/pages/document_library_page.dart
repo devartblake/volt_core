@@ -1,10 +1,11 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show kIsWeb, debugPrint;
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/services/email/email_service.dart';
+import '../../../../shared/widgets/action_runner.dart';
 import '../../../../core/services/storage/pdf_library_service.dart';
 import '../../../../core/theme/app_tokens.dart';
 import '../../../../shared/widgets/widgets.dart';
@@ -278,11 +279,17 @@ class _DocumentLibraryPageState extends State<DocumentLibraryPage> {
   }
 
   Future<void> _print(PdfDocumentInfo doc) async {
-    if (!await documentActionsOf(context).print(context, doc) && mounted) _reload();
+    final actions = documentActionsOf(context);
+    final ok = await runUserAction(context,
+        label: 'print ${doc.name}', action: () => actions.print(context, doc));
+    if (!ok && mounted) _reload();
   }
 
   Future<void> _share(PdfDocumentInfo doc) async {
-    if (!await documentActionsOf(context).share(context, doc) && mounted) _reload();
+    final actions = documentActionsOf(context);
+    final ok = await runUserAction(context,
+        label: 'share ${doc.name}', action: () => actions.share(context, doc));
+    if (!ok && mounted) _reload();
   }
 
   Future<List<PdfDocumentInfo>> _selectedDocs() async {
@@ -293,7 +300,10 @@ class _DocumentLibraryPageState extends State<DocumentLibraryPage> {
   Future<void> _shareSelected() async {
     final docs = await _selectedDocs();
     if (!mounted || docs.isEmpty) return;
-    await documentActionsOf(context).shareMany(context, docs);
+    final actions = documentActionsOf(context);
+    await runUserAction(context,
+        label: 'share the reports',
+        action: () async => await actions.shareMany(context, docs) > 0);
   }
 
   Future<void> _deleteSelected() async {
@@ -446,9 +456,13 @@ class _DocumentLibraryPageState extends State<DocumentLibraryPage> {
               ? 'Email draft opened for $recipient'
               : 'Email sent to $recipient');
     } on EmailException catch (e) {
-      AppSnackBar.errorOn(messenger, e.message);
+      debugPrint('[DocumentLibrary] email failed: ${e.message}');
+      AppSnackBar.errorOn(
+          messenger, 'Could not send the email. Please try again.');
     } catch (e) {
-      AppSnackBar.errorOn(messenger, 'Could not send email: $e');
+      debugPrint('[DocumentLibrary] email failed: $e');
+      AppSnackBar.errorOn(
+          messenger, 'Could not send the email. Please try again.');
     }
   }
 

@@ -38,30 +38,42 @@ bool openPdfDocument(BuildContext context, PdfDocumentInfo doc) {
 }
 
 /// Shares a saved PDF through the system share sheet. Returns false (after
-/// telling the user) when the file is gone.
+/// telling the user) when the file is gone or the share could not start.
+/// Dismissing the share sheet is not an error.
 Future<bool> sharePdfDocument(BuildContext context, PdfDocumentInfo doc) async {
   final messenger = ScaffoldMessenger.of(context);
-  if (kIsWeb) {
-    final bytes = WebFileStore.instance.getSync(doc.path);
-    if (bytes == null) {
-      AppSnackBar.infoOn(messenger, 'Report bytes are no longer available');
+  try {
+    if (kIsWeb) {
+      final bytes = WebFileStore.instance.getSync(doc.path);
+      if (bytes == null) {
+        AppSnackBar.infoOn(messenger, 'Report bytes are no longer available');
+        return false;
+      }
+      await Printing.sharePdf(bytes: bytes, filename: doc.name);
+      return true;
+    }
+
+    if (!await File(doc.path).exists()) {
+      if (messenger.mounted) {
+        AppSnackBar.infoOn(messenger, 'File no longer exists');
+      }
       return false;
     }
-    await Printing.sharePdf(bytes: bytes, filename: doc.name);
+    await SharePlus.instance.share(
+      ShareParams(
+        files: [XFile(doc.path, mimeType: 'application/pdf')],
+        subject: doc.name,
+      ),
+    );
     return true;
-  }
-
-  if (!await File(doc.path).exists()) {
-    AppSnackBar.infoOn(messenger, 'File no longer exists');
+  } catch (e) {
+    debugPrint('[document_actions] share failed for ${doc.name}: $e');
+    if (messenger.mounted) {
+      AppSnackBar.errorOn(
+          messenger, 'Could not share ${doc.name}. Please try again.');
+    }
     return false;
   }
-  await SharePlus.instance.share(
-    ShareParams(
-      files: [XFile(doc.path, mimeType: 'application/pdf')],
-      subject: doc.name,
-    ),
-  );
-  return true;
 }
 
 /// Opens the system print dialog for a saved PDF. Returns false (after telling
@@ -69,11 +81,20 @@ Future<bool> sharePdfDocument(BuildContext context, PdfDocumentInfo doc) async {
 Future<bool> printPdfDocument(BuildContext context, PdfDocumentInfo doc) async {
   final messenger = ScaffoldMessenger.of(context);
   Uint8List? bytes;
-  if (kIsWeb) {
-    bytes = WebFileStore.instance.getSync(doc.path);
-  } else {
-    final file = File(doc.path);
-    if (await file.exists()) bytes = await file.readAsBytes();
+  try {
+    if (kIsWeb) {
+      bytes = WebFileStore.instance.getSync(doc.path);
+    } else {
+      final file = File(doc.path);
+      if (await file.exists()) bytes = await file.readAsBytes();
+    }
+  } catch (e) {
+    debugPrint('[document_actions] could not read ${doc.name}: $e');
+    if (messenger.mounted) {
+      AppSnackBar.errorOn(
+          messenger, 'Could not print ${doc.name}. Please try again.');
+    }
+    return false;
   }
   if (bytes == null) {
     AppSnackBar.infoOn(messenger, 'File no longer exists');
@@ -87,47 +108,61 @@ Future<bool> printPdfDocument(BuildContext context, PdfDocumentInfo doc) async {
       onLayout: (_) async => data,
     );
   } catch (e) {
-    AppSnackBar.errorOn(messenger, 'Could not print: $e');
+    debugPrint('[document_actions] print failed for ${doc.name}: $e');
+    if (messenger.mounted) {
+      AppSnackBar.errorOn(
+          messenger, 'Could not print ${doc.name}. Please try again.');
+    }
     return false;
   }
   return true;
 }
 
 /// Shares several saved PDFs in one share sheet (native) or one by one (web).
-/// Missing files are skipped; returns how many were shared.
+/// Missing files are skipped; returns how many were shared (0 after telling
+/// the user when the share itself failed).
 Future<int> shareManyPdfDocuments(
   BuildContext context,
   List<PdfDocumentInfo> docs,
 ) async {
   final messenger = ScaffoldMessenger.of(context);
-  if (kIsWeb) {
-    var n = 0;
+  try {
+    if (kIsWeb) {
+      var n = 0;
+      for (final d in docs) {
+        final bytes = WebFileStore.instance.getSync(d.path);
+        if (bytes == null) continue;
+        await Printing.sharePdf(bytes: bytes, filename: d.name);
+        n++;
+      }
+      if (n < docs.length && messenger.mounted) {
+        AppSnackBar.infoOn(messenger, 'Some reports are no longer available');
+      }
+      return n;
+    }
+    final present = <PdfDocumentInfo>[];
     for (final d in docs) {
-      final bytes = WebFileStore.instance.getSync(d.path);
-      if (bytes == null) continue;
-      await Printing.sharePdf(bytes: bytes, filename: d.name);
-      n++;
+      if (await File(d.path).exists()) present.add(d);
     }
-    if (n < docs.length) {
-      AppSnackBar.infoOn(messenger, 'Some reports are no longer available');
+    if (present.length < docs.length && messenger.mounted) {
+      AppSnackBar.infoOn(messenger, 'Some files no longer exist');
     }
-    return n;
+    if (present.isEmpty) return 0;
+    await SharePlus.instance.share(
+      ShareParams(
+        files: [
+          for (final d in present) XFile(d.path, mimeType: 'application/pdf'),
+        ],
+        subject: present.length == 1 ? present.first.name : 'Reports',
+      ),
+    );
+    return present.length;
+  } catch (e) {
+    debugPrint('[document_actions] shareMany failed: $e');
+    if (messenger.mounted) {
+      AppSnackBar.errorOn(
+          messenger, 'Could not share the reports. Please try again.');
+    }
+    return 0;
   }
-  final present = <PdfDocumentInfo>[];
-  for (final d in docs) {
-    if (await File(d.path).exists()) present.add(d);
-  }
-  if (present.length < docs.length) {
-    AppSnackBar.infoOn(messenger, 'Some files no longer exist');
-  }
-  if (present.isEmpty) return 0;
-  await SharePlus.instance.share(
-    ShareParams(
-      files: [
-        for (final d in present) XFile(d.path, mimeType: 'application/pdf'),
-      ],
-      subject: present.length == 1 ? present.first.name : 'Reports',
-    ),
-  );
-  return present.length;
 }

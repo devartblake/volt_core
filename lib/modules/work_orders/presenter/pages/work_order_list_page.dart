@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/constants/route_paths.dart';
+import '../../../../shared/widgets/lazy_head_list.dart';
 import '../../../../shared/widgets/widgets.dart';
 import '../../../schedule/presenter/controllers/schedule_controller.dart';
 import '../../domain/entities/work_order_entity.dart';
@@ -88,9 +89,11 @@ class _WorkOrderListPageState extends ConsumerState<WorkOrderListPage> {
           );
           return RefreshIndicator(
             onRefresh: () => ref.refresh(workOrderListProvider.future).then<void>((_) {}),
-            child: ListView(
+            child: LazyHeadList(
               padding: const EdgeInsets.all(16),
-              children: [
+              rowCount: visible.length,
+              rowBuilder: (context, i) => _WorkOrderCard(order: visible[i]),
+              head: [
                 _WorkloadSummary(workload: workload),
                 const SizedBox(height: 16),
                 TextField(
@@ -168,9 +171,7 @@ class _WorkOrderListPageState extends ConsumerState<WorkOrderListPage> {
                             ],
                           )
                         : null,
-                  )
-                else
-                  ...visible.map((order) => _WorkOrderCard(order: order)),
+                  ),
               ],
             ),
           );

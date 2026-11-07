@@ -1,4 +1,6 @@
 import 'dart:io';
+import '../../../../core/theme/status_colors.dart';
+import '../../../../shared/widgets/signature_surface.dart';
 import '../../../../shared/widgets/thumbnail_image.dart';
 import 'dart:typed_data';
 
@@ -312,8 +314,8 @@ class _InspectionDetailState extends State<_InspectionDetail> {
   Widget _answerRow(ThemeData theme, VehicleInspection i, InspectionItem item) {
     final status = i.results[item.key];
     final color = switch (status) {
-      CheckStatus.ok => Colors.green.shade700,
-      CheckStatus.attention => Colors.orange.shade800,
+      CheckStatus.ok => theme.status.success,
+      CheckStatus.attention => theme.status.warning,
       CheckStatus.fail => theme.colorScheme.error,
       null => theme.colorScheme.outline,
     };
@@ -367,23 +369,7 @@ class _InspectionDetailState extends State<_InspectionDetail> {
       children: [
         Text(role, style: theme.textTheme.labelLarge),
         const SizedBox(height: 4),
-        Container(
-          height: 90,
-          width: double.infinity,
-          decoration: BoxDecoration(
-            color: Colors.white,
-            border: Border.all(color: theme.colorScheme.outlineVariant),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: image == null
-              ? Center(
-                  child: Text('Not signed', style: theme.textTheme.bodySmall),
-                )
-              : Padding(
-                  padding: const EdgeInsets.all(4),
-                  child: Image.memory(image, fit: BoxFit.contain),
-                ),
-        ),
+        SignatureImagePreview(bytes: image),
         const SizedBox(height: 4),
         Text(name.isEmpty ? '-' : name, style: theme.textTheme.bodyMedium),
       ],

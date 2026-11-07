@@ -5,6 +5,8 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/constants/route_paths.dart';
 import '../../../../shared/widgets/widgets.dart';
+import '../../../../shared/widgets/pending_upload_badge.dart';
+import '../../infra/mappers/vehicle_inspection_supabase_mapper.dart' show kVehicleInspectionsTable;
 import '../../../inspections/presenter/inspection_date_filter.dart';
 import '../../../inspections/presenter/widgets/inspection_date_filter_bar.dart';
 import '../../domain/entities/vehicle_entity.dart';
@@ -356,6 +358,8 @@ class _VehicleLog extends StatelessWidget {
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
+          PendingUploadBadge(
+              table: kVehicleInspectionsTable, recordId: i.id),
           if (i.isSigned)
             Tooltip(
               message: 'Signed by both',

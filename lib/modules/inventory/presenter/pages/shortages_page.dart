@@ -8,6 +8,7 @@ import '../../../../shared/widgets/app_snack_bar.dart';
 import '../../../../core/theme/app_tokens.dart';
 import '../../../../shared/widgets/app_page.dart';
 import '../../../../shared/widgets/empty_state.dart';
+import '../../../../shared/widgets/lazy_head_list.dart';
 import '../../../../shared/widgets/stat_card.dart';
 import '../../../../shared/widgets/status_chip.dart';
 import '../../domain/job_needs.dart';
@@ -80,14 +81,34 @@ class ShortagesPage extends ConsumerWidget {
           final theme = Theme.of(context);
           final reorder = buildReorderLines(short, lowList, onOrder);
           final toOrder = reorder.where((l) => l.orderQty > 0).toList();
+          final rowCount =
+              short.length + (lowList.isEmpty ? 0 : lowList.length + 1);
           return RefreshIndicator(
             onRefresh: () async {
               ref.invalidate(shortagesProvider);
               ref.invalidate(lowStockProvider);
             },
-            child: ListView(
+            child: LazyHeadList(
               padding: const EdgeInsets.all(AppSpacing.lg),
-              children: [
+              rowCount: rowCount,
+              rowBuilder: (context, i) {
+                if (i < short.length) {
+                  return _ShortageTile(s: short[i], onOrder: onOrder);
+                }
+                i -= short.length;
+                if (i == 0 && lowList.isNotEmpty) {
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SizedBox(height: AppSpacing.xl),
+                      Text('Below minimum', style: theme.textTheme.titleMedium),
+                      const SizedBox(height: AppSpacing.sm),
+                    ],
+                  );
+                }
+                return _LowTile(level: lowList[i - 1], onOrder: onOrder);
+              },
+              head: [
                 Row(children: [
                   Expanded(
                     child: StatCard(
@@ -125,13 +146,6 @@ class ShortagesPage extends ConsumerWidget {
                   const SizedBox(height: AppSpacing.xl),
                   Text('Needed for jobs', style: theme.textTheme.titleMedium),
                   const SizedBox(height: AppSpacing.sm),
-                  for (final s in short) _ShortageTile(s: s, onOrder: onOrder),
-                ],
-                if (lowList.isNotEmpty) ...[
-                  const SizedBox(height: AppSpacing.xl),
-                  Text('Below minimum', style: theme.textTheme.titleMedium),
-                  const SizedBox(height: AppSpacing.sm),
-                  for (final l in lowList) _LowTile(level: l, onOrder: onOrder),
                 ],
               ],
             ),

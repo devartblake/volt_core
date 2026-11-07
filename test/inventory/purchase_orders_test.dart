@@ -619,6 +619,37 @@ void main() {
       expect(find.text('Partly received'), findsWidgets);
     });
 
+    testWidgets('orders list builds rows lazily (300 orders)', (t) async {
+      quiet();
+      t.view.physicalSize = const Size(400, 700);
+      t.view.devicePixelRatio = 1;
+      addTearDown(t.view.reset);
+      final orders = _MemOrders(initial: [
+        for (var i = 0; i < 300; i++)
+          _order('o$i', 'PO-$i', PoStatus.draft, const [
+            PoLine(id: 'l', partId: 'p1', qtyOrdered: 1, unitCents: 100),
+          ]),
+      ]);
+      await t.pumpWidget(ProviderScope(
+        overrides: [
+          canManageInventoryProvider.overrideWithValue(true),
+          ordersRepositoryProvider.overrideWithValue(orders),
+          pricingRepositoryProvider
+              .overrideWithValue(_MemPricing([_vendor('v1', 'Ace')], [])),
+          inventoryRepositoryProvider
+              .overrideWithValue(_MemInventory([oil, air], [])),
+        ],
+        child: const MaterialApp(home: PurchaseOrdersPage()),
+      ));
+      await settle(t);
+      expect(find.byType(ListTile).evaluate().length, lessThan(60));
+      expect(find.byType(ListTile).evaluate().length, greaterThan(3));
+      await t.scrollUntilVisible(find.text('PO-299 · Ace'), 500,
+          maxScrolls: 400,
+          scrollable: find.byType(Scrollable).first);
+      expect(find.text('PO-299 · Ace'), findsOneWidget);
+    });
+
     testWidgets('receiving more than is outstanding is refused', (t) async {
       quiet();
       final orders = _MemOrders(initial: [

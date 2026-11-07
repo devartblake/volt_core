@@ -536,3 +536,17 @@ does **not** log their own walk-around.
   signatures** ("Not signed" when missing), the **vehicle photos** and the
   **latest inspection's photos**, inside the same branded-footer layout. An
   unreadable image is skipped without failing the report.
+
+## Vehicle inspections sync (2026-11-09)
+
+Daily, weekly and monthly walk-around inspections now sync to Supabase.
+Migration `supabase/migrations/20261109100000_vehicle_inspections.sql` (to run)
+creates `vehicle_inspections` (typed columns plus a `payload jsonb` with the
+full inspection, `set_updated_at` trigger). RLS: any tenant member reads; the
+inspector (`inspector_user_id = auth.uid()`) or an admin, supervisor or
+dispatcher writes. The app side is in `vehicle_inspection_repository.dart`
+(queue on save and delete, backfill of older local records, `refreshFromCloud`)
+and `vehicle_inspection_supabase_mapper.dart`. Rows show a "Not uploaded yet"
+badge until the queue sends them. Photos and signature files upload through the
+same file backup as before; a second device gets the inspection record but the
+signature path inside it points at the first device's file.

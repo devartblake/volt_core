@@ -65,66 +65,74 @@ class ScheduleDayList extends StatelessWidget {
       );
     }
 
-    final groups = groupTasksByDay(tasks).entries.toList();
+    // Flattened (header | card | spacer) so every card is built lazily.
+    final today = dateOnly(DateTime.now());
+    final entries = <Object>[];
+    for (final g in groupTasksByDay(tasks).entries) {
+      entries.add(_DayHeader(g.key, g.value.length));
+      entries.addAll(g.value);
+      entries.add(const SizedBox(height: AppSpacing.sm));
+    }
     return ListView.builder(
       padding: const EdgeInsets.all(AppSpacing.lg),
-      itemCount: groups.length,
+      itemCount: entries.length,
       itemBuilder: (context, index) {
-        final date = groups[index].key;
-        final dayItems = groups[index].value;
-        final isToday = date == dateOnly(DateTime.now());
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: const EdgeInsets.only(
-                  left: AppSpacing.xs,
-                  top: AppSpacing.sm,
-                  bottom: AppSpacing.md),
-              child: Row(
-                children: [
-                  Flexible(
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: AppSpacing.md, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: isToday
-                            ? theme.colorScheme.primaryContainer
-                            : theme.colorScheme.surfaceContainerHighest,
-                        borderRadius: AppRadius.chipAll,
-                      ),
-                      child: Text(
-                        formatDayHeader(date),
-                        overflow: TextOverflow.ellipsis,
-                        style: theme.textTheme.titleSmall?.copyWith(
-                          color: isToday
-                              ? theme.colorScheme.onPrimaryContainer
-                              : theme.colorScheme.onSurface,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
+        final e = entries[index];
+        if (e is Widget) return e;
+        if (e is TaskScheduleEntity) {
+          return ScheduleJobCard(
+            item: e,
+            assigneeName: assigneeLabel(e, names),
+            onAssign: onAssign == null ? null : () => onAssign!(e),
+          );
+        }
+        final h = e as _DayHeader;
+        final isToday = h.date == today;
+        final dayCount = h.count;
+        return Padding(
+          padding: const EdgeInsets.only(
+              left: AppSpacing.xs, top: AppSpacing.sm, bottom: AppSpacing.md),
+          child: Row(
+            children: [
+              Flexible(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.md, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: isToday
+                        ? theme.colorScheme.primaryContainer
+                        : theme.colorScheme.surfaceContainerHighest,
+                    borderRadius: AppRadius.chipAll,
+                  ),
+                  child: Text(
+                    formatDayHeader(h.date),
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      color: isToday
+                          ? theme.colorScheme.onPrimaryContainer
+                          : theme.colorScheme.onSurface,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
-                  const SizedBox(width: AppSpacing.sm),
-                  Text(
-                    '${dayItems.length} inspection${dayItems.length != 1 ? 's' : ''}',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                ],
+                ),
               ),
-            ),
-            for (final item in dayItems)
-              ScheduleJobCard(
-                item: item,
-                assigneeName: assigneeLabel(item, names),
-                onAssign: onAssign == null ? null : () => onAssign!(item),
+              const SizedBox(width: AppSpacing.sm),
+              Text(
+                '$dayCount inspection${dayCount != 1 ? 's' : ''}',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
               ),
-            const SizedBox(height: AppSpacing.sm),
-          ],
+            ],
+          ),
         );
       },
     );
   }
+}
+
+class _DayHeader {
+  const _DayHeader(this.date, this.count);
+  final DateTime date;
+  final int count;
 }

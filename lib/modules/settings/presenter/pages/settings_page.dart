@@ -9,10 +9,12 @@ import '../../../../core/constants/route_paths.dart';
 import '../../../../core/services/settings/app_preferences_provider.dart';
 import '../../../../core/services/storage/cache_maintenance_service.dart';
 import '../../../../core/services/storage/user_data_export_service.dart';
+import '../../../../core/services/storage/user_data_exporter_provider.dart';
 import '../../../../core/theme/theme_mode_provider.dart';
 import '../../../../shared/presenter/widgets/pdf_inspection_summary_tile.dart';
 import '../../../../shared/presenter/widgets/pdf_inspection_template_tile.dart';
 import '../../../../shared/presenter/widgets/sync_centre_sheet.dart';
+import '../../../../shared/widgets/action_runner.dart';
 import '../../../../shared/widgets/widgets.dart';
 import '../../../auth/presenter/controllers/auth_controller.dart';
 import '../../../inspections/presenter/controllers/user_profile_controller.dart';
@@ -358,18 +360,29 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   Future<void> _exportInspectionData() async {
     setState(() => _exporting = true);
     try {
-      final result =
-          await UserDataExportService.instance.exportInspectionData();
-      if (!mounted) return;
-      if (result.saved) {
-        final destination = result.destination;
-        AppSnackBar.info(context, destination == null || destination.isEmpty
-                  ? 'Inspection data exported successfully.'
-                  : 'Inspection data exported to $destination',);
+      final export = ref.read(userDataExporterProvider);
+      UserDataExportResult? result;
+      // A cancelled save dialog is not an error: runUserAction returns false
+      // for it and shows nothing.
+      await runUserAction(
+        context,
+        label: 'export your data',
+        busyMessage: 'Preparing export…',
+        action: () async {
+          result = await export();
+          return result!.saved;
+        },
+      );
+      final saved = result;
+      if (saved != null && saved.saved && mounted) {
+        final destination = saved.destination;
+        AppSnackBar.success(
+          context,
+          destination == null || destination.isEmpty
+              ? 'Inspection data exported successfully.'
+              : 'Inspection data exported to $destination',
+        );
       }
-    } catch (error) {
-      if (!mounted) return;
-      AppSnackBar.error(context, 'Unable to export data: $error');
     } finally {
       if (mounted) setState(() => _exporting = false);
     }

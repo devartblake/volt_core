@@ -13,6 +13,7 @@ import '../../../../core/services/photos/photo_attachment.dart';
 import '../../../../core/services/photos/photo_service.dart';
 import '../../../../core/services/storage/file_storage_service.dart';
 import '../../../../shared/presenter/widgets/photo_attachments_section.dart';
+import '../../../../core/theme/signature_palette.dart';
 import '../../../../shared/widgets/widgets.dart';
 import '../../../auth/domain/user_role.dart';
 import '../../../auth/presenter/controllers/auth_controller.dart';
@@ -72,8 +73,8 @@ class _VehicleInspectionFormPageState
 
   SignatureController _newPad() => SignatureController(
         penStrokeWidth: 2.5,
-        penColor: Colors.black,
-        exportBackgroundColor: Colors.white,
+        penColor: SignaturePalette.ink,
+        exportBackgroundColor: SignaturePalette.paper,
         onDrawEnd: () => setState(() => _dirty = true),
       );
 
@@ -683,18 +684,13 @@ class _VehicleInspectionFormPageState
               ),
             ),
             const SizedBox(height: 8),
-            Container(
-              decoration: BoxDecoration(
-                border: Border.all(color: theme.colorScheme.outline),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: Signature(
-                  controller: pad,
-                  height: 140,
-                  backgroundColor: Colors.white,
-                ),
+            SignaturePaper(
+              semanticLabel: '$title signature pad',
+              semanticHint: 'Draw the signature here',
+              hint: 'Sign here',
+              child: Signature(
+                controller: pad,
+                backgroundColor: Colors.transparent,
               ),
             ),
             Align(

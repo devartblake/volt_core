@@ -146,6 +146,27 @@ void main() {
       });
     }
 
+    testWidgets('documents list builds rows lazily (300 documents)',
+        (tester) async {
+      store = [
+        for (var i = 0; i < 300; i++)
+          _doc('doc_${i.toString().padLeft(3, '0')}.pdf', PdfCategory.other,
+              DateTime(2026, 11, 11, 11).subtract(Duration(minutes: i))),
+      ];
+      await pump(tester, const Size(400, 700));
+      noOverflow(tester);
+      final tiles = find.textContaining('.pdf').evaluate().length;
+      expect(tiles, greaterThan(0));
+      expect(tiles, lessThan(60));
+      await tester.scrollUntilVisible(find.text('doc_299.pdf'), 500,
+          maxScrolls: 400,
+          scrollable: find
+              .byWidgetPredicate((w) =>
+                  w is Scrollable && w.axisDirection == AxisDirection.down)
+              .first);
+      expect(find.text('doc_299.pdf'), findsOneWidget);
+    });
+
     testWidgets('per-filter empty state', (tester) async {
       store = [docs.first];
       await pump(tester, const Size(400, 800));

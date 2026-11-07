@@ -149,6 +149,19 @@ items pending.
 
 `PendingUploadBadge(table:, recordId:)` (`lib/shared/widgets/`) shows a small
 cloud icon, "Not uploaded yet", for a record that is still queued. It is used on
-maintenance list cards. One provider (`pendingRecordKeysProvider`) reads the
-queue once per change, so any number of badges share it. Vehicle inspections are
-not queued for sync, so they have no badge.
+maintenance list cards and on vehicle inspection rows (the Inspection Log and
+the Inspections tab of a vehicle). One provider (`pendingRecordKeysProvider`)
+reads the queue once per change, so any number of badges share it.
+
+**Vehicle inspections sync.** `VehicleInspectionRepository` still keeps the
+records in the local `vehicle_inspections` box, and now also queues an upsert
+(save) or delete into the outbox for the `vehicle_inspections` table (shown as
+"Vehicle inspections" in the sync centre). The row holds the whole inspection in
+a `payload` json column plus a few typed columns. `refreshFromCloud` runs when
+the log or a vehicle's inspections open (in the background, silent on failure):
+it first queues any local inspection never queued (records from before syncing,
+tracked by `s:<id>` markers in the small `vehicle_inspections_sync` box), then
+merges cloud rows, the cloud copy winning only if its `updated_at` is newer than
+the local last write. A locally deleted id is not brought back by a pull.
+Photos and signature images already upload as files through the existing photo
+and signature backup paths; the row only stores the signature file paths.
