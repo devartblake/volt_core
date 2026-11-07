@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:table_calendar/table_calendar.dart';
 import '../../domain/entities/task_schedule_entity.dart';
+import 'task_assign_button.dart';
 import '../../../../core/theme/status_colors.dart';
 
 /// Enhanced schedule calendar with split-panel design
@@ -17,6 +18,9 @@ class ScheduleCalendarEnhanced extends StatelessWidget {
   final void Function(DateTime focusedDay) onPageChanged;
   final void Function(TaskScheduleEntity task)? onTaskTap;
 
+  /// When set (roles that can assign), task cards show an Assign button.
+  final ValueChanged<TaskScheduleEntity>? onAssign;
+
   const ScheduleCalendarEnhanced({
     super.key,
     required this.focusedDay,
@@ -27,6 +31,7 @@ class ScheduleCalendarEnhanced extends StatelessWidget {
     required this.onFormatChanged,
     required this.onPageChanged,
     this.onTaskTap,
+    this.onAssign,
   });
 
   @override
@@ -79,8 +84,11 @@ class ScheduleCalendarEnhanced extends StatelessWidget {
 
     return Column(
       children: [
-        // Calendar on top
-        _buildCalendar(theme),
+        // Calendar on top; scrolls itself when the screen is too short
+        // (large text, filter rows above).
+        Flexible(
+          child: SingleChildScrollView(child: _buildCalendar(theme)),
+        ),
 
         // Divider
         Divider(
@@ -386,6 +394,9 @@ class ScheduleCalendarEnhanced extends StatelessWidget {
                   ],
                 ),
               ),
+
+              if (onAssign != null)
+                TaskAssignButton(task: task, onAssign: onAssign!),
 
               // Chevron
               Icon(

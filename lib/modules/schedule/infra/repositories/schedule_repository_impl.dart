@@ -34,6 +34,13 @@ class ScheduleRepositoryImpl implements ScheduleRepository {
   /// even when a pre-delete GET completes after the DELETE.
   final Set<String> _deletedTaskIds = <String>{};
 
+  static const Duration _remoteTimeout = Duration(seconds: 8);
+  static const Duration _remoteBackoff = Duration(seconds: 60);
+
+  /// Earliest time to try the cloud again after a failed pull. Without this,
+  /// an offline device waited on every dashboard load for the request to fail.
+  DateTime? _remoteRetryAt;
+
   ScheduleRepositoryImpl({
     Box<ScheduledTask>? box,
     ScheduleRemoteDatasource? remote,
@@ -95,7 +102,7 @@ class ScheduleRepositoryImpl implements ScheduleRepository {
   /// Queue a cloud upsert for [task]. Offline-first: the local save has already
   /// happened, so this only records intent — [SyncService] pushes it to Supabase
   /// when connectivity allows and never blocks the caller.
-  Future<void> _queueUpsert(TaskScheduleEntity task) {
+  Future<void> _queueUpsert(TaskScheduleEntity task, {bool isNew = true}) {
     if (!hasValidScheduleTaskTenant(task)) {
       if (kDebugMode) {
         debugPrint(
@@ -109,7 +116,10 @@ class ScheduleRepositoryImpl implements ScheduleRepository {
     return SyncService.instance.enqueueUpsert(
       table: kScheduleTasksTable,
       id: task.id,
-      payload: scheduleTaskToSupabaseJson(task),
+      payload: scheduleTaskToSupabaseJson(
+        task,
+        defaultAssigneeToCurrentUser: isNew,
+      ),
     );
   }
 
@@ -124,8 +134,13 @@ class ScheduleRepositoryImpl implements ScheduleRepository {
     final remote = _remote;
     if (remote == null) return;
 
+    final retryAt = _remoteRetryAt;
+    if (retryAt != null && DateTime.now().isBefore(retryAt)) return;
+
     try {
-      final remoteTasks = await remote.list(from: from, to: to);
+      final remoteTasks =
+          await remote.list(from: from, to: to).timeout(_remoteTimeout);
+      _remoteRetryAt = null;
       for (final task in remoteTasks) {
         if (_deletedTaskIds.contains(task.id)) continue;
 
@@ -135,6 +150,7 @@ class ScheduleRepositoryImpl implements ScheduleRepository {
         }
       }
     } catch (e) {
+      _remoteRetryAt = DateTime.now().add(_remoteBackoff);
       if (kDebugMode) {
         debugPrint('[Schedule] remote hydrate failed (using local only): $e');
       }
@@ -164,9 +180,10 @@ class ScheduleRepositoryImpl implements ScheduleRepository {
     // previously deleted id during this repository session.
     _deletedTaskIds.remove(task.id);
 
+    final isNew = _box.get(task.id) == null;
     final updated = task.copyWith(updatedAt: DateTime.now());
     await _box.put(updated.id, _toModel(updated));
-    await _queueUpsert(updated);
+    await _queueUpsert(updated, isNew: isNew);
 
     // Keep the local reminder in sync with the task's state.
     final isActive =

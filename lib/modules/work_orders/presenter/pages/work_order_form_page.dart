@@ -178,15 +178,13 @@ class _WorkOrderFormPageState extends ConsumerState<WorkOrderFormPage> {
       ref.invalidate(workOrderListProvider);
       if (mounted) context.pop();
     } catch (error) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not save job: $error')));
+      if (mounted) AppSnackBar.error(context, 'Could not save job: $error');
     } finally { if (mounted) setState(() => _saving = false); }
   }
 
   Future<void> _transition(WorkOrderEntity order, WorkOrderStatus next) async {
     if (next == WorkOrderStatus.scheduled && order.scheduledFor == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Select a scheduled date before dispatching this job.')),
-      );
+      AppSnackBar.info(context, 'Select a scheduled date before dispatching this job.');
       return;
     }
     setState(() => _saving = true);
@@ -196,15 +194,11 @@ class _WorkOrderFormPageState extends ConsumerState<WorkOrderFormPage> {
       ref.invalidate(workOrderListProvider);
       ref.invalidate(workOrderEventsProvider(order.id));
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Job marked ${_statusLabel(next)}.')),
-        );
+        AppSnackBar.info(context, 'Job marked ${_statusLabel(next)}.');
       }
     } catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Could not update job status: $error')),
-        );
+        AppSnackBar.error(context, 'Could not update job status: $error');
       }
     } finally {
       if (mounted) setState(() => _saving = false);

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 import '../../../../core/constants/feature_flags.dart';
+import '../../domain/dev_credentials.dart';
 import '../../domain/user_role.dart';
 import '../../state/auth_state.dart';
 
@@ -57,6 +58,22 @@ class AuthController extends StateNotifier<AuthState> {
       debugPrint('AuthController.login ERROR: $e\n$st');
       rethrow;
     }
+  }
+
+  /// TEMPORARY developer sign-in for [role].
+  ///
+  /// With dev credentials configured (see [DevCredentials]) this performs a
+  /// **real** Supabase sign-in, so the session is genuine and sync and
+  /// row-level security work. Without them it falls back to [devBypassLogin],
+  /// which is local only. Gated by [FeatureFlags.devLoginBypassEnabled].
+  Future<void> devSignIn(UserRole role) async {
+    if (!FeatureFlags.devLoginBypassEnabled) return;
+    final creds = DevCredentials.forRole(role);
+    if (creds == null) {
+      devBypassLogin(role);
+      return;
+    }
+    await login(role: role, email: creds.email, password: creds.password);
   }
 
   /// TEMPORARY: sign in locally as [role] with no credentials. Gated by

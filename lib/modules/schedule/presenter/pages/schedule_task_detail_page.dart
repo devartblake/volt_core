@@ -7,7 +7,12 @@ import '../../../../shared/widgets/widgets.dart';
 import '../../domain/entities/task_schedule_entity.dart';
 import '../../../maintenance/presenter/controllers/maintenance_providers.dart';
 import '../../../maintenance/infra/datasources/maintenance_remote_datasource.dart';
+import '../../../dashboard/presenter/dashboard_providers.dart';
+import '../../domain/schedule_view_logic.dart';
+import '../controllers/schedule_assignment.dart';
 import '../controllers/schedule_controller.dart';
+import '../widgets/assign_technician_sheet.dart';
+import '../widgets/schedule_status.dart';
 import '../../infra/repositories/schedule_repository_impl.dart';
 
 /// Detail and status controls for a task selected from the schedule.
@@ -64,7 +69,7 @@ class _TaskDetail extends ConsumerWidget {
             style: theme.textTheme.headlineSmall,
           ),
           const SizedBox(height: 8),
-          _StatusChip(status: item.status),
+          ScheduleStatusChip(status: item.status),
           const SizedBox(height: 24),
           _DetailRow(
             icon: Icons.calendar_today_outlined,
@@ -86,7 +91,7 @@ class _TaskDetail extends ConsumerWidget {
           _DetailRow(
             icon: Icons.category_outlined,
             label: 'Task type',
-            value: _labelFor(item.sourceType),
+            value: scheduleLabelFor(item.sourceType),
           ),
           if (item.description.isNotEmpty)
             _DetailRow(
@@ -94,12 +99,16 @@ class _TaskDetail extends ConsumerWidget {
               label: 'Details',
               value: item.description,
             ),
-          if (item.assignedToUserId?.isNotEmpty ?? false)
-            _DetailRow(
-              icon: Icons.person_outline,
-              label: 'Assigned user',
-              value: item.assignedToUserId!,
-            ),
+          _DetailRow(
+            icon: Icons.person_outline,
+            label: 'Assigned technician',
+            value: assigneeLabel(
+                  item,
+                  ref.watch(dashboardTechniciansProvider).value?.names ??
+                      const <String, String>{},
+                ) ??
+                'Unassigned',
+          ),
           const SizedBox(height: 24),
           if (_hasSource(item))
             OutlinedButton.icon(
@@ -107,6 +116,19 @@ class _TaskDetail extends ConsumerWidget {
               icon: const Icon(Icons.open_in_new),
               label: const Text('Open source record'),
             ),
+          if (ref.watch(canAssignScheduleProvider) &&
+              item.status != 'completed' &&
+              item.status != 'cancelled') ...[
+            const SizedBox(height: 12),
+            OutlinedButton.icon(
+              onPressed: () => showAssignTechnicianSheet(context, ref, item),
+              icon: const Icon(Icons.person_add_alt_1_outlined),
+              label: Text(
+                  (item.assignedToUserId?.isNotEmpty ?? false)
+                      ? 'Reassign'
+                      : 'Assign'),
+            ),
+          ],
           if (_canComplete(item.status)) ...[
             const SizedBox(height: 12),
             FilledButton.icon(
@@ -158,15 +180,11 @@ class _TaskDetail extends ConsumerWidget {
       ref.invalidate(scheduleTaskProvider(item.id));
       await ref.read(scheduleControllerProvider.notifier).load();
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Task marked ${_labelFor(status)}.')),
-        );
+        AppSnackBar.info(context, 'Task marked ${scheduleLabelFor(status)}.');
       }
     } catch (error) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Could not update task: $error')),
-        );
+        AppSnackBar.error(context, 'Could not update task: $error');
       }
     }
   }
@@ -210,19 +228,11 @@ class _TaskDetail extends ConsumerWidget {
       ref.invalidate(scheduleTaskProvider(item.id));
       await ref.read(scheduleControllerProvider.notifier).load();
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Task rescheduled for ${_dateTimeLabel(scheduledAt)}.',
-            ),
-          ),
-        );
+        AppSnackBar.info(context, 'Task rescheduled for ${_dateTimeLabel(scheduledAt)}.',);
       }
     } catch (error) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Could not reschedule task: $error')),
-        );
+        AppSnackBar.error(context, 'Could not reschedule task: $error');
       }
     }
   }
@@ -263,15 +273,11 @@ class _TaskDetail extends ConsumerWidget {
       ref.invalidate(scheduleTaskProvider(item.id));
       await ref.read(scheduleControllerProvider.notifier).load();
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Scheduled task deleted.')),
-      );
+      AppSnackBar.success(context, 'Scheduled task deleted.');
       context.pop();
     } catch (error) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Could not delete task: $error')),
-        );
+        AppSnackBar.error(context, 'Could not delete task: $error');
       }
     }
   }
@@ -304,18 +310,6 @@ class _DetailRow extends StatelessWidget {
             ),
           ],
         ),
-      );
-}
-
-class _StatusChip extends StatelessWidget {
-  const _StatusChip({required this.status});
-
-  final String status;
-
-  @override
-  Widget build(BuildContext context) => Chip(
-        avatar: Icon(_statusIcon(status), size: 18),
-        label: Text(_labelFor(status)),
       );
 }
 
@@ -362,14 +356,8 @@ Future<void> _openSource(
     }
     if (!context.mounted) return;
     if (record == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'The linked maintenance record could not be restored. It may have '
-            'been deleted, or this device may be offline or not authorized.',
-          ),
-        ),
-      );
+      AppSnackBar.error(context, 'The linked maintenance record could not be restored. It may have '
+            'been deleted, or this device may be offline or not authorized.',);
       return;
     }
     context.pushNamed(
@@ -382,24 +370,9 @@ Future<void> _openSource(
 bool _isMaintenanceRecordSource(TaskScheduleEntity item) =>
     item.sourceType == 'maintenance_record' || item.sourceType == 'maintenance';
 
-String _labelFor(String value) {
-  if (value == 'maintenance_record') return 'Maintenance';
-  return value
-      .split('_')
-      .map((word) => word.isEmpty ? word : '${word[0].toUpperCase()}${word.substring(1)}')
-      .join(' ');
-}
-
 String _dateTimeLabel(DateTime value) {
   final hour = value.hour == 0 ? 12 : (value.hour > 12 ? value.hour - 12 : value.hour);
   final minute = value.minute.toString().padLeft(2, '0');
   final suffix = value.hour >= 12 ? 'PM' : 'AM';
   return '${value.month}/${value.day}/${value.year} $hour:$minute $suffix';
 }
-
-IconData _statusIcon(String status) => switch (status) {
-      'completed' => Icons.task_alt_outlined,
-      'cancelled' => Icons.cancel_outlined,
-      'in_progress' => Icons.play_circle_outline,
-      _ => Icons.schedule_outlined,
-    };

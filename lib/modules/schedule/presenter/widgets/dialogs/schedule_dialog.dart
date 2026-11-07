@@ -251,7 +251,7 @@ class _ScheduleTaskDialogState extends ConsumerState<ScheduleTaskDialog> {
                     ],
                   ),
                 ),
-                IconButton(
+                IconButton(tooltip: 'Close', 
                   icon: const Icon(Icons.close),
                   onPressed: () => Navigator.of(context).pop(false),
                 ),

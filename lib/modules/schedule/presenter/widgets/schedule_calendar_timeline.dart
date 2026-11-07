@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:table_calendar/table_calendar.dart';
 import '../../domain/entities/task_schedule_entity.dart';
+import 'task_assign_button.dart';
 import '../../../../core/theme/status_colors.dart';
 
 /// Timeline View: Mini calendar sidebar (20%) + Chronological timeline (80%)
@@ -15,6 +16,9 @@ class ScheduleCalendarTimeline extends StatelessWidget {
   final void Function(DateTime focusedDay) onPageChanged;
   final void Function(TaskScheduleEntity task)? onTaskTap;
 
+  /// Shown as an Assign / Reassign icon on each task card when non-null.
+  final ValueChanged<TaskScheduleEntity>? onAssign;
+
   const ScheduleCalendarTimeline({
     super.key,
     required this.focusedDay,
@@ -25,6 +29,7 @@ class ScheduleCalendarTimeline extends StatelessWidget {
     required this.onFormatChanged,
     required this.onPageChanged,
     this.onTaskTap,
+    this.onAssign,
   });
 
   @override
@@ -281,12 +286,16 @@ class ScheduleCalendarTimeline extends StatelessWidget {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  'Timeline',
-                  style: theme.textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w600,
+                Expanded(
+                  child: Text(
+                    'Timeline',
+                    style: theme.textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
+                const SizedBox(width: 8),
                 Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 12,
@@ -501,6 +510,9 @@ class ScheduleCalendarTimeline extends StatelessWidget {
                               color: theme.status.success,
                               size: 20,
                             ),
+
+                          if (onAssign != null)
+                            TaskAssignButton(task: task, onAssign: onAssign!),
                         ],
                       ),
 

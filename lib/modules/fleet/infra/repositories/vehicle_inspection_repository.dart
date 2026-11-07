@@ -37,6 +37,21 @@ class VehicleInspectionRepository {
     return out;
   }
 
+  /// Every inspection on this device, newest first, for the cross-vehicle log.
+  Future<List<VehicleInspection>> listAll() async {
+    final box = await _box();
+    final out = <VehicleInspection>[];
+    for (final raw in box.values) {
+      try {
+        out.add(VehicleInspection.fromJson(raw));
+      } catch (_) {
+        // Skip a corrupt row rather than hiding the rest of the log.
+      }
+    }
+    out.sort((a, b) => b.inspectedAt.compareTo(a.inspectedAt));
+    return out;
+  }
+
   Future<void> save(VehicleInspection inspection) async {
     final box = await _box();
     await box.put(inspection.id, inspection.toJson());
@@ -51,6 +66,12 @@ class VehicleInspectionRepository {
 final vehicleInspectionRepositoryProvider =
     Provider<VehicleInspectionRepository>(
   (ref) => VehicleInspectionRepository(),
+);
+
+/// Every vehicle's inspections, for the inspection log.
+final allVehicleInspectionsProvider =
+    FutureProvider<List<VehicleInspection>>(
+  (ref) => ref.watch(vehicleInspectionRepositoryProvider).listAll(),
 );
 
 /// Inspection history for one vehicle, newest first.

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:table_calendar/table_calendar.dart';
 import '../../domain/entities/task_schedule_entity.dart';
+import 'task_assign_button.dart';
 import '../../../../core/theme/status_colors.dart';
 
 /// Daily Agenda View: Calendar (70%) + Selected day detailed schedule (30%)
@@ -15,6 +16,9 @@ class ScheduleCalendarDailyAgenda extends StatelessWidget {
   final void Function(DateTime focusedDay) onPageChanged;
   final void Function(TaskScheduleEntity task)? onTaskTap;
 
+  /// When set (roles that can assign), task cards show an Assign button.
+  final ValueChanged<TaskScheduleEntity>? onAssign;
+
   const ScheduleCalendarDailyAgenda({
     super.key,
     required this.focusedDay,
@@ -25,6 +29,7 @@ class ScheduleCalendarDailyAgenda extends StatelessWidget {
     required this.onFormatChanged,
     required this.onPageChanged,
     this.onTaskTap,
+    this.onAssign,
   });
 
   @override
@@ -360,6 +365,8 @@ class ScheduleCalendarDailyAgenda extends StatelessWidget {
                   ],
                 ),
               ),
+              if (onAssign != null)
+                TaskAssignButton(task: task, onAssign: onAssign!),
             ],
           ),
         ),

@@ -3,6 +3,9 @@ import '../utils/maintenance_pdf_actions.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../core/services/photos/photo_attachment.dart';
+import '../../../../shared/presenter/widgets/photo_attachments_section.dart';
+import '../../domain/maintenance_progress.dart';
 import '../../infra/models/maintenance_record.dart';
 import '../controllers/maintenance_providers.dart';
 import '../../../../shared/widgets/widgets.dart';
@@ -55,19 +58,6 @@ class MaintenanceDetailPage extends ConsumerWidget {
       title: '',
       titleWidget: Text(rec.siteCode.isEmpty ? 'Maintenance Detail' : rec.siteCode),
       actions: [
-          IconButton(
-            tooltip: 'Export PDF',
-            icon: const Icon(Icons.picture_as_pdf_outlined),
-            onPressed: () =>
-                exportMaintenancePdfWithFeedback(context, repo, rec),
-          ),
-          IconButton(
-            tooltip: 'Edit',
-            icon: const Icon(Icons.edit_outlined),
-            onPressed: () {
-              context.push('/maintenance/new?id=$id');
-            },
-          ),
           PopupMenuButton(
             icon: const Icon(Icons.more_vert),
             itemBuilder: (context) => [
@@ -127,6 +117,14 @@ class MaintenanceDetailPage extends ConsumerWidget {
         padding: const EdgeInsets.all(16),
         child: _DetailBody(rec: rec),
       ),
+      // The things you do with a finished record stay in reach while reading
+      // a long one, instead of icons at the top of the screen.
+      bottomBar: _DetailActionBar(
+        rec: rec,
+        onEdit: () => context.push('/maintenance/new?id=$id'),
+        onPrint: () => printMaintenancePdfWithFeedback(context, repo, rec),
+        onExport: () => exportMaintenancePdfWithFeedback(context, repo, rec),
+      ),
     );
   }
 }
@@ -144,88 +142,7 @@ class _DetailBody extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Header Card with Key Info
-        Card(
-          elevation: 0,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-            side: BorderSide(color: colorScheme.outlineVariant),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: colorScheme.primaryContainer,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Icon(
-                        Icons.build_circle_outlined,
-                        color: colorScheme.onPrimaryContainer,
-                        size: 32,
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            rec.siteCode.isEmpty
-                                ? 'Maintenance Record'
-                                : rec.siteCode,
-                            style: theme.textTheme.headlineSmall?.copyWith(
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          if (rec.address.isNotEmpty) ...[
-                            const SizedBox(height: 4),
-                            Row(
-                              children: [
-                                Icon(
-                                  Icons.place_outlined,
-                                  size: 16,
-                                  color: colorScheme.onSurfaceVariant,
-                                ),
-                                const SizedBox(width: 4),
-                                Expanded(
-                                  child: Text(
-                                    rec.address,
-                                    style: theme.textTheme.bodyMedium
-                                        ?.copyWith(
-                                      color:
-                                      colorScheme.onSurfaceVariant,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                if (rec.dateOfService != null) ...[
-                  const SizedBox(height: 16),
-                  Divider(color: colorScheme.outlineVariant),
-                  const SizedBox(height: 16),
-                  _InfoRow(
-                    icon: Icons.calendar_today_outlined,
-                    label: 'Service Date',
-                    value: _fmtDate(rec.dateOfService!),
-                  ),
-                ],
-              ],
-            ),
-          ),
-        ),
-
+        _SummaryHeader(rec: rec),
         const SizedBox(height: 16),
 
         // Site & Generator Info
@@ -437,6 +354,13 @@ class _DetailBody extends StatelessWidget {
           ),
           const SizedBox(height: 16),
         ],
+
+        // Photos taken during the service (stored apart from the record).
+        PhotoAttachmentsSection(
+          ownerType: PhotoAttachment.ownerMaintenance,
+          ownerId: rec.id,
+        ),
+        const SizedBox(height: 16),
 
         // Status
         _SectionCard(
@@ -698,6 +622,225 @@ class _ChecklistItem extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+
+/// Where this record stands at a glance: site, status, who and when, and how
+/// complete it is.
+class _SummaryHeader extends StatelessWidget {
+  const _SummaryHeader({required this.rec});
+
+  final MaintenanceRecord rec;
+
+  static String _date(DateTime d) =>
+      '${d.month}/${d.day}/${d.year}';
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final progress = MaintenanceProgress.compute(rec);
+    final techSigned = rec.technicianSignatureName.isNotEmpty ||
+        (rec.technicianSignaturePath ?? '').isNotEmpty;
+    final custSigned = rec.customerSignatureName.isNotEmpty ||
+        (rec.customerSignaturePath ?? '').isNotEmpty;
+
+    // Older records were never flagged completed even when signed off, so a
+    // record with its site details and both signatures counts as completed.
+    final finished = rec.completed || progress.missingExpected.isEmpty;
+    final (statusLabel, statusTone) = finished
+        ? ('Completed', StatusTone.success)
+        : ('In progress', StatusTone.warning);
+
+    final generator = '${rec.generatorMake} ${rec.generatorModel}'.trim();
+
+    return Card(
+      elevation: 0,
+      margin: EdgeInsets.zero,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: scheme.outlineVariant),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                ExcludeSemantics(
+                  child: Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: scheme.primaryContainer,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(Icons.build_circle_outlined,
+                        color: scheme.onPrimaryContainer, size: 28),
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        rec.siteCode.isEmpty
+                            ? (rec.address.isEmpty
+                                ? 'Maintenance record'
+                                : rec.address)
+                            : rec.siteCode,
+                        style: theme.textTheme.titleLarge
+                            ?.copyWith(fontWeight: FontWeight.w700),
+                      ),
+                      if (rec.siteCode.isNotEmpty && rec.address.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 2),
+                          child: Text(
+                            rec.address,
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                                color: scheme.onSurfaceVariant),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 14),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                StatusChip(
+                  label: statusLabel,
+                  tone: statusTone,
+                  icon: finished
+                      ? Icons.check_circle_outline
+                      : Icons.timelapse,
+                ),
+                if (rec.requiresFollowUp)
+                  const StatusChip(
+                    label: 'Follow-up needed',
+                    tone: StatusTone.warning,
+                    icon: Icons.flag_outlined,
+                  ),
+                StatusChip(
+                  label: techSigned && custSigned
+                      ? 'Signed by both'
+                      : techSigned || custSigned
+                          ? 'One signature'
+                          : 'Unsigned',
+                  tone: techSigned && custSigned
+                      ? StatusTone.success
+                      : StatusTone.neutral,
+                  icon: Icons.draw_outlined,
+                ),
+              ],
+            ),
+            const SizedBox(height: 14),
+            Wrap(
+              spacing: 16,
+              runSpacing: 6,
+              children: [
+                if (rec.dateOfService != null)
+                  InfoChip(
+                    icon: Icons.calendar_today_outlined,
+                    label: _date(rec.dateOfService!),
+                  ),
+                if (rec.technicianName.isNotEmpty)
+                  InfoChip(
+                    icon: Icons.person_outline,
+                    label: rec.technicianName,
+                  ),
+                if (generator.isNotEmpty)
+                  InfoChip(icon: Icons.settings_outlined, label: generator),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Semantics(
+              label: '${progress.doneCount} of ${progress.total} sections done',
+              child: LinearProgressIndicator(
+                value: progress.fraction,
+                minHeight: 6,
+                borderRadius: BorderRadius.circular(4),
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              '${progress.doneCount} of ${progress.total} sections done',
+              style: theme.textTheme.bodySmall
+                  ?.copyWith(color: scheme.onSurfaceVariant),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Sticky actions: continue or edit the record, print it, make the PDF.
+class _DetailActionBar extends StatelessWidget {
+  const _DetailActionBar({
+    required this.rec,
+    required this.onEdit,
+    required this.onPrint,
+    required this.onExport,
+  });
+
+  final MaintenanceRecord rec;
+  final VoidCallback onEdit;
+  final VoidCallback onPrint;
+  final VoidCallback onExport;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Material(
+      color: scheme.surface,
+      elevation: 8,
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
+          child: Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: onEdit,
+                  icon: const Icon(Icons.edit_outlined),
+                  label: Text(
+                    rec.completed || MaintenanceProgress.compute(rec)
+                            .missingExpected
+                            .isEmpty
+                        ? 'Edit'
+                        : 'Continue',
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: onPrint,
+                  icon: const Icon(Icons.print_outlined),
+                  label: const Text('Print'),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: FilledButton.icon(
+                  onPressed: onExport,
+                  icon: const Icon(Icons.picture_as_pdf_outlined),
+                  label: const Text('PDF'),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

@@ -5,7 +5,9 @@ import '../../../../core/services/forms/form_draft_service.dart';
 import '../../../../app/nav_extensions.dart';
 import '../../../../shared/widgets/widgets.dart';
 import '../../domain/entities/inspection_entity.dart';
+import '../../domain/inspection_unanswered.dart';
 import '../controllers/inspection_form_controller.dart';
+import '../widgets/unanswered_sheet.dart';
 
 // Section widgets (now using InspectionEntity)
 import '../widgets/section_site_info.dart';
@@ -174,6 +176,7 @@ class _InspectionFormPageState extends ConsumerState<InspectionFormPage> {
       );
     }
 
+    final unanswered = unansweredItems(inspection);
     final isEditing = formState.isEditing;
     final title = isEditing ? 'Edit Inspection' : 'New Inspection';
 
@@ -253,7 +256,13 @@ class _InspectionFormPageState extends ConsumerState<InspectionFormPage> {
       ],
       body: Form(
         key: _formKey,
-        child: LayoutBuilder(
+        child: Column(
+          children: [
+            UnansweredBar(
+              count: unanswered.length,
+              onTap: () => _showUnansweredSheet(unanswered),
+            ),
+            Expanded(child: LayoutBuilder(
           builder: (ctx, constraints) {
             final wide = constraints.maxWidth > 900;
 
@@ -296,6 +305,8 @@ class _InspectionFormPageState extends ConsumerState<InspectionFormPage> {
               ],
             );
           },
+        )),
+          ],
         ),
       ),
       bottomBar: SafeArea(
@@ -447,6 +458,16 @@ class _InspectionFormPageState extends ConsumerState<InspectionFormPage> {
     );
 
     if (target != null) await _scrollToSection(target);
+  }
+
+  /// Bottom sheet of the unanswered required items, grouped by section.
+  /// Tapping one jumps to its section.
+  Future<void> _showUnansweredSheet(List<UnansweredItem> items) async {
+    final key = await showUnansweredSheet(context, items);
+    if (key == null) return;
+    final section =
+        _FormSection.values.where((s) => s.name == key).firstOrNull;
+    if (section != null) await _scrollToSection(section);
   }
 
   /// Sections with required fields still empty. Kept deliberately small — it

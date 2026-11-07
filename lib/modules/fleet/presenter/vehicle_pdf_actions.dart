@@ -13,6 +13,7 @@ import '../infra/repositories/vehicle_asset_repository.dart';
 import '../infra/repositories/vehicle_check_repository.dart';
 import '../infra/repositories/vehicle_inspection_repository.dart';
 import 'fleet_providers.dart';
+import '../../../shared/widgets/app_snack_bar.dart';
 
 /// Gathers everything about [vehicle], builds the PDF, stores it in the
 /// document library and offers to open it. Reports the real outcome, with a
@@ -25,12 +26,7 @@ Future<void> generateVehiclePdfWithFeedback(
   final messenger = ScaffoldMessenger.of(context);
   final navigator = Navigator.of(context, rootNavigator: true);
 
-  messenger.showSnackBar(
-    const SnackBar(
-      content: Text('Generating vehicle PDF…'),
-      behavior: SnackBarBehavior.floating,
-    ),
-  );
+  AppSnackBar.infoOn(messenger, 'Generating vehicle PDF…');
 
   try {
     // Each source is best-effort: a tool list that fails to load should not
@@ -97,12 +93,10 @@ Future<void> generateVehiclePdfWithFeedback(
     );
   } catch (e) {
     messenger.hideCurrentSnackBar();
-    messenger.showSnackBar(
-      SnackBar(
-        content: Text('Could not generate vehicle PDF: $e'),
-        behavior: SnackBarBehavior.floating,
-        duration: const Duration(seconds: 6),
-      ),
+    AppSnackBar.errorOn(
+      messenger,
+      'Could not generate vehicle PDF: $e',
+      duration: const Duration(seconds: 6),
     );
   }
 }

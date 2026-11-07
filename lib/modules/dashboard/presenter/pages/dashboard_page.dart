@@ -1,1092 +1,644 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+
+import '../../../../app/route_roles.dart';
+import '../../../../core/constants/route_paths.dart';
+import '../../../../core/theme/app_tokens.dart';
+import '../../../../core/theme/status_colors.dart';
+import '../../../../shared/widgets/widgets.dart';
 import '../../../auth/domain/user_role.dart';
 import '../../../auth/presenter/controllers/auth_controller.dart';
+import '../../../fleet/infra/repositories/vehicle_inspection_repository.dart';
+import '../../../inspections/presenter/controllers/app_badges_controller.dart';
+import '../../../inventory/presenter/movement_providers.dart' show jobsShortOfPartsProvider;
+import '../../../inspections/presenter/controllers/inspection_list_controller.dart';
 import '../../../schedule/domain/entities/task_schedule_entity.dart';
+import '../../../schedule/domain/schedule_view_logic.dart' show unassignedFilter;
 import '../../../schedule/presenter/controllers/schedule_controller.dart';
-import '../../../../shared/widgets/widgets.dart';
-import '../../../../core/theme/status_colors.dart';
+import '../../../search/presenter/global_search.dart';
+import '../../../work_orders/presenter/work_order_providers.dart';
+import '../../../work_orders/presenter/work_order_workload.dart';
+import '../../domain/dashboard_summary.dart';
+import '../../domain/inspection_trend.dart';
+import '../../domain/technician_day.dart';
+import '../dashboard_providers.dart';
+import '../widgets/dashboard_sections.dart';
+import '../widgets/trend_sparkline.dart';
 
-/// Enhanced role-aware dashboard with stats overview and quick actions
-/// FIXED VERSION: Shows upcoming tasks if no past tasks + debug logging
-class DashboardPage extends ConsumerWidget {
+/// Role-aware home screen.
+///
+/// One screen that changes with who is signed in: a technician sees "their
+/// day" (own jobs, own vehicle's daily check), a dispatcher sees what needs
+/// assigning, a supervisor sees what needs review, an admin sees the whole
+/// picture. Every block is built from the same few providers and tolerates any
+/// of them being slow or failing.
+class DashboardPage extends ConsumerStatefulWidget {
   const DashboardPage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<DashboardPage> createState() => _DashboardPageState();
+}
+
+class _DashboardPageState extends ConsumerState<DashboardPage> {
+  DateTime? _updatedAt;
+
+  @override
+  void initState() {
+    super.initState();
+    // Stamp "Updated" whenever the schedule finishes loading, including the
+    // load that is already done by the time this page opens.
+    ref.listenManual<AsyncValue<List<TaskScheduleEntity>>>(
+      scheduleControllerProvider,
+      (_, next) {
+        if (next.hasValue && mounted) {
+          setState(() => _updatedAt = DateTime.now());
+        }
+      },
+      fireImmediately: true,
+    );
+  }
+
+  Future<void> _refresh() async {
+    ref.invalidate(workOrderListProvider);
+    ref.invalidate(allVehicleInspectionsProvider);
+    ref.invalidate(dailyChecksDueProvider);
+    ref.invalidate(dashboardWorkloadProvider);
+    ref.read(inspectionListControllerProvider.notifier).loadInspections();
+    await ref.read(scheduleControllerProvider.notifier).load();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final auth = ref.watch(authStateProvider);
     final role = auth.currentRole;
-    final isAuthed = auth.isAuthenticated;
-    final theme = Theme.of(context);
-    final color = theme.colorScheme;
-    final scheduleState = ref.watch(scheduleControllerProvider);
+    final audience = DashboardAudience.of(role);
+    final schedule = ref.watch(scheduleControllerProvider);
+    final tasks = schedule.hasValue ? schedule.requireValue : null;
 
     return AppPage(
       title: 'Dashboard',
+      // The page has its own search bar.
+      showSearch: false,
       actions: [
-          if (isAuthed && role != null)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              child: Chip(
-                avatar: Icon(
-                  _roleIcon(role),
-                  size: 18,
-                  color: color.onSecondaryContainer,
+        IconButton(
+          tooltip: 'Refresh',
+          icon: const Icon(Icons.refresh),
+          onPressed: _refresh,
+        ),
+      ],
+      body: RefreshIndicator(
+        onRefresh: _refresh,
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final wide = constraints.maxWidth >= 900;
+            final gutter = AppSpacing.gutter(
+              AppBreakpoints.of(constraints.maxWidth),
+            );
+            return ListView(
+              // Always scrollable so pull-to-refresh works on short content.
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: EdgeInsets.fromLTRB(gutter, 16, gutter, 32),
+              children: [
+                _Header(
+                  name: auth.displayName,
+                  audience: audience,
+                  updatedAt: _updatedAt,
                 ),
-                label: Text(
-                  _roleLabel(role),
-                  style: theme.textTheme.labelMedium?.copyWith(
-                    color: color.onSecondaryContainer,
+                const SizedBox(height: 16),
+                DashboardSearchBar(onTap: () => showGlobalSearch(context)),
+                const SizedBox(height: 20),
+                if (tasks == null && schedule.isLoading)
+                  const DashboardSkeleton()
+                else ...[
+                  if (schedule.hasError && tasks == null)
+                    _LoadError(onRetry: _refresh),
+                  _Body(
+                    wide: wide,
+                    audience: audience,
+                    role: role,
+                    tasks: tasks ?? const [],
                   ),
-                ),
-                backgroundColor: color.secondaryContainer,
-              ),
-            ),
-        ],
-      body: scheduleState.when(
-        loading: () => const LoadingIndicator(),
-        error: (err, st) {
-          if (kDebugMode) {
-            debugPrint('=== DASHBOARD ERROR ===');
-            debugPrint('Error: $err');
-            debugPrint('======================');
-          }
-          return _buildDashboardContent(
-            context,
-            theme,
-            auth,
-            role,
-            isAuthed,
-            [],
-          );
-        },
-        data: (tasks) {
-          // DEBUG: Print task info
-          if (kDebugMode) {
-            debugPrint('=== DASHBOARD DEBUG ===');
-            debugPrint('Total tasks: ${tasks.length}');
-            debugPrint('Is authenticated: $isAuthed');
-
-            final now = DateTime.now();
-            final pastTasks = tasks.where((t) => t.scheduledDate.isBefore(now)).length;
-            final futureTasks = tasks.where((t) => t.scheduledDate.isAfter(now)).length;
-
-            debugPrint('Past tasks: $pastTasks');
-            debugPrint('Future tasks: $futureTasks');
-
-            if (tasks.isNotEmpty) {
-              debugPrint('Sample task dates:');
-              for (var i = 0; i < tasks.length && i < 5; i++) {
-                final isPast = tasks[i].scheduledDate.isBefore(now);
-                debugPrint('  Task $i: ${tasks[i].scheduledDate} - ${isPast ? "PAST ✓" : "FUTURE →"}');
-              }
-            }
-            debugPrint('======================');
-          }
-
-          return _buildDashboardContent(
-            context,
-            theme,
-            auth,
-            role,
-            isAuthed,
-            tasks,
-          );
-        },
+                ],
+              ],
+            );
+          },
+        ),
       ),
     );
   }
+}
 
-  Widget _buildDashboardContent(
-      BuildContext context,
-      ThemeData theme,
-      dynamic auth,
-      UserRole? role,
-      bool isAuthed,
-      List<TaskScheduleEntity> tasks,
-      ) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final isWide = constraints.maxWidth >= 900;
+class _Body extends ConsumerWidget {
+  const _Body({
+    required this.wide,
+    required this.audience,
+    required this.role,
+    required this.tasks,
+  });
 
-        if (isWide) {
-          return _buildDesktopLayout(
-            context,
-            theme,
-            auth,
-            role,
-            isAuthed,
-            tasks,
-          );
-        } else {
-          return _buildMobileLayout(
-            context,
-            theme,
-            auth,
-            role,
-            isAuthed,
-            tasks,
-          );
-        }
-      },
-    );
-  }
+  final bool wide;
+  final DashboardAudience audience;
+  final UserRole? role;
+  final List<TaskScheduleEntity> tasks;
 
-  Widget _buildDesktopLayout(
-      BuildContext context,
-      ThemeData theme,
-      dynamic auth,
-      UserRole? role,
-      bool isAuthed,
-      List<TaskScheduleEntity> tasks,
-      ) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Welcome header
-          _buildWelcomeHeader(theme, auth, role),
-          const SizedBox(height: 24),
+  bool _can(String routeName) =>
+      role != null && RouteRoles.isAllowedByName(name: routeName, role: role!);
 
-          // Stats overview (if authenticated)
-          if (isAuthed) ...[
-            _buildStatsGrid(theme, tasks, role),
-            const SizedBox(height: 32),
-          ],
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final summary = DashboardSummary.fromTasks(tasks, now: DateTime.now());
+    final workload = ref.watch(dashboardWorkloadProvider).asData?.value;
+    final dailyDue = ref.watch(dailyChecksDueProvider).asData?.value;
+    final badges = ref.watch(appBadgesProvider);
 
-          // Main content row
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Left column: Quick actions (tiles)
-              Expanded(
-                flex: 2,
-                child: _buildQuickActions(context, theme, role),
-              ),
+    final attention = buildAttention(AttentionInputs(
+      audience: audience,
+      summary: summary,
+      workload: workload,
+      redGradeSites: badges.redGradeInspections,
+      vehiclesNeedingDailyCheck: dailyDue,
+      // Technicians are not told; skip the work of checking stock for them.
+      jobsShortOfParts: audience == DashboardAudience.field
+          ? 0
+          : ref.watch(jobsShortOfPartsProvider).asData?.value ?? 0,
+      routes: const AttentionRoutes(
+        schedule: RoutePaths.schedule,
+        jobs: RoutePaths.workOrders,
+        inspections: RoutePaths.inspections,
+        fleetLog: RoutePaths.fleetInspectionLog,
+        shortages: RoutePaths.inventoryShortages,
+      ),
+    ));
 
-              const SizedBox(width: 24),
-
-              // Right column: Recent activity + info
-              Expanded(
-                flex: 1,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // FIXED: Always show Recent Activity section if authenticated
-                    if (isAuthed) ...[
-                      _buildRecentActivity(theme, tasks),
-                      const SizedBox(height: 24),
-                    ],
-                    _buildSystemInfo(theme),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ],
+    final stats = _stats(
+      context,
+      audience: audience,
+      summary: summary,
+      workload: workload,
+      dailyDue: dailyDue,
+      badges: badges,
+      inspectionTrend: dailyCounts(
+        ref.watch(inspectionListControllerProvider).items.map((i) => i.serviceDate),
+        now: DateTime.now(),
       ),
     );
-  }
+    final actions =
+        _actionsFor(audience).where((a) => _can(a.routeName)).toList();
 
-  Widget _buildMobileLayout(
-      BuildContext context,
-      ThemeData theme,
-      dynamic auth,
-      UserRole? role,
-      bool isAuthed,
-      List<TaskScheduleEntity> tasks,
-      ) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Welcome header
-          _buildWelcomeHeader(theme, auth, role),
-          const SizedBox(height: 20),
+    void go(String route) => context.go(route);
 
-          // Stats overview (if authenticated)
-          if (isAuthed) ...[
-            _buildStatsGrid(theme, tasks, role),
-            const SizedBox(height: 24),
-          ],
-
-          // Quick actions
-          _buildQuickActions(context, theme, role),
-          const SizedBox(height: 24),
-
-          // Recent activity (FIXED: always show if authenticated)
-          if (isAuthed) ...[
-            _buildRecentActivity(theme, tasks),
-            const SizedBox(height: 24),
-          ],
-
-          // System info
-          _buildSystemInfo(theme),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildWelcomeHeader(ThemeData theme, dynamic auth, UserRole? role) {
-    final hour = DateTime.now().hour;
-    String timeGreeting = 'Good morning';
-    if (hour >= 12 && hour < 17) timeGreeting = 'Good afternoon';
-    if (hour >= 17) timeGreeting = 'Good evening';
-
-    final displayName = auth.displayName;
-    final roleLabel = role != null ? _roleLabel(role) : null;
-
-    String mainGreeting;
-    if (displayName != null && displayName.isNotEmpty) {
-      mainGreeting = '$timeGreeting, $displayName!';
-    } else if (roleLabel != null) {
-      mainGreeting = '$timeGreeting, $roleLabel!';
-    } else {
-      mainGreeting = '$timeGreeting!';
+    final showTeam = audience == DashboardAudience.dispatch ||
+        audience == DashboardAudience.admin;
+    Widget? teamCard;
+    if (showTeam) {
+      final techs = ref.watch(dashboardTechniciansProvider).asData?.value;
+      teamCard = TechnicianDaysCard(
+        days: buildTechnicianDays(
+          tasks,
+          now: DateTime.now(),
+          names: techs?.names ?? const {},
+          roster: techs?.roster ?? const [],
+        ),
+        onOpen: (d) => go(Uri(
+          path: RoutePaths.schedule,
+          queryParameters: {'technician': d.userId ?? unassignedFilter},
+        ).toString()),
+      );
     }
+
+    final attentionCard = AttentionCard(items: attention, onOpen: go);
+    final todayCard = TodayCard(
+      summary: summary,
+      onOpenSchedule: () => go(RoutePaths.schedule),
+      onOpenTask: (t) => context.push('${RoutePaths.schedule}/detail/${t.id}'),
+    );
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          mainGreeting,
-          style: theme.textTheme.headlineMedium?.copyWith(
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          _formatDate(DateTime.now()),
-          style: theme.textTheme.bodyLarge?.copyWith(
-            color: theme.colorScheme.onSurfaceVariant,
-          ),
-        ),
-        const SizedBox(height: 4),
-        if (roleLabel != null)
+        _StatGrid(stats: stats, onOpen: go),
+        const SizedBox(height: 20),
+        if (wide)
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(flex: 3, child: todayCard),
+              const SizedBox(width: 16),
+              Expanded(flex: 2, child: attentionCard),
+            ],
+          )
+        else ...[
+          // Urgent first on a phone: what needs attention, then the day.
+          attentionCard,
+          const SizedBox(height: 16),
+          todayCard,
+        ],
+        if (teamCard != null) ...[
+          const SizedBox(height: 16),
+          teamCard,
+        ],
+        if (actions.isNotEmpty) ...[
+          const SizedBox(height: 24),
           Text(
-            'Voltcore Access • $roleLabel',
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: theme.colorScheme.primary,
-              fontWeight: FontWeight.w500,
-            ),
+            'Quick actions',
+            style: Theme.of(context)
+                .textTheme
+                .titleMedium
+                ?.copyWith(fontWeight: FontWeight.w700),
           ),
+          const SizedBox(height: 12),
+          QuickActionsGrid(actions: actions, onOpen: (a) => go(a.route)),
+        ],
       ],
     );
   }
+}
 
-  Widget _buildStatsGrid(
-      ThemeData theme,
-      List<TaskScheduleEntity> tasks,
-      UserRole? role,
-      ) {
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final weekEnd = today.add(const Duration(days: 7));
+// ----------------------------------------------------------------- stats
 
-    final todayTasks = tasks.where((t) {
-      final taskDate = DateTime(
-        t.scheduledDate.year,
-        t.scheduledDate.month,
-        t.scheduledDate.day,
-      );
-      return taskDate.isAtSameMomentAs(today);
-    }).length;
+class _Stat {
+  const _Stat(
+    this.label,
+    this.value,
+    this.icon,
+    this.color,
+    this.route, {
+    this.subtitle,
+    this.trend,
+  });
 
-    final weekTasks = tasks.where((t) {
-      final taskDate = DateTime(
-        t.scheduledDate.year,
-        t.scheduledDate.month,
-        t.scheduledDate.day,
-      );
-      return taskDate.isAfter(today) && taskDate.isBefore(weekEnd);
-    }).length;
+  /// Daily counts for a sparkline under the label (oldest first).
+  final List<int>? trend;
 
-    final overdueTasks = tasks.where((t) {
-      final taskDate = DateTime(
-        t.scheduledDate.year,
-        t.scheduledDate.month,
-        t.scheduledDate.day,
-      );
-      return taskDate.isBefore(today);
-    }).length;
+  final String label;
+  final String value;
+  final IconData icon;
+  final Color color;
+  final String route;
+  final String? subtitle;
+}
 
-    final completedTasks = tasks.where((t) {
-      return t.scheduledDate.isBefore(now);
-    }).length;
+List<_Stat> _stats(
+  BuildContext context, {
+  required DashboardAudience audience,
+  required DashboardSummary summary,
+  required WorkOrderWorkload? workload,
+  required int? dailyDue,
+  required AppBadges badges,
+  List<int>? inspectionTrend,
+}) {
+  final theme = Theme.of(context);
+  final status = theme.status;
+  final scheme = theme.colorScheme;
 
+  // The tile's number is the sum of the sparkline's seven daily buckets, so the
+  // two always agree (the older elapsed-time rule counted an extra edge day).
+  final inspections7 = inspectionTrend == null
+      ? badges.pendingInspections
+      : inspectionTrend.fold<int>(0, (a, b) => a + b);
+
+  final today = _Stat(
+    'Today',
+    '${summary.todayOpen}',
+    Icons.today_outlined,
+    scheme.primary,
+    RoutePaths.schedule,
+    subtitle: summary.todayDone > 0 ? '${summary.todayDone} done' : null,
+  );
+  final overdue = _Stat(
+    'Overdue',
+    '${summary.overdue.length}',
+    Icons.warning_amber_rounded,
+    summary.overdue.isEmpty ? status.success : scheme.error,
+    RoutePaths.schedule,
+  );
+  final jobs = workload == null
+      ? null
+      : _Stat(
+          audience == DashboardAudience.field ? 'My open jobs' : 'Open jobs',
+          '${workload.open}',
+          Icons.work_outline,
+          status.info,
+          RoutePaths.workOrders,
+        );
+
+  switch (audience) {
+    case DashboardAudience.field:
+      return [
+        today,
+        overdue,
+        if (jobs != null) jobs,
+        if (dailyDue != null)
+          _Stat(
+            'Daily check',
+            dailyDue == 0 ? 'Done' : 'Due',
+            Icons.local_shipping_outlined,
+            dailyDue == 0 ? status.success : status.warning,
+            RoutePaths.fleet,
+          ),
+      ];
+    case DashboardAudience.dispatch:
+      return [
+        today,
+        overdue,
+        if (jobs != null) jobs,
+        if (workload != null)
+          _Stat(
+            'Unassigned',
+            '${workload.unassigned}',
+            Icons.person_off_outlined,
+            workload.unassigned == 0 ? status.success : status.warning,
+            RoutePaths.workOrders,
+          ),
+      ];
+    case DashboardAudience.review:
+      return [
+        today,
+        overdue,
+        _Stat('Red-grade sites', '${badges.redGradeInspections}',
+            Icons.error_outline, scheme.error, RoutePaths.inspections),
+        _Stat('Inspections, 7 days', '$inspections7',
+            Icons.fact_check_outlined, status.info, RoutePaths.inspections,
+            trend: inspectionTrend),
+      ];
+    case DashboardAudience.admin:
+      return [
+        today,
+        overdue,
+        if (jobs != null) jobs,
+        _Stat('Inspections, 7 days', '$inspections7',
+            Icons.fact_check_outlined, scheme.tertiary, RoutePaths.inspections,
+            trend: inspectionTrend),
+      ];
+  }
+}
+
+class _StatGrid extends StatelessWidget {
+  const _StatGrid({required this.stats, required this.onOpen});
+
+  final List<_Stat> stats;
+  final ValueChanged<String> onOpen;
+
+  @override
+  Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final columns = constraints.maxWidth > 1200
-            ? 4
-            : (constraints.maxWidth > 600 ? 2 : 1);
+        final columns =
+            constraints.maxWidth >= 700 ? stats.length.clamp(1, 4) : 2;
+        final scale = MediaQuery.textScalerOf(context).scale(1.0);
+        final extent = 136.0 * scale.clamp(1.0, 1.6) +
+            (stats.any((s) => s.trend != null)
+                ? TrendSparkline.extraHeight
+                : 0);
 
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Overview',
-              style: theme.textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            const SizedBox(height: 16),
-            GridView.count(
-              crossAxisCount: columns,
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              mainAxisSpacing: 16,
-              crossAxisSpacing: 16,
-              childAspectRatio: 1.6,
-              children: [
-                _StatCard(
-                  title: 'Today',
-                  value: '$todayTasks',
-                  subtitle: 'tasks scheduled',
-                  icon: Icons.today_outlined,
-                  color: Colors.blue,
-                  theme: theme,
-                  onTap: () => context.goNamed('schedule'),
-                ),
-                _StatCard(
-                  title: 'This Week',
-                  value: '$weekTasks',
-                  subtitle: 'upcoming tasks',
-                  icon: Icons.calendar_month_outlined,
-                  color: theme.status.success,
-                  theme: theme,
-                  onTap: () => context.goNamed('schedule'),
-                ),
-                _StatCard(
-                  title: 'Overdue',
-                  value: '$overdueTasks',
-                  subtitle: 'need attention',
-                  icon: Icons.warning_amber_rounded,
-                  color: theme.colorScheme.error,
-                  theme: theme,
-                  onTap: () => context.goNamed('schedule'),
-                ),
-                _StatCard(
-                  title: 'Completed',
-                  value: '$completedTasks',
-                  subtitle: 'past tasks',
-                  icon: Icons.check_circle_outline,
-                  color: Colors.teal,
-                  theme: theme,
-                  onTap: () => context.goNamed('schedule'),
-                ),
-              ],
-            ),
-          ],
+        return GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: stats.length,
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: columns,
+            mainAxisSpacing: 12,
+            crossAxisSpacing: 12,
+            mainAxisExtent: extent,
+          ),
+          itemBuilder: (context, i) {
+            final s = stats[i];
+            return StatCard(
+              compact: true,
+              icon: s.icon,
+              label:
+                  s.subtitle == null ? s.label : '${s.label} - ${s.subtitle}',
+              value: s.value,
+              color: s.color,
+              footerSemantics: s.trend == null
+                  ? null
+                  : trendSemanticLabel('Inspections', s.trend!),
+              footer: s.trend == null
+                  ? null
+                  : TrendSparkline.inspections(counts: s.trend!, color: s.color),
+              onTap: () => onOpen(s.route),
+            );
+          },
         );
       },
     );
   }
-
-  Widget _buildQuickActions(
-      BuildContext context,
-      ThemeData theme,
-      UserRole? role,
-      ) {
-    final tiles = _buildAllTiles(role);
-
-    if (tiles.isEmpty) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(32),
-          child: Text(
-            'No dashboard items available for your role.',
-            style: theme.textTheme.bodyLarge?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
-          ),
-        ),
-      );
-    }
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Quick Actions',
-          style: theme.textTheme.titleLarge?.copyWith(
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          'Choose a workflow to get started',
-          style: theme.textTheme.bodyMedium?.copyWith(
-            color: theme.colorScheme.onSurfaceVariant,
-          ),
-        ),
-        const SizedBox(height: 16),
-        ...tiles.map((tile) => Padding(
-          padding: const EdgeInsets.only(bottom: 12),
-          child: _DashboardTile(tile: tile),
-        )),
-      ],
-    );
-  }
-
-  Widget _buildRecentActivity(ThemeData theme, List<TaskScheduleEntity> tasks) {
-    final now = DateTime.now();
-
-    // FIXED: Show both past and upcoming tasks
-    final pastTasks = tasks
-        .where((t) => t.scheduledDate.isBefore(now))
-        .toList()
-      ..sort((a, b) => b.scheduledDate.compareTo(a.scheduledDate));
-
-    final upcomingTasks = tasks
-        .where((t) => t.scheduledDate.isAfter(now))
-        .toList()
-      ..sort((a, b) => a.scheduledDate.compareTo(b.scheduledDate));
-
-    final displayTasks = <TaskScheduleEntity>[];
-
-    // Prioritize recent completions (up to 3), then fill with upcoming
-    displayTasks.addAll(pastTasks.take(3));
-    if (displayTasks.length < 5) {
-      displayTasks.addAll(upcomingTasks.take(5 - displayTasks.length));
-    }
-
-    if (kDebugMode) {
-      debugPrint('--- Recent Activity Debug ---');
-      debugPrint('Past tasks available: ${pastTasks.length}');
-      debugPrint('Upcoming tasks available: ${upcomingTasks.length}');
-      debugPrint('Displaying: ${displayTasks.length}');
-      debugPrint('---------------------------');
-    }
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Recent Activity',
-          style: theme.textTheme.titleLarge?.copyWith(
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        const SizedBox(height: 16),
-        Card(
-          elevation: 0,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-            side: BorderSide(
-              color: theme.colorScheme.outlineVariant,
-            ),
-          ),
-          child: displayTasks.isEmpty
-              ? Padding(
-            padding: const EdgeInsets.all(24),
-            child: Center(
-              child: Column(
-                children: [
-                  Icon(
-                    Icons.event_note_outlined,
-                    size: 48,
-                    color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    'No recent activity',
-                    style: theme.textTheme.bodyLarge?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Schedule your first task to get started',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          )
-              : ListView.separated(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            padding: const EdgeInsets.all(16),
-            itemCount: displayTasks.length,
-            separatorBuilder: (_, __) => Divider(
-              height: 24,
-              color: theme.colorScheme.outlineVariant,
-            ),
-            itemBuilder: (context, index) {
-              final task = displayTasks[index];
-              final isPast = task.scheduledDate.isBefore(now);
-              return _buildActivityItem(task, theme, isPast);
-            },
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildActivityItem(TaskScheduleEntity task, ThemeData theme, bool isPast) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          width: 8,
-          height: 8,
-          margin: const EdgeInsets.only(top: 6),
-          decoration: BoxDecoration(
-            color: isPast ? theme.status.success : Colors.blue,
-            shape: BoxShape.circle,
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      task.address.isEmpty
-                          ? (task.title.isEmpty ? '(No title)' : task.title)
-                          : task.address,
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        fontWeight: FontWeight.w500,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  if (!isPast)
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: Colors.blue.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: Text(
-                        'Upcoming',
-                        style: theme.textTheme.labelSmall?.copyWith(
-                          color: Colors.blue,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-              const SizedBox(height: 4),
-              Text(
-                _formatDateTime(task.scheduledDate),
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-              ),
-              if (task.siteGrade.isNotEmpty) ...[
-                const SizedBox(height: 4),
-                _buildGradeBadge(task.siteGrade, theme),
-              ],
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildGradeBadge(String grade, ThemeData theme) {
-    final color = theme.gradeColor(grade);
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: color.withValues(alpha: 0.3)),
-      ),
-      child: Text(
-        grade,
-        style: theme.textTheme.labelSmall?.copyWith(
-          color: color,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-    );
-  }
-
-
-  Widget _buildSystemInfo(ThemeData theme) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'System Info',
-          style: theme.textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        const SizedBox(height: 12),
-        Card(
-          elevation: 0,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-            side: BorderSide(
-              color: theme.colorScheme.outlineVariant,
-            ),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildInfoRow(
-                  Icons.bolt,
-                  'Voltcore',
-                  'Inspection Management',
-                  theme,
-                ),
-                const SizedBox(height: 12),
-                _buildInfoRow(
-                  Icons.update,
-                  'Version',
-                  '1.0.0',
-                  theme,
-                ),
-                if (kDebugMode) ...[
-                  const SizedBox(height: 12),
-                  _buildInfoRow(
-                    Icons.bug_report,
-                    'Mode',
-                    'Debug',
-                    theme,
-                  ),
-                ],
-              ],
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildInfoRow(
-      IconData icon,
-      String label,
-      String value,
-      ThemeData theme,
-      ) {
-    return Row(
-      children: [
-        Icon(
-          icon,
-          size: 18,
-          color: theme.colorScheme.primary,
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Text(
-            label,
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
-          ),
-        ),
-        Text(
-          value,
-          style: theme.textTheme.bodyMedium?.copyWith(
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-      ],
-    );
-  }
-
-  String _formatDate(DateTime date) {
-    const days = [
-      'Monday',
-      'Tuesday',
-      'Wednesday',
-      'Thursday',
-      'Friday',
-      'Saturday',
-      'Sunday'
-    ];
-    const months = [
-      'January',
-      'February',
-      'March',
-      'April',
-      'May',
-      'June',
-      'July',
-      'August',
-      'September',
-      'October',
-      'November',
-      'December'
-    ];
-    return '${days[date.weekday - 1]}, ${months[date.month - 1]} ${date.day}, ${date.year}';
-  }
-
-  String _formatDateTime(DateTime date) {
-    const months = [
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'May',
-      'Jun',
-      'Jul',
-      'Aug',
-      'Sep',
-      'Oct',
-      'Nov',
-      'Dec'
-    ];
-    final hour =
-    date.hour > 12 ? date.hour - 12 : (date.hour == 0 ? 12 : date.hour);
-    final minute = date.minute.toString().padLeft(2, '0');
-    final period = date.hour >= 12 ? 'PM' : 'AM';
-    return '${months[date.month - 1]} ${date.day} at $hour:$minute $period';
-  }
 }
 
-// [Rest of the code remains exactly the same - tiles, models, helpers, etc.]
+// --------------------------------------------------------------- actions
 
-/// Simple tile model for the dashboard
-class _DashTile {
-  final String title;
-  final String subtitle;
-  final IconData icon;
-  final String routeName;
-  final Set<UserRole>? visibleFor;
+List<DashboardAction> _actionsFor(DashboardAudience audience) {
+  const newInspection = DashboardAction(
+    label: 'New inspection',
+    icon: Icons.add_circle_outline,
+    route: RoutePaths.inspectionNew,
+    routeName: RouteNames.inspectionNew,
+  );
+  const newJob = DashboardAction(
+    label: 'New job',
+    icon: Icons.add_task_outlined,
+    route: RoutePaths.workOrderNew,
+    routeName: RouteNames.workOrderNew,
+  );
+  const newMaintenance = DashboardAction(
+    label: 'New maintenance',
+    icon: Icons.build_circle_outlined,
+    route: RoutePaths.maintenanceNew,
+    routeName: RouteNames.maintenanceNew,
+  );
+  const scheduleTask = DashboardAction(
+    label: 'Schedule a task',
+    icon: Icons.event_outlined,
+    route: '${RoutePaths.schedule}/${RoutePaths.scheduleTask}',
+    routeName: RouteNames.scheduleTask,
+  );
+  const vehicles = DashboardAction(
+    label: 'Vehicles',
+    icon: Icons.local_shipping_outlined,
+    route: RoutePaths.fleet,
+    routeName: RouteNames.fleet,
+  );
+  const inspections = DashboardAction(
+    label: 'Inspections',
+    icon: Icons.fact_check_outlined,
+    route: RoutePaths.inspections,
+    routeName: RouteNames.inspections,
+  );
+  const documents = DashboardAction(
+    label: 'Documents',
+    icon: Icons.folder_open_outlined,
+    route: RoutePaths.documents,
+    routeName: RouteNames.documents,
+  );
+  const workload = DashboardAction(
+    label: 'My workload',
+    icon: Icons.insights_outlined,
+    route: RoutePaths.techDashboard,
+    routeName: RouteNames.techDashboard,
+  );
+  const analytics = DashboardAction(
+    label: 'Analytics',
+    icon: Icons.query_stats_outlined,
+    route: RoutePaths.analytics,
+    routeName: RouteNames.analytics,
+  );
+  const admin = DashboardAction(
+    label: 'Admin overview',
+    icon: Icons.admin_panel_settings_outlined,
+    route: RoutePaths.adminDashboard,
+    routeName: RouteNames.adminDashboard,
+  );
 
-  const _DashTile({
-    required this.title,
-    required this.subtitle,
-    required this.icon,
-    required this.routeName,
-    this.visibleFor,
+  return switch (audience) {
+    DashboardAudience.field => [
+        newInspection,
+        vehicles,
+        newMaintenance,
+        workload,
+        documents,
+      ],
+    DashboardAudience.dispatch => [
+        newJob,
+        scheduleTask,
+        vehicles,
+        newInspection,
+        documents,
+      ],
+    DashboardAudience.review => [
+        inspections,
+        newInspection,
+        analytics,
+        documents,
+      ],
+    DashboardAudience.admin => [
+        newInspection,
+        newJob,
+        newMaintenance,
+        scheduleTask,
+        analytics,
+        admin,
+      ],
+  };
+}
+
+// ---------------------------------------------------------------- header
+
+class _Header extends StatelessWidget {
+  const _Header({
+    required this.name,
+    required this.audience,
+    required this.updatedAt,
   });
 
-  bool isVisibleFor(UserRole? role) {
-    if (visibleFor == null) return true;
-    if (role == null) return false;
-    return visibleFor!.contains(role);
-  }
-}
+  final String? name;
+  final DashboardAudience audience;
+  final DateTime? updatedAt;
 
-/// Build all dashboard tiles (RBAC logic)
-List<_DashTile> _buildAllTiles(UserRole? role) {
-  const all = <_DashTile>[
-    _DashTile(
-      title: 'My Workload',
-      subtitle: 'Personal inspections & maintenance stats',
-      icon: Icons.dashboard_customize_outlined,
-      routeName: 'tech_dashboard',
-      visibleFor: {
-        UserRole.tech,
-        UserRole.supervisor,
-        UserRole.dispatcher,
-        UserRole.admin,
-      },
-    ),
-    _DashTile(
-      title: 'New Inspection',
-      subtitle: 'Start a generator compliance inspection',
-      icon: Icons.fact_check_outlined,
-      routeName: 'inspection_new',
-      visibleFor: {
-        UserRole.tech,
-        UserRole.dispatcher,
-        UserRole.supervisor,
-        UserRole.admin,
-      },
-    ),
-    _DashTile(
-      title: 'Inspection History',
-      subtitle: 'View previous inspections & reports',
-      icon: Icons.history_outlined,
-      routeName: 'inspections',
-      visibleFor: {
-        UserRole.tech,
-        UserRole.dispatcher,
-        UserRole.supervisor,
-        UserRole.admin,
-      },
-    ),
-    _DashTile(
-      title: 'New Maintenance Job',
-      subtitle: 'Create a maintenance / repair checklist',
-      icon: Icons.build_circle_outlined,
-      routeName: 'maintenance_new',
-      visibleFor: {
-        UserRole.tech,
-        UserRole.dispatcher,
-        UserRole.supervisor,
-        UserRole.admin,
-      },
-    ),
-    _DashTile(
-      title: 'Maintenance Archive',
-      subtitle: 'Browse and export maintenance history',
-      icon: Icons.archive_outlined,
-      routeName: 'maintenance_archive',
-      visibleFor: {
-        UserRole.tech,
-        UserRole.dispatcher,
-        UserRole.supervisor,
-        UserRole.admin,
-      },
-    ),
-    _DashTile(
-      title: 'Schedule',
-      subtitle: 'View inspection & maintenance calendar',
-      icon: Icons.calendar_month_outlined,
-      routeName: 'schedule',
-      visibleFor: {
-        UserRole.dispatcher,
-        UserRole.supervisor,
-        UserRole.admin,
-      },
-    ),
-    _DashTile(
-      title: 'Equipment Registry',
-      subtitle: 'Manage generator nameplate infra',
-      icon: Icons.inventory_2_outlined,
-      routeName: 'nameplate_list',
-      visibleFor: {
-        UserRole.tech,
-        UserRole.dispatcher,
-        UserRole.supervisor,
-        UserRole.admin,
-      },
-    ),
-    _DashTile(
-      title: 'Admin Dashboard',
-      subtitle: 'Fleet analytics, KPIs & overview',
-      icon: Icons.analytics_outlined,
-      routeName: 'admin_dashboard',
-      visibleFor: {
-        UserRole.admin,
-      },
-    ),
-    _DashTile(
-      title: 'Admin Settings',
-      subtitle: 'Roles, permissions & configuration',
-      icon: Icons.admin_panel_settings_outlined,
-      routeName: 'admin_settings',
-      visibleFor: {
-        UserRole.admin,
-      },
-    ),
-    if (kDebugMode)
-      _DashTile(
-        title: 'Hive Debug',
-        subtitle: 'Inspect and manage local data',
-        icon: Icons.bug_report,
-        routeName: 'hive_debug',
-        visibleFor: null,
-      ),
+  static const _months = [
+    'January',
+    'February',
+    'March',
+    'April',
+    'May',
+    'June',
+    'July',
+    'August',
+    'September',
+    'October',
+    'November',
+    'December',
+  ];
+  static const _days = [
+    'Monday',
+    'Tuesday',
+    'Wednesday',
+    'Thursday',
+    'Friday',
+    'Saturday',
+    'Sunday',
   ];
 
-  if (role == null) {
-    return all.where((t) => t.visibleFor == null).toList();
+  String _greeting() {
+    final h = DateTime.now().hour;
+    final part =
+        h < 12 ? 'Good morning' : (h < 17 ? 'Good afternoon' : 'Good evening');
+    final n = name?.trim() ?? '';
+    return n.isEmpty ? part : '$part, $n';
   }
 
-  return all.where((t) => t.isVisibleFor(role)).toList();
-}
-
-/// Enhanced stat card widget
-class _StatCard extends StatelessWidget {
-  final String title;
-  final String value;
-  final String subtitle;
-  final IconData icon;
-  final Color color;
-  final ThemeData theme;
-  final VoidCallback? onTap;
-
-  const _StatCard({
-    required this.title,
-    required this.value,
-    required this.subtitle,
-    required this.icon,
-    required this.color,
-    required this.theme,
-    this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: BorderSide(
-          color: theme.colorScheme.outlineVariant,
-        ),
-      ),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: color.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Icon(icon, color: color, size: 22),
-                  ),
-                  Icon(
-                    Icons.arrow_forward_ios,
-                    size: 14,
-                    color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
-                  ),
-                ],
-              ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    value,
-                    style: theme.textTheme.headlineLarge?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: theme.colorScheme.onSurface,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    title,
-                    style: theme.textTheme.titleSmall?.copyWith(
-                      color: theme.colorScheme.onSurface,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    subtitle,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
+  String _time(DateTime d) {
+    final h = d.hour == 0 ? 12 : (d.hour > 12 ? d.hour - 12 : d.hour);
+    final m = d.minute.toString().padLeft(2, '0');
+    return '$h:$m ${d.hour >= 12 ? 'PM' : 'AM'}';
   }
-}
-
-/// Enhanced dashboard tile widget
-class _DashboardTile extends StatelessWidget {
-  const _DashboardTile({required this.tile});
-
-  final _DashTile tile;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final colors = theme.colorScheme;
+    final now = DateTime.now();
+    final date =
+        '${_days[now.weekday - 1]}, ${_months[now.month - 1]} ${now.day}';
+    final updated =
+        updatedAt == null ? '' : '  ·  Updated ${_time(updatedAt!)}';
 
-    return Card(
-      elevation: 0,
-      margin: EdgeInsets.zero,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(
-          color: colors.outlineVariant,
-          width: 1,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          _greeting(),
+          style: theme.textTheme.headlineSmall
+              ?.copyWith(fontWeight: FontWeight.w700),
         ),
-      ),
-      child: InkWell(
-        onTap: () => context.goNamed(tile.routeName),
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: colors.primaryContainer,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(
-                  tile.icon,
-                  size: 24,
-                  color: colors.onPrimaryContainer,
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      tile.title,
-                      style: theme.textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      tile.subtitle,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: colors.onSurfaceVariant,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Icon(
-                Icons.chevron_right,
-                color: colors.onSurfaceVariant,
-              ),
-            ],
-          ),
+        const SizedBox(height: 4),
+        Wrap(
+          spacing: 8,
+          runSpacing: 4,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: [
+            Text(
+              '$date$updated',
+              style: theme.textTheme.bodyMedium
+                  ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+            ),
+            StatusChip(
+              label: audience.headline,
+              tone: StatusTone.info,
+              icon: Icons.person_outline,
+            ),
+          ],
         ),
-      ),
+      ],
     );
   }
 }
 
-/// Helper: human label for roles
-String _roleLabel(UserRole role) {
-  switch (role) {
-    case UserRole.tech:
-      return 'Technician';
-    case UserRole.dispatcher:
-      return 'Dispatcher';
-    case UserRole.supervisor:
-      return 'Supervisor';
-    case UserRole.admin:
-      return 'Admin';
-  }
-}
+class _LoadError extends StatelessWidget {
+  const _LoadError({required this.onRetry});
 
-/// Helper: icon for roles
-IconData _roleIcon(UserRole role) {
-  switch (role) {
-    case UserRole.tech:
-      return Icons.engineering_outlined;
-    case UserRole.dispatcher:
-      return Icons.support_agent_outlined;
-    case UserRole.supervisor:
-      return Icons.verified_user_outlined;
-    case UserRole.admin:
-      return Icons.admin_panel_settings_outlined;
+  final Future<void> Function() onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Card(
+        elevation: 0,
+        color: scheme.errorContainer,
+        child: ListTile(
+          leading: Icon(Icons.cloud_off_outlined, color: scheme.onErrorContainer),
+          title: Text(
+            "Couldn't load the schedule",
+            style: TextStyle(color: scheme.onErrorContainer),
+          ),
+          subtitle: Text(
+            'Showing what is saved on this device.',
+            style: TextStyle(color: scheme.onErrorContainer),
+          ),
+          trailing: TextButton(onPressed: onRetry, child: const Text('Retry')),
+        ),
+      ),
+    );
   }
 }

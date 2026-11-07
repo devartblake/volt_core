@@ -171,11 +171,7 @@ class DebugMenuPage extends StatelessWidget {
               onTap: () async {
                 final messenger = ScaffoldMessenger.of(context);
                 await FileStorageService.instance.printDebugInfo();
-                messenger.showSnackBar(
-                  const SnackBar(
-                    content: Text('Storage info printed to console'),
-                  ),
-                );
+                AppSnackBar.infoOn(messenger, 'Storage info printed to console');
               },
             ),
           ),

@@ -65,7 +65,7 @@ class _WorkOrderListPageState extends ConsumerState<WorkOrderListPage> {
           orElse: () => 0,
         );
     return AppPage(
-      title: 'All Jobs',
+      title: 'Jobs',
       fab: FloatingActionButton.extended(
         onPressed: () => context.goNamed(RouteNames.workOrderNew),
         icon: const Icon(Icons.add_task_outlined),
@@ -241,18 +241,12 @@ class _WorkloadMetric extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => SizedBox(
-    width: 150,
-    child: Card(
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Row(
-          children: [
-            Icon(icon, size: 20),
-            const SizedBox(width: 8),
-            Expanded(child: Text('$value\n$label')),
-          ],
-        ),
-      ),
+    width: 200,
+    child: StatCard(
+      horizontal: true,
+      icon: icon,
+      label: label,
+      value: '$value',
     ),
   );
 }

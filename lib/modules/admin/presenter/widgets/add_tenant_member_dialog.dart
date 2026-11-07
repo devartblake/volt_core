@@ -5,6 +5,7 @@ import '../../../auth/domain/user_role.dart';
 import '../../../auth/presenter/controllers/auth_controller.dart';
 import '../../domain/entities/tenant_user_lookup.dart';
 import '../controllers/tenant_role_management_controller.dart';
+import '../../../../shared/widgets/app_snack_bar.dart';
 
 /// Grant a tenant role to somebody who already has an account.
 ///
@@ -99,11 +100,7 @@ class _AddTenantMemberDialogState extends ConsumerState<AddTenantMemberDialog> {
     }
 
     Navigator.of(context).pop();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('${user.displayName} is now ${_role.label} in this tenant.'),
-      ),
-    );
+    AppSnackBar.success(context, '${user.displayName} is now ${_role.label} in this tenant.');
   }
 
   @override

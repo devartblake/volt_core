@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../domain/maintenance_validation.dart';
 import '../../infra/models/maintenance_record.dart';
 import '../../../../shared/widgets/widgets.dart';
 
@@ -8,11 +9,15 @@ class SectionMaintSiteInfo extends StatelessWidget {
   final ValueChanged<MaintenanceRecord> onChanged;
   final bool readOnly;
 
+  /// Inline "Required to finish" messages to show, by field.
+  final Map<MaintenanceField, String> issues;
+
   const SectionMaintSiteInfo({
     super.key,
     required this.model,
     required this.onChanged,
     this.readOnly = false,
+    this.issues = const {},
   });
 
   void _updateModel(void Function() mutation) {
@@ -97,6 +102,7 @@ class SectionMaintSiteInfo extends StatelessWidget {
 
             _ModernTextField(
               label: 'Address',
+              errorText: issues[MaintenanceField.address],
               hintText: 'Street, city, state',
               icon: Icons.place_outlined,
               initialValue: model.address,
@@ -106,8 +112,18 @@ class SectionMaintSiteInfo extends StatelessWidget {
             ),
             const SizedBox(height: 12),
 
+            _DateField(
+              label: 'Date of Service',
+              value: model.dateOfService,
+              errorText: issues[MaintenanceField.dateOfService],
+              readOnly: readOnly,
+              onPicked: (d) => _updateModel(() => model.dateOfService = d),
+            ),
+            const SizedBox(height: 12),
+
             _ModernTextField(
               label: 'Technician Name',
+              errorText: issues[MaintenanceField.technicianName],
               hintText: 'Assigned technician',
               icon: Icons.person_outline,
               initialValue: model.technicianName,
@@ -132,6 +148,7 @@ class SectionMaintSiteInfo extends StatelessWidget {
                 Expanded(
                   child: _ModernTextField(
                     label: 'Make',
+                    errorText: issues[MaintenanceField.generatorMake],
                     hintText: 'e.g. Generac',
                     icon: Icons.factory_outlined,
                     initialValue: model.generatorMake,
@@ -143,6 +160,7 @@ class SectionMaintSiteInfo extends StatelessWidget {
                 Expanded(
                   child: _ModernTextField(
                     label: 'Model',
+                    errorText: issues[MaintenanceField.generatorModel],
                     hintText: 'Model number',
                     icon: Icons.tag_outlined,
                     initialValue: model.generatorModel,
@@ -156,6 +174,7 @@ class SectionMaintSiteInfo extends StatelessWidget {
 
             _ModernTextField(
               label: 'Serial Number',
+              errorText: issues[MaintenanceField.generatorSerial],
               hintText: 'Generator serial number',
               icon: Icons.numbers_outlined,
               initialValue: model.generatorSerial,
@@ -231,11 +250,14 @@ class _SectionLabel extends StatelessWidget {
       children: [
         Icon(icon, size: 18, color: color),
         const SizedBox(width: 8),
-        Text(
-          label,
-          style: theme.textTheme.labelLarge?.copyWith(
-            color: color,
-            fontWeight: FontWeight.w600,
+        Flexible(
+          child: Text(
+            label,
+            overflow: TextOverflow.ellipsis,
+            style: theme.textTheme.labelLarge?.copyWith(
+              color: color,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ),
       ],
@@ -253,6 +275,7 @@ class _ModernTextField extends StatelessWidget {
   final int maxLines;
   final String? suffixText;
   final TextInputType? keyboardType;
+  final String? errorText;
   final ValueChanged<String> onChanged;
 
   const _ModernTextField({
@@ -265,6 +288,7 @@ class _ModernTextField extends StatelessWidget {
     this.maxLines = 1,
     this.suffixText,
     this.keyboardType,
+    this.errorText,
   });
 
   @override
@@ -280,7 +304,76 @@ class _ModernTextField extends StatelessWidget {
       readOnly: readOnly,
       maxLines: maxLines,
       keyboardType: keyboardType,
+      errorText: errorText,
       onChanged: onChanged,
+    );
+  }
+}
+
+/// A read-only field that opens the date picker. Starts as today for a new
+/// record; the technician changes it when the work was on another day.
+class _DateField extends StatelessWidget {
+  const _DateField({
+    required this.label,
+    required this.value,
+    required this.onPicked,
+    this.readOnly = false,
+    this.errorText,
+  });
+
+  final String? errorText;
+  final String label;
+  final DateTime? value;
+  final ValueChanged<DateTime> onPicked;
+  final bool readOnly;
+
+  static const _months = [
+    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+  ];
+
+  static String format(DateTime d) =>
+      '${_months[d.month - 1]} ${d.day}, ${d.year}';
+
+  Future<void> _pick(BuildContext context) async {
+    final now = DateTime.now();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: value ?? now,
+      firstDate: DateTime(now.year - 5),
+      lastDate: DateTime(now.year + 1, 12, 31),
+      helpText: label,
+    );
+    if (picked != null) onPicked(picked);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final text = value == null ? 'Tap to set' : format(value!);
+
+    return Semantics(
+      button: !readOnly,
+      label: '$label, $text',
+      excludeSemantics: true,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: readOnly ? null : () => _pick(context),
+        child: InputDecorator(
+          decoration: InputDecoration(
+            labelText: label,
+            errorText: errorText,
+            prefixIcon: const Icon(Icons.event_outlined),
+            suffixIcon: readOnly ? null : const Icon(Icons.arrow_drop_down),
+          ),
+          child: Text(
+            text,
+            style: theme.textTheme.bodyLarge?.copyWith(
+              color: value == null ? theme.colorScheme.onSurfaceVariant : null,
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

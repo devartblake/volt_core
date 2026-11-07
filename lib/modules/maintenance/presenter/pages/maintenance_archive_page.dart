@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../shared/widgets/widgets.dart';
 import '../../infra/models/maintenance_record.dart';
 import '../controllers/maintenance_list_controller.dart';
+import '../controllers/maintenance_providers.dart';
 
 class MaintenanceArchivePage extends ConsumerWidget {
   const MaintenanceArchivePage({super.key});
@@ -14,13 +15,19 @@ class MaintenanceArchivePage extends ConsumerWidget {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
+    // Watching the list controller keeps this rebuilding on refresh, but its
+    // records are the *active* tab's (completed ones are filtered out), so the
+    // archive reads every record itself. Using the controller's list here made
+    // the archive permanently empty.
     final listState = ref.watch(maintenanceListControllerProvider);
-    final archived = listState.records
+    final archived = ref
+        .watch(maintenanceRepoProvider)
+        .getAll()
         .where((m) => m.completed)
         .toList(growable: false);
 
     return AppPage(
-      title: 'Archived Maintenance',
+      title: 'Archive',
       actions: [
         IconButton(
           icon: const Icon(Icons.refresh),

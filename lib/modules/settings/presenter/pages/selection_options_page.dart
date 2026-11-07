@@ -13,7 +13,7 @@ class SelectionOptionsPage extends ConsumerWidget {
     final colorScheme = theme.colorScheme;
 
     return AppPage(
-      title: 'Selection Options',
+      title: 'Configuration',
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [

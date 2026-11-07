@@ -1,3 +1,4 @@
+import '../../../../core/theme/status_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -5,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../providers/equipment_providers.dart';
 import '../../../../shared/widgets/widgets.dart';
 import '../../../inspections/domain/entities/inspection_entity.dart';
+import '../../../materials/presenter/materials_section_card.dart';
 import '../../infra/repositories/equipment_repository_impl.dart';
 
 /// The local inspection timeline for one physical asset.
@@ -63,6 +65,20 @@ class AssetHistoryPage extends ConsumerWidget {
         return AppPage(
           title: 'Asset history',
           leading: BackButton(onPressed: () => context.pop()),
+          actions: [
+            // The generator's standing parts list: what it takes, kept once
+            // and reused by every inspection and maintenance.
+            IconButton(
+              tooltip: 'Parts profile',
+              icon: const Icon(Icons.inventory_2_outlined),
+              onPressed: () => showGeneratorPartsProfile(
+                context,
+                make: asset.make,
+                model: asset.model,
+                serial: asset.serialNumber,
+              ),
+            ),
+          ],
           body: Column(
             children: [
               _AssetSummary(
@@ -185,7 +201,7 @@ class _InspectionHistoryTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final gradeColor = _gradeColor(record.siteGrade, theme.colorScheme);
+    final gradeColor = _gradeColor(record.siteGrade, theme);
 
     return Card(
       elevation: 0,
@@ -247,12 +263,13 @@ class _GradeChip extends StatelessWidget {
   }
 }
 
-Color _gradeColor(String grade, ColorScheme colors) {
+Color _gradeColor(String grade, ThemeData theme) {
+  final colors = theme.colorScheme;
   switch (grade.trim().toLowerCase()) {
     case 'green':
-      return Colors.green.shade700;
+      return theme.status.success;
     case 'amber':
-      return Colors.amber.shade800;
+      return theme.status.warning;
     case 'red':
       return colors.error;
     default:

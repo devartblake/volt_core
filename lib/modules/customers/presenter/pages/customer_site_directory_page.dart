@@ -210,7 +210,7 @@ class _CustomerEditorState extends ConsumerState<_CustomerEditor> {
     try {
       await ref.read(customerSiteRepositoryProvider).saveCustomer(CustomerRecord(id: widget.customer?.id ?? '', name: _name.text, contactName: _contact.text, contactPhone: _phone.text, contactEmail: _email.text, notes: _notes.text, isActive: widget.customer?.isActive ?? true));
       if (mounted) Navigator.pop(context, true);
-    } catch (error) { if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not save customer: $error'))); }
+    } catch (error) { if (mounted) AppSnackBar.error(context, 'Could not save customer: $error'); }
     finally { if (mounted) setState(() => _saving = false); }
   }
 }
@@ -246,7 +246,7 @@ class _SiteEditorState extends ConsumerState<_SiteEditor> {
     try {
       await ref.read(customerSiteRepositoryProvider).saveSite(SiteRecord(id: widget.site?.id ?? '', siteCode: _code.text, address: _address.text, customerId: _customerId, isActive: widget.site?.isActive ?? true));
       if (mounted) Navigator.pop(context, true);
-    } catch (error) { if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not save site: $error'))); }
+    } catch (error) { if (mounted) AppSnackBar.error(context, 'Could not save site: $error'); }
     finally { if (mounted) setState(() => _saving = false); }
   }
 }

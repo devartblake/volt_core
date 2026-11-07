@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/services/storage/pdf_library_service.dart';
 import '../../admin/domain/entities/tenant_member_entity.dart';
 import '../../admin/infra/repositories/admin_repository_impl.dart';
 import '../../auth/domain/user_role.dart';
@@ -112,3 +113,28 @@ final vehicleAssetsProvider =
   (ref, vehicleId) =>
       ref.watch(vehicleAssetRepositoryProvider).listForVehicle(vehicleId),
 );
+
+/// Saved vehicle PDFs for one vehicle, newest first.
+///
+/// The vehicle report is stored as `Vehicle_<name>_<date>_<first 8 of id>.pdf`
+/// under `vehicles/`, so the id prefix is what ties a file to its vehicle.
+final vehicleDocumentsProvider =
+    FutureProvider.family<List<PdfDocumentInfo>, String>((ref, vehicleId) async {
+  final all = await PdfLibraryService.instance.listDocuments();
+  return vehicleDocumentsFor(all, vehicleId);
+});
+
+/// Pure filter behind [vehicleDocumentsProvider].
+List<PdfDocumentInfo> vehicleDocumentsFor(
+  Iterable<PdfDocumentInfo> docs,
+  String vehicleId,
+) {
+  final shortId = vehicleId.length > 8 ? vehicleId.substring(0, 8) : vehicleId;
+  if (shortId.isEmpty) return const [];
+  return docs
+      .where((d) =>
+          d.category == PdfCategory.vehicle &&
+          d.name.toLowerCase().endsWith('_${shortId.toLowerCase()}.pdf'))
+      .toList()
+    ..sort((a, b) => b.modified.compareTo(a.modified));
+}

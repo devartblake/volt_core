@@ -189,11 +189,7 @@ class AboutPage extends ConsumerWidget {
                   subtitle: const Text('www.voltcore.app'),
                   trailing: const Icon(Icons.open_in_new),
                   onTap: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Opening website...'),
-                      ),
-                    );
+                    AppSnackBar.info(context, 'Opening website...');
                   },
                 ),
                 const Divider(height: 1),
@@ -206,11 +202,7 @@ class AboutPage extends ConsumerWidget {
                   subtitle: const Text('support@voltcore.app'),
                   trailing: const Icon(Icons.email_outlined),
                   onTap: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Opening email...'),
-                      ),
-                    );
+                    AppSnackBar.info(context, 'Opening email...');
                   },
                 ),
                 const Divider(height: 1),
@@ -222,11 +214,7 @@ class AboutPage extends ConsumerWidget {
                   title: const Text('Privacy Policy'),
                   trailing: const Icon(Icons.open_in_new),
                   onTap: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Opening privacy policy...'),
-                      ),
-                    );
+                    AppSnackBar.info(context, 'Opening privacy policy...');
                   },
                 ),
                 const Divider(height: 1),
@@ -238,11 +226,7 @@ class AboutPage extends ConsumerWidget {
                   title: const Text('Terms of Service'),
                   trailing: const Icon(Icons.open_in_new),
                   onTap: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Opening terms of service...'),
-                      ),
-                    );
+                    AppSnackBar.info(context, 'Opening terms of service...');
                   },
                 ),
               ],

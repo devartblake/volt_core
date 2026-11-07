@@ -5,6 +5,7 @@ import '../../../schedule/presenter/widgets/dialogs/schedule_dialog.dart';
 import '../../../../shared/widgets/widgets.dart';
 import '../../presenter/widgets/utils/form_fields.dart';
 import '../../../../core/services/storage/file_storage_service.dart';
+import '../../domain/maintenance_validation.dart';
 import '../../infra/models/maintenance_record.dart';
 
 /// Modern signatures section with digital signature capture
@@ -20,11 +21,15 @@ class SectionMaintSignatures extends StatefulWidget {
   final ValueChanged<MaintenanceRecord> onChanged;
   final bool readOnly;
 
+  /// Inline "Required to finish" messages to show, by field.
+  final Map<MaintenanceField, String> issues;
+
   const SectionMaintSignatures({
     super.key,
     required this.model,
     required this.onChanged,
     this.readOnly = false,
+    this.issues = const {},
   });
 
   @override
@@ -244,29 +249,11 @@ class _SectionMaintSignaturesState extends State<SectionMaintSignatures> {
   /// Helper: Show snackbar message
   void _showSnackBar(String message, {bool isError = false}) {
     if (!mounted) return;
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            Icon(
-              isError ? Icons.error_outline : Icons.check_circle_outline,
-              color: Colors.white,
-              size: 20,
-            ),
-            const SizedBox(width: 12),
-            Expanded(child: Text(message)),
-          ],
-        ),
-        backgroundColor: isError
-            ? Theme.of(context).colorScheme.error
-            : null,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8),
-        ),
-      ),
-    );
+    if (isError) {
+      AppSnackBar.error(context, message);
+    } else {
+      AppSnackBar.success(context, message);
+    }
   }
 
   /// Schedule maintenance
@@ -352,6 +339,7 @@ class _SectionMaintSignaturesState extends State<SectionMaintSignatures> {
               isSaved: _technicianSignatureSaved,
               isSaving: _isSavingTechnician,
               readOnly: widget.readOnly,
+              nameError: widget.issues[MaintenanceField.technicianSignature],
               nameValue: widget.model.technicianSignatureName,
               dateValue: widget.model.technicianSignatureDate,
               signatureController: _technicianController,
@@ -395,6 +383,7 @@ class _SectionMaintSignaturesState extends State<SectionMaintSignatures> {
               isSaved: _customerSignatureSaved,
               isSaving: _isSavingCustomer,
               readOnly: widget.readOnly,
+              nameError: widget.issues[MaintenanceField.customerSignature],
               nameValue: widget.model.customerSignatureName,
               dateValue: widget.model.customerSignatureDate,
               signatureController: _customerController,
@@ -509,6 +498,7 @@ class _SignatureCard extends StatelessWidget {
   final bool isSaving;
   final bool readOnly;
   final String nameValue;
+  final String? nameError;
   final DateTime? dateValue;
   final SignatureController signatureController;
   final Color? savedColor;
@@ -528,6 +518,7 @@ class _SignatureCard extends StatelessWidget {
     required this.isSaving,
     required this.readOnly,
     required this.nameValue,
+    required this.nameError,
     required this.dateValue,
     required this.signatureController,
     required this.onNameChanged,
@@ -611,6 +602,7 @@ class _SignatureCard extends StatelessWidget {
             value: nameValue,
             readOnly: readOnly,
             hint: 'Enter full name',
+            errorText: nameError,
             prefixIcon: Icons.person_outline,
             filled: true,
             onChanged: onNameChanged,
@@ -634,13 +626,14 @@ class _SignatureCard extends StatelessWidget {
           // Signature pad header
           Row(
             children: [
-              Text(
-                'Draw Signature',
-                style: theme.textTheme.labelMedium?.copyWith(
-                  fontWeight: FontWeight.w600,
+              Expanded(
+                child: Text(
+                  'Draw Signature',
+                  style: theme.textTheme.labelMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
-              const Spacer(),
               if (!readOnly)
                 TextButton.icon(
                   onPressed: onClear,
@@ -776,7 +769,7 @@ class _ServiceStatusCard extends StatelessWidget {
                       : colorScheme.onSurfaceVariant,
                 ),
                 const SizedBox(width: 8),
-                const Text('Job Completed'),
+                const Expanded(child: Text('Job Completed')),
               ],
             ),
             subtitle: const Text(
@@ -810,7 +803,7 @@ class _ServiceStatusCard extends StatelessWidget {
                       : colorScheme.onSurfaceVariant,
                 ),
                 const SizedBox(width: 8),
-                const Text('Requires Follow-up'),
+                const Expanded(child: Text('Requires Follow-up')),
               ],
             ),
             subtitle: const Text(

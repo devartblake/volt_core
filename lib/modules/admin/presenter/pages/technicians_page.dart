@@ -57,7 +57,7 @@ class _TechniciansPageState extends ConsumerState<TechniciansPage> {
     }).toList();
 
     return AppPage(
-      title: 'Team & Roles',
+      title: 'Technicians',
       actions: [
         IconButton(
           tooltip: 'Refresh team',
@@ -300,9 +300,7 @@ class _MemberTile extends ConsumerWidget {
 
     if (!context.mounted) return;
     if (success) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('${member.displayName} is now ${newRole.name}.')),
-      );
+      AppSnackBar.success(context, '${member.displayName} is now ${newRole.name}.');
     }
   }
 

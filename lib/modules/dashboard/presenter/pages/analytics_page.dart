@@ -60,25 +60,25 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
               crossAxisSpacing: 12,
               childAspectRatio: 1.6,
               children: [
-                _StatCard(
+                StatCard.tile(
                   label: 'Total inspections',
                   value: '${m.totalInspections}',
                   icon: Icons.fact_check_outlined,
                   color: theme.colorScheme.primary,
                 ),
-                _StatCard(
+                StatCard.tile(
                   label: 'With deficiencies',
                   value: '${m.deficiencies}',
                   icon: Icons.report_problem_outlined,
                   color: theme.status.warning,
                 ),
-                _StatCard(
+                StatCard.tile(
                   label: 'Load tests done',
                   value: '${m.loadTestsDone}',
                   icon: Icons.speed_outlined,
                   color: theme.colorScheme.tertiary,
                 ),
-                _StatCard(
+                StatCard.tile(
                   label: 'This month',
                   value: '${m.inspectionsThisMonth}',
                   icon: Icons.calendar_today_outlined,
@@ -105,25 +105,25 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
               crossAxisSpacing: 12,
               childAspectRatio: 1.6,
               children: [
-                _StatCard(
+                StatCard.tile(
                   label: 'Total jobs',
                   value: '${m.totalMaintenance}',
                   icon: Icons.build_outlined,
                   color: theme.colorScheme.primary,
                 ),
-                _StatCard(
+                StatCard.tile(
                   label: 'Completed',
                   value: '${m.maintenanceCompleted}',
                   icon: Icons.check_circle_outline,
                   color: theme.status.success,
                 ),
-                _StatCard(
+                StatCard.tile(
                   label: 'Open',
                   value: '${m.maintenanceOpen}',
                   icon: Icons.pending_actions_outlined,
                   color: theme.colorScheme.secondary,
                 ),
-                _StatCard(
+                StatCard.tile(
                   label: 'Needs follow-up',
                   value: '${m.maintenanceFollowUp}',
                   icon: Icons.flag_outlined,
@@ -149,13 +149,13 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
               crossAxisSpacing: 12,
               childAspectRatio: 1.6,
               children: [
-                _StatCard(
+                StatCard.tile(
                   label: 'Upcoming',
                   value: '${m.upcomingTasks}',
                   icon: Icons.event_available_outlined,
                   color: theme.colorScheme.primary,
                 ),
-                _StatCard(
+                StatCard.tile(
                   label: 'Overdue',
                   value: '${m.overdueTasks}',
                   icon: Icons.event_busy_outlined,
@@ -314,63 +314,6 @@ class _SectionLabel extends StatelessWidget {
   }
 }
 
-class _StatCard extends StatelessWidget {
-  const _StatCard({
-    required this.label,
-    required this.value,
-    required this.icon,
-    required this.color,
-  });
-
-  final String label;
-  final String value;
-  final IconData icon;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Card(
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: theme.colorScheme.outlineVariant),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Flexible(
-                  child: Text(
-                    label,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-                Icon(icon, color: color, size: 20),
-              ],
-            ),
-            Text(
-              value,
-              style: theme.textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: color,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
 
 class _GradeBreakdown extends StatelessWidget {
   const _GradeBreakdown({

@@ -3,10 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/constants/route_paths.dart';
-import '../../../../core/theme/status_colors.dart';
 import '../../../../shared/widgets/widgets.dart';
+import '../../../../core/theme/app_tokens.dart';
 import '../../domain/entities/vehicle_entity.dart';
 import '../fleet_providers.dart';
+import '../widgets/daily_check_chip.dart';
 
 /// The fleet, or the one vehicle a technician is stationed to.
 class VehicleListPage extends ConsumerWidget {
@@ -18,7 +19,7 @@ class VehicleListPage extends ConsumerWidget {
     final isManager = ref.watch(fleetManagerProvider);
 
     return AppPage(
-      title: isManager ? 'Fleet' : 'My Vehicle',
+      title: isManager ? 'Vehicles' : 'My Vehicle',
       actions: [
         IconButton(
           tooltip: 'Refresh',
@@ -110,10 +111,18 @@ class _VehicleTile extends StatelessWidget {
               ].join('  ·  '),
               style: theme.textTheme.bodySmall,
             ),
+            const SizedBox(height: AppSpacing.sm),
+            Wrap(
+              spacing: AppSpacing.sm,
+              runSpacing: AppSpacing.xs,
+              children: [
+                _StatusChip(status: vehicle.status),
+                VehicleDailyCheckChip(vehicleId: vehicle.id),
+              ],
+            ),
           ],
         ),
-        trailing: _StatusChip(status: vehicle.status),
-        isThreeLine: vehicle.makeModel.isNotEmpty,
+        isThreeLine: true,
       ),
     );
   }
@@ -131,31 +140,15 @@ class _StatusChip extends StatelessWidget {
   final VehicleStatus status;
 
   @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
-
-    final color = switch (status) {
-      VehicleStatus.active => theme.status.success,
-      VehicleStatus.maintenance => theme.status.warning,
-      VehicleStatus.outOfService => scheme.error,
-      VehicleStatus.retired => scheme.onSurfaceVariant,
-    };
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: color.withValues(alpha: 0.4)),
-      ),
-      child: Text(
-        status.label,
-        style: theme.textTheme.labelSmall
-            ?.copyWith(color: color, fontWeight: FontWeight.w600),
-      ),
-    );
-  }
+  Widget build(BuildContext context) => StatusChip(
+        label: status.label,
+        tone: switch (status) {
+          VehicleStatus.active => StatusTone.success,
+          VehicleStatus.maintenance => StatusTone.warning,
+          VehicleStatus.outOfService => StatusTone.danger,
+          VehicleStatus.retired => StatusTone.neutral,
+        },
+      );
 }
 
 /// 55779 -> "55,779". An odometer without separators is genuinely hard to read

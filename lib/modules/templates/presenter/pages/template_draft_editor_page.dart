@@ -10,6 +10,7 @@ import '../../infra/repositories/template_definition_repository.dart';
 import '../../infra/repositories/template_definition_repository_impl.dart';
 import '../../infra/repositories/template_management_repository.dart';
 import '../../infra/repositories/template_management_repository_impl.dart';
+import '../../../../shared/widgets/app_snack_bar.dart';
 
 class TemplateDraftEditorPage extends ConsumerStatefulWidget {
   const TemplateDraftEditorPage({
@@ -195,9 +196,7 @@ class _TemplateDraftEditorPageState
       await _management.saveDraft(updated);
       if (!mounted) return;
       setState(() => _definition = updated);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Draft template saved.')),
-      );
+      AppSnackBar.success(context, 'Draft template saved.');
     } catch (error) {
       if (!mounted) return;
       setState(() => _error = error.toString());
@@ -377,9 +376,9 @@ class _SectionEditorCard extends StatelessWidget {
         title: Text(draft.title.isEmpty ? draft.section.key : draft.title),
         trailing: Wrap(
           children: [
-            IconButton(onPressed: canMoveUp ? onMoveUp : null, icon: const Icon(Icons.arrow_upward)),
-            IconButton(onPressed: canMoveDown ? onMoveDown : null, icon: const Icon(Icons.arrow_downward)),
-            IconButton(onPressed: onRemove, icon: const Icon(Icons.delete_outline)),
+            IconButton(tooltip: 'Move up', onPressed: canMoveUp ? onMoveUp : null, icon: const Icon(Icons.arrow_upward)),
+            IconButton(tooltip: 'Move down', onPressed: canMoveDown ? onMoveDown : null, icon: const Icon(Icons.arrow_downward)),
+            IconButton(tooltip: 'Delete', onPressed: onRemove, icon: const Icon(Icons.delete_outline)),
           ],
         ),
         childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
@@ -491,9 +490,9 @@ class _FieldEditorCard extends StatelessWidget {
             Row(
               children: [
                 Expanded(child: Text(draft.label, style: Theme.of(context).textTheme.titleMedium)),
-                IconButton(onPressed: canMoveUp ? onMoveUp : null, icon: const Icon(Icons.arrow_upward)),
-                IconButton(onPressed: canMoveDown ? onMoveDown : null, icon: const Icon(Icons.arrow_downward)),
-                IconButton(onPressed: onRemove, icon: const Icon(Icons.delete_outline)),
+                IconButton(tooltip: 'Move up', onPressed: canMoveUp ? onMoveUp : null, icon: const Icon(Icons.arrow_upward)),
+                IconButton(tooltip: 'Move down', onPressed: canMoveDown ? onMoveDown : null, icon: const Icon(Icons.arrow_downward)),
+                IconButton(tooltip: 'Delete', onPressed: onRemove, icon: const Icon(Icons.delete_outline)),
               ],
             ),
             TextFormField(

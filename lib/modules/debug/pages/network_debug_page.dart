@@ -68,9 +68,7 @@ class _NetworkDebugPageState extends ConsumerState<NetworkDebugPage> {
           IconButton(
             onPressed: () {
               ref.read(networkLogsProvider.notifier).clearLogs();
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Logs cleared')),
-              );
+              AppSnackBar.info(context, 'Logs cleared');
             },
             icon: const Icon(Icons.delete_sweep),
             tooltip: 'Clear Logs',
@@ -278,11 +276,10 @@ class _NetworkDebugPageState extends ConsumerState<NetworkDebugPage> {
   void _exportLogs(List<NetworkLog> logs) {
     final json = NetworkLogger.exportLogsAsJson(logs);
     Clipboard.setData(ClipboardData(text: json));
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Logs copied to clipboard as JSON'),
-        duration: Duration(seconds: 2),
-      ),
+    AppSnackBar.info(
+      context,
+      'Logs copied to clipboard as JSON',
+      duration: const Duration(seconds: 2),
     );
   }
 }
@@ -524,11 +521,10 @@ class _NetworkLogDetails extends StatelessWidget {
               TextButton.icon(
                 onPressed: () {
                   Clipboard.setData(ClipboardData(text: content));
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('$title copied'),
-                      duration: const Duration(seconds: 1),
-                    ),
+                  AppSnackBar.info(
+                    context,
+                    '$title copied',
+                    duration: const Duration(seconds: 1),
                   );
                 },
                 icon: const Icon(Icons.copy, size: 16),

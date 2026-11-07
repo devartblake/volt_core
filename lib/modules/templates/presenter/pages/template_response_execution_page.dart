@@ -14,6 +14,7 @@ import '../../infra/services/template_report_storage_service.dart';
 import '../controllers/template_response_session_controller.dart';
 import '../widgets/template_form_renderer.dart';
 import '../../../auth/presenter/controllers/auth_controller.dart';
+import '../../../../shared/widgets/app_snack_bar.dart';
 
 /// Technician-facing runtime for a published, revision-pinned template.
 ///
@@ -227,7 +228,7 @@ class _TemplateResponseExecutionPageState
 
   void _showMessage(String message) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    AppSnackBar.info(context, message);
   }
 
   @override

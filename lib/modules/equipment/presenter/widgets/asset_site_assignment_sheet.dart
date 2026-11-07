@@ -5,6 +5,7 @@ import '../../../../providers/equipment_providers.dart';
 import '../../../customers/customer_site_repository.dart';
 import '../../domain/entities/equipment_entity.dart';
 import '../../infra/repositories/equipment_repository_impl.dart';
+import '../../../../shared/widgets/app_snack_bar.dart';
 
 /// Reassigns a manually registered asset without changing its stable identity.
 class AssetSiteAssignmentSheet extends ConsumerStatefulWidget {
@@ -93,7 +94,7 @@ class _AssetSiteAssignmentSheetState extends ConsumerState<AssetSiteAssignmentSh
       ref.invalidate(equipmentFacetsProvider);
       if (mounted) Navigator.pop(context);
     } catch (error) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not update asset: $error')));
+      if (mounted) AppSnackBar.error(context, 'Could not update asset: $error');
     } finally {
       if (mounted) setState(() => _saving = false);
     }

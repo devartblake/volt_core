@@ -8,6 +8,9 @@ import '../models/maintenance_record.dart';
 /// survives a local-cache reset. RLS remains the authority for this read.
 abstract class MaintenanceRemoteDatasource {
   Future<MaintenanceRecord?> getById(String id);
+
+  /// Every maintenance record the signed-in user can see (RLS decides).
+  Future<List<MaintenanceRecord>> listAll();
 }
 
 class MaintenanceRemoteDatasourceImpl implements MaintenanceRemoteDatasource {
@@ -22,6 +25,29 @@ class MaintenanceRemoteDatasourceImpl implements MaintenanceRemoteDatasource {
     } catch (_) {
       return null;
     }
+  }
+
+  @override
+  Future<List<MaintenanceRecord>> listAll() async {
+    final client = _supabase;
+    if (client == null) return const [];
+
+    final jobs = await client.from(kMaintenanceJobsTable).select();
+    final details =
+        await client.from(kMaintenanceRecordsTable).select('job_id, data');
+
+    final detailByJob = <String, Map<String, dynamic>>{
+      for (final d in details)
+        d['job_id'].toString(): Map<String, dynamic>.from(d as Map),
+    };
+
+    return [
+      for (final job in jobs)
+        maintenanceRecordFromSupabaseRows(
+          job: Map<String, dynamic>.from(job as Map),
+          details: detailByJob[job['id'].toString()],
+        ),
+    ];
   }
 
   @override

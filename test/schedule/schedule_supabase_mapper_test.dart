@@ -48,6 +48,16 @@ void main() {
       expect(json['notes'], 'Gate code 1234');
     });
 
+    test('a deliberately unassigned existing task sends an explicit null', () {
+      final unassigned = _task().copyWith(clearAssignee: true);
+      final json = scheduleTaskToSupabaseJson(
+        unassigned,
+        defaultAssigneeToCurrentUser: false,
+      );
+      expect(json.containsKey('assigned_to_user_id'), isTrue);
+      expect(json['assigned_to_user_id'], isNull);
+    });
+
     test('uses schedule_at, matching the table and the read-back parser', () {
       final json = scheduleTaskToSupabaseJson(_task());
 

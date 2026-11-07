@@ -1,6 +1,9 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 
+import '../../../materials/infra/materials_repository.dart';
+import '../../../../core/services/photos/photo_attachment.dart';
+import '../../../../core/services/photos/photo_service.dart';
 import '../../infra/models/maintenance_record.dart';
 import '../../infra/repositories/maintenance_hive_repository.dart' as infra;
 import '../../domain/repositories/maintenance_repository.dart';
@@ -46,4 +49,33 @@ final listMaintenanceUseCaseProvider =
 Provider<ListMaintenanceUseCase>((ref) {
   final repo = ref.watch(maintenanceDomainRepositoryProvider);
   return ListMaintenanceUseCase(repo);
+});
+
+/// How many photos a maintenance record has, for the form's progress. Photos
+/// are stored apart from the record, so the form refreshes this when the
+/// technician moves between steps.
+final maintenancePhotoCountProvider =
+    FutureProvider.autoDispose.family<int, String>((ref, id) async {
+  try {
+    final photos = await PhotoService.instance
+        .listForOwner(PhotoAttachment.ownerMaintenance, id);
+    return photos.length;
+  } catch (_) {
+    return 0;
+  }
+});
+
+/// How many parts are listed on a maintenance record, for the form's progress.
+/// The materials editor saves on its own, so the form refreshes this when the
+/// technician moves between steps.
+final maintenanceMaterialCountProvider =
+    FutureProvider.autoDispose.family<int, String>((ref, id) async {
+  try {
+    final items = await ref
+        .watch(materialsRepositoryProvider)
+        .load(MaterialOwner.maintenance(id: id));
+    return items.length;
+  } catch (_) {
+    return 0;
+  }
 });
