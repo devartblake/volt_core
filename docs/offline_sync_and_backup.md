@@ -87,8 +87,8 @@ the PK on each table.
 ## Using the status indicator
 
 Drop `SyncStatusIndicator` into an app bar to show live sync state (offline /
-syncing / pending / failed / synced). Tapping it forces a sync (and retries
-failed ops):
+syncing / pending / failed / synced). Tapping it opens the **sync centre**
+(see below):
 
 ```dart
 AppBar(
@@ -107,5 +107,48 @@ merge step in `SyncService._dispatch`.
 
 - Sync is currently **push-only** (local → cloud). Pull/merge from the cloud can
   reuse the existing `fetchInspections()` remote datasource.
-- The queue drains on connectivity changes and on each enqueue. For long
+- The queue drains on connectivity changes and on each enqueue (see "Draining
+  the queue" below). For long
   background windows, consider `workmanager` for periodic drains.
+
+## Draining the queue
+
+`SyncService.sync()` hands the loop to `SyncDrainer` (`sync_drainer.dart`). A
+drain is a pass over the queue, oldest first, with a 40 ms gap between items.
+A request that arrives *during* a drain (a bulk import keeps enqueuing while its
+first rows upload) is remembered and triggers another pass, so the whole queue
+empties in one run.
+
+**Fixed 2026-11-07.** Before this, such requests were dropped, so a large import
+uploaded only the rows queued before the drain started (about 100) and the rest
+waited for an app relaunch. Regression tests: 250 items in one run, and 63 items
+added mid-drain (`test/sync/sync_drainer_test.dart`).
+
+Failure handling is unchanged: a failed item gets `attempts + 1` and
+`lastError`, waits out exponential backoff, becomes `failed` after 8 attempts,
+and never blocks the items after it. A run stamps **last synced** only when it
+had no failures; the time is saved in preferences, so it survives a relaunch.
+
+A null `assigned_to_user_id` is now sent to the cloud (it used to be stripped,
+so unassigning a task never cleared the column).
+
+## Sync centre and offline banner
+
+Tapping the app-bar indicator opens a bottom sheet (`showSyncCentre`):
+
+- last sync time, an Offline or Syncing chip, and **Sync now**;
+- pending items grouped by friendly name (Parts, Stock movements, Generator
+  parts, Inspections, Maintenance records...), from `summarizeQueue` in
+  `sync_summary.dart` (add a name there for every new synced table);
+- a **Failed** section with each item's error, **Retry** per item and **Retry
+  all**.
+
+An **offline banner** under the app bar reads "Changes are saved on this device
+and will upload when you are back online". It shows only while offline with
+items pending.
+
+`PendingUploadBadge(table:, recordId:)` (`lib/shared/widgets/`) shows a small
+cloud icon, "Not uploaded yet", for a record that is still queued. It is used on
+maintenance list cards. One provider (`pendingRecordKeysProvider`) reads the
+queue once per change, so any number of badges share it. Vehicle inspections are
+not queued for sync, so they have no badge.

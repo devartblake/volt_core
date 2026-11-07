@@ -519,3 +519,20 @@ does **not** log their own walk-around.
   about.
 - Anything missing or NMC **sorts to the top** and gets a banner. That is why
   somebody opened the screen.
+
+## Update 2026-11-07: vehicle list, documents tab and PDF
+
+- **Vehicle list cards** show the status chip and a **Daily check** chip: done
+  today, due, or overdue (two or more days since the last check). The rule is
+  `dailyCheckState` in `fleet/domain/daily_check_status.dart`; the vehicle detail
+  summary uses the same one. A weekly or monthly walk-around done today also
+  counts.
+- **Vehicle detail** has six tabs: Overview, Inspections, Maintenance, Media,
+  **Documents**, Tools. Documents lists the vehicle's saved PDFs (open and
+  share). Files are matched by the last 8 characters of the vehicle id in the
+  file name (`..._<id8>.pdf`, how `generateVehiclePdf` names them), so PDFs saved
+  under an older naming do not appear.
+- **Vehicle PDF** now includes the latest inspection's **driver and dispatcher
+  signatures** ("Not signed" when missing), the **vehicle photos** and the
+  **latest inspection's photos**, inside the same branded-footer layout. An
+  unreadable image is skipped without failing the report.

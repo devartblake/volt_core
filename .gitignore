@@ -129,3 +129,6 @@ app.*.symbols
 
 # Voltcore local development data (Hive DB, PDFs, signatures, exports)
 /dev_data/
+
+# Developer one-tap sign-in credentials (never commit; see dev_credentials.example.json)
+/dev_credentials.local.json
