@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 
@@ -59,6 +61,9 @@ class VehicleReportPdf {
           _maintenance(data),
           pw.SizedBox(height: 18),
           _tools(data),
+          ..._signatures(data),
+          ..._photos('Vehicle photos', data.vehiclePhotos),
+          ..._photos('Latest inspection photos', data.inspectionPhotos),
           if (v.notes.trim().isNotEmpty) ...[
             pw.SizedBox(height: 18),
             _heading('Notes'),
@@ -638,6 +643,106 @@ class VehicleReportPdf {
         ],
       ),
     );
+  }
+
+  static List<pw.Widget> _signatures(VehicleReportData data) {
+    final driver = data.driverSignature;
+    final dispatcher = data.dispatcherSignature;
+    if ((driver == null || driver.isEmpty) &&
+        (dispatcher == null || dispatcher.isEmpty)) {
+      return const [];
+    }
+
+    pw.Widget box(String label, Uint8List? bytes) {
+      pw.MemoryImage? image;
+      if (bytes != null && bytes.isNotEmpty) {
+        try {
+          image = pw.MemoryImage(bytes);
+        } catch (_) {
+          image = null;
+        }
+      }
+      return pw.Expanded(
+        child: pw.Container(
+          height: 70,
+          padding: const pw.EdgeInsets.all(6),
+          decoration: pw.BoxDecoration(
+            border: pw.Border.all(color: _line),
+            borderRadius: pw.BorderRadius.circular(6),
+          ),
+          child: pw.Column(
+            crossAxisAlignment: pw.CrossAxisAlignment.start,
+            children: [
+              pw.Expanded(
+                child: image == null
+                    ? pw.Center(
+                        child: pw.Text(
+                          'Not signed',
+                          style: const pw.TextStyle(fontSize: 9, color: _muted),
+                        ),
+                      )
+                    : pw.Center(child: pw.Image(image, fit: pw.BoxFit.contain)),
+              ),
+              pw.Text(
+                label,
+                style: const pw.TextStyle(fontSize: 8, color: _muted),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return [
+      pw.SizedBox(height: 18),
+      _heading('Signatures (latest inspection)'),
+      pw.SizedBox(height: 6),
+      pw.Row(
+        children: [
+          box('Assigned person', driver),
+          pw.SizedBox(width: 12),
+          box('Dispatcher', dispatcher),
+        ],
+      ),
+    ];
+  }
+
+  static List<pw.Widget> _photos(String title, List<VehicleReportPhoto> photos) {
+    final images = <(pw.MemoryImage, String)>[];
+    for (final photo in photos) {
+      try {
+        images.add((pw.MemoryImage(photo.bytes), photo.caption));
+      } catch (_) {
+        // Skip images the PDF library cannot decode.
+      }
+    }
+    if (images.isEmpty) return const [];
+
+    return [
+      pw.SizedBox(height: 18),
+      _heading(title),
+      pw.SizedBox(height: 6),
+      pw.Wrap(
+        spacing: 12,
+        runSpacing: 12,
+        children: [
+          for (final (image, caption) in images)
+            pw.Container(
+              width: 240,
+              child: pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                children: [
+                  pw.Image(image, width: 240, height: 180, fit: pw.BoxFit.cover),
+                  if (caption.isNotEmpty) ...[
+                    pw.SizedBox(height: 4),
+                    pw.Text(caption, style: const pw.TextStyle(fontSize: 9)),
+                  ],
+                ],
+              ),
+            ),
+        ],
+      ),
+    ];
   }
 
   static pw.Widget _legend(String label, PdfColor color) => pw.Row(

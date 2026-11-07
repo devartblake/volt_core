@@ -65,6 +65,9 @@ dependencies:
 
   meta: any
   http: any
+  archive: ^4.6.0
+  xml: ^7.0.1
+  mobile_scanner: ^7.5.0
 dev_dependencies:
   flutter_test:
     sdk: flutter

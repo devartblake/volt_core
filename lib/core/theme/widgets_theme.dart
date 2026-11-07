@@ -10,11 +10,11 @@ class WidgetsTheme {
       fillColor: colors.surfaceContainerHighest.withValues(alpha: 0.4),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(color: colors.outlineVariant),
+        borderSide: BorderSide(color: colors.outline),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(color: colors.outlineVariant),
+        borderSide: BorderSide(color: colors.outline),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
@@ -23,7 +23,7 @@ class WidgetsTheme {
       contentPadding:
       const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       labelStyle: TextStyle(color: colors.onSurfaceVariant),
-      hintStyle: TextStyle(color: colors.onSurfaceVariant.withValues(alpha: 0.7)),
+      hintStyle: TextStyle(color: colors.onSurfaceVariant.withValues(alpha: 0.9)),
     );
   }
 

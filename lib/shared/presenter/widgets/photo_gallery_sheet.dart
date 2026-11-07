@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart' show kIsWeb;
+import '../../widgets/thumbnail_image.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:open_filex/open_filex.dart';
@@ -8,6 +9,7 @@ import 'package:share_plus/share_plus.dart';
 import '../../../core/services/photos/photo_attachment.dart';
 import '../../../core/services/photos/photo_service.dart';
 import '../../../core/services/storage/path_resolver.dart';
+import '../../widgets/app_snack_bar.dart';
 
 /// Opens the photo gallery modal for one inspection / maintenance record.
 ///
@@ -20,6 +22,7 @@ Future<void> showPhotoGallery(
   required String ownerId,
   String title = 'Photos',
   bool allowVideo = false,
+  bool hideSlotted = false,
 }) {
   return showModalBottomSheet<void>(
     context: context,
@@ -34,6 +37,7 @@ Future<void> showPhotoGallery(
         ownerId: ownerId,
         title: title,
         allowVideo: allowVideo && !kIsWeb,
+        hideSlotted: hideSlotted,
       ),
     ),
   );
@@ -45,12 +49,14 @@ class _PhotoGallery extends StatefulWidget {
     required this.ownerId,
     required this.title,
     required this.allowVideo,
+    required this.hideSlotted,
   });
 
   final String ownerType;
   final String ownerId;
   final String title;
   final bool allowVideo;
+  final bool hideSlotted;
 
   @override
   State<_PhotoGallery> createState() => _PhotoGalleryState();
@@ -72,8 +78,11 @@ class _PhotoGalleryState extends State<_PhotoGallery> {
   }
 
   Future<void> _load() async {
-    final photos = await PhotoService.instance
+    var photos = await PhotoService.instance
         .listForOwner(widget.ownerType, widget.ownerId);
+    if (widget.hideSlotted) {
+      photos = photos.where((ph) => ph.slot.isEmpty).toList();
+    }
     if (!mounted) return;
     setState(() {
       _photos = photos;
@@ -84,7 +93,7 @@ class _PhotoGalleryState extends State<_PhotoGallery> {
 
   void _snack(String message) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    AppSnackBar.info(context, message);
   }
 
   Future<void> _storePicked(XFile picked, {String caption = ''}) async {
@@ -418,7 +427,7 @@ class _GridTile extends StatelessWidget {
                       color: Colors.white, size: 44),
                 )
               else if (bytes != null)
-                Image.memory(bytes, fit: BoxFit.cover, gaplessPlayback: true)
+                ThumbnailImage.memory(bytes)
               else
                 Container(
                   color: theme.colorScheme.surfaceContainerHighest,
@@ -501,9 +510,7 @@ Future<void> _sharePhotos(
     }
 
     if (files.isEmpty) {
-      messenger.showSnackBar(
-        const SnackBar(content: Text('The file is no longer available')),
-      );
+      AppSnackBar.errorOn(messenger, 'The file is no longer available');
       return;
     }
 
@@ -512,7 +519,7 @@ Future<void> _sharePhotos(
       ShareParams(files: files, text: caption.isEmpty ? null : caption),
     );
   } catch (e) {
-    messenger.showSnackBar(SnackBar(content: Text('Could not share: $e')));
+    AppSnackBar.errorOn(messenger, 'Could not share: $e');
   }
 }
 
@@ -605,9 +612,7 @@ class _PhotoEditorPageState extends State<_PhotoEditorPage> {
       if (mounted) Navigator.of(context).pop(true);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Could not replace photo: $e')),
-        );
+        AppSnackBar.error(context, 'Could not replace photo: $e');
       }
     } finally {
       if (mounted) setState(() => _busy = false);

@@ -8,7 +8,9 @@ import '../connectivity/connectivity_service.dart';
 import '../settings/app_preferences_service.dart';
 import '../storage/web_file_store.dart';
 import 'file_backup_service.dart';
+import 'last_synced_tracker.dart';
 import 'sync_context.dart';
+import 'sync_drainer.dart';
 import 'sync_operation.dart';
 import 'sync_queue.dart';
 import 'tenant_retag.dart';
@@ -61,16 +63,18 @@ class SyncService {
       ValueNotifier<SyncStatus>(SyncStatus.initial);
 
   StreamSubscription<bool>? _connSub;
-  bool _draining = false;
-  DateTime? _lastSyncedAt;
-
-  static const int _maxAttempts = 8;
+  final LastSyncedTracker _lastSynced = LastSyncedTracker(
+    read: () => AppPreferencesService.instance.lastSyncedAt,
+    write: AppPreferencesService.instance.setLastSyncedAt,
+  );
+  DateTime? get _lastSyncedAt => _lastSynced.value;
 
   bool get _autoSyncEnabled => AppPreferencesService.instance.autoSyncEnabled;
 
   Future<void> init() async {
     try {
       await _queue.init();
+      _lastSynced.load();
       await _connectivity.init();
 
       _connSub ??= _connectivity.onStatusChange.listen((online) {
@@ -209,61 +213,46 @@ class SyncService {
     if (_autoSyncEnabled) unawaited(sync());
   }
 
+  late final SyncDrainer _drainer = SyncDrainer(
+    store: _queue,
+    dispatch: (op) => _dispatch(_client!, op),
+    onProgress: _refreshCounts,
+    onError: _debugExplainIfRlsDenied,
+  );
+
+  /// Snapshot of everything queued, oldest first (for the sync centre).
+  Future<List<SyncOperation>> queuedOperations() => _queue.all();
+
   /// Manual sync always attempts a drain, even when automatic sync is disabled.
+  ///
+  /// A call made while a drain is running is not dropped: it schedules another
+  /// pass, so rows enqueued mid-drain are still uploaded.
   Future<void> sync() async {
-    if (_draining) return;
-    _draining = true;
+    if (_drainer.isRunning) {
+      unawaited(_drainer.run());
+      return;
+    }
+    final online = await _connectivity.isOnline();
+    if (!online) {
+      _emit(state: SyncState.offline);
+      return;
+    }
+    if (_client == null) {
+      _emit(state: SyncState.idle);
+      return;
+    }
+    if (_drainer.isRunning) {
+      unawaited(_drainer.run());
+      return;
+    }
+
+    _emit(state: SyncState.syncing);
     try {
-      final online = await _connectivity.isOnline();
-      if (!online) {
-        _emit(state: SyncState.offline);
-        return;
-      }
-
-      final client = _client;
-      if (client == null) {
-        _emit(state: SyncState.idle);
-        return;
-      }
-
-      _emit(state: SyncState.syncing);
-
-      final ops = await _queue.all();
-      await _retagQueuedRows(ops);
-      for (final op in ops) {
-        if (op.status == SyncOpStatus.failed && op.attempts >= _maxAttempts) {
-          continue;
-        }
-        if (op.attempts > 0 && !_backoffElapsed(op)) {
-          continue;
-        }
-
-        try {
-          await _dispatch(client, op);
-          await _queue.remove(op.id);
-        } on FileBackupSkip catch (e) {
-          if (kDebugMode) debugPrint('[Sync] Dropping op ${op.id}: $e');
-          await _queue.remove(op.id);
-        } catch (e) {
-          op.attempts += 1;
-          op.updatedAt = DateTime.now();
-          op.lastError = e.toString();
-          if (op.attempts >= _maxAttempts) op.status = SyncOpStatus.failed;
-          await _queue.save(op);
-          if (kDebugMode) {
-            debugPrint(
-              '[Sync] ${op.type.name} failed (attempt ${op.attempts}): $e',
-            );
-            _debugExplainIfRlsDenied(e, op);
-          }
-        }
-      }
-
-      _lastSyncedAt = DateTime.now();
+      final result = await _drainer.run(prepare: _retagQueuedRows);
+      await _lastSynced.recordRun(failed: result.failed);
+    } finally {
       await _refreshCounts();
       _emit(state: SyncState.idle);
-    } finally {
-      _draining = false;
     }
   }
 
@@ -319,14 +308,6 @@ class SyncService {
     }
   }
 
-  bool _backoffElapsed(SyncOperation op) {
-    final exp = op.attempts.clamp(0, 8);
-    final delaySeconds = (1 << exp).clamp(1, 300);
-    return DateTime.now().isAfter(
-      op.updatedAt.add(Duration(seconds: delaySeconds)),
-    );
-  }
-
   static const Set<String> _uuidKeys = {
     'id',
     'tenant_id',
@@ -343,10 +324,16 @@ class SyncService {
 
   bool _isBlank(dynamic v) => v == null || (v is String && v.trim().isEmpty);
 
+  /// Columns where an explicit null is meaningful (it clears the value), so
+  /// the null is sent rather than stripped. Used by schedule "Unassign".
+  static const Set<String> _nullClearsKeys = {'assigned_to_user_id'};
+
   Map<String, dynamic> _cleanRow(Map<dynamic, dynamic> value) =>
       value.cast<String, dynamic>()
         ..removeWhere(
-          (k, v) => v == null || (_uuidKeys.contains(k) && _isBlank(v)),
+          (k, v) =>
+              (v == null && !_nullClearsKeys.contains(k)) ||
+              (_uuidKeys.contains(k) && v != null && _isBlank(v)),
         );
 
   Future<void> _dispatch(SupabaseClient client, SyncOperation op) async {
@@ -435,6 +422,21 @@ class SyncService {
         await _queue.save(op);
       }
     }
+    await sync();
+  }
+
+  /// Re-arm a single failed operation and drain.
+  Future<void> retryOperation(String opId) async {
+    for (final op in await _queue.all()) {
+      if (op.id == opId) {
+        op.status = SyncOpStatus.pending;
+        op.attempts = 0;
+        op.updatedAt = DateTime.now();
+        await _queue.save(op);
+        break;
+      }
+    }
+    await _refreshCounts();
     await sync();
   }
 

@@ -1,3 +1,5 @@
+import '../../../modules/materials/domain/material_item.dart';
+import 'materials_pdf.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 
@@ -35,6 +37,7 @@ class MaintenanceReportPdf {
     pw.MemoryImage? technicianSignature,
     pw.MemoryImage? customerSignature,
     bool keepSectionsTogether = true,
+    List<MaterialItem> materials = const [],
   }) {
     // A section header must never be stranded at the bottom of a page while
     // its table starts on the next, so each bounded section is laid out as one
@@ -72,7 +75,7 @@ class MaintenanceReportPdf {
           pw.SizedBox(height: 12),
           keep(_postService(m)),
           pw.SizedBox(height: 12),
-          keep(_partsUsed(m)),
+          keep(_partsUsed(m, materials)),
           pw.SizedBox(height: 12),
           _followUp(m),
           pw.SizedBox(height: 14),
@@ -518,7 +521,39 @@ class MaintenanceReportPdf {
     );
   }
 
-  static pw.Widget _partsUsed(MaintenanceRecord m) {
+  static pw.Widget _partsUsed(MaintenanceRecord m, List<MaterialItem> materials) {
+    // The structured parts list, when there is one. Records made before it
+    // existed only have the free-text boxes below, which still print.
+    final listed = MaterialsPdf.ordered(materials);
+    final hasLegacy = [
+      m.partsOilTypeQty,
+      m.partsCoolantTypeQty,
+      m.partsFilterTypes,
+      m.partsBatteryTypeDate,
+      m.partsBeltsHosesReplaced,
+      m.partsBlockHeaterWattage,
+      m.partsCdvrSerial,
+    ].any((s) => s.trim().isNotEmpty);
+    if (listed.isNotEmpty && !hasLegacy) {
+      return MaterialsPdf.section(
+        materials,
+        title: 'Parts & Materials Used',
+      );
+    }
+    if (listed.isNotEmpty) {
+      return pw.Column(
+        crossAxisAlignment: pw.CrossAxisAlignment.start,
+        children: [
+          MaterialsPdf.section(materials, title: 'Parts & Materials Used'),
+          pw.SizedBox(height: 10),
+          _partsUsedLegacy(m),
+        ],
+      );
+    }
+    return _partsUsedLegacy(m);
+  }
+
+  static pw.Widget _partsUsedLegacy(MaintenanceRecord m) {
     final rows = <(String, String)>[
       ('Oil (type and quantity)', m.partsOilTypeQty),
       ('Coolant (type and quantity)', m.partsCoolantTypeQty),

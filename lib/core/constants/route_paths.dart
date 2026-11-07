@@ -72,6 +72,7 @@ class RoutePaths {
   static const String fleetMaintenanceNewSub = 'maintenance/new';
   static const String fleetVehicleAssetsSub = 'assets';
   static const String fleetInspectionNewSub = 'inspection/new';
+  static const String fleetInspectionLogSub = 'inspection-log';
 
   static const String fleetNew = '$fleet/new';
   static const String fleetEdit = '$fleet/edit/:id';
@@ -82,12 +83,23 @@ class RoutePaths {
   /// Takes `?cadence=weekly|monthly`.
   static const String fleetInspectionNew = '$fleet/detail/:id/inspection/new';
   static const String fleetCatalog = '$fleet/catalog';
+  static const String fleetInspectionLog = '$fleet/inspection-log';
 
   // Customer / service-site directory
   static const String customerSites = '/customers-sites';
 
+  // Parts-profile change requests awaiting approval
+  static const String materialsApprovals = '/parts-approvals';
+
   // Documents
   static const String documents = '/documents';
+  static const String inventory = '/inventory';
+  static const String inventoryCatalog = '$inventory/catalog';
+  static const String inventoryNeeds = '$inventory/needs';
+  static const String inventoryShortages = '$inventory/shortages';
+  static const String inventoryVendors = '$inventory/vendors';
+  static const String inventoryMovements = '$inventory/movements';
+  static const String inventoryOrders = '$inventory/orders';
 
   // Settings & config
   static const String selectionManagement = '/selection-management';
@@ -146,10 +158,19 @@ class RouteNames {
   static const String fleetMaintenanceNew = 'fleet_maintenance_new';
   static const String fleetVehicleAssets = 'fleet_vehicle_assets';
   static const String fleetInspectionNew = 'fleet_inspection_new';
+  static const String fleetInspectionLog = 'fleet_inspection_log';
   static const String fleetCatalog = 'fleet_catalog';
   static const String customerSites = 'customer_sites';
+  static const String materialsApprovals = 'materials_approvals';
 
   static const String documents = 'documents';
+  static const String inventory = 'inventory';
+  static const String inventoryCatalog = 'inventory_catalog';
+  static const String inventoryNeeds = 'inventory_needs';
+  static const String inventoryShortages = 'inventory_shortages';
+  static const String inventoryVendors = 'inventory_vendors';
+  static const String inventoryMovements = 'inventory_movements';
+  static const String inventoryOrders = 'inventory_orders';
 
   static const String selectionManagement = 'selection_management';
   static const String settings = 'settings';

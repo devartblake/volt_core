@@ -188,6 +188,15 @@ class RouteRoles {
     // gated in the UI and by vehicle_assets' write policies.
     // Weekly / monthly walk-arounds are done by whoever drives the vehicle, so
     // every role may open the form (techs only see their own vehicle anyway).
+    // The log of every vehicle's inspections. Anyone who can open the fleet can
+    // read it; a technician only receives their own vehicle's entries, because
+    // the vehicle list it is built from is already narrowed to theirs.
+    'fleet_inspection_log': {
+      UserRole.tech,
+      UserRole.supervisor,
+      UserRole.dispatcher,
+      UserRole.admin,
+    },
     'fleet_inspection_new': {
       UserRole.tech,
       UserRole.supervisor,
@@ -241,6 +250,44 @@ class RouteRoles {
       UserRole.admin,
     },
     'customer_sites': {
+      UserRole.tech,
+      UserRole.supervisor,
+      UserRole.dispatcher,
+      UserRole.admin,
+    },
+    // Reviewing technicians' proposed changes to generator parts profiles.
+    'materials_approvals': {
+      UserRole.supervisor,
+      UserRole.dispatcher,
+      UserRole.admin,
+    },
+
+    // ----- Inventory (everyone can look; only admins change it) -----
+    'inventory': {
+      UserRole.tech,
+      UserRole.supervisor,
+      UserRole.dispatcher,
+      UserRole.admin,
+    },
+    'inventory_needs': {
+      UserRole.tech,
+      UserRole.supervisor,
+      UserRole.dispatcher,
+      UserRole.admin,
+    },
+    'inventory_shortages': {
+      UserRole.tech,
+      UserRole.supervisor,
+      UserRole.dispatcher,
+      UserRole.admin,
+    },
+    // Vendors and what is paid to them are company costs: admins only.
+    'inventory_vendors': {UserRole.admin},
+    // The ledger and usage reports: admins and supervisors.
+    'inventory_movements': {UserRole.admin, UserRole.supervisor},
+    // Purchase orders carry prices: admins only.
+    'inventory_orders': {UserRole.admin},
+    'inventory_catalog': {
       UserRole.tech,
       UserRole.supervisor,
       UserRole.dispatcher,

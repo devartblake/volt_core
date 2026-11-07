@@ -15,6 +15,7 @@ class PhotoAttachment {
     this.caption = '',
     this.sizeBytes = 0,
     this.mediaType = mediaPhoto,
+    this.slot = '',
     DateTime? createdAt,
   }) : createdAt = createdAt ?? DateTime.now();
 
@@ -45,6 +46,10 @@ class PhotoAttachment {
   String caption;
   final int sizeBytes;
   final String mediaType;
+
+  /// Which required view this photo fills (for example `front`), or empty for
+  /// an ordinary extra photo. Lets a form keep one photo per named slot.
+  final String slot;
   final DateTime createdAt;
 
   bool get isVideo => mediaType == mediaVideo;
@@ -59,6 +64,7 @@ class PhotoAttachment {
         caption: caption ?? this.caption,
         sizeBytes: sizeBytes,
         mediaType: mediaType,
+        slot: slot,
         createdAt: createdAt,
       );
 
@@ -71,6 +77,7 @@ class PhotoAttachment {
         'caption': caption,
         'sizeBytes': sizeBytes,
         'mediaType': mediaType,
+        'slot': slot,
         'createdAt': createdAt.toIso8601String(),
       };
 
@@ -83,6 +90,7 @@ class PhotoAttachment {
         caption: map['caption'] as String? ?? '',
         sizeBytes: (map['sizeBytes'] as num?)?.toInt() ?? 0,
         mediaType: map['mediaType'] as String? ?? mediaPhoto,
+        slot: map['slot'] as String? ?? '',
         createdAt: DateTime.tryParse(map['createdAt'] as String? ?? ''),
       );
 

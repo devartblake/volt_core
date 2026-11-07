@@ -13,8 +13,20 @@ import '../../core/theme/status_colors.dart';
 /// AppSnackBar.success(context, 'Inspection scheduled');
 /// AppSnackBar.error(context, 'Could not send email');
 /// ```
+///
+/// Each method also has an `...On` twin that takes a [ScaffoldMessengerState],
+/// for code that resolved the messenger before an `await` and must not touch
+/// the build context afterwards:
+///
+/// ```dart
+/// final messenger = ScaffoldMessenger.of(context);
+/// await save();
+/// AppSnackBar.successOn(messenger, 'Saved');
+/// ```
 class AppSnackBar {
   const AppSnackBar._();
+
+  // -------------------------------------------------- from a BuildContext
 
   /// Something completed.
   static void success(
@@ -22,18 +34,9 @@ class AppSnackBar {
     String message, {
     Duration duration = const Duration(seconds: 3),
     SnackBarAction? action,
-  }) {
-    final status = Theme.of(context).status;
-    _show(
-      context,
-      message: message,
-      icon: Icons.check_circle_outline,
-      background: status.success,
-      foreground: status.onSuccess,
-      duration: duration,
-      action: action,
-    );
-  }
+  }) =>
+      successOn(ScaffoldMessenger.of(context), message,
+          duration: duration, action: action, theme: Theme.of(context));
 
   /// Something failed. Longer by default — the user may need to read it.
   static void error(
@@ -41,10 +44,67 @@ class AppSnackBar {
     String message, {
     Duration duration = const Duration(seconds: 5),
     SnackBarAction? action,
+  }) =>
+      errorOn(ScaffoldMessenger.of(context), message,
+          duration: duration, action: action, theme: Theme.of(context));
+
+  /// Needs attention, but nothing failed.
+  static void warning(
+    BuildContext context,
+    String message, {
+    Duration duration = const Duration(seconds: 4),
+    SnackBarAction? action,
+  }) =>
+      warningOn(ScaffoldMessenger.of(context), message,
+          duration: duration, action: action, theme: Theme.of(context));
+
+  /// Neutral acknowledgement — themed default colours, no status tint.
+  static void info(
+    BuildContext context,
+    String message, {
+    Duration duration = const Duration(seconds: 3),
+    SnackBarAction? action,
+  }) =>
+      infoOn(ScaffoldMessenger.of(context), message,
+          duration: duration, action: action, theme: Theme.of(context));
+
+  // ------------------------------------------ from a ScaffoldMessengerState
+  //
+  // These show on [messenger] directly. They must not look the messenger up
+  // again from `messenger.context`: that context is the messenger's *own*
+  // element, and `ScaffoldMessenger.of` searches ancestors, so it finds
+  // nothing and throws. [theme] defaults to the messenger's theme, which is
+  // what an app-level messenger sits under.
+
+  static void successOn(
+    ScaffoldMessengerState messenger,
+    String message, {
+    Duration duration = const Duration(seconds: 3),
+    SnackBarAction? action,
+    ThemeData? theme,
   }) {
-    final scheme = Theme.of(context).colorScheme;
+    final t = theme ?? Theme.of(messenger.context);
     _show(
-      context,
+      messenger,
+      message: message,
+      icon: Icons.check_circle_outline,
+      background: t.status.success,
+      foreground: t.status.onSuccess,
+      duration: duration,
+      action: action,
+    );
+  }
+
+  static void errorOn(
+    ScaffoldMessengerState messenger,
+    String message, {
+    Duration duration = const Duration(seconds: 5),
+    SnackBarAction? action,
+    ThemeData? theme,
+  }) {
+    final scheme = (theme ?? Theme.of(messenger.context)).colorScheme;
+    _show(
+      messenger,
       message: message,
       icon: Icons.error_outline,
       background: scheme.error,
@@ -54,33 +114,33 @@ class AppSnackBar {
     );
   }
 
-  /// Needs attention, but nothing failed.
-  static void warning(
-    BuildContext context,
+  static void warningOn(
+    ScaffoldMessengerState messenger,
     String message, {
     Duration duration = const Duration(seconds: 4),
     SnackBarAction? action,
+    ThemeData? theme,
   }) {
-    final status = Theme.of(context).status;
+    final t = theme ?? Theme.of(messenger.context);
     _show(
-      context,
+      messenger,
       message: message,
       icon: Icons.warning_amber_outlined,
-      background: status.warning,
-      foreground: status.onWarning,
+      background: t.status.warning,
+      foreground: t.status.onWarning,
       duration: duration,
       action: action,
     );
   }
 
-  /// Neutral acknowledgement — themed default colours, no status tint.
-  static void info(
-    BuildContext context,
+  static void infoOn(
+    ScaffoldMessengerState messenger,
     String message, {
     Duration duration = const Duration(seconds: 3),
     SnackBarAction? action,
+    ThemeData? theme,
   }) {
-    ScaffoldMessenger.of(context).showSnackBar(
+    messenger.showSnackBar(
       SnackBar(
         content: Text(message),
         duration: duration,
@@ -94,7 +154,7 @@ class AppSnackBar {
   }
 
   static void _show(
-    BuildContext context, {
+    ScaffoldMessengerState messenger, {
     required String message,
     required IconData icon,
     required Color background,
@@ -102,7 +162,7 @@ class AppSnackBar {
     required Duration duration,
     SnackBarAction? action,
   }) {
-    ScaffoldMessenger.of(context).showSnackBar(
+    messenger.showSnackBar(
       SnackBar(
         content: Row(
           children: [

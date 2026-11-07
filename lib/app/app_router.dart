@@ -18,6 +18,14 @@ import '../modules/admin/presenter/pages/technicians_page.dart';
 import '../modules/auth/presenter/controllers/auth_controller.dart';
 import '../modules/dashboard/presenter/pages/tech_dashboard_page.dart';
 import '../modules/documents/presenter/pages/document_library_page.dart';
+import '../modules/inventory/presenter/pages/job_needs_page.dart';
+import '../modules/inventory/presenter/pages/movements_page.dart';
+import '../modules/inventory/presenter/pages/parts_catalog_page.dart';
+import '../modules/inventory/presenter/pages/shortages_page.dart';
+import '../modules/inventory/presenter/pages/purchase_orders_page.dart';
+import '../modules/inventory/presenter/pages/vendors_page.dart';
+import '../modules/materials/presenter/pages/profile_approvals_page.dart';
+import '../modules/inventory/presenter/pages/stock_page.dart';
 import '../modules/debug/pages/debug_menu_page.dart';
 import '../modules/debug/pages/hive_debug_page.dart';
 import '../modules/debug/pages/network_debug_page.dart';
@@ -38,6 +46,7 @@ import '../modules/fleet/presenter/pages/vehicle_assets_page.dart';
 import '../modules/fleet/presenter/pages/vehicle_detail_page.dart';
 import '../modules/fleet/presenter/pages/vehicle_form_page.dart';
 import '../modules/fleet/presenter/pages/vehicle_inspection_form_page.dart';
+import '../modules/fleet/presenter/pages/vehicle_inspection_log_page.dart';
 import '../modules/fleet/domain/entities/vehicle_inspection.dart';
 import '../modules/fleet/presenter/pages/vehicle_list_page.dart';
 import '../modules/fleet/presenter/pages/vehicle_maintenance_form_page.dart';
@@ -194,6 +203,12 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         builder: (_, __) => const TechShell(child: VehicleListPage()),
         routes: [
           GoRoute(
+            path: RoutePaths.fleetInspectionLogSub,
+            name: RouteNames.fleetInspectionLog,
+            builder: (_, __) =>
+                const TechShell(child: VehicleInspectionLogPage()),
+          ),
+          GoRoute(
             path: 'catalog',
             name: RouteNames.fleetCatalog,
             builder: (_, __) =>
@@ -282,7 +297,9 @@ final goRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: RoutePaths.schedule,
         name: RouteNames.schedule,
-        builder: (_, __) => const TechShell(child: SchedulePage()),
+        builder: (_, state) => TechShell(
+          child: SchedulePage(technician: state.uri.queryParameters['technician']),
+        ),
         routes: [
           GoRoute(
             path: RoutePaths.scheduleTask,
@@ -330,6 +347,46 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         path: RoutePaths.customerSites,
         name: RouteNames.customerSites,
         builder: (_, __) => const DefaultShell(child: CustomerSiteDirectoryPage()),
+      ),
+      GoRoute(
+        path: RoutePaths.materialsApprovals,
+        name: RouteNames.materialsApprovals,
+        builder: (_, __) => const DefaultShell(child: ProfileApprovalsPage()),
+      ),
+      GoRoute(
+        path: RoutePaths.inventory,
+        name: RouteNames.inventory,
+        builder: (_, __) => const TechShell(child: StockPage()),
+      ),
+      GoRoute(
+        path: RoutePaths.inventoryNeeds,
+        name: RouteNames.inventoryNeeds,
+        builder: (_, __) => const TechShell(child: JobNeedsPage()),
+      ),
+      GoRoute(
+        path: RoutePaths.inventoryShortages,
+        name: RouteNames.inventoryShortages,
+        builder: (_, __) => const TechShell(child: ShortagesPage()),
+      ),
+      GoRoute(
+        path: RoutePaths.inventoryOrders,
+        name: RouteNames.inventoryOrders,
+        builder: (_, __) => const TechShell(child: PurchaseOrdersPage()),
+      ),
+      GoRoute(
+        path: RoutePaths.inventoryVendors,
+        name: RouteNames.inventoryVendors,
+        builder: (_, __) => const TechShell(child: VendorsPage()),
+      ),
+      GoRoute(
+        path: RoutePaths.inventoryMovements,
+        name: RouteNames.inventoryMovements,
+        builder: (_, __) => const TechShell(child: MovementsPage()),
+      ),
+      GoRoute(
+        path: RoutePaths.inventoryCatalog,
+        name: RouteNames.inventoryCatalog,
+        builder: (_, __) => const TechShell(child: PartsCatalogPage()),
       ),
       GoRoute(
         path: RoutePaths.documents,

@@ -34,6 +34,7 @@ class PhotoService {
     required Uint8List bytes,
     String extension = 'jpg',
     String caption = '',
+    String slot = '',
   }) async {
     final id = _uuid.v4();
     final ext = _normalizeExt(extension);
@@ -63,6 +64,7 @@ class PhotoService {
       remotePath: remotePath,
       caption: caption,
       sizeBytes: bytes.length,
+      slot: slot,
     );
     await PhotoRepository.instance.put(photo);
 

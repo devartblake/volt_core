@@ -24,6 +24,7 @@ class LabeledField extends StatefulWidget {
     this.onChanged,
     this.hint,
     this.helper,
+    this.errorText,
     this.prefixIcon,
     this.suffix,
     this.suffixText,
@@ -55,6 +56,9 @@ class LabeledField extends StatefulWidget {
   final ValueChanged<String>? onChanged;
   final String? hint;
   final String? helper;
+
+  /// Shown in the error style without needing a form validation pass.
+  final String? errorText;
   final IconData? prefixIcon;
   final Widget? suffix;
 
@@ -186,6 +190,7 @@ class _LabeledFieldState extends State<LabeledField> {
           labelText: widget.required ? '${widget.label} *' : widget.label,
           hintText: widget.hint,
           helperText: widget.helper,
+          errorText: widget.errorText,
           helperMaxLines: 2,
           isDense: widget.dense,
           filled: widget.filled,

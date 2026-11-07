@@ -126,5 +126,67 @@ void main() {
         findsOneWidget,
       );
     });
+
+    group('messenger variants (used after an await)', () {
+      Future<void> pumpOn(
+        WidgetTester tester,
+        void Function(ScaffoldMessengerState m) show,
+      ) async {
+        await tester.pumpWidget(MaterialApp(
+          theme: AppTheme.lightTheme,
+          home: Scaffold(
+            body: Builder(
+              builder: (context) => TextButton(
+                // Resolve the messenger first, as callers do before an await.
+                onPressed: () => show(ScaffoldMessenger.of(context)),
+                child: const Text('go'),
+              ),
+            ),
+          ),
+        ));
+        await tester.tap(find.text('go'));
+        await tester.pumpAndSettle();
+        expect(tester.takeException(), isNull);
+      }
+
+      testWidgets('successOn shows the themed success snackbar',
+          (tester) async {
+        await pumpOn(tester, (m) => AppSnackBar.successOn(m, 'PDF saved'));
+        expect(find.text('PDF saved'), findsOneWidget);
+        expect(_shown(tester).backgroundColor,
+            AppTheme.lightTheme.status.success);
+      });
+
+      testWidgets('errorOn shows the error colour', (tester) async {
+        await pumpOn(tester, (m) => AppSnackBar.errorOn(m, 'Boom'));
+        expect(find.text('Boom'), findsOneWidget);
+        expect(_shown(tester).backgroundColor,
+            AppTheme.lightTheme.colorScheme.error);
+      });
+
+      testWidgets('warningOn shows', (tester) async {
+        await pumpOn(tester, (m) => AppSnackBar.warningOn(m, 'Careful'));
+        expect(find.text('Careful'), findsOneWidget);
+      });
+
+      testWidgets('infoOn shows', (tester) async {
+        await pumpOn(tester, (m) => AppSnackBar.infoOn(m, 'Generating PDF'));
+        expect(find.text('Generating PDF'), findsOneWidget);
+      });
+
+      testWidgets('an action is passed through', (tester) async {
+        var opened = false;
+        await pumpOn(
+          tester,
+          (m) => AppSnackBar.successOn(
+            m,
+            'PDF saved',
+            action: SnackBarAction(label: 'Open', onPressed: () => opened = true),
+          ),
+        );
+        await tester.tap(find.text('Open'));
+        expect(opened, isTrue);
+      });
+    });
   });
 }

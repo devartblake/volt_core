@@ -5,12 +5,15 @@ import 'package:flutter/material.dart';
 
 import '../constants/app_colors.dart';
 import '../constants/app_typography.dart';
+import 'app_transitions.dart';
 import 'status_colors.dart';
 import 'widgets_theme.dart';
 
 class AppTheme {
   static ThemeData get lightTheme {
-    final colorScheme = AppColors.colorScheme(Brightness.light);
+    // Seed error (BA1A1A) is 4.1:1 on tinted chip fills; darkened to pass AA.
+    final colorScheme = AppColors.colorScheme(Brightness.light)
+        .copyWith(error: const Color(0xFFA51417));
 
     final base = ThemeData(
       useMaterial3: true,
@@ -58,9 +61,11 @@ class AppTheme {
         foregroundColor: colorScheme.onPrimary,
       ),
 
+      pageTransitionsTheme: AppTransitions.theme(),
+
       // Chips
       chipTheme: base.chipTheme.copyWith(
-        labelStyle: AppTypography.chipLabel,
+        labelStyle: _chipLabelStyle(colorScheme),
       ),
 
       // Form fields & buttons & cards
@@ -118,8 +123,10 @@ class AppTheme {
         foregroundColor: colorScheme.onPrimary,
       ),
 
+      pageTransitionsTheme: AppTransitions.theme(),
+
       chipTheme: base.chipTheme.copyWith(
-        labelStyle: AppTypography.chipLabel,
+        labelStyle: _chipLabelStyle(colorScheme),
       ),
 
       inputDecorationTheme: WidgetsTheme.inputDecoration(colorScheme),
@@ -128,6 +135,26 @@ class AppTheme {
       cardTheme: WidgetsTheme.card(colorScheme),
 
       extensions: const [StatusColors.dark],
+    );
+  }
+
+  /// Chip label with an explicit colour per state. The bare
+  /// [AppTypography.chipLabel] carried no colour, which left filter and
+  /// action chips with near-invisible text (and washed out the selected one).
+  static TextStyle _chipLabelStyle(ColorScheme colors) {
+    // The state-dependent part must be the *colour* (a WidgetStateColor): chips
+    // read the colour out of the style, so a state-dependent style whose own
+    // colour is null is ignored and the label ends up unreadable.
+    return AppTypography.chipLabel.copyWith(
+      color: WidgetStateColor.resolveWith((states) {
+        if (states.contains(WidgetState.disabled)) {
+          return colors.onSurface.withValues(alpha: 0.38);
+        }
+        if (states.contains(WidgetState.selected)) {
+          return colors.onSecondaryContainer;
+        }
+        return colors.onSurface;
+      }),
     );
   }
 }

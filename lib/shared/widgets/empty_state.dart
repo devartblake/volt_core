@@ -70,8 +70,11 @@ class EmptyState extends StatelessWidget {
     // reads them; only the decorative icon needs hiding (see ExcludeSemantics
     // below). MergeSemantics groups them into a single announcement rather
     // than three separate stops.
+    // Scrolls rather than overflows when the space is short: a phone in
+    // landscape, a card, or a raised system font size.
     return MergeSemantics(
       child: Center(
+      child: SingleChildScrollView(
       child: Padding(
         padding: EdgeInsets.symmetric(
           horizontal: 24,
@@ -116,6 +119,7 @@ class EmptyState extends StatelessWidget {
             ],
           ],
         ),
+      ),
       ),
       ),
     );

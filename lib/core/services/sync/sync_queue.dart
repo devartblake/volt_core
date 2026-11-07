@@ -3,12 +3,20 @@ import 'package:hive/hive.dart';
 
 import 'sync_operation.dart';
 
+/// The slice of the outbox the drain loop needs. [SyncQueue] is the Hive-backed
+/// implementation; tests supply an in-memory one.
+abstract class SyncQueueStore {
+  Future<List<SyncOperation>> all();
+  Future<void> save(SyncOperation op);
+  Future<void> remove(String opId);
+}
+
 /// Durable, offline outbox for pending [SyncOperation]s.
 ///
-/// Backed by a plain `Box<String>` of JSON — intentionally adapter-free so it
+/// Backed by a plain `Box<String>` of JSON - intentionally adapter-free so it
 /// needs no Hive code generation and can't collide with the app's model
 /// typeIds.
-class SyncQueue {
+class SyncQueue implements SyncQueueStore {
   SyncQueue._();
 
   static final SyncQueue instance = SyncQueue._();
@@ -67,6 +75,7 @@ class SyncQueue {
   }
 
   /// All queued ops, oldest first.
+  @override
   Future<List<SyncOperation>> all() async {
     final box = await _ensureBox();
     // Snapshot keys so we can delete unreadable entries without mutating the
@@ -88,11 +97,13 @@ class SyncQueue {
   }
 
   /// Persist mutations (attempts, status, lastError) back to disk.
+  @override
   Future<void> save(SyncOperation op) async {
     final box = await _ensureBox();
     await box.put(op.id, op.toJson());
   }
 
+  @override
   Future<void> remove(String opId) async {
     final box = await _ensureBox();
     await box.delete(opId);

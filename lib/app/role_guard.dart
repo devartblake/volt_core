@@ -31,8 +31,8 @@ class RoleGuard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final auth = ref.watch(authStateProvider);
-    final UserRole? role = auth.currentRole;
+    final UserRole? role =
+        ref.watch(authStateProvider.select((a) => a.currentRole));
 
     final allowed = RouteRoles.isAllowedByName(
       name: routeName,

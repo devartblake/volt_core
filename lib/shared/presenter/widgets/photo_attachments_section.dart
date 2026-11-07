@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../widgets/thumbnail_image.dart';
 import '../../../core/services/photos/photo_attachment.dart';
 import '../../../core/services/photos/photo_service.dart';
 import 'photo_gallery_sheet.dart';
@@ -15,6 +16,7 @@ class PhotoAttachmentsSection extends StatefulWidget {
     required this.ownerId,
     this.title = 'Photos',
     this.allowVideo = false,
+    this.hideSlotted = false,
   });
 
   /// [PhotoAttachment.ownerInspection] or [PhotoAttachment.ownerMaintenance].
@@ -24,6 +26,10 @@ class PhotoAttachmentsSection extends StatefulWidget {
 
   /// Also offer video capture (native only).
   final bool allowVideo;
+
+  /// Leave out photos that fill a named slot (they are shown by the form that
+  /// owns the slots), so only the extras appear here.
+  final bool hideSlotted;
 
   @override
   State<PhotoAttachmentsSection> createState() =>
@@ -60,7 +66,10 @@ class _PhotoAttachmentsSectionState extends State<PhotoAttachmentsSection> {
   Future<void> _load() async {
     final ownerType = widget.ownerType;
     final ownerId = widget.ownerId;
-    final photos = await PhotoService.instance.listForOwner(ownerType, ownerId);
+    var photos = await PhotoService.instance.listForOwner(ownerType, ownerId);
+    if (widget.hideSlotted) {
+      photos = photos.where((ph) => ph.slot.isEmpty).toList();
+    }
     // Drop results for an owner we've since moved away from.
     if (!mounted || ownerId != widget.ownerId || ownerType != widget.ownerType) {
       return;
@@ -78,6 +87,7 @@ class _PhotoAttachmentsSectionState extends State<PhotoAttachmentsSection> {
       ownerId: widget.ownerId,
       title: widget.title,
       allowVideo: widget.allowVideo,
+      hideSlotted: widget.hideSlotted,
     );
     if (mounted) await _load();
   }
@@ -189,7 +199,7 @@ class _Thumbnail extends StatelessWidget {
                         color: Colors.white, size: 36),
                   )
                 : bytes != null
-                ? Image.memory(bytes, fit: BoxFit.cover)
+                ? ThumbnailImage.memory(bytes, size: 84)
                 : Container(
                     color:
                         Theme.of(context).colorScheme.surfaceContainerHighest,

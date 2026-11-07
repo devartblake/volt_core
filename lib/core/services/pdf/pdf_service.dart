@@ -25,6 +25,9 @@ import '../../../shared/presenter/layout/pdf/pdf_template.dart';
 import '../../services/hive/hive_boxes.dart';
 import '../photos/photo_attachment.dart';
 import 'maintenance_report_pdf.dart';
+import 'materials_pdf.dart';
+import '../../../modules/materials/domain/material_item.dart';
+import '../../../modules/materials/infra/materials_repository.dart';
 import 'pdf_prefs_service.dart';
 import 'vehicle_report_data.dart';
 import 'vehicle_report_pdf.dart';
@@ -132,6 +135,16 @@ class PdfService {
   }) =>
       _buildInspectionPdfBytes(ins, includeSummary: includeSummary, style: style);
 
+  /// The parts listed for a record, or none when the store is unavailable (a
+  /// report must still be produced without them).
+  Future<List<MaterialItem>> _loadMaterials(MaterialOwner owner) async {
+    try {
+      return await MaterialsRepository().load(owner);
+    } catch (_) {
+      return const [];
+    }
+  }
+
   /// Build the inspection PDF as raw bytes.
   ///
   /// Used internally by [generatePdfForInspection], but you can also call it
@@ -203,6 +216,26 @@ class PdfService {
             ),
             pw.SizedBox(height: 8),
             pw.Text(ins.notes.trim(), style: const pw.TextStyle(fontSize: 10)),
+          ],
+        ),
+      );
+    }
+
+    // Parts & materials listed on the inspection (what is fitted and what is
+    // due), after the fixed pages so their layout is untouched.
+    final materials = await _loadMaterials(MaterialOwner.inspection(id: ins.id));
+    if (MaterialsPdf.ordered(materials).isNotEmpty) {
+      pdf.addPage(
+        pw.MultiPage(
+          pageFormat: PdfPageFormat.letter,
+          margin: const pw.EdgeInsets.all(24),
+          build: (ctx) => [
+            MaterialsPdf.section(
+              materials,
+              title: 'Parts & Materials',
+              dateLabel: 'Date fitted',
+              showDue: true,
+            ),
           ],
         ),
       );
@@ -385,6 +418,7 @@ class PdfService {
     await PdfTemplate.loadFooterArt();
     final theme = await _loadNotoTheme();
 
+    final materials = await _loadMaterials(MaterialOwner.maintenance(id: m.id));
     final techSignature = await _loadMaintenanceSignature(m, 'technician');
     final customerSignature = await _loadMaintenanceSignature(m, 'customer');
 
@@ -405,6 +439,7 @@ class PdfService {
         technicianSignature: techSignature,
         customerSignature: customerSignature,
         keepSectionsTogether: keepTogether,
+        materials: materials,
       );
       await _addPhotosAppendix(pdf, PhotoAttachment.ownerMaintenance, m.id);
       return pdf.save();
@@ -459,13 +494,18 @@ class PdfService {
     return result;
   }
 
+  /// The short id fragment every maintenance report file name ends with
+  /// (`..._<shortId>.pdf`). Used to find a record's saved report again.
+  static String maintenanceShortId(String id) =>
+      id.length > 8 ? id.substring(0, 8) : id;
+
   String _buildMaintenanceFileName(MaintenanceRecord m) {
     final site = (m.siteCode.isNotEmpty ? m.siteCode : 'maintenance')
         .replaceAll(' ', '_');
     final date = _fmtDate(m.dateOfService ?? m.createdAt);
     // The id suffix keeps two records for the same site on the same day from
     // overwriting each other's report.
-    final shortId = m.id.length > 8 ? m.id.substring(0, 8) : m.id;
+    final shortId = maintenanceShortId(m.id);
     return 'Maintenance_${site}_${date}_$shortId.pdf';
   }
 
@@ -2614,19 +2654,62 @@ class PdfService {
       logo = null;
     }
 
-    VehicleReportPdf.addTo(pdf, data, logo: logo);
+    // Signatures and photos are read here so the layout stays free of I/O and
+    // shares one branded footer with the rest of the report.
+    final latest = data.inspections.isEmpty ? null : data.inspections.first;
+    final withMedia = data.withMedia(
+      driverSignature: await _readStoredBytes(latest?.driverSignaturePath),
+      dispatcherSignature:
+          await _readStoredBytes(latest?.dispatcherSignaturePath),
+      vehiclePhotos:
+          await _loadReportPhotos(PhotoAttachment.ownerVehicle, v.id),
+      inspectionPhotos: latest == null
+          ? null
+          : await _loadReportPhotos(
+              PhotoAttachment.ownerVehicleInspection, latest.id),
+    );
 
-    // Photos taken on the vehicle itself, then those from the latest inspection.
-    await _addPhotosAppendix(pdf, PhotoAttachment.ownerVehicle, v.id);
-    if (data.inspections.isNotEmpty) {
-      await _addPhotosAppendix(
-        pdf,
-        PhotoAttachment.ownerVehicleInspection,
-        data.inspections.first.id,
-      );
-    }
+    VehicleReportPdf.addTo(pdf, withMedia, logo: logo);
 
     return pdf.save();
+  }
+
+  /// Bytes behind a stored file path (web store, then filesystem), or null.
+  Future<Uint8List?> _readStoredBytes(String? path) async {
+    if (path == null || path.isEmpty) return null;
+    try {
+      final fromStore = WebFileStore.instance.getSync(path);
+      if (fromStore != null) return fromStore;
+      if (kIsWeb) return null;
+      final file = await PathResolver.resolveFile(path);
+      return await file?.readAsBytes();
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Photos (not videos) for an owner, read into memory. Never throws.
+  Future<List<VehicleReportPhoto>> _loadReportPhotos(
+    String ownerType,
+    String ownerId,
+  ) async {
+    if (ownerId.isEmpty) return const [];
+    try {
+      final photos =
+          await PhotoService.instance.listForOwner(ownerType, ownerId);
+      final out = <VehicleReportPhoto>[];
+      for (final photo in photos.where((ph) => !ph.isVideo)) {
+        try {
+          final bytes = await PhotoService.instance.loadBytes(photo);
+          if (bytes != null) {
+            out.add(VehicleReportPhoto(bytes: bytes, caption: photo.caption));
+          }
+        } catch (_) {}
+      }
+      return out;
+    } catch (_) {
+      return const [];
+    }
   }
 
   /// Generate the vehicle report and store it in the PDF library.

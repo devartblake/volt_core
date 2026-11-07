@@ -1,6 +1,7 @@
 // Small convenience extensions on BuildContext to keep UI code tidy.
 
 import 'package:flutter/material.dart';
+import '../../shared/widgets/app_snack_bar.dart';
 
 extension ContextX on BuildContext {
   ThemeData get theme => Theme.of(this);
@@ -19,16 +20,12 @@ extension ContextX on BuildContext {
         String? actionLabel,
         VoidCallback? onAction,
       }) {
-    ScaffoldMessenger.of(this).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        action: actionLabel != null
-            ? SnackBarAction(
-          label: actionLabel,
-          onPressed: onAction ?? () {},
-        )
-            : null,
-      ),
+    AppSnackBar.info(
+      this,
+      message,
+      action: actionLabel != null
+          ? SnackBarAction(label: actionLabel, onPressed: onAction ?? () {})
+          : null,
     );
   }
 }
