@@ -115,6 +115,18 @@ void main() {
       expect(p.manufacturer, '');
     });
 
+    test('a part with no description in the sheet gets a blank name', () {
+      final r = parseInventorySheets([
+        tracker([
+          ['Q1', 'PA2650', '1', '', 'Baldwin', 'BAT-31', '1', '', ''],
+        ]),
+      ]);
+      expect(r.parts.length, 2);
+      for (final p in r.parts) {
+        expect(p.name, '', reason: p.partNumber);
+      }
+    });
+
     test('a part listed under two manufacturers keeps the commoner, warns', () {
       final r = parseInventorySheets([
         tracker([

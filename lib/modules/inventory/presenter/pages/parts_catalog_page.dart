@@ -9,7 +9,9 @@ import '../../../../shared/widgets/status_chip.dart';
 import '../../domain/catalog_part.dart';
 import '../../infra/inventory_repository.dart';
 import '../inventory_access.dart';
+import '../widgets/generic_names_cleanup.dart';
 import '../widgets/inventory_sheets.dart';
+import '../widgets/part_image.dart';
 import '../widgets/part_scan_button.dart';
 import '../widgets/parts_import_sheet.dart';
 
@@ -56,6 +58,20 @@ class _PartsCatalogPageState extends ConsumerState<PartsCatalogPage> {
 
     return AppPage(
       title: 'Parts Catalog',
+      actions: [
+        if (canManage)
+          PopupMenuButton<String>(
+            key: const Key('catalog_menu'),
+            tooltip: 'More',
+            onSelected: (v) {
+              if (v == 'cleanup') cleanUpGenericNames(context, ref);
+            },
+            itemBuilder: (_) => const [
+              PopupMenuItem(
+                  value: 'cleanup', child: Text('Clean up generic names')),
+            ],
+          ),
+      ],
       fab: canManage
           ? FloatingActionButton.extended(
               key: const Key('add_part'),
@@ -94,6 +110,7 @@ class _PartsCatalogPageState extends ConsumerState<PartsCatalogPage> {
                       side: BorderSide(color: theme.colorScheme.outlineVariant),
                     ),
                     child: ListTile(
+                      leading: PartThumb(part: p),
                       onTap: canManage
                           ? () => showPartEditorSheet(context, ref, part: p)
                           : null,
@@ -105,7 +122,7 @@ class _PartsCatalogPageState extends ConsumerState<PartsCatalogPage> {
                           if (p.manufacturer.isNotEmpty) p.manufacturer,
                           if (p.slot != null) p.slot!.label,
                         ].join(' · '),
-                        maxLines: 2,
+                        maxLines: 3,
                         overflow: TextOverflow.ellipsis,
                       ),
                       trailing: p.isActive
@@ -122,7 +139,7 @@ class _PartsCatalogPageState extends ConsumerState<PartsCatalogPage> {
                     controller: _searchCtl,
                     decoration: InputDecoration(
                       prefixIcon: const Icon(Icons.search),
-                      hintText: 'Search part number, name or manufacturer',
+                      hintText: 'Search part number, description or manufacturer',
                       suffixIcon: PartScanButton(onScanned: _onScanned),
                     ),
                     onChanged: (v) => setState(() => _query = v),

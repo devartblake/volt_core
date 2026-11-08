@@ -24,6 +24,7 @@ class CatalogPart {
     this.altPartNumbers = const [],
     this.notes = '',
     this.isActive = true,
+    this.imagePath,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -44,6 +45,10 @@ class CatalogPart {
   final List<String> altPartNumbers;
   final String notes;
   final bool isActive;
+
+  /// Storage object path of the product photo
+  /// (`part-images/<tenantId>/<partId>.jpg`), or null when there is none.
+  final String? imagePath;
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -67,6 +72,7 @@ class CatalogPart {
     List<String>? altPartNumbers,
     String? notes,
     bool? isActive,
+    Object? imagePath = _keep,
     DateTime? updatedAt,
   }) {
     return CatalogPart(
@@ -80,6 +86,8 @@ class CatalogPart {
       altPartNumbers: altPartNumbers ?? this.altPartNumbers,
       notes: notes ?? this.notes,
       isActive: isActive ?? this.isActive,
+      imagePath:
+          identical(imagePath, _keep) ? this.imagePath : imagePath as String?,
       createdAt: createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -98,6 +106,7 @@ class CatalogPart {
         'altPartNumbers': altPartNumbers,
         'notes': notes,
         'isActive': isActive,
+        'imagePath': imagePath,
         'createdAt': createdAt.toIso8601String(),
         'updatedAt': updatedAt.toIso8601String(),
       };
@@ -120,9 +129,15 @@ class CatalogPart {
       altPartNumbers: alts is List ? [for (final a in alts) a.toString()] : const [],
       notes: json['notes']?.toString() ?? '',
       isActive: json['isActive'] != false,
+      imagePath: _cleanPath(json['imagePath']),
       createdAt: DateTime.tryParse('${json['createdAt']}') ?? now,
       updatedAt: DateTime.tryParse('${json['updatedAt']}') ?? now,
     );
+  }
+
+  static String? _cleanPath(Object? v) {
+    final t = v?.toString().trim() ?? '';
+    return t.isEmpty ? null : t;
   }
 
   static String encode(CatalogPart p) => jsonEncode(p.toJson());

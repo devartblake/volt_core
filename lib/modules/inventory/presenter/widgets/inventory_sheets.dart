@@ -9,7 +9,10 @@ import '../../domain/catalog_part.dart';
 import '../../domain/stock.dart';
 import '../../domain/vendor.dart';
 import '../../infra/inventory_repository.dart';
+import '../../infra/part_image_store.dart';
 import '../../infra/pricing_repository.dart';
+import '../inventory_access.dart';
+import 'part_image.dart';
 
 void _refresh(WidgetRef ref) {
   ref.invalidate(stockLevelsProvider);
@@ -63,6 +66,99 @@ class _PartEditorState extends State<_PartEditor> {
   String? _error;
   bool _saving = false;
 
+  /// A photo chosen in this editor, not saved yet.
+  Uint8List? _newImage;
+  bool _removeImage = false;
+
+  bool get _hasImage =>
+      _newImage != null || (!_removeImage && widget.part?.imagePath != null);
+
+  Future<void> _pickImage(PartImageSource source) async {
+    try {
+      final bytes = await widget.ref.read(partImagePickerProvider).pick(source);
+      if (bytes == null || !mounted) return;
+      setState(() {
+        _newImage = bytes;
+        _removeImage = false;
+      });
+    } catch (_) {
+      if (mounted) setState(() => _error = 'Could not get that photo.');
+    }
+  }
+
+  Future<void> _choosePhoto() async {
+    final source = await showModalBottomSheet<PartImageSource>(
+      context: context,
+      builder: (ctx) => SafeArea(
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          ListTile(
+            key: const Key('photo_camera'),
+            leading: const Icon(Icons.photo_camera_outlined),
+            title: const Text('Take a photo'),
+            onTap: () => Navigator.pop(ctx, PartImageSource.camera),
+          ),
+          ListTile(
+            key: const Key('photo_gallery'),
+            leading: const Icon(Icons.photo_library_outlined),
+            title: const Text('Choose from gallery'),
+            onTap: () => Navigator.pop(ctx, PartImageSource.gallery),
+          ),
+        ]),
+      ),
+    );
+    if (source != null) await _pickImage(source);
+  }
+
+  Widget _photoSection(ThemeData theme) {
+    final part = widget.part;
+    final Widget preview;
+    if (_newImage != null) {
+      preview = Image.memory(_newImage!,
+          key: const Key('part_photo_preview'),
+          fit: BoxFit.cover,
+          cacheWidth: 256,
+          errorBuilder: (_, __, ___) => const Icon(Icons.broken_image_outlined));
+    } else if (part != null && !_removeImage) {
+      preview = PartImage(part: part);
+    } else {
+      preview = ColoredBox(
+        color: theme.colorScheme.surfaceContainerHighest,
+        child: Center(
+          child: Icon(Icons.inventory_2_outlined,
+              color: theme.colorScheme.onSurfaceVariant),
+        ),
+      );
+    }
+    return Row(children: [
+      ClipRRect(
+        borderRadius: BorderRadius.circular(8),
+        child: SizedBox.square(dimension: 72, child: preview),
+      ),
+      const SizedBox(width: AppSpacing.md),
+      Expanded(
+        child: Wrap(spacing: AppSpacing.sm, children: [
+          OutlinedButton.icon(
+            key: const Key('part_photo_add'),
+            onPressed: _saving ? null : _choosePhoto,
+            icon: const Icon(Icons.add_a_photo_outlined, size: 18),
+            label: Text(_hasImage ? 'Replace' : 'Add photo'),
+          ),
+          if (_hasImage)
+            TextButton(
+              key: const Key('part_photo_remove'),
+              onPressed: _saving
+                  ? null
+                  : () => setState(() {
+                        _newImage = null;
+                        _removeImage = true;
+                      }),
+              child: const Text('Remove'),
+            ),
+        ]),
+      ),
+    ]);
+  }
+
   @override
   void dispose() {
     for (final c in [_number, _name, _mfr, _min, _alts, _notes]) {
@@ -85,7 +181,7 @@ class _PartEditorState extends State<_PartEditor> {
     final existing = widget.part;
     final base = existing ??
         repo.newPart(partNumber: _number.text);
-    final next = base.copyWith(
+    var next = base.copyWith(
       partNumber: _number.text,
       name: _name.text,
       manufacturer: _mfr.text,
@@ -102,6 +198,14 @@ class _PartEditorState extends State<_PartEditor> {
     final messenger = ScaffoldMessenger.of(context);
     final nav = Navigator.of(context);
     try {
+      final store = widget.ref.read(partImageStoreProvider);
+      if (_newImage != null) {
+        final path = await store.save(next, _newImage!);
+        next = next.copyWith(imagePath: path);
+      } else if (_removeImage && next.imagePath != null) {
+        await store.remove(next);
+        next = next.copyWith(imagePath: null);
+      }
       await repo.savePart(next);
       _refresh(widget.ref);
       AppSnackBar.successOn(messenger, existing == null ? 'Part added' : 'Part saved');
@@ -136,6 +240,10 @@ class _PartEditorState extends State<_PartEditor> {
             Text(widget.part == null ? 'Add part' : 'Edit part',
                 style: theme.textTheme.titleLarge),
             const SizedBox(height: AppSpacing.md),
+            if (widget.ref.read(canManageInventoryProvider)) ...[
+              _photoSection(theme),
+              const SizedBox(height: AppSpacing.md),
+            ],
             TextField(
               key: const Key('part_number'),
               controller: _number,
@@ -146,7 +254,14 @@ class _PartEditorState extends State<_PartEditor> {
             TextField(
               key: const Key('part_name'),
               controller: _name,
-              decoration: const InputDecoration(labelText: 'Part name'),
+              minLines: 2,
+              maxLines: 3,
+              maxLength: 200,
+              textCapitalization: TextCapitalization.sentences,
+              decoration: const InputDecoration(
+                labelText: 'Description',
+                hintText: 'e.g. Fleetguard lube filter, spin-on, 4.5" tall',
+              ),
             ),
             const SizedBox(height: AppSpacing.md),
             TextField(
@@ -156,6 +271,7 @@ class _PartEditorState extends State<_PartEditor> {
             ),
             const SizedBox(height: AppSpacing.md),
             DropdownButtonFormField<MaterialSlot?>(
+              isExpanded: true,
               initialValue: _slot,
               decoration: const InputDecoration(labelText: 'Fits'),
               items: [

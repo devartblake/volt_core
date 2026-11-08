@@ -452,6 +452,7 @@ Map<String, dynamic> partToRow(CatalogPart p, String tenantId, String? userId) =
       'alt_part_numbers': p.altPartNumbers,
       'notes': p.notes,
       'is_active': p.isActive,
+      'image_path': p.imagePath,
       'created_at': p.createdAt.toUtc().toIso8601String(),
       'updated_at': p.updatedAt.toUtc().toIso8601String(),
       if (userId != null) 'updated_by': userId,
@@ -468,6 +469,7 @@ CatalogPart? partFromRow(Map<String, dynamic> row) => CatalogPart.fromJson({
       'altPartNumbers': row['alt_part_numbers'],
       'notes': row['notes'],
       'isActive': row['is_active'],
+      'imagePath': row['image_path'],
       'createdAt': row['created_at'],
       'updatedAt': row['updated_at'],
     });

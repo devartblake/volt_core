@@ -18,6 +18,7 @@ import '../../infra/pricing_repository.dart';
 import '../inventory_access.dart';
 import '../widgets/inventory_sheets.dart';
 import '../widgets/location_sheets.dart';
+import '../widgets/part_image.dart';
 import '../widgets/part_order_info.dart';
 import '../widgets/part_scan_button.dart';
 import '../widgets/pricing_sheets.dart';
@@ -300,9 +301,12 @@ class _StockPageState extends ConsumerState<StockPage> {
             ],
           ),
           const SizedBox(height: AppSpacing.md),
-          Row(children: [
+          Wrap(
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: AppSpacing.md,
+              runSpacing: AppSpacing.xs,
+              children: [
             Text('Group by', style: theme.textTheme.labelLarge),
-            const SizedBox(width: AppSpacing.md),
             SegmentedButton<StockGroup>(
               key: const Key('stock_group'),
               showSelectedIcon: false,
@@ -440,10 +444,14 @@ class _StockTile extends StatelessWidget {
       ),
       child: ListTile(
         onTap: onTap,
+        leading: PartThumb(part: p),
         title: Text(p.partNumber,
             style: const TextStyle(fontWeight: FontWeight.w600)),
-        subtitle: sub.isEmpty ? null : Text(sub, maxLines: 1, overflow: TextOverflow.ellipsis),
-        trailing: Column(
+        subtitle: sub.isEmpty ? null : Text(sub, maxLines: 2, overflow: TextOverflow.ellipsis),
+        trailing: FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: Alignment.centerRight,
+          child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
@@ -459,6 +467,7 @@ class _StockTile extends StatelessWidget {
                   : _tone(level.status),
             ),
           ],
+        ),
         ),
       ),
     );
@@ -577,8 +586,24 @@ class _PartDetail extends ConsumerWidget {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          if (p.imagePath != null) ...[
+            InkWell(
+              key: const Key('part_image_open'),
+              borderRadius: BorderRadius.circular(12),
+              onTap: () => showPartImageViewer(context, p),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: SizedBox(
+                  height: 200,
+                  width: double.infinity,
+                  child: PartImage(part: p),
+                ),
+              ),
+            ),
+            const SizedBox(height: AppSpacing.md),
+          ],
           Text(p.partNumber, style: theme.textTheme.titleLarge),
-          if (p.title != p.partNumber) Text(p.title),
+          if (p.name.trim().isNotEmpty) Text(p.name.trim()),
           if (p.manufacturer.isNotEmpty)
             Text(p.manufacturer,
                 style: theme.textTheme.bodySmall

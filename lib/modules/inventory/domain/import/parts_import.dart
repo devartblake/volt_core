@@ -393,7 +393,7 @@ List<ImportPart>? _parseTracker(
       }
       final p = ImportPart(
         partNumber: pn,
-        name: name.isNotEmpty ? name : e.value.label,
+        name: name,
         manufacturer: mfr,
         slot: e.value,
         sheets: [sheet.name],
