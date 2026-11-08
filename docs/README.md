@@ -5,7 +5,8 @@
 | [ui_ux_revamp_plan.md](ui_ux_revamp_plan.md) | The UI/UX revamp: audit, phases, what each sprint delivered, what is still open |
 | [materials_and_inventory_design.md](materials_and_inventory_design.md) | Parts, stock, job needs, vendors and prices, purchase orders, truck stock, spreadsheet import, roles, and the SQL migrations to run |
 | [generator_management_research.md](generator_management_research.md) | Features of other generator management systems, and which to borrow |
-| [fleet_readiness.md](fleet_readiness.md) | Fleet readiness dashboard data and rules: sources, how records join to a generator, the status rules table, thresholds, API for the screens |
+| [fleet_readiness.md](fleet_readiness.md) | Generator Fleet Readiness dashboard (generators, not the vehicle Fleet section): data and rules: sources, how records join to a generator, the status rules table, thresholds, API for the screens |
+| [release_versioning.md](release_versioning.md) | How the app version is numbered, when to bump which part, the pilot and production stages, release steps |
 | [tools.md](tools.md) | How to use the scripts in `tool/` (xlsx inspector, UTF-8 scan, tablet and sign-in helpers, footer builder) |
 | [remaining_tasks.md](remaining_tasks.md) | What is still open, decisions made, SQL to run, your tasks, bigger features and known gaps |
 | [offline_sync_and_backup.md](offline_sync_and_backup.md) | The offline queue, draining, the sync centre and offline banner |

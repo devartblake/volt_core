@@ -21,8 +21,8 @@ class ReadinessDonut extends StatelessWidget {
   final double size;
 
   static String semanticLabel(ReadinessSummary s) {
-    if (s.total == 0) return 'Fleet readiness: no generators';
-    return 'Fleet readiness: ${s.percentReady.round()}% ready. '
+    if (s.total == 0) return 'Generator fleet readiness: no generators';
+    return 'Generator fleet readiness: ${s.percentReady.round()}% ready. '
         '${s.count(ReadinessStatus.ready)} ready, '
         '${s.count(ReadinessStatus.dueSoon)} due soon, '
         '${s.count(ReadinessStatus.attention)} needs attention, '

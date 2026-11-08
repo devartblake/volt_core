@@ -85,7 +85,7 @@ void main() {
     }
   });
 
-  test('Fleet Readiness PDF is a real PDF with content', () async {
+  test('Generator Fleet Readiness PDF is a real PDF with content', () async {
     TestWidgetsFlutterBinding.ensureInitialized();
     final r = _report();
     final data = ReadinessExportData(

@@ -2744,7 +2744,7 @@ class PdfService {
 
   // ---------- Fleet readiness report ----------
 
-  /// Build the Fleet Readiness Report: summary page, 12-week due table, then
+  /// Build the Generator Fleet Readiness Report: summary page, 12-week due table, then
   /// the units grouped by status.
   Future<Uint8List> buildReadinessPdfBytes(ReadinessExportData data) async {
     await PdfTemplate.loadFooterArt();
@@ -2763,7 +2763,7 @@ class PdfService {
     return pdf.save();
   }
 
-  /// Generate the Fleet Readiness Report and store it in the PDF library, under
+  /// Generate the Generator Fleet Readiness Report and store it in the PDF library, under
   /// `readiness/` (listed in the Documents hub as "Other").
   Future<PdfExportResult> generateReadinessPdf(
     ReadinessExportData data, {
@@ -2775,7 +2775,7 @@ class PdfService {
         '${data.asOf.minute.toString().padLeft(2, '0')}';
     return _saveAndMaybeEmailPdf(
       bytes: bytes,
-      fileName: p.join('readiness', 'Fleet_Readiness_Report_$stamp.pdf'),
+      fileName: p.join('readiness', 'Generator_Fleet_Readiness_Report_$stamp.pdf'),
       prefs: prefs ?? const PdfExportPrefs(emailAllowed: false),
     );
   }

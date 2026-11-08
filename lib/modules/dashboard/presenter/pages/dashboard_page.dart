@@ -337,7 +337,7 @@ List<_Stat> _stats(
   final fleet = readiness == null
       ? null
       : _Stat(
-          'Fleet readiness',
+          'Generator fleet readiness',
           fleetReadinessValue(readiness.percentReady, readiness.total),
           Icons.verified_outlined,
           readiness.total == 0

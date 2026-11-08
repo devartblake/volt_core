@@ -1,4 +1,6 @@
-# Fleet readiness
+# Generator Fleet Readiness
+
+The screen is named "Generator Fleet Readiness" everywhere the user sees it so it is not confused with the vehicle Fleet section. Route names and Dart identifiers still say `readiness`.
 
 One screen of generators by next-service date, last inspection grade and open follow-ups (item 7 of [generator_management_research.md](generator_management_research.md)). The first half of this document is the data and rules layer in `lib/modules/readiness/` (stage 1); [The dashboard](#the-dashboard) describes the screens built on it (stage 2).
 
@@ -119,14 +121,17 @@ CSV: header row, every text field quoted, CRLF rows, `yyyy-MM-dd` dates; text st
 
 ## The dashboard
 
-Stage 2. Route `/readiness` (`RouteNames.readiness`), tab **Readiness** in the Home section beside Dashboard and Analytics, visible to every role.
+Stage 2. Route `/readiness` (`RouteNames.readiness`), tab **Generator Fleet Readiness** in the Home section beside Dashboard and Analytics, visible to every role.
 
 ### Files
 
 | Path | What |
 |---|---|
 | `presenter/pages/readiness_page.dart` | The screen: state, refresh, selection, two-pane layout |
-| `presenter/widgets/readiness_overview.dart` | As-of line, hero, status tiles, charts, "Needs attention first" |
+| `presenter/widgets/readiness_overview.dart` | As-of line, hero, status tiles, Due by week and grade cards |
+| `presenter/widgets/readiness_stat_tile.dart`, `readiness_mini_charts.dart` | A status tile and its graph; `MiniRing`, `MiniBarStrip`, `MiniStackBar` (`CustomPainter`, one Semantics label each) |
+| `presenter/widgets/readiness_attention_row.dart` | "Needs attention first" as a row of unit cards with "See all" |
+| `domain/readiness_mini_series.dart` | Pure series for the tile graphs: reason counts per status, due-soon week slice, shares |
 | `presenter/widgets/readiness_charts.dart` | `ReadinessDonut`, `DueByWeekChart`, `GradeBar`, `GradeTrendStrip` (all `CustomPainter` or plain boxes, no chart package) |
 | `presenter/widgets/readiness_filters.dart` | Search, status chips, sort, make / borough / due / grade / follow-up filters, the phone "Filters" sheet |
 | `presenter/widgets/readiness_segments.dart` | Units / Due calendar / Follow-ups / Parts rows |
@@ -139,7 +144,12 @@ Stage 2. Route `/readiness` (`RouteNames.readiness`), tab **Readiness** in the H
 
 ### What each part shows
 
-* **Overview.** "As of 3:20 PM" with a refresh button; the hero "N% ready" with the unit count and the overdue count; a donut of the status split (centre = percent ready; one spoken sentence for screen readers); four status tiles (Ready, Due soon, Attention, Not ready) that are also filters; a 12-week "Due by week" bar chart with an Overdue bar first (Monday weeks; tap a bar to filter the list to that week, tap again to clear); the Green / Amber / Red / ungraded split; and the five worst units (tap opens the unit). On narrow phones the bar value labels are dropped.
+* **Overview**, top to bottom:
+  1. "As of 3:20 PM" with a refresh button.
+  2. The hero: "N% ready" with the unit count, the overdue count and a thin overdue-versus-fleet bar, beside the status donut (centre = percent ready; one spoken sentence for screen readers).
+  3. Four status tiles (Ready, Due soon, Attention, Not ready) that are also filters. Each has a small graph next to its count: **Ready** a ring of its share of the fleet; **Due soon** twelve mini bars of units due per week for the next 12 weeks, only the weeks inside the due-soon window in the status colour; **Attention** a stacked bar of its reasons (Amber grade, Overdue, Follow-ups, Parts short); **Not ready** a stacked bar of Red grade, Long overdue and Never inspected. A unit with two reasons counts under both, so a bar can add up to more than the tile's number; the Semantics label lists the counts. All-zero data draws an empty track. The series come from `domain/readiness_mini_series.dart` (`attentionReasonCounts`, `notReadyReasonCounts`, `dueSoonWeekSlice`, `statusShare`), fed from the summary and the units.
+  4. One row with two equal cards from 600 dp wide, stacked on phones: **Due by week** (12-week bars with an Overdue bar first, Monday weeks; tap a bar to filter the list to that week, tap again to clear; narrow phones drop the value labels) and **Last inspection grade** (stacked bar plus a Green / Amber / Red / Ungraded list with counts and shares). When no unit has an overdue or in-range due date the bar chart is replaced by a note ("No next-inspection dates set yet. Due dates shown are estimates.", or "Nothing is due in the next 12 weeks." when some are later) with the number of generators using an estimated due date.
+  5. **Needs attention first**, full width under that row: the five worst units as compact cards (status icon, title, site and customer, first reason, due text, grade chip, 280 dp wide), with a "See all" action that applies the Not ready filter. When all five fit (5 x 280 dp plus gaps) they fill the row; otherwise the row scrolls sideways. On this page the body is at most 1400 dp (less beside the 440 dp detail pane), so in practice it scrolls sideways except on very wide hosts.
 * **Filters and sort.** Search (title, site, address, serial, customer), status chips (multi-select), make, borough chips (only when some site code gives a borough), due window (Overdue, 7, 30, 90 days) or one chosen week, last grade, "Has follow-ups", and a sort menu (Worst first, Next due, Last inspected, Name). A count of active filters with "Clear all". Below 600 px the less-used filters sit behind a "Filters (n)" sheet. The filters and the sort live in providers that are not auto-disposed, so they are remembered while the app runs (not across restarts). Saved presets are not built.
 * **Segments.** *Units* (the filtered list, built lazily), *Due calendar* (Overdue, This week, Next week, "Week of 23 Nov"... to 12 weeks, Later, No due date, with counts), *Follow-ups* (open notes, newest first), *Parts* (units short of parts, with a link to the Shortages page and to the unit's parts profile). All four honour the filters.
 * **Unit card.** Status chip, the top two reasons, the due countdown ("Due in 9 days", "Overdue 12 days", "Due ~Mar 2027 (estimated)"), last grade and date, site, customer, make and model.
@@ -152,9 +162,9 @@ Stage 2. Route `/readiness` (`RouteNames.readiness`), tab **Readiness** in the H
 |---|---|---|---|---|
 | View, filter, search, open units, export, select units | yes | yes | yes | yes |
 | Schedule inspection (one unit), Create maintenance job, bulk "Schedule inspections" | no | yes | yes | yes |
-| Readiness settings (gear) | no | no | no | yes |
+| Generator fleet readiness settings (gear) | no | no | no | yes |
 
-`canScheduleReadiness(role)` and `canEditReadinessConfig(role)` decide this. The main Dashboard shows a "Fleet readiness 87% ready" tile and a critical "N generators not ready" line (opens `/readiness?status=notReady`) to dispatchers, supervisors and admins only (`buildAttention`, `fleetReadinessValue`).
+`canScheduleReadiness(role)` and `canEditReadinessConfig(role)` decide this. The main Dashboard shows a "Generator fleet readiness 87% ready" tile and a critical "N generators not ready" line (opens `/readiness?status=notReady`) to dispatchers, supervisors and admins only (`buildAttention`, `fleetReadinessValue`).
 
 ### Scheduling
 
@@ -168,8 +178,8 @@ Long-press a card, or use the checklist button in the app bar. The bottom bar of
 
 Both go through `runUserAction` (busy and error handling; cancelled shows nothing) and respect the current filters, or the selection when there is one; the menu says "Export CSV (14 units)".
 
-* **CSV**: `readinessCsv`, shared with the system share sheet (a UTF-8 byte order mark is added so Excel reads it).
-* **PDF "Fleet Readiness Report"**: `PdfService.generateReadinessPdf`. Page one has the company header, the fleet numbers (percent ready, a count per status, overdue, follow-ups, parts, grades) and the 12-week due table; then the listed units grouped Not ready / Needs attention / Due soon / Ready, with their reasons; branded footer with "Page X of Y". It is saved under `<pdfs>/AandSElectric/PDFs/readiness/Fleet_Readiness_Report_<date>_<hhmm>.pdf`, queued for cloud backup like the other reports, and then shared. The Documents hub lists it under **Other** (it has no category of its own, so the type filters are unchanged).
+* **CSV**: `readinessCsv` (file `generator-fleet-readiness-<date>.csv`), shared with the system share sheet (a UTF-8 byte order mark is added so Excel reads it).
+* **PDF "Generator Fleet Readiness Report"**: `PdfService.generateReadinessPdf`. Page one has the company header, the fleet numbers (percent ready, a count per status, overdue, follow-ups, parts, grades) and the 12-week due table; then the listed units grouped Not ready / Needs attention / Due soon / Ready, with their reasons; branded footer with "Page X of Y". It is saved under `<pdfs>/AandSElectric/PDFs/readiness/Generator_Fleet_Readiness_Report_<date>_<hhmm>.pdf` (reports saved earlier as `Fleet_Readiness_Report_*.pdf` stay in the same folder and still list under Other), queued for cloud backup like the other reports, and then shared. The Documents hub lists it under **Other** (it has no category of its own, so the type filters are unchanged).
 
 ### Thresholds
 
@@ -177,4 +187,4 @@ The gear (admins only) opens a sheet to change `dueSoonDays` ("Due soon window")
 
 ### Tests
 
-`test/readiness/ui/` (widget tests with in-memory data: overview numbers and semantics, filters, segments, unit sheet and two-pane layout, role gating, bulk and single scheduling with a fake scheduler, CSV / PDF failure and cancel, thresholds, states, laziness, and a 1.3x no-overflow matrix on 360x800, 800x1280 and 1280x800 in light and dark), `test/readiness/readiness_view_test.dart`, `readiness_services_test.dart` (scheduler, bulk, PDF bytes) and `test/dashboard/fleet_readiness_attention_test.dart`.
+`test/readiness/ui/` (widget tests with in-memory data: overview numbers and semantics, filters, segments, unit sheet and two-pane layout, role gating, bulk and single scheduling with a fake scheduler, CSV / PDF failure and cancel, thresholds, states, laziness, and a 1.3x no-overflow matrix on 360x800, 800x1280 and 1280x800 in light and dark), `test/readiness/ui/readiness_overview_layout_test.dart` (row layout, empty due chart, tile graph semantics, 1.3x matrix), `test/readiness/readiness_mini_series_test.dart`, `test/app/section_tabs_scroll_test.dart` (the long tab name scrolls the section tabs at 360 dp), `test/readiness/readiness_view_test.dart`, `readiness_services_test.dart` (scheduler, bulk, PDF bytes) and `test/dashboard/fleet_readiness_attention_test.dart`.

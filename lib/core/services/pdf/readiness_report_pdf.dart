@@ -8,7 +8,7 @@ import '../../../modules/readiness/domain/readiness_rules.dart'
 import '../../../modules/readiness/domain/readiness_view.dart';
 import '../../../shared/presenter/layout/pdf/pdf_template.dart';
 
-/// Layout for the Fleet Readiness Report: a summary page (the numbers behind
+/// Layout for the Generator Fleet Readiness Report: a summary page (the numbers behind
 /// the dashboard's donut and its 12-week due chart), then the units grouped
 /// Not ready / Needs attention / Due soon / Ready, each with its reasons.
 ///
@@ -43,7 +43,7 @@ class ReadinessReportPdf {
           child: PdfTemplate.brandFooter(
             segments: [
               'A&S ELECTRIC INC',
-              'Fleet Readiness Report',
+              'Generator Fleet Readiness Report',
               readinessDate(data.asOf, data.asOf),
             ],
             pageNumber: ctx.pageNumber,
@@ -55,7 +55,7 @@ class ReadinessReportPdf {
         build: (ctx) => [
           PdfTemplate.companyHeader(logo: logo),
           pw.SizedBox(height: 10),
-          PdfTemplate.documentTitle('Fleet Readiness Report'),
+          PdfTemplate.documentTitle('Generator Fleet Readiness Report'),
           pw.SizedBox(height: 4),
           pw.Text(
             'As of ${readinessDate(data.asOf, data.asOf)} ${data.asOf.year}, '

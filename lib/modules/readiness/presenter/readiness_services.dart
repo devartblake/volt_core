@@ -65,7 +65,7 @@ class RepositoryReadinessScheduler extends ReadinessScheduler {
       id: const Uuid().v4(),
       tenantId: '',
       title: site.isNotEmpty ? site : unit.title,
-      description: 'Inspection scheduled from Fleet readiness: ${unit.title}',
+      description: 'Inspection scheduled from Generator Fleet Readiness: ${unit.title}',
       scheduledAt: DateTime(date.year, date.month, date.day, 8),
       scheduledDate: day,
       status: 'scheduled',
@@ -156,11 +156,11 @@ class DefaultReadinessExporter extends ReadinessExporter {
     final bytes = Uint8List.fromList(
         [0xEF, 0xBB, 0xBF, ...utf8.encode(readinessCsv(units))]);
     final stamp = DateTime.now().toIso8601String().substring(0, 10);
-    final name = 'fleet-readiness-$stamp.csv';
+    final name = 'generator-fleet-readiness-$stamp.csv';
     final result = await SharePlus.instance.share(ShareParams(
       files: [XFile.fromData(bytes, mimeType: 'text/csv', name: name)],
       fileNameOverrides: [name],
-      subject: 'Fleet readiness',
+      subject: 'Generator Fleet Readiness',
     ));
     return result.status != ShareResultStatus.dismissed;
   }
@@ -173,12 +173,12 @@ class DefaultReadinessExporter extends ReadinessExporter {
     if (kIsWeb) {
       final bytes = await PdfService.instance.buildReadinessPdfBytes(data);
       await Printing.sharePdf(
-          bytes: bytes, filename: 'Fleet_Readiness_Report.pdf');
+          bytes: bytes, filename: 'Generator_Fleet_Readiness_Report.pdf');
       return true;
     }
     final result = await SharePlus.instance.share(ShareParams(
       files: [XFile(path, mimeType: 'application/pdf')],
-      subject: 'Fleet Readiness Report',
+      subject: 'Generator Fleet Readiness Report',
     ));
     // Saved to Documents either way; a dismissed sheet is not an error.
     return result.status != ShareResultStatus.dismissed;

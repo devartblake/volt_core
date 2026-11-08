@@ -208,10 +208,10 @@ class AttentionRoutes {
 String fleetReadinessValue(double percentReady, int total) =>
     total == 0 ? '-' : '${percentReady.round()}% ready';
 
-/// "Fleet readiness 87% ready", for a tile label or a screen reader.
+/// "Generator fleet readiness 87% ready", for a tile label or a screen reader.
 String fleetReadinessLabel(double percentReady, int total) => total == 0
-    ? 'Fleet readiness: no generators yet'
-    : 'Fleet readiness ${percentReady.round()}% ready';
+    ? 'Generator fleet readiness: no generators yet'
+    : 'Generator fleet readiness ${percentReady.round()}% ready';
 
 String _plural(int n, String one, [String? many]) =>
     '$n ${n == 1 ? one : (many ?? '${one}s')}';

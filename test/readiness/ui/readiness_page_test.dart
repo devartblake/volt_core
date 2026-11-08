@@ -6,6 +6,7 @@ import 'package:voltcore/modules/readiness/domain/readiness_inputs.dart';
 import 'package:voltcore/modules/readiness/domain/readiness_models.dart';
 import 'package:voltcore/modules/readiness/domain/readiness_summary.dart';
 import 'package:voltcore/modules/readiness/presenter/readiness_providers.dart';
+import 'package:voltcore/modules/readiness/presenter/widgets/readiness_unit_card.dart';
 import 'package:voltcore/shared/widgets/widgets.dart';
 
 import '../readiness_fixtures.dart';
@@ -34,7 +35,7 @@ void main() {
       }
 
       expect(
-        find.bySemanticsLabel(RegExp(r'Fleet readiness: 42% ready\. 5 ready, 3 due soon, '
+        find.bySemanticsLabel(RegExp(r'Generator fleet readiness: 42% ready\. 5 ready, 3 due soon, '
             r'2 needs attention, 2 not ready, out of 12 generators')),
         findsOneWidget,
       );
@@ -216,8 +217,12 @@ void main() {
       final c = await pumpReadiness(tester, size: const Size(390, 2600));
       final s3 = unitKey(c, 'S3');
       await scrollTo(tester, find.byKey(ValueKey('unit-$s3')));
-      expect(find.text('Overdue 45 days'), findsOneWidget);
-      expect(find.text('Overdue 10 days'), findsOneWidget);
+      // The attention row repeats the due text of the worst units, so look
+      // inside the list cards only.
+      Finder inCard(String t) =>
+          find.descendant(of: find.byType(ReadinessUnitCard), matching: find.text(t));
+      expect(inCard('Overdue 45 days'), findsOneWidget);
+      expect(inCard('Overdue 10 days'), findsOneWidget);
       expect(find.text('Inspection overdue by 10 days'), findsWidgets);
     });
 
@@ -271,7 +276,7 @@ void main() {
 
     testWidgets('an error with no data offers Retry', (tester) async {
       await pumpReadiness(tester, inputsError: StateError('offline'));
-      expect(find.text('Could not load fleet readiness'), findsOneWidget);
+      expect(find.text('Could not load generator fleet readiness'), findsOneWidget);
       expect(find.text('Retry'), findsOneWidget);
     });
 

@@ -41,7 +41,7 @@ class _SettingsState extends ConsumerState<ReadinessSettingsSheet> {
     if (!mounted) return;
     Navigator.of(context).pop();
     if (ok) {
-      AppSnackBar.success(context, 'Readiness thresholds saved');
+      AppSnackBar.success(context, 'Generator fleet readiness thresholds saved');
     } else {
       AppSnackBar.error(context, 'Only an admin can change the thresholds');
     }
@@ -69,7 +69,7 @@ class _SettingsState extends ConsumerState<ReadinessSettingsSheet> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Readiness settings',
+          Text('Generator fleet readiness settings',
               style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700)),
           const SizedBox(height: AppSpacing.lg),
           _Setting(

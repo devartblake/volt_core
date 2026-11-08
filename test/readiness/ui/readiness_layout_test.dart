@@ -56,6 +56,8 @@ void main() {
         }
         final worst = find.byKey(Key('worst-${unitKey(c, 'S3')}'));
         await scrollTo(tester, worst);
+        await tester.ensureVisible(worst);
+        await tester.pump();
         await tester.tap(worst);
         await settle(tester, 6);
         expect(find.text('Why needs attention'), findsOneWidget);
@@ -79,7 +81,7 @@ void main() {
 
       await tester.tap(find.byKey(const Key('readiness-settings')));
       await settle(tester, 4);
-      expect(find.text('Readiness settings'), findsOneWidget);
+      expect(find.text('Generator fleet readiness settings'), findsOneWidget);
       expect(overflows, isEmpty, reason: overflows.map((d) => d.exceptionAsString()).join(' | '));
     });
   }

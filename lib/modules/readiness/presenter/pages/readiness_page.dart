@@ -85,6 +85,13 @@ class _ReadinessPageState extends ConsumerState<ReadinessPage> {
     ref.read(readinessFilterProvider.notifier).state = f.copyWith(statuses: next);
   }
 
+  void _seeAllNotReady() {
+    final f = ref.read(readinessFilterProvider);
+    ref.read(readinessFilterProvider.notifier).state =
+        f.copyWith(statuses: {ReadinessStatus.notReady});
+    setState(() => _segment = ReadinessSegment.units);
+  }
+
   void _selectWeek(DateTime? week) {
     final f = ref.read(readinessFilterProvider);
     final notifier = ref.read(readinessFilterProvider.notifier);
@@ -179,7 +186,7 @@ class _ReadinessPageState extends ConsumerState<ReadinessPage> {
     final wideScreen = MediaQuery.sizeOf(context).width >= AppBreakpoints.expanded;
 
     return AppPage(
-      title: 'Fleet readiness',
+      title: 'Generator Fleet Readiness',
       maxContentWidth: wideScreen ? 1400 : kDefaultMaxContentWidth,
       actions: [
         if (data != null && all.isNotEmpty) ...[
@@ -209,7 +216,7 @@ class _ReadinessPageState extends ConsumerState<ReadinessPage> {
         if (canEditReadinessConfig(role))
           IconButton(
             key: const Key('readiness-settings'),
-            tooltip: 'Readiness settings',
+            tooltip: 'Generator fleet readiness settings',
             icon: const Icon(Icons.settings_outlined),
             onPressed: () => showReadinessSettingsSheet(context),
           ),
@@ -245,7 +252,7 @@ class _ReadinessPageState extends ConsumerState<ReadinessPage> {
     if (data == null) {
       if (report.hasError) {
         return EmptyState.error(
-          title: 'Could not load fleet readiness',
+          title: 'Could not load generator fleet readiness',
           message: 'Check your connection and try again.',
           action: FilledButton(onPressed: _refresh, child: const Text('Retry')),
         );
@@ -258,7 +265,7 @@ class _ReadinessPageState extends ConsumerState<ReadinessPage> {
         const EmptyState(
           icon: Icons.electrical_services_outlined,
           title: 'No generators yet',
-          message: 'Fleet readiness is worked out from inspections and '
+          message: 'Generator fleet readiness is worked out from inspections and '
               'registered generators. Inspect a generator, or add one under '
               'Equipment, and it will show up here.',
         ),
@@ -344,6 +351,9 @@ class _ReadinessPageState extends ConsumerState<ReadinessPage> {
             refreshing: _refreshing || report.isLoading,
             onRefresh: _refresh,
             onToggleStatus: _toggleStatus,
+            units: all,
+            dueSoonDays: report.requireValue.config.dueSoonDays,
+            onSeeAllNotReady: _seeAllNotReady,
             onSelectWeek: _selectWeek,
             onOpenUnit: (u) => _open(u, now, pane: pane),
           ),

@@ -75,7 +75,7 @@ void main() {
       () {
     expect(fleetReadinessValue(86.6, 12), '87% ready');
     expect(fleetReadinessValue(0, 0), '-');
-    expect(fleetReadinessLabel(86.6, 12), 'Fleet readiness 87% ready');
-    expect(fleetReadinessLabel(0, 0), 'Fleet readiness: no generators yet');
+    expect(fleetReadinessLabel(86.6, 12), 'Generator fleet readiness 87% ready');
+    expect(fleetReadinessLabel(0, 0), 'Generator fleet readiness: no generators yet');
   });
 }

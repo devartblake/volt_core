@@ -19,7 +19,7 @@ Last updated 2026-11-10. This lists what is still open, who owns it, and the dec
 |---|---|
 | Inspection finish rule (50% checklist plus five part requirements), and delete limited to admins and dispatchers | Being built; includes a migration for the cloud delete policy if the existing one does not match |
 | Part descriptions, "clean up generic names" action, and a product image in the part bottom sheet (attach, store, sync, show) | Being built; includes a migration for the image column and storage |
-| **Fleet readiness dashboard** | Built (stage 1 rules, stage 2 screens); see [fleet_readiness.md](fleet_readiness.md) and the known gaps in section E |
+| **Generator Fleet Readiness dashboard** | Built (stage 1 rules, stage 2 screens); see [fleet_readiness.md](fleet_readiness.md) and the known gaps in section E |
 
 ## B. SQL for you to run (in the Supabase SQL editor)
 
@@ -43,7 +43,7 @@ Last updated 2026-11-10. This lists what is still open, who owns it, and the dec
 
 From `generator_management_research.md`:
 
-1. ~~**Fleet readiness dashboard**~~ Done (route `/readiness`, see [fleet_readiness.md](fleet_readiness.md)).
+1. ~~**Generator Fleet Readiness dashboard**~~ Done (route `/readiness`, see [fleet_readiness.md](fleet_readiness.md)).
 2. **Job costing** from prices: each job's parts cost (issued quantity x last price paid), on the job and in reports. Prices and issue movements now exist.
 3. **Compliance calendar**: weekly, monthly and annual recurring checks for emergency generators with reminders before the due date. Confirm the intervals against NFPA 110 and your contracts first.
 4. **Run-hour or date maintenance triggers**: record engine hours at each service and flag units due by hours as well as by date.
@@ -63,7 +63,7 @@ From `generator_management_research.md`:
 | Settings | Keeps an "Advanced" group outside the five planned groups. |
 | Page transitions | Not checked on a device; a section change that keeps the old page underneath may slide instead of fading. |
 | Not viewed on a tablet yet | Orders, Locations and transfers, Movements and usage report, Parts approvals, schedule Day / Week, equipment two-pane, Documents hub, new Settings and login, signature pads in dark mode, lazy lists. |
-| Fleet readiness | Load-test dates are inferred from inspections with the load bank switch on (no dedicated date exists); borough only for `Q_` and `X_` site codes; the units list has no paging beyond lazy building; saved filter presets and a Documents hub "Readiness" type filter are not built (the PDF is listed under Other); "Create maintenance job" needs the inspection to be on the device and opens the existing flow's own date picker; the due-bar tap targets are narrower than 48 dp (chips cover the same filters); filters are remembered for the session only; not viewed on a device or tablet. |
+| Generator Fleet Readiness | Load-test dates are inferred from inspections with the load bank switch on (no dedicated date exists); borough only for `Q_` and `X_` site codes; the units list has no paging beyond lazy building; saved filter presets and a Documents hub "Generator Fleet Readiness" type filter are not built (the PDF is listed under Other); "Create maintenance job" needs the inspection to be on the device and opens the existing flow's own date picker; the due-bar tap targets are narrower than 48 dp (chips cover the same filters); filters are remembered for the session only; not viewed on a device or tablet. |
 | Documents / inspections history | Not paged; the Documents hub and inspections lists load everything. |
 
 ## F. Security and performance review (Supabase advisors, 2026-11-10)

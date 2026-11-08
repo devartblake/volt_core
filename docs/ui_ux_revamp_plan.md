@@ -254,13 +254,24 @@ Still open:
 - Pages not converted to lazy lists on purpose: Settings, About, admin and debug pages, template management, profile approvals, the week-bounded calendar list, and the inspections lists.
 - `test/inspections/pdf_export_test.dart` is flaky when run inside the full suite (a temp directory is removed while the sync queue writes); it passes alone.
 
-## 11. Fleet readiness dashboard
+## 11. Generator Fleet Readiness dashboard
 
 A screen of every generator and whether it is ready, due soon, needs attention or is not ready, with the reasons (`lib/modules/readiness/presenter/`; rules and screens in [fleet_readiness.md](fleet_readiness.md)).
 
-- Route `/readiness`, tab "Readiness" in the Home section; all roles (technicians read-only). The main Dashboard has a "Fleet readiness 87% ready" tile and a "N generators not ready" attention line for dispatchers, supervisors and admins.
+- Route `/readiness`, tab "Generator Fleet Readiness" in the Home section; all roles (technicians read-only). The name says "Generator" so it is not confused with the vehicle Fleet section. The main Dashboard has a "Generator fleet readiness 87% ready" tile and a "N generators not ready" attention line for dispatchers, supervisors and admins.
 - Built from the shared kit: `AppPage`, `StatCard.tile`, `StatusChip`, `InfoChip`, `EmptyState`, `SkeletonList`, `AppSnackBar`, `LazyHeadList`, `runUserAction`. Colours only from the theme and `theme.status`; no literal font sizes.
-- Charts are `CustomPainter`s (donut, 12-week bars, grade bar, grade dots); each has one `Semantics` sentence and does not rely on colour alone (counts are always in text). Bars are narrower than 48 dp on a phone, so every bar action is also available as a chip or tile.
-- Layout: phone and portrait tablet use a bottom sheet for a unit; a body of 900 px or more shows a 440 px detail pane. Below 600 px the less-used filters collapse into a "Filters (n)" sheet and the segment labels lose their icons.
+- Charts are `CustomPainter`s (donut, 12-week bars, grade bar, grade dots, and a small graph on every number card: Ready ring, Due soon 12-week strip, Attention and Not ready reason bars, overdue bar in the hero); each has one `Semantics` sentence and does not rely on colour alone (counts are always in text). Bars are narrower than 48 dp on a phone, so every bar action is also available as a chip or tile.
+- Layout: the Due by week and Last inspection grade cards share a row from 600 dp (stacked below), then a full-width "Needs attention first" row of unit cards that scrolls sideways when the five do not fit. Phone and portrait tablet use a bottom sheet for a unit; a body of 900 px or more shows a 440 px detail pane. Below 600 px the less-used filters collapse into a "Filters (n)" sheet and the segment labels lose their icons.
 - Checked at 1.3x text on 360x800, 800x1280 and 1280x800 in light and dark by `test/readiness/ui/readiness_layout_test.dart` (no `overflowed` errors, including the selection bar and the settings sheet). That test caught and fixed three overflows (selection bar, settings buttons, chart axis labels). Not yet seen on a real device.
 - Lazy: 300 units build fewer than 60 cards.
+
+## 12. Analytics graphs
+
+Home > Analytics keeps its stat cards and adds graphs for the data on the device (`lib/modules/dashboard/presenter/pages/analytics_page.dart`, a thin composition; charts in `presenter/widgets/analytics/`, series builders in `domain/analytics_series.dart`, device reads in `presenter/analytics_providers.dart`).
+
+- Charts: inspections per week (bars, Monday weeks), inspections per month (line), site grades (donut; Green/Amber/Red rows open `/inspections?grade=...`), sites with most red grades (top 5), jobs by status plus open jobs on time vs overdue, maintenance completed per month plus completed vs in progress, technician workload this week (dispatcher and admin only), parts in stock / low / out (admin, supervisor, dispatcher). A technician sees only their own jobs.
+- A period selector (4 weeks / 12 weeks / 6 months / All, `SegmentedButton`, short labels under 600 dp) applies to the time-based charts and is kept for the session (`analyticsPeriodProvider`). Jobs, workload and parts show the current state, not a period.
+- Drawn with `CustomPainter` (bars, line, donut, horizontal bars, stacked bar) and no chart package. Each chart has a title, caption and "N total", a single `Semantics` sentence with the numbers, and a "Not enough data yet" empty state. Bars and line show a value readout (real text) on tap, drag or hover. Colours are `theme.status` and `colorScheme` only; counts are always in text, so colour is never the only signal.
+- Layout: one column on phones, two columns of chart cards from 900 dp of content width. Axis labels thin out instead of overlapping, and the stat grid row height follows the text scale.
+- Tests: `test/dashboard/analytics_series_test.dart` (builders: week/month/year edges, DST, periods, ties, empty input) and `test/dashboard/analytics_page_test.dart` (semantics per chart, empty states, period selector, role gating, tap readout, grade navigation, no overflow at 1.3x text on 360x800, 800x1280 and 1280x800 in light and dark).
+- Not verified on a device. The inspections list takes `?grade=` through `InspectionListPage.filterStatus`; the list page itself was not changed.

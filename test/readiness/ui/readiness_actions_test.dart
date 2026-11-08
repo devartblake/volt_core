@@ -7,7 +7,10 @@ import 'package:voltcore/modules/readiness/presenter/widgets/readiness_unit_deta
 import 'readiness_ui_harness.dart';
 
 Future<void> openWorst(WidgetTester tester, dynamic c, String serial) async {
-  await tester.tap(find.byKey(Key('worst-${unitKey(c, serial)}')));
+  final card = find.byKey(Key('worst-${unitKey(c, serial)}'));
+  await tester.ensureVisible(card); // the row scrolls sideways when it does not fit
+  await tester.pump();
+  await tester.tap(card);
   await settle(tester, 6);
 }
 
@@ -24,7 +27,11 @@ void main() {
       expect(find.byType(ReadinessUnitDetail), findsOneWidget);
       expect(find.text('Why needs attention'), findsOneWidget);
       // Both reasons, with their icons.
-      expect(find.text('Parts short for next job (3 parts)'), findsOneWidget);
+      expect(
+          find.descendant(
+              of: find.byType(ReadinessUnitDetail),
+              matching: find.text('Parts short for next job (3 parts)')),
+          findsOneWidget);
       expect(find.byIcon(Icons.inventory_2_outlined), findsWidgets);
       expect(find.byIcon(Icons.event_busy_outlined), findsWidgets);
       for (final label in ['Serial', 'Fuel', 'Last inspection', 'Next inspection due']) {
@@ -252,7 +259,7 @@ void main() {
       await tester.tap(find.byKey(const Key('readiness-settings')));
       await settle(tester, 4);
 
-      expect(find.text('Readiness settings'), findsOneWidget);
+      expect(find.text('Generator fleet readiness settings'), findsOneWidget);
       expect(find.text('At 30 days, 3 units would be Due soon'), findsOneWidget);
       expect(find.text('At 30 days, 2 units would be Not ready'), findsOneWidget);
 
@@ -266,7 +273,7 @@ void main() {
       await settle(tester, 6);
       expect(store.config.dueSoonDays, 60);
       expect(c.read(readinessConfigProvider).dueSoonDays, 60);
-      expect(find.text('Readiness thresholds saved'), findsOneWidget);
+      expect(find.text('Generator fleet readiness thresholds saved'), findsOneWidget);
       expect(
         find.descendant(of: find.byKey(const Key('stat-dueSoon')), matching: find.text('4')),
         findsOneWidget,
