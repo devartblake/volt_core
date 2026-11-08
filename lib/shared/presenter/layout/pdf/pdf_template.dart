@@ -443,18 +443,56 @@ class PdfTemplate {
   static const double footerBandHeight = 73.28;
 
   static String? _footerSvg;
+  static String? _footerLogoSvg;
+
+  /// The app logo variant made for the navy footer band (pale disc, so it
+  /// stands apart from the band). Single source for the footer logo.
+  static const footerLogoAsset = 'assets/brand/logo-core-ring-footer.svg';
+
+  /// The band's top edge is stepped: along the left (where the logo and text
+  /// sit) it is only this tall; the taller part is on the right.
+  static const double footerLeftBandHeight = 45.58;
+
+  /// Logo height as a share of that left band height, and the gap before the text.
+  static const double footerLogoScale = 0.7;
+  static const double footerLogoGap = 8;
+  static const double _footerPadX = 12;
 
   /// Overrides the footer artwork (tests and artwork previews).
   static void useFooterArt(String? svg) => _footerSvg = svg;
 
+  /// Overrides the footer logo (tests); null drops the logo.
+  static void useFooterLogo(String? svg) => _footerLogoSvg = svg;
+
   /// Loads the footer artwork so [brandFooter] can draw it. Call once before
   /// building a document; without it the footer is a plain solid band.
   static Future<void> loadFooterArt() async {
+    if (_footerLogoSvg == null) {
+      try {
+        _footerLogoSvg = await rootBundle.loadString(footerLogoAsset);
+      } catch (e) {
+        debugPrint('[PdfTemplate] Footer logo not available, drawing without it: $e');
+      }
+    }
     if (_footerSvg != null) return;
     try {
       _footerSvg = await rootBundle.loadString('assets/images/pdf_footer.svg');
     } catch (e) {
       debugPrint('[PdfTemplate] Footer art not available, using solid band: $e');
+    }
+  }
+
+  /// The footer logo widget, or null when the asset is missing or not a
+  /// valid SVG (the footer then renders without it instead of failing).
+  static pw.Widget? footerLogo() {
+    final svg = _footerLogoSvg;
+    if (svg == null) return null;
+    try {
+      const size = footerLeftBandHeight * footerLogoScale;
+      return pw.SvgImage(svg: svg, width: size, height: size);
+    } catch (e) {
+      debugPrint('[PdfTemplate] Footer logo is not a valid SVG, skipping: $e');
+      return null;
     }
   }
 
@@ -474,8 +512,9 @@ class PdfTemplate {
     double bleedX = 0,
     double bleedBottom = 0,
   }) {
-    pw.Widget text(String value, int index, {bool bold = false}) => pw.Text(
+    pw.Widget text(String value, int index, {bool bold = false, bool oneLine = false}) => pw.Text(
           value,
+          maxLines: oneLine ? 1 : null,
           style: pw.TextStyle(
             fontSize: 8.5,
             fontWeight: bold ? pw.FontWeight.bold : pw.FontWeight.normal,
@@ -485,6 +524,8 @@ class PdfTemplate {
 
     final page = total == null ? 'Page $pageNumber' : 'Page $pageNumber of $total';
     final svg = _footerSvg;
+    final logo = footerLogo();
+    const logoSize = footerLeftBandHeight * footerLogoScale;
 
     return pw.Container(
       width: double.infinity,
@@ -503,17 +544,36 @@ class PdfTemplate {
                 ? pw.Container(color: footerBlue)
                 : pw.SvgImage(svg: svg, fit: pw.BoxFit.fill),
           ),
+          if (logo != null)
+            pw.Positioned(
+              left: _footerPadX,
+              // Vertically centred in the left part of the band (the band
+              // starts at the box top).
+              top: footerBandHeight - footerLeftBandHeight + (footerLeftBandHeight - logoSize) / 2,
+              child: logo,
+            ),
           pw.Positioned(
-            left: 12,
-            right: 12,
+            left: _footerPadX + (logo != null ? logoSize + footerLogoGap : 0),
+            right: _footerPadX,
             bottom: 18 - bleedBottom, // measured from the band's bottom edge
             child: pw.Row(
               children: [
-                for (var i = 0; i < segments.length; i++) ...[
-                  if (i > 0) pw.SizedBox(width: 14),
-                  text(segments[i], i, bold: i == 0),
-                ],
-                pw.Spacer(),
+                // Long site / title text is clipped to one line rather than
+                // running into the page number.
+                pw.Expanded(
+                  child: pw.Row(
+                    children: [
+                      for (var i = 0; i < segments.length; i++) ...[
+                        if (i > 0) pw.SizedBox(width: 14),
+                        if (i == 0)
+                          text(segments[i], i, bold: true)
+                        else
+                          pw.Flexible(child: text(segments[i], i, oneLine: true)),
+                      ],
+                    ],
+                  ),
+                ),
+                pw.SizedBox(width: 14),
                 text(page, segments.length, bold: true),
               ],
             ),
