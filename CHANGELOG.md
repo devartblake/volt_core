@@ -7,10 +7,14 @@ Add a line under **Unreleased** with every change worth telling a user about;
 
 ## [Unreleased]
 
+### Added
+
+- Admins can invite new users by email
+
 ### Changed
 
 - New Core Ring logo and navy/grey/white colour theme, with matching light and dark modes (`docs/branding.md`)
-- PDF footer shows the app logo before the company name
+- PDF footer shows the A&S Electric company logo (pale, on the navy band) before the company name; PDFs do not use the app logo
 
 ### Changed
 - New app icon and splash screen.

@@ -98,6 +98,7 @@ flutter:
     - assets/pdf/Modified Comp Checklist With Load Test.pdf
     - assets/images/company_logo.png
     - assets/images/pdf_footer.svg
+    - assets/images/company_logo_footer.png
     - assets/brand/
   #   - images/a_dot_ham.jpeg
 

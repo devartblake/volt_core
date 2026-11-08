@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:pdf/pdf.dart';
@@ -443,33 +445,35 @@ class PdfTemplate {
   static const double footerBandHeight = 73.28;
 
   static String? _footerSvg;
-  static String? _footerLogoSvg;
+  static Uint8List? _footerLogoBytes;
 
-  /// The app logo variant made for the navy footer band (pale disc, so it
-  /// stands apart from the band). Single source for the footer logo.
-  static const footerLogoAsset = 'assets/brand/logo-core-ring-footer.svg';
+  /// The A&S Electric company logo (the one in the PDF header) in a pale colour
+  /// so it stands apart from the navy band. Made by `tool/make_footer_logo.py`.
+  /// The app logo is not used in PDFs. Single source for the footer logo.
+  static const footerLogoAsset = 'assets/images/company_logo_footer.png';
 
   /// The band's top edge is stepped: along the left (where the logo and text
   /// sit) it is only this tall; the taller part is on the right.
   static const double footerLeftBandHeight = 45.58;
 
-  /// Logo height as a share of that left band height, and the gap before the text.
-  static const double footerLogoScale = 0.7;
+  /// Logo height as a share of that left band height (its width follows the
+  /// image's own proportions), and the gap before the text.
+  static const double footerLogoScale = 0.84;
   static const double footerLogoGap = 8;
   static const double _footerPadX = 12;
 
   /// Overrides the footer artwork (tests and artwork previews).
   static void useFooterArt(String? svg) => _footerSvg = svg;
 
-  /// Overrides the footer logo (tests); null drops the logo.
-  static void useFooterLogo(String? svg) => _footerLogoSvg = svg;
+  /// Overrides the footer logo with PNG bytes (tests); null drops the logo.
+  static void useFooterLogo(Uint8List? png) => _footerLogoBytes = png;
 
   /// Loads the footer artwork so [brandFooter] can draw it. Call once before
   /// building a document; without it the footer is a plain solid band.
   static Future<void> loadFooterArt() async {
-    if (_footerLogoSvg == null) {
+    if (_footerLogoBytes == null) {
       try {
-        _footerLogoSvg = await rootBundle.loadString(footerLogoAsset);
+        _footerLogoBytes = (await rootBundle.load(footerLogoAsset)).buffer.asUint8List();
       } catch (e) {
         debugPrint('[PdfTemplate] Footer logo not available, drawing without it: $e');
       }
@@ -482,19 +486,36 @@ class PdfTemplate {
     }
   }
 
-  /// The footer logo widget, or null when the asset is missing or not a
-  /// valid SVG (the footer then renders without it instead of failing).
-  static pw.Widget? footerLogo() {
-    final svg = _footerLogoSvg;
-    if (svg == null) return null;
+  /// The footer logo with its size, or null when the asset is missing or is
+  /// not a valid PNG (the footer then renders without it instead of failing).
+  static ({pw.Widget widget, double width, double height})? _footerLogoLayout() {
+    final bytes = _footerLogoBytes;
+    if (bytes == null) return null;
     try {
-      const size = footerLeftBandHeight * footerLogoScale;
-      return pw.SvgImage(svg: svg, width: size, height: size);
+      // PNG header: 8-byte signature, then IHDR with width and height.
+      if (bytes.length < 24 || bytes[1] != 0x50 || bytes[2] != 0x4E || bytes[3] != 0x47) {
+        throw const FormatException('not a PNG');
+      }
+      final data = ByteData.sublistView(bytes);
+      final w = data.getUint32(16).toDouble();
+      final h = data.getUint32(20).toDouble();
+      if (w <= 0 || h <= 0) throw const FormatException('empty image');
+      const height = footerLeftBandHeight * footerLogoScale;
+      final width = height * w / h;
+      final image = pw.MemoryImage(bytes);
+      return (
+        widget: pw.Image(image, width: width, height: height, fit: pw.BoxFit.contain),
+        width: width,
+        height: height,
+      );
     } catch (e) {
-      debugPrint('[PdfTemplate] Footer logo is not a valid SVG, skipping: $e');
+      debugPrint('[PdfTemplate] Footer logo is not usable, skipping: $e');
       return null;
     }
   }
+
+  /// The footer logo widget, or null (see [_footerLogoLayout]).
+  static pw.Widget? footerLogo() => _footerLogoLayout()?.widget;
 
   /// Footer band: the stepped navy artwork, with text in
   /// alternating colours on top.
@@ -524,8 +545,8 @@ class PdfTemplate {
 
     final page = total == null ? 'Page $pageNumber' : 'Page $pageNumber of $total';
     final svg = _footerSvg;
-    final logo = footerLogo();
-    const logoSize = footerLeftBandHeight * footerLogoScale;
+    final layout = _footerLogoLayout();
+    final logo = layout?.widget;
 
     return pw.Container(
       width: double.infinity,
@@ -549,11 +570,11 @@ class PdfTemplate {
               left: _footerPadX,
               // Vertically centred in the left part of the band (the band
               // starts at the box top).
-              top: footerBandHeight - footerLeftBandHeight + (footerLeftBandHeight - logoSize) / 2,
+              top: footerBandHeight - footerLeftBandHeight + (footerLeftBandHeight - layout!.height) / 2,
               child: logo,
             ),
           pw.Positioned(
-            left: _footerPadX + (logo != null ? logoSize + footerLogoGap : 0),
+            left: _footerPadX + (layout != null ? layout.width + footerLogoGap : 0),
             right: _footerPadX,
             bottom: 18 - bleedBottom, // measured from the band's bottom edge
             child: pw.Row(

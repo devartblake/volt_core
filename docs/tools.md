@@ -85,7 +85,7 @@ python tool/make_pdf_footer.py
 
 Needs PyMuPDF (`pip install pymupdf`). Run it only if the checklist PDF's footer changes. `MAP_FILL` and `BAND_FILL` at the top control the colours.
 
-The footer also carries the app logo at the left edge, before the company name: `assets/brand/logo-core-ring-footer.svg` (a pale-disc variant that stands apart from the navy band), drawn by `PdfTemplate.brandFooter`. It is separate from the band artwork, so this script does not touch it; if the logo asset is missing or invalid the footer renders without it.
+The footer also carries the A&S Electric company logo at the left edge, before the company name: `assets/images/company_logo_footer.png`, a pale ice-blue version of the header logo (`assets/images/company_logo.png`) that stands apart from the navy band. Regenerate it with `python -I tool/make_footer_logo.py` if the header logo changes. It is drawn by `PdfTemplate.brandFooter`, separate from the band artwork, so this script does not touch it; if the logo asset is missing or invalid the footer renders without it. The app logo is not used in PDFs.
 
 ---
 

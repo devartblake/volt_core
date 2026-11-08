@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pdf/pdf.dart';
@@ -46,9 +47,13 @@ void main() {
     PdfTemplate.useFooterArt(null);
   });
 
-  test('footer logo asset loads and the footer contains the SVG logo', () async {
+  test('the company logo asset loads and the footer contains it as an image', () async {
     await PdfTemplate.loadFooterArt();
-    expect(PdfTemplate.footerLogo(), isA<pw.SvgImage>());
+    expect(PdfTemplate.footerLogo(), isA<pw.Image>());
+  });
+
+  test('the footer uses the company logo, not the app logo', () {
+    expect(PdfTemplate.footerLogoAsset, 'assets/images/company_logo_footer.png');
   });
 
   test('footer renders valid PDFs on Letter and A4 with a long site name', () async {
@@ -72,8 +77,8 @@ void main() {
     expect(latin1.decode(bytes.sublist(0, 4)), '%PDF');
   });
 
-  test('invalid SVG logo: footer still renders without it', () async {
-    PdfTemplate.useFooterLogo('<svg><not valid');
+  test('invalid logo bytes: footer still renders without it', () async {
+    PdfTemplate.useFooterLogo(Uint8List.fromList(List.filled(40, 7)));
     expect(PdfTemplate.footerLogo(), isNull);
     final bytes = await _build(PdfPageFormat.a4);
     expect(latin1.decode(bytes.sublist(0, 4)), '%PDF');
