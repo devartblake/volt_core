@@ -9,6 +9,7 @@ Small scripts that help build, test and maintain Volt Core. Run them from the pr
 | [`tablet.py`](../tool/tablet.py) | Build, install, screenshot and tap on the test tablet | adb, Flutter |
 | [`dev_login.py`](../tool/dev_login.py) | Sign in on the tablet with a dev account | adb, `dev_credentials.local.json` |
 | [`make_pdf_footer.py`](../tool/make_pdf_footer.py) | Rebuild the branded PDF footer artwork | PyMuPDF |
+| [`bump_version.py`](../tool/bump_version.py) | Show or change the app version and keep CHANGELOG.md in step | Python only |
 
 ---
 
@@ -84,6 +85,18 @@ python tool/make_pdf_footer.py
 Needs PyMuPDF (`pip install pymupdf`). Run it only if the checklist PDF's footer changes. `MAP_FILL` and `BAND_FILL` at the top control the colours.
 
 ---
+
+## `bump_version.py`: change the app version
+
+```
+python -I tool/bump_version.py show
+python -I tool/bump_version.py patch          # 0.9.0+3 -> 0.9.1+4
+python -I tool/bump_version.py minor --tag    # new feature release; also tag v0.10.0
+python -I tool/bump_version.py build          # same version, next build number
+python -I tool/bump_version.py set 0.9.0+1    # exact; --dry-run shows without changing
+```
+
+Edits `pubspec.yaml` and moves the `Unreleased` lines in `CHANGELOG.md` under the new version. The build number only goes up. The policy (what counts as patch, minor or major, the pilot and production stages, release steps) is in `release_versioning.md`.
 
 ## Before you commit
 

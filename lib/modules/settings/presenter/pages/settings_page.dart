@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../../../core/app_version.dart';
 
 import '../../../../app/nav_style_provider.dart';
 import '../../../../app/route_roles.dart';
@@ -318,7 +319,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               const Divider(height: 1),
               const ListTile(
                 title: Text('Version'),
-                trailing: Text('1.0.0'),
+                trailing: AppVersionText(),
               ),
             ],
           ),

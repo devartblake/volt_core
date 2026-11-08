@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import '../../../core/app_version.dart';
 
 import '../../../core/services/storage/file_storage_service.dart';
 import '../../../shared/widgets/widgets.dart';
@@ -264,7 +265,7 @@ class DebugMenuPage extends StatelessWidget {
                 ListTile(
                   leading: const Icon(Icons.app_shortcut_outlined),
                   title: const Text('App Version'),
-                  trailing: const Text('1.0.0'),
+                  trailing: const AppVersionText(),
                 ),
               ],
             ),

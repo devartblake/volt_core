@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../core/app_version.dart';
 import '../../../../shared/widgets/widgets.dart';
 
 /// About page showing app information and credits
@@ -56,8 +57,8 @@ class AboutPage extends ConsumerWidget {
                     color: theme.colorScheme.surfaceContainerHighest,
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: Text(
-                    'Version 1.0.0',
+                  child: AppVersionText(
+                    prefix: 'Version ',
                     style: theme.textTheme.labelMedium?.copyWith(
                       color: theme.colorScheme.onSurfaceVariant,
                     ),
@@ -294,8 +295,17 @@ class AboutPage extends ConsumerWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _InfoRow('App Version', '1.0.0'),
-                      _InfoRow('Build Number', '1'),
+                      Consumer(
+                        builder: (context, ref, _) {
+                          final v = ref.watch(appVersionProvider).value;
+                          return Column(
+                            children: [
+                              _InfoRow('App Version', v?.name ?? '…'),
+                              _InfoRow('Build Number', v?.build ?? '…'),
+                            ],
+                          );
+                        },
+                      ),
                       _InfoRow('Flutter Version', '3.x'),
                       _InfoRow('Platform', 'Multi-platform'),
                       _InfoRow('Last Updated', '2024'),
