@@ -128,7 +128,10 @@ final goRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: RoutePaths.inspections,
         name: RouteNames.inspections,
-        builder: (_, __) => const TechShell(child: InspectionListPage()),
+        builder: (_, state) => TechShell(
+          // `?grade=red` opens the list narrowed to one site grade (Analytics).
+          child: InspectionListPage(filterStatus: state.uri.queryParameters['grade']),
+        ),
         routes: [
           GoRoute(
             path: 'new',
