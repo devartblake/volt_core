@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:voltcore/core/theme/app_theme.dart';
+import 'package:voltcore/core/theme/brand_palette.dart';
+import 'package:voltcore/core/theme/signature_palette.dart';
 import 'package:voltcore/core/theme/status_colors.dart';
 
 /// WCAG 2.x contrast audit of the light and dark themes. Pure colour maths on
@@ -110,7 +112,110 @@ void main() {
       if (failures.isNotEmpty) failures.forEach(print);
       expect(failures, isEmpty);
     });
+
+    test('$name: brand scheme roles (primary, containers, surfaces)', () {
+      final failures = <String>[];
+      void check(String label, Color fg, Color bg, [double min = _text]) {
+        final r = contrast(over(fg, bg), bg);
+        if (r < min) {
+          failures.add('$name  $label  ${r.toStringAsFixed(2)} < $min');
+        }
+      }
+
+      final surfaces = {
+        'surface': s.surface,
+        'surfaceContainerLowest': s.surfaceContainerLowest,
+        'surfaceContainerLow': s.surfaceContainerLow,
+        'surfaceContainer': s.surfaceContainer,
+        'surfaceContainerHigh': s.surfaceContainerHigh,
+        'surfaceContainerHighest': s.surfaceContainerHighest,
+        'scaffold': theme.scaffoldBackgroundColor,
+      };
+
+      check('onPrimary/primary', s.onPrimary, s.primary);
+      check('onPrimaryContainer/primaryContainer', s.onPrimaryContainer,
+          s.primaryContainer);
+      check('onSecondary/secondary', s.onSecondary, s.secondary);
+      check('onSecondaryContainer/secondaryContainer',
+          s.onSecondaryContainer, s.secondaryContainer);
+      check('onTertiary/tertiary', s.onTertiary, s.tertiary);
+      check('onTertiaryContainer/tertiaryContainer', s.onTertiaryContainer,
+          s.tertiaryContainer);
+      check('onError/error', s.onError, s.error);
+      check('onErrorContainer/errorContainer', s.onErrorContainer,
+          s.errorContainer);
+      check('onInverseSurface/inverseSurface', s.onInverseSurface,
+          s.inverseSurface);
+      check('inversePrimary on inverseSurface (snackbar action)',
+          s.inversePrimary, s.inverseSurface);
+
+      surfaces.forEach((n, bg) {
+        check('onSurface on $n', s.onSurface, bg);
+        check('onSurfaceVariant on $n', s.onSurfaceVariant, bg);
+        check('primary text on $n', s.primary, bg);
+        check('tertiary text on $n', s.tertiary, bg);
+        check('error text on $n', s.error, bg);
+        check('outline (field border) vs $n', s.outline, bg, _ui);
+        // Status chips (text on a 12% self-tint) on every surface.
+        final statusTones = <String, Color>{
+          'success': st.success,
+          'warning': st.warning,
+          'danger': s.error,
+          'info': st.info,
+          'neutral': s.onSurfaceVariant,
+        };
+        statusTones.forEach((tone, fg) => check('StatusChip $tone on $n', fg,
+            over(fg.withValues(alpha: 0.12), bg)));
+        check('signature outline vs $n', SignaturePalette.outline, bg, _ui);
+      });
+
+      // Selected states.
+      check('selected chip', s.onSecondaryContainer, s.secondaryContainer);
+      check('selected chip shape vs surface', s.secondaryContainer, s.surface,
+          1.1);
+      check('nav indicator icon', s.onPrimaryContainer, s.primaryContainer);
+      check('nav indicator vs surface', s.primaryContainer, s.surface, 1.1);
+      check('nav rail selected label', s.primary, s.surface);
+      check('nav rail unselected label', s.onSurfaceVariant, s.surface);
+      check('tab selected', s.primary, s.surface);
+      check('tab unselected', s.onSurfaceVariant, s.surface);
+
+      // App bar, as themed.
+      final bar = theme.appBarTheme;
+      check('app bar foreground', bar.foregroundColor!, bar.backgroundColor!);
+
+      // Snackbar, as themed.
+      final sb = theme.snackBarTheme;
+      check('snackbar text', sb.contentTextStyle!.color!, sb.backgroundColor!);
+      check('snackbar action', sb.actionTextColor!, sb.backgroundColor!);
+
+      // StatCard.
+      check('StatCard value', s.onSurface, s.surface);
+      check('StatCard accent (tertiary icon)', s.tertiary,
+          over(s.tertiary.withValues(alpha: 0.12), s.surface), _ui);
+
+      check('dialog text', s.onSurface, theme.dialogTheme.backgroundColor!);
+      check('outlineVariant vs surface', s.outlineVariant, s.surface, 1.3);
+
+      // ignore: avoid_print
+      if (failures.isNotEmpty) failures.forEach(print);
+      expect(failures, isEmpty);
+    });
   }
+
+  test('schemes are built from the brand palette', () {
+    final l = AppTheme.lightTheme.colorScheme;
+    final d = AppTheme.darkTheme.colorScheme;
+    expect(l.primary, BrandPalette.brandNavy);
+    expect(l.onPrimaryContainer, BrandPalette.deepNavy);
+    expect(l.secondary, BrandPalette.grey700);
+    expect(l.outlineVariant, BrandPalette.grey300);
+    expect(d.primary, BrandPalette.navyTint);
+    expect(d.onPrimary, BrandPalette.deepNavy);
+    expect(d.surface, BrandPalette.darkSurface);
+    expect(AppTheme.lightTheme.appBarTheme.backgroundColor,
+        BrandPalette.brandNavy);
+  });
 
   test('StatusColors extension is registered in both themes', () {
     expect(AppTheme.lightTheme.extension<StatusColors>(), isNotNull);

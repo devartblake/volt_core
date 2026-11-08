@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../shared/widgets/app_logo.dart';
 import 'nav_config.dart';
 
 /// Section header for grouped navigation
@@ -169,25 +170,7 @@ class ModernDrawerHeader extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: colorScheme.primary,
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: colorScheme.primary.withValues(alpha: 0.3),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: Icon(
-              Icons.bolt,
-              color: colorScheme.onPrimary,
-              size: 32,
-            ),
-          ),
+          const AppLogo(size: 56),
           const SizedBox(width: 16),
           Expanded(
             child: Column(
@@ -329,7 +312,6 @@ class AppBrand extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
 
     if (isExtended) {
       return Container(
@@ -337,18 +319,7 @@ class AppBrand extends StatelessWidget {
         const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         child: Row(
           children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: colorScheme.primaryContainer,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Icon(
-                Icons.bolt,
-                size: 24,
-                color: colorScheme.onPrimaryContainer,
-              ),
-            ),
+            const AppLogo(size: 40),
             const SizedBox(width: 12),
             Text(
               companyName,
@@ -361,18 +332,7 @@ class AppBrand extends StatelessWidget {
       );
     }
 
-    return Container(
-      padding: const EdgeInsets.all(8),
-      decoration: BoxDecoration(
-        color: colorScheme.primaryContainer,
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Icon(
-        Icons.bolt,
-        size: 24,
-        color: colorScheme.onPrimaryContainer,
-      ),
-    );
+    return const AppLogo(size: 40);
   }
 }
 

@@ -5,6 +5,7 @@
 /// ```
 library;
 
+export 'app_logo.dart';
 export 'app_page.dart';
 export 'app_snack_bar.dart';
 export 'empty_state.dart';

@@ -20,19 +20,7 @@ class AboutPage extends ConsumerWidget {
           Center(
             child: Column(
               children: [
-                Container(
-                  width: 120,
-                  height: 120,
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.primaryContainer,
-                    borderRadius: BorderRadius.circular(24),
-                  ),
-                  child: Icon(
-                    Icons.bolt,
-                    size: 64,
-                    color: theme.colorScheme.onPrimaryContainer,
-                  ),
-                ),
+                const AppLogo(size: 120),
                 const SizedBox(height: 16),
                 Text(
                   'Voltcore',

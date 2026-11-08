@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../role_selector.dart' show roleLabel;
 import '../../../state/auth_state.dart';
+import '../../../../../shared/widgets/app_logo.dart';
 import 'login_palette.dart';
 
 /// "SIGN IN" badge, welcome heading and subtitle.
@@ -14,23 +15,29 @@ class LoginHeader extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-          decoration: BoxDecoration(
-            color: LoginPalette.white(0.1),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: LoginPalette.white(0.2)),
-          ),
-          child: Text(
-            'SIGN IN',
-            style: loginText(
-              context,
-              text.labelSmall,
-              alpha: 0.9,
-              weight: FontWeight.w600,
-              letterSpacing: 1.5,
+        Row(
+          children: [
+            const AppLogo.onBrand(size: 40),
+            const SizedBox(width: 12),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: LoginPalette.white(0.1),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: LoginPalette.white(0.2)),
+              ),
+              child: Text(
+                'SIGN IN',
+                style: loginText(
+                  context,
+                  text.labelSmall,
+                  alpha: 0.9,
+                  weight: FontWeight.w600,
+                  letterSpacing: 1.5,
+                ),
+              ),
             ),
-          ),
+          ],
         ),
         const SizedBox(height: 32),
         Text(
@@ -78,10 +85,9 @@ class LoginErrorBanner extends StatelessWidget {
             Expanded(
               child: Text(
                 message,
-                style: Theme.of(context)
-                    .textTheme
-                    .bodyMedium
-                    ?.copyWith(color: LoginPalette.error),
+                style: Theme.of(
+                  context,
+                ).textTheme.bodyMedium?.copyWith(color: LoginPalette.error),
               ),
             ),
           ],
@@ -116,10 +122,9 @@ class LoginSessionBanner extends StatelessWidget {
             child: Text(
               'Signed in as $role'
               '${state.email != null ? ' • ${state.email}' : ''}',
-              style: Theme.of(context)
-                  .textTheme
-                  .bodyMedium
-                  ?.copyWith(color: Colors.blue[100]),
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(color: Colors.blue[100]),
             ),
           ),
         ],

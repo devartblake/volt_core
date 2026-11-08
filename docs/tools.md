@@ -9,6 +9,7 @@ Small scripts that help build, test and maintain Volt Core. Run them from the pr
 | [`tablet.py`](../tool/tablet.py) | Build, install, screenshot and tap on the test tablet | adb, Flutter |
 | [`dev_login.py`](../tool/dev_login.py) | Sign in on the tablet with a dev account | adb, `dev_credentials.local.json` |
 | [`make_pdf_footer.py`](../tool/make_pdf_footer.py) | Rebuild the branded PDF footer artwork | PyMuPDF |
+| [`make_app_icons.py`](../tool/make_app_icons.py) | Regenerate launcher icons, splash and store art from the logo | Pillow |
 | [`bump_version.py`](../tool/bump_version.py) | Show or change the app version and keep CHANGELOG.md in step | Python only |
 
 ---
@@ -84,6 +85,8 @@ python tool/make_pdf_footer.py
 
 Needs PyMuPDF (`pip install pymupdf`). Run it only if the checklist PDF's footer changes. `MAP_FILL` and `BAND_FILL` at the top control the colours.
 
+The footer also carries the app logo at the left edge, before the company name: `assets/brand/logo-core-ring-footer.svg` (a pale-disc variant that stands apart from the navy band), drawn by `PdfTemplate.brandFooter`. It is separate from the band artwork, so this script does not touch it; if the logo asset is missing or invalid the footer renders without it.
+
 ---
 
 ## `bump_version.py`: change the app version
@@ -105,3 +108,24 @@ python -I tool/utf8_scan.py
 flutter analyze
 flutter test
 ```
+
+## `make_app_icons.py`: launcher icon, splash and store art
+
+Draws the "B. Core Ring" logo from its geometry (Pillow, supersampled; no SVG renderer) and writes every icon the app ships with.
+
+```
+python -I tool/make_app_icons.py           # regenerate everything, then validate
+python -I tool/make_app_icons.py --check   # validate only
+```
+
+Generates:
+- Android: `mipmap-*/ic_launcher.png` (legacy, 22% rounded navy tile), `ic_launcher_foreground.png` and `ic_launcher_monochrome.png` (108 dp layers, logo in the 66 dp safe zone; the monochrome one is ring and bolt in solid white for Android 13 themed icons), `mipmap-anydpi-v26/ic_launcher.xml`, `values/ic_launcher_background.xml` (#0A1F4D), `drawable-*/splash_icon.png` (288 dp canvas, logo in the central 192 dp), `values-v31` and `values-night-v31` `styles.xml` (Android 12+ splash), and the pre-12 `launch_background.xml`.
+- iOS: every size in `AppIcon.appiconset/Contents.json` (opaque), the LaunchImage files, and the LaunchScreen background colour.
+- Web: favicon, `icons/Icon-*.png` and maskable variants (manifest and index.html colours are set by hand: #0A1F4D / #103078).
+- Store: `docs/branding/store/icon-512.png`, `feature-graphic-1024x500.png` and `icon-preview.png`.
+
+**When to re-run:** after changing the logo geometry or colours in the script. Commit the regenerated files.
+
+**Preview:** open `docs/branding/store/icon-preview.png` (legacy icon, adaptive icon under circle / squircle / rounded masks, monochrome icon). On the dark variant: the pale disc is used everywhere because the navy tile would swallow the navy disc.
+
+There is no `flutter_launcher_icons` config in `pubspec.yaml`, so nothing overwrites these files.

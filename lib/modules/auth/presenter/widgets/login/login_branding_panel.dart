@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../../../shared/widgets/app_logo.dart';
 import 'login_palette.dart';
 
 /// Right-hand brand panel shown on wide screens.
@@ -8,19 +9,10 @@ class LoginBrandingPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
     return Container(
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            colors.primary.withValues(alpha: 0.8),
-            colors.secondary.withValues(alpha: 0.6),
-            colors.tertiary.withValues(alpha: 0.4),
-          ],
-        ),
+        gradient: LoginPalette.brandPanel,
       ),
       child: Stack(
         children: [
@@ -36,7 +28,7 @@ class LoginBrandingPanel extends StatelessWidget {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.bolt, size: 120, color: LoginPalette.white(0.9)),
+                  const AppLogo.onBrand(size: 120),
                   const SizedBox(height: 32),
                   Text(
                     'Voltcore',

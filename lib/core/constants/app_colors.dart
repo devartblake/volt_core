@@ -4,9 +4,11 @@
 
 import 'package:flutter/material.dart';
 
+import '../theme/brand_palette.dart';
+
 class AppColors {
   // Brand / primary palette
-  static const Color brandPrimary = Color(0xFF1565C0); // Voltcore blue-ish
+  static const Color brandPrimary = BrandPalette.brandNavy;
   static const Color brandSecondary = Color(0xFFFFA726); // Accent (amber)
   static const Color brandTertiary = Color(0xFF26C6DA); // Teal/cyan accent
 
@@ -23,11 +25,9 @@ class AppColors {
   static const Color error = Color(0xFFD32F2F);
   static const Color info = Color(0xFF0288D1);
 
-  /// Convenience: build a Material 3 ColorScheme based on brandPrimary.
-  static ColorScheme colorScheme(Brightness brightness) {
-    return ColorScheme.fromSeed(
-      seedColor: brandPrimary,
-      brightness: brightness,
-    );
-  }
+  /// The brand colour scheme (see [BrandPalette]).
+  static ColorScheme colorScheme(Brightness brightness) =>
+      brightness == Brightness.dark
+          ? BrandPalette.darkScheme
+          : BrandPalette.lightScheme;
 }

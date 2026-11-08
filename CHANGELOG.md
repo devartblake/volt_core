@@ -7,6 +7,14 @@ Add a line under **Unreleased** with every change worth telling a user about;
 
 ## [Unreleased]
 
+### Changed
+
+- New Core Ring logo and navy/grey/white colour theme, with matching light and dark modes (`docs/branding.md`)
+- PDF footer shows the app logo before the company name
+
+### Changed
+- New app icon and splash screen.
+
 ## [0.9.0] - 2026-11-08
 
 ### Added
