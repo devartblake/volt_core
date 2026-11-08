@@ -18,6 +18,7 @@ import 'package:voltcore/modules/materials/presenter/materials_editor.dart';
 import 'package:voltcore/modules/materials/presenter/materials_section_card.dart';
 import 'package:voltcore/modules/materials/presenter/pages/profile_approvals_page.dart';
 
+import 'fake_approval_gateway.dart';
 import 'profile_change_test.dart' show MemBox, MemMaterials, item;
 
 class _FakeLogin extends Fake implements LoginUseCase {}
@@ -37,6 +38,7 @@ final _air = item('a1', MaterialSlot.airFilter, pn: 'AF25');
 ProfileChangesRepository _changes(
   MemBox box, {
   String user = 'tech-1',
+  FakeApprovalGateway? gateway,
 }) {
   var n = 0;
   var t = DateTime.utc(2026, 11, 8, 9);
@@ -44,6 +46,7 @@ ProfileChangesRepository _changes(
     box: box,
     upsert: (_, __, ___) async {},
     fetch: (_) async => const [],
+    gateway: gateway ?? FakeApprovalGateway(),
     tenantId: () => 't',
     userId: () => user,
     newId: () => 'req-$user-${++n}',
@@ -329,10 +332,11 @@ void main() {
       double scale = 1.0,
       List<MaterialItem>? profile,
       Future<void> Function(ProfileChangesRepository repo)? seed,
+      FakeApprovalGateway? gateway,
     }) async {
       _size(tester, size);
       final box = MemBox();
-      final repo = _changes(box, user: 'boss-1');
+      final repo = _changes(box, user: 'boss-1', gateway: gateway);
       final techRepo = _changes(box, user: 'tech-1');
       if (seed != null) {
         await seed(techRepo);
@@ -419,6 +423,27 @@ void main() {
       expect(ctx.materials.saves, 1);
       expect((await ctx.repo.all()).single.status, ProfileRequestStatus.approved);
       expect(find.text('Nothing waiting'), findsOneWidget);
+    });
+
+    testWidgets('Approve offline says Connect to approve and keeps it pending',
+        (tester) async {
+      _failOnOtherErrors();
+      final gw = FakeApprovalGateway(offline: true);
+      final ctx = await open(tester, size: tablet, gateway: gw);
+      await tester.tap(find.byKey(const ValueKey('approve_all')));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+
+      expect(find.text('Connect to approve'), findsOneWidget);
+      expect((await ctx.repo.all()).single.status, ProfileRequestStatus.pending);
+      expect(ctx.materials.saves, 0);
+      expect(find.byKey(const ValueKey('approve_all')), findsOneWidget);
+      // Back online, the same button works.
+      gw.offline = false;
+      await tester.tap(find.byKey(const ValueKey('approve_all')));
+      await _settle(tester);
+      expect((await ctx.repo.all()).single.status, ProfileRequestStatus.approved);
+      expect(gw.approvals, hasLength(1));
     });
 
     testWidgets('Approve selected applies only the ticked changes',

@@ -7,6 +7,7 @@ import '../../../auth/presenter/controllers/auth_controller.dart';
 import '../../domain/entities/tenant_member_entity.dart';
 import '../controllers/tenant_role_management_controller.dart';
 import '../widgets/add_tenant_member_dialog.dart';
+import '../widgets/invite_member_sheet.dart';
 
 /// Tenant-authoritative team and role management.
 ///
@@ -59,6 +60,12 @@ class _TechniciansPageState extends ConsumerState<TechniciansPage> {
     return AppPage(
       title: 'Technicians',
       actions: [
+        if (auth.isAdmin)
+          TextButton.icon(
+            onPressed: () => _invite(context),
+            icon: const Icon(Icons.mail_outline),
+            label: const Text('Invite'),
+          ),
         IconButton(
           tooltip: 'Refresh team',
           icon: const Icon(Icons.refresh),
@@ -152,6 +159,16 @@ class _TechniciansPageState extends ConsumerState<TechniciansPage> {
         ],
       ),
     );
+  }
+
+  Future<void> _invite(BuildContext context) async {
+    final outcome = await showInviteMemberSheet(context, ref);
+    if (outcome == InviteSheetOutcome.addExisting && context.mounted) {
+      await showDialog<void>(
+        context: context,
+        builder: (_) => const AddTenantMemberDialog(),
+      );
+    }
   }
 
   String _roleLabel(UserRole role) {

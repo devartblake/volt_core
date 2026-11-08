@@ -364,6 +364,13 @@ const List<NavSection> navSections = [
         routeName: RouteNames.adminSettings,
         description: 'Advanced settings',
       ),
+      NavItem(
+        'Audit log',
+        Icons.history_outlined,
+        RoutePaths.adminAudit,
+        routeName: RouteNames.adminAudit,
+        description: 'Who changed or deleted what',
+      ),
     ],
   ),
 ];

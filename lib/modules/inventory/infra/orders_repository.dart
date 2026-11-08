@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:hive/hive.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -78,6 +79,13 @@ class OrdersRepository {
     if (Hive.isBoxOpen(name)) return Hive.box<String>(name);
     return Hive.openBox<String>(name);
   }
+
+  @visibleForTesting
+  Box<String>? get debugOrdersBox => _ordersInjected;
+  @visibleForTesting
+  Box<String>? get debugLinesBox => _linesInjected;
+  @visibleForTesting
+  Box<String>? get debugReceiptsBox => _receiptsInjected;
 
   Future<Box<String>> _orders() => _open(ordersBoxName, _ordersInjected);
   Future<Box<String>> _lines() => _open(linesBoxName, _linesInjected);
@@ -159,13 +167,11 @@ class OrdersRepository {
     return out;
   }
 
-  Future<String> nextNumber() async =>
-      nextPoNumber([for (final o in await orders()) o.number]);
-
   // ---- writes -------------------------------------------------------------
 
-  /// A new draft, numbered after the existing ones. Not saved until
-  /// [saveOrder].
+  /// A new draft. Without a [number] it gets a provisional "NEW-xxxxxxxx"
+  /// number; the server assigns the real PO number when the order first syncs
+  /// and [refreshFromCloud] brings it back. Not saved until [saveOrder].
   Future<PurchaseOrder> newOrder({
     required String vendorId,
     required List<PoLine> lines,
@@ -174,10 +180,11 @@ class OrdersRepository {
     String note = '',
   }) async {
     final now = _now();
+    final id = _newId();
     return PurchaseOrder(
-      id: _newId(),
+      id: id,
       number: (number == null || number.trim().isEmpty)
-          ? await nextNumber()
+          ? provisionalPoNumber(id)
           : number.trim(),
       vendorId: vendorId,
       createdAt: now,
@@ -354,6 +361,13 @@ class OrdersRepository {
       if (local == null || remote.updatedAt.isAfter(local.updatedAt)) {
         await obox.put(remote.id, PurchaseOrder.encode(remote));
         replaced.add(remote.id);
+        changed++;
+      } else if (local.numberPending && !remote.numberPending) {
+        // The server assigned the real number. Adopt only the number: the
+        // local copy may hold newer edits still waiting in the sync queue.
+        // Lines stay linked by order id, so nothing else moves.
+        await obox.put(
+            local.id, PurchaseOrder.encode(local.copyWith(number: remote.number)));
         changed++;
       }
     }

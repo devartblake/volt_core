@@ -4,7 +4,10 @@ import 'package:voltcore/modules/materials/domain/material_item.dart';
 import 'package:voltcore/modules/materials/domain/material_list.dart';
 import 'package:voltcore/modules/materials/domain/profile_change.dart';
 import 'package:voltcore/modules/materials/infra/materials_repository.dart';
+import 'package:voltcore/modules/materials/infra/profile_approval_gateway.dart';
 import 'package:voltcore/modules/materials/infra/profile_changes_repository.dart';
+
+import 'fake_approval_gateway.dart';
 
 MaterialItem item(
   String id,
@@ -50,6 +53,12 @@ class MemMaterials extends MaterialsRepository {
   @override
   Future<List<MaterialItem>> load(MaterialOwner o) async =>
       store[o.storeKey] ?? const [];
+  @override
+  Future<void> saveDraft(MaterialOwner o, List<MaterialItem> i) async {
+    saves++;
+    store[o.storeKey] = MaterialListOps.forSaving(i);
+  }
+
   @override
   Future<List<MaterialItem>> save(MaterialOwner o, List<MaterialItem> i) async {
     saves++;
@@ -352,6 +361,7 @@ void main() {
     late List<Map<String, dynamic>> upserts;
     late int n;
     late DateTime clock;
+    late FakeApprovalGateway gateway;
     late String? tenant;
 
     ProfileChangesRepository repo({
@@ -362,6 +372,7 @@ void main() {
           box: box,
           upsert: (t, id, row) async => upserts.add({...row, '_table': t}),
           fetch: (t) async => cloud,
+          gateway: gateway,
           tenantId: () => tenant,
           userId: () => user,
           newId: () => 'req-${++n}',
@@ -371,6 +382,7 @@ void main() {
     setUp(() {
       box = MemBox();
       upserts = [];
+      gateway = FakeApprovalGateway();
       n = 0;
       clock = DateTime.utc(2026, 11, 8, 9);
       tenant = 'tenant-1';
@@ -481,7 +493,86 @@ void main() {
       final saved = (await repo().byId(r.id))!;
       expect(saved.status, ProfileRequestStatus.approved);
       expect(saved.reviewedBy, 'sup-1');
-      expect(upserts.last['status'], 'approved');
+      // The server function did the cloud write; nothing is queued for it.
+      expect(gateway.approvals.single.requestId, r.id);
+    });
+
+    test('approve sends the finished item list to the server in one call',
+        () async {
+      final materials = MemMaterials({
+        owner.storeKey: [oil1, air]
+      });
+      final r = await repo().propose(
+          generatorKey: owner.key,
+          current: [oil1, air],
+          proposed: [oil1.copyWith(partNumber: 'X')],
+          note: 'x');
+      await repo(user: 'sup').approve(r.id, materials: materials, note: ' ok ');
+      expect(gateway.approvals, hasLength(1));
+      final call = gateway.approvals.single;
+      expect(call.requestId, r.id);
+      expect(call.note, 'ok');
+      expect(call.items, hasLength(1));
+      expect(call.items.single['part_number'], 'X');
+      expect(call.items.single['equipment_key'], owner.key);
+      expect(call.items.single['sort_order'], 0);
+      // Not queued as two more uploads: the server did both writes.
+      expect(upserts.where((u) => u['_table'] == 'asset_parts'), isEmpty);
+      expect(upserts.where((u) => u['status'] == 'approved'), isEmpty);
+    });
+
+    test('approve offline throws, changes nothing and stays pending', () async {
+      gateway.offline = true;
+      final materials = MemMaterials({
+        owner.storeKey: [oil1, air]
+      });
+      final r = await repo().propose(
+          generatorKey: owner.key,
+          current: [oil1, air],
+          proposed: [oil1.copyWith(partNumber: 'X')],
+          note: 'x');
+      await expectLater(repo(user: 'sup').approve(r.id, materials: materials),
+          throwsA(isA<ProfileApprovalOfflineException>()));
+      expect(materials.saves, 0);
+      expect(materials.store[owner.storeKey], hasLength(2));
+      expect((await repo().byId(r.id))!.status, ProfileRequestStatus.pending);
+      // Back online: the same request goes through.
+      gateway.offline = false;
+      await repo(user: 'sup').approve(r.id, materials: materials);
+      expect((await repo().byId(r.id))!.status, ProfileRequestStatus.approved);
+    });
+
+    test('already approved on the server counts as success', () async {
+      gateway.decidedStatus = 'approved';
+      final materials = MemMaterials({
+        owner.storeKey: [oil1, air]
+      });
+      final r = await repo().propose(
+          generatorKey: owner.key,
+          current: [oil1, air],
+          proposed: [oil1.copyWith(partNumber: 'X')],
+          note: 'x');
+      final result = await repo(user: 'sup').approve(r.id, materials: materials);
+      expect(result.applied, isNotEmpty);
+      expect((await repo().byId(r.id))!.status, ProfileRequestStatus.approved);
+      // The local profile is left for the next cloud pull.
+      expect(materials.saves, 0);
+    });
+
+    test('rejected on the server first shows as rejected and throws', () async {
+      gateway.decidedStatus = 'rejected';
+      final materials = MemMaterials({
+        owner.storeKey: [oil1, air]
+      });
+      final r = await repo().propose(
+          generatorKey: owner.key,
+          current: [oil1, air],
+          proposed: [oil1.copyWith(partNumber: 'X')],
+          note: 'x');
+      await expectLater(repo(user: 'sup').approve(r.id, materials: materials),
+          throwsA(isA<ProfileAlreadyDecidedException>()));
+      expect((await repo().byId(r.id))!.status, ProfileRequestStatus.rejected);
+      expect(materials.saves, 0);
     });
 
     test('approve selected applies only those and still closes the request',

@@ -74,10 +74,20 @@ StockLevel _level(CatalogPart p, int onHand) => StockLevel(part: p, onHand: onHa
 void main() {
   // ------------------------------------------------------------ domain
   group('purchase order domain', () {
-    test('nextPoNumber continues after the highest number', () {
-      expect(nextPoNumber(const []), 'PO-0001');
-      expect(nextPoNumber(['PO-0001', 'PO-0007', 'custom', 'PO-0003']), 'PO-0008');
-      expect(nextPoNumber(['po-0009']), 'PO-0010');
+    test('provisional numbers are per order and show as pending', () {
+      expect(provisionalPoNumber('0a1b2c3d-1111-2222-3333-444455556666'),
+          'NEW-0A1B2C3D');
+      expect(provisionalPoNumber('ab'), 'NEW-AB');
+      expect(isProvisionalPoNumber('NEW-0A1B2C3D'), isTrue);
+      expect(isProvisionalPoNumber('PO-0001'), isFalse);
+      expect(isProvisionalPoNumber('PO-NEW-1'), isFalse);
+      expect(poNumberLabel('NEW-0A1B2C3D'), 'Number pending');
+      expect(poNumberLabel('PO-0007'), 'PO-0007');
+      final p = _order('o', 'NEW-ABCD1234', PoStatus.draft, const []);
+      expect(p.numberPending, isTrue);
+      expect(p.displayNumber, 'Number pending');
+      expect(_order('o', 'PO-0001', PoStatus.draft, const []).numberPending,
+          isFalse);
     });
 
     test('totals', () {
@@ -240,16 +250,62 @@ void main() {
       return (await repo.order(o.id))!;
     }
 
-    test('numbers orders PO-0001, PO-0002 and rejects a duplicate number', () async {
+    test('new orders get a provisional number and reject a duplicate number', () async {
       final a = await repo.newOrder(vendorId: 'v1', lines: [repo.newLine(partId: 'p1', qty: 1)]);
-      expect(a.number, 'PO-0001');
+      expect(a.number, provisionalPoNumber(a.id));
+      expect(a.numberPending, isTrue);
       await repo.saveOrder(a);
       final b = await repo.newOrder(vendorId: 'v1', lines: [repo.newLine(partId: 'p1', qty: 1)]);
-      expect(b.number, 'PO-0002');
-      await expectLater(repo.saveOrder(b.copyWith(number: 'po-0001')),
+      expect(b.number, isNot(a.number));
+      await repo.saveOrder(b.copyWith(number: 'PO-0001'));
+      await expectLater(repo.saveOrder(a.copyWith(number: 'po-0001')),
           throwsA(isA<DuplicatePoNumberException>()));
-      await repo.saveOrder(b.copyWith(number: 'PO-A12'));
+      await repo.saveOrder(a.copyWith(number: 'PO-A12'));
       expect((await repo.orders()).map((o) => o.number), containsAll(['PO-0001', 'PO-A12']));
+    });
+
+    test('refreshFromCloud adopts the server number and keeps newer local edits', () async {
+      final o = await repo.newOrder(vendorId: 'v1', lines: [
+        repo.newLine(partId: 'p1', qty: 3),
+      ]);
+      await repo.saveOrder(o);
+      final local = (await repo.order(o.id))!;
+      final synced = OrdersRepository(
+        ordersBox: repo.debugOrdersBox,
+        linesBox: repo.debugLinesBox,
+        receiptsBox: repo.debugReceiptsBox,
+        tenantId: () => null,
+        fetch: (table) async => table == kPurchaseOrdersTable
+            ? [
+                {
+                  'id': o.id,
+                  'po_number': 'PO-0042',
+                  'vendor_id': 'v1',
+                  'status': 'draft',
+                  'note': '',
+                  'created_at': local.createdAt.toIso8601String(),
+                  // Not newer than the local copy.
+                  'updated_at': local.updatedAt.toIso8601String(),
+                }
+              ]
+            : const [],
+      );
+      expect(await synced.refreshFromCloud(), 1);
+      final after = (await synced.order(o.id))!;
+      expect(after.number, 'PO-0042');
+      expect(after.id, o.id);
+      expect(after.lines.single.qtyOrdered, 3);
+      expect(after.updatedAt, local.updatedAt);
+      expect(await synced.refreshFromCloud(), 0);
+    });
+
+    test('a custom number is kept and never treated as pending', () async {
+      final o = await repo.newOrder(
+          vendorId: 'v1',
+          number: 'ACME-77',
+          lines: [repo.newLine(partId: 'p1', qty: 1)]);
+      expect(o.number, 'ACME-77');
+      expect(o.numberPending, isFalse);
     });
 
     test('saves lines, queues sync rows, and removes dropped lines', () async {

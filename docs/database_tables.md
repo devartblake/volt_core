@@ -52,6 +52,10 @@ What is in the Supabase `public` schema, whether the app uses it, and what to do
 
 ## Added by us (2026-11-06 onward)
 
+**Audit log (2026-11-12, migration `20261112100000_audit_log.sql`).** `audit_log` is append-only (a trigger refuses update and delete; only `purge_audit_log()` may remove rows older than 730 days, not scheduled) and readable by company admins only. Rows are written by the `SECURITY DEFINER` trigger function `log_row_change()` on: `inspections` (update, delete; ignores payload-only changes), `maintenance_jobs` (delete), `part_prices`, `vendors`, `inventory_locations`, `tenant_members` (insert, update, delete), `purchase_orders` (update, delete), `inventory_movements` (insert of adjust / count only), `user_profiles` (is_active / email changes), `profile_change_requests` (status change), `vehicle_inspections` (delete). Updates keep only the changed keys; values over 4 KB are stored as `[omitted]`.
+
+**Job cost functions (migration `20261112110000_job_costs.sql`).** `job_parts_cost(p_job_ref text)` and `job_costs_summary(p_since date)` return the parts cost of a job at the last paid price; admin only. See section 23 of `materials_and_inventory_design.md`.
+
 `parts_catalog` (163 rows), `asset_parts` (260), `job_material_lines` (6), `inventory_locations` (1), `inventory_movements` (0), `vendors` (1), `part_prices` (0), `purchase_orders` (1), `purchase_order_lines` (1), `profile_change_requests` (0), `vehicle_inspections` (3). Described in `materials_and_inventory_design.md` and `fleet_and_vehicle_assets_plan.md`.
 
 ## Older tables: do we need them?

@@ -5,6 +5,7 @@ import '../../../../core/theme/app_tokens.dart';
 import '../../../../shared/widgets/widgets.dart';
 import '../../domain/profile_change.dart';
 import '../../infra/materials_repository.dart';
+import '../../infra/profile_approval_gateway.dart';
 import '../../infra/profile_changes_repository.dart';
 import '../profile_change_widgets.dart';
 
@@ -139,6 +140,14 @@ class _RequestCardState extends ConsumerState<_RequestCard> {
                   ? '1 was left out because the profile changed.'
                   : '$left were left out because the profile changed.',
           ].join(' '));
+      widget.onDone();
+    } on ProfileApprovalOfflineException {
+      // Approving changes the profile and the request together on the server,
+      // so it needs a connection. The request stays pending.
+      AppSnackBar.infoOn(messenger, 'Connect to approve');
+      if (mounted) setState(() => _busy = false);
+    } on ProfileAlreadyDecidedException catch (e) {
+      AppSnackBar.infoOn(messenger, 'This request was already ${e.status}.');
       widget.onDone();
     } catch (_) {
       AppSnackBar.errorOn(messenger, 'Could not approve. Try again.');

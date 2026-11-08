@@ -9,7 +9,10 @@ Add a line under **Unreleased** with every change worth telling a user about;
 
 ### Added
 
+- Admin audit log: who deleted or changed inspections, prices, vendors, orders, stock adjustments and team roles
+- Admins see the parts cost of each job (at the last price paid) on Job Needs
 - Admins can invite new users by email
+- Nightly retention cleanup and daily summary email (server functions)
 
 ### Changed
 

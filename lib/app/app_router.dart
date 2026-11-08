@@ -15,6 +15,7 @@ import 'package:voltcore/modules/readiness/presenter/pages/readiness_page.dart';
 
 import 'package:voltcore/modules/admin/presenter/pages/admin_dashboard_page.dart';
 import 'package:voltcore/modules/admin/presenter/pages/admin_settings_page.dart';
+import '../modules/admin/presenter/pages/audit_log_page.dart';
 import '../modules/admin/presenter/pages/technicians_page.dart';
 import '../modules/auth/presenter/controllers/auth_controller.dart';
 import '../modules/dashboard/presenter/pages/tech_dashboard_page.dart';
@@ -436,6 +437,11 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         path: RoutePaths.adminTechnicians,
         name: RouteNames.adminTechnicians,
         builder: (_, __) => const AdminShell(child: TechniciansPage()),
+      ),
+      GoRoute(
+        path: RoutePaths.adminAudit,
+        name: RouteNames.adminAudit,
+        builder: (_, __) => const AdminShell(child: AuditLogPage()),
       ),
       if (kDebugMode)
         GoRoute(

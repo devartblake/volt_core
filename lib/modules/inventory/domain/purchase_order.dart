@@ -122,7 +122,8 @@ class PurchaseOrder {
 
   final String id;
 
-  /// Human number such as PO-0001; editable.
+  /// Human number such as PO-0001; editable. A provisional "NEW-xxxxxxxx"
+  /// until the order first syncs.
   final String number;
   final String vendorId;
   final PoStatus status;
@@ -131,6 +132,12 @@ class PurchaseOrder {
   final DateTime? expectedOn;
   final String note;
   final List<PoLine> lines;
+
+  /// True until the server has assigned the real number.
+  bool get numberPending => isProvisionalPoNumber(number);
+
+  /// The number to show: "Number pending" or the real one.
+  String get displayNumber => poNumberLabel(number);
 
   int get totalCents => lines.fold(0, (s, l) => s + l.totalCents);
   int get unitsOrdered => lines.fold(0, (s, l) => s + l.qtyOrdered);
@@ -210,19 +217,27 @@ class PurchaseOrder {
 
 // ---------------------------------------------------------------- helpers
 
-/// The next "PO-0001" style number after the ones in [existing].
-String nextPoNumber(Iterable<String> existing, {String prefix = 'PO-'}) {
-  var max = 0;
-  final re = RegExp('^${RegExp.escape(prefix)}(\\d+)\$', caseSensitive: false);
-  for (final n in existing) {
-    final m = re.firstMatch(n.trim());
-    if (m != null) {
-      final v = int.parse(m.group(1)!);
-      if (v > max) max = v;
-    }
-  }
-  return '$prefix${(max + 1).toString().padLeft(4, '0')}';
+/// Prefix of a provisional PO number. The database trigger replaces a number
+/// starting with this by the next real "PO-0001" number when the order first
+/// syncs (see supabase/migrations/20261111100000_po_numbers.sql).
+const String kProvisionalPoPrefix = 'NEW-';
+
+/// The provisional number for a new order: "NEW-" plus 8 characters of its id.
+/// Unique per order, so two devices never collide while offline.
+String provisionalPoNumber(String orderId) {
+  final compact = orderId.replaceAll('-', '').toUpperCase();
+  final short = compact.length >= 8 ? compact.substring(0, 8) : compact;
+  return '$kProvisionalPoPrefix$short';
 }
+
+/// Whether [number] is still waiting for the server to assign a real one.
+bool isProvisionalPoNumber(String number) =>
+    number.trim().startsWith(kProvisionalPoPrefix);
+
+/// What to show people for [number]: "Number pending" until the real one
+/// arrives.
+String poNumberLabel(String number) =>
+    isProvisionalPoNumber(number) ? 'Number pending' : number;
 
 /// Status after goods are received against [o]: all lines in is received, any
 /// in is partial, otherwise unchanged. Draft and final orders do not move.
@@ -258,7 +273,7 @@ String poShareText(
   String Function(DateTime d)? date,
 }) {
   final b = StringBuffer()
-    ..writeln('Purchase order ${o.number}')
+    ..writeln('Purchase order ${o.displayNumber}')
     ..writeln('Vendor: $vendorName');
   if (o.expectedOn != null && date != null) {
     b.writeln('Expected: ${date(o.expectedOn!)}');

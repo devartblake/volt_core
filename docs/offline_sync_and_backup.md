@@ -98,10 +98,52 @@ AppBar(
 
 ## Conflict handling
 
-The current policy is last-write-wins (the most recent upsert overwrites the
-row). That's appropriate for single-technician-per-record workflows. If records
-become concurrently editable, add an `updated_at` guard on the server or a
-merge step in `SyncService._dispatch`.
+Most tables are still last-write-wins by arrival time (the most recent upsert
+overwrites the row), which suits single-technician-per-record work.
+
+**Newer wins by `updated_at` for six tables** (migration
+`20261111120000_stale_write_guard.sql`): `parts_catalog`, `inventory_locations`,
+`vendors`, `purchase_orders`, `profile_change_requests`, `vehicle_inspections`.
+The app upserts these with a client `updated_at`; `set_updated_at()` then
+overwrites it with the server time, so the stored value is when the server last
+accepted a change. The `trg_00_reject_stale` trigger (it sorts before
+`trg_*_updated_at`) compares the incoming client time with the stored one and,
+when the edit is more than a 2 minute grace older, skips that row's update and
+raises a notice. For an upsert that is a quiet success, so the queue drops the
+operation instead of retrying it forever. The grace stops two quick edits from
+one device racing their own latency; a device clock wrong by more than the grace
+can lose edits after another write to the same row (a `client_updated_at`
+column would fix that).
+
+Not guarded: append-only ledgers (`stock_movements`, `part_prices`), tables where
+`updated_at` is server-only (`asset_parts`, `job_material_lines`), and the
+fleet / work-order / equipment tables (candidates for later). The pure rule is
+`isStaleWrite` in `lib/core/services/sync/stale_write.dart`.
+
+A skipped edit is lost on purpose; the device keeps its local copy until the next
+`refreshFromCloud` pulls the newer row (it keeps whichever copy is newer).
+
+### Purchase order numbers
+
+New orders get a provisional `NEW-xxxxxxxx` number offline (shown as "Number
+pending"). A `BEFORE INSERT` trigger on `purchase_orders` replaces it with the
+next `PO-0001` from `po_counters`, so two tablets never collide on
+`unique (tenant_id, po_number)`. `refreshFromCloud` adopts the server number
+into the local order (lines stay linked by order id). A number the user typed is
+kept as is (anything not starting with `NEW-`). Edge case: a receive done while
+the number is still pending writes the provisional `NEW-xxxx` into the stock
+movement note and price entry; the order is found by id, so nothing breaks, only
+that note keeps the provisional text. Receive after the order has synced to get
+the real number in notes.
+
+### Profile approvals
+
+Approving a technician's profile change calls the `approve_profile_change` RPC,
+which replaces the generator's `asset_parts` rows and marks the request approved
+in one transaction. It needs a connection ("Connect to approve" offline; the
+request stays pending). The new item list is still computed in Dart
+(`ProfileChanges.applyChanges`). Rejecting still works offline through the normal
+queue (`reject_profile_change` exists for symmetry but the app does not call it).
 
 ## Notes / follow-ups
 
@@ -165,3 +207,19 @@ merges cloud rows, the cloud copy winning only if its `updated_at` is newer than
 the local last write. A locally deleted id is not brought back by a pull.
 Photos and signature images already upload as files through the existing photo
 and signature backup paths; the row only stores the signature file paths.
+
+
+## Server-side cleanup and daily summary (Edge Functions)
+
+Two scheduled functions live in `supabase/functions/` (setup, secrets and the
+cron SQL are in `supabase/functions/README.md`). Both default to a dry run and
+are protected by the `x-cron-secret` header or the service role key.
+
+| Function | What it does |
+| --- | --- |
+| `retention-cleanup` | Nightly. Applies `tenant_retention_policies`: removes archived (completed) maintenance jobs, their rows and storage files (`photos/maintenance/`, `signatures/maintenance/`, `pdfs/maintenance/`) and generated report PDFs older than the policy. Deletes in batches of 100 and at most 2000 files per run. |
+| `daily-digest` | Each morning. One summary email per company to active admins, supervisors and dispatchers: overdue tasks, Red sites, overdue inspections, parts to reorder, late purchase orders, open maintenance follow-ups. |
+
+Not live until deployed with `--no-verify-jwt`, `CRON_SECRET` is set and the
+schedule is created. Storage paths do not include the tenant, so report
+deletion applies only on a single-company project (see the README).

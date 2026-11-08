@@ -85,6 +85,7 @@ void main() {
           RoutePaths.adminTechnicians,
           RoutePaths.tenants,
           RoutePaths.adminSettings,
+          RoutePaths.adminAudit,
         ]),
       );
     });

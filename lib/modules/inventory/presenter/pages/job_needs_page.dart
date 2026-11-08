@@ -9,9 +9,11 @@ import '../../../../shared/widgets/app_snack_bar.dart';
 import '../../../../shared/widgets/empty_state.dart';
 import '../../../../shared/widgets/status_chip.dart';
 import '../../domain/job_needs.dart';
+import '../../domain/vendor.dart' show formatCents;
 import '../../infra/inventory_repository.dart';
 import '../inventory_access.dart';
 import '../job_needs_providers.dart';
+import '../movement_providers.dart';
 
 StatusTone toneFor(NeedStatus s) => switch (s) {
       NeedStatus.issued || NeedStatus.reserved || NeedStatus.available =>
@@ -80,6 +82,10 @@ class _JobCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final j = job.job;
+    // Costs are admin-only data, like prices.
+    final isAdmin = ref.watch(canManageInventoryProvider);
+    final costs = isAdmin ? ref.watch(jobCostsProvider).value : null;
+    final cost = costs == null ? null : costs[j.jobRef];
     return Card(
       elevation: 0,
       margin: const EdgeInsets.only(bottom: AppSpacing.md),
@@ -117,6 +123,17 @@ class _JobCard extends ConsumerWidget {
                     : RoutePaths.maintenanceDetail.replaceFirst(':id', j.id)),
               ),
             ]),
+            if (cost != null && !cost.isEmpty)
+              Padding(
+                padding: const EdgeInsets.only(top: AppSpacing.xs),
+                child: Text(
+                  'Parts cost ${formatCents(cost.totalCents)}'
+                  '${cost.unpricedParts > 0 ? ' · ${cost.unpricedParts} ${cost.unpricedParts == 1 ? 'part' : 'parts'} not priced' : ''}',
+                  key: Key('job_cost_${j.jobRef}'),
+                  style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant),
+                ),
+              ),
             const Divider(height: AppSpacing.xl),
             for (final l in job.lines) _LineRow(line: l, canAct: canAct),
           ],

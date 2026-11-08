@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../admin/infra/repositories/admin_repository_impl.dart';
+import '../domain/job_cost.dart';
 import '../domain/short_jobs.dart';
 import '../domain/stock.dart';
 import '../domain/usage_report.dart';
@@ -58,6 +59,16 @@ final lastPaidByPartProvider =
     if (last != null) out[partId] = last.unitCents;
   });
   return out;
+});
+
+/// Parts cost of each job that has parts issued, at the last price paid,
+/// worked out on the device from the ledger and prices it already holds.
+/// Admin only: callers watch this only for admins.
+final jobCostsProvider =
+    FutureProvider.autoDispose<Map<String, JobCost>>((ref) async {
+  final ledger = await ref.watch(ledgerProvider.future);
+  final paid = await ref.watch(lastPaidByPartProvider.future);
+  return computeJobCosts(ledger, paid);
 });
 
 /// How many jobs are short of parts, for the dashboard.

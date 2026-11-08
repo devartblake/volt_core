@@ -50,7 +50,7 @@ class PartOrderInfo extends ConsumerWidget {
                   '${h.line.qtyOrdered} from ${vendorNames[h.order.vendorId] ?? 'vendor'}'
                   '${h.line.unitCents > 0 ? ' @ ${formatCents(h.line.unitCents)}' : ''}'),
               subtitle: Text([
-                h.order.number,
+                h.order.displayNumber,
                 fmt.format(h.order.createdAt.toLocal()),
                 h.order.status.label,
                 if (h.line.qtyReceived > 0) '${h.line.qtyReceived} received',

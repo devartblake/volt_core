@@ -8,6 +8,7 @@ import '../../../core/services/sync/sync_service.dart';
 import '../domain/material_item.dart';
 import '../domain/profile_change.dart';
 import 'materials_repository.dart';
+import 'profile_approval_gateway.dart';
 
 const String kProfileChangeRequestsTable = 'profile_change_requests';
 
@@ -28,6 +29,7 @@ class ProfileChangesRepository {
     Box<String>? box,
     ProfileChangesUpsert? upsert,
     ProfileChangesFetch? fetch,
+    ProfileApprovalGateway? gateway,
     String? Function()? tenantId,
     String? Function()? userId,
     String Function()? newId,
@@ -35,6 +37,7 @@ class ProfileChangesRepository {
   })  : _injected = box,
         _upsert = upsert ?? _defaultUpsert,
         _fetch = fetch ?? _defaultFetch,
+        _gateway = gateway ?? const SupabaseProfileApprovalGateway(),
         _tenantId = tenantId ?? (() => SyncContext.tenantId),
         _userId = userId ?? (() => SyncContext.userId),
         _newId = newId ?? (() => const Uuid().v4()),
@@ -45,6 +48,7 @@ class ProfileChangesRepository {
   final Box<String>? _injected;
   final ProfileChangesUpsert _upsert;
   final ProfileChangesFetch _fetch;
+  final ProfileApprovalGateway _gateway;
   final String? Function() _tenantId;
   final String? Function() _userId;
   final String Function() _newId;
@@ -183,12 +187,20 @@ class ProfileChangesRepository {
     return next;
   }
 
-  /// A reviewer applies a request to the profile through [materials] (so the
-  /// normal sync happens) and marks it approved.
+  /// A reviewer applies a request to the profile and marks it approved, in
+  /// ONE server transaction (`approve_profile_change`), so a crash cannot
+  /// leave the profile changed and the request pending.
   ///
-  /// [only] limits it to those changes (item ids); stale changes are left out
-  /// unless [includeStale]. When nothing could be applied the request is left
-  /// pending so the reviewer can look again.
+  /// The new item list comes from [ProfileChanges.applyChanges] here in Dart;
+  /// the server only swaps it in. [only] limits it to those changes (item
+  /// ids); stale changes are left out unless [includeStale]. When nothing
+  /// could be applied the request is left pending so the reviewer can look
+  /// again.
+  ///
+  /// Needs a connection: throws [ProfileApprovalOfflineException] and changes
+  /// nothing (the request stays pending). If the server says the request was
+  /// already approved that counts as success; the local request is marked
+  /// approved and the local profile is left for the next cloud pull.
   Future<ApplyResult> approve(
     String id, {
     required MaterialsRepository materials,
@@ -212,16 +224,50 @@ class ProfileChangesRepository {
         only: only, includeStale: includeStale);
     if (result.applied.isEmpty && result.alreadyApplied.isEmpty) return result;
 
-    if (result.applied.isNotEmpty) await materials.save(owner, result.items);
-    final now = _now();
-    await _store(r.copyWith(
-      status: ProfileRequestStatus.approved,
-      reviewedBy: _userId(),
-      reviewedAt: now,
-      reviewNote: note.trim(),
-      updatedAt: now,
-    ));
+    final tenant = _tenantId() ?? '';
+    final rows = [
+      for (var i = 0; i < result.items.length; i++)
+        materialItemToRow(result.items[i], tenant, owner, sortOrder: i),
+    ];
+
+    var alreadyApproved = false;
+    try {
+      await _gateway.approve(
+          requestId: r.id, items: rows, reviewNote: note.trim());
+    } on ProfileAlreadyDecidedException catch (e) {
+      if (!e.isApproved) {
+        // Someone rejected or the proposer withdrew it first: show that.
+        await _markLocal(r, e.status, note: note);
+        rethrow;
+      }
+      alreadyApproved = true;
+    }
+
+    // The server holds the profile now; keep the device copy in step without
+    // queueing the same rows for upload again.
+    if (!alreadyApproved && result.applied.isNotEmpty) {
+      await materials.saveDraft(owner, result.items);
+    }
+    await _markLocal(r, 'approved', note: note);
     return result;
+  }
+
+  /// Records the server's decision on the device copy only. The server row is
+  /// already final, so nothing is queued.
+  Future<void> _markLocal(ProfileChangeRequest r, String status,
+      {String note = ''}) async {
+    final now = _now();
+    final box = await _box();
+    await box.put(
+      r.id,
+      ProfileChangeRequest.encode(r.copyWith(
+        status: ProfileRequestStatus.fromWire(status),
+        reviewedBy: _userId(),
+        reviewedAt: now,
+        reviewNote: note.trim(),
+        updatedAt: now,
+      )),
+    );
   }
 
   /// Pulls the cloud's requests into the device (reviewers see everyone's,

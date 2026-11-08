@@ -42,6 +42,8 @@ class RouteRoles {
     'admin_dashboard': {UserRole.admin},
     'admin_settings': {UserRole.admin},
     'admin_technicians': {UserRole.admin},
+    // The audit log lists who changed or deleted what: admins only.
+    'admin_audit': {UserRole.admin},
 
     // ----- Inspections -----
     'inspections': {

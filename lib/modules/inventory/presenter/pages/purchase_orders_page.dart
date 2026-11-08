@@ -137,7 +137,7 @@ class _PurchaseOrdersPageState extends ConsumerState<PurchaseOrdersPage> {
                     builder: (_) => PurchaseOrderDetailPage(orderId: o.id),
                   )),
                   title: Text(
-                    '${o.number} · ${vendorNames[o.vendorId] ?? 'Vendor'}',
+                    '${o.displayNumber} · ${vendorNames[o.vendorId] ?? 'Vendor'}',
                     style: const TextStyle(fontWeight: FontWeight.w600),
                   ),
                   subtitle: Text([
@@ -250,7 +250,7 @@ class _PurchaseOrderDetailPageState
       label: 'share the purchase order',
       action: () async {
         await SharePlus.instance.share(
-            ShareParams(text: text, subject: 'Purchase order ${o.number}'));
+            ShareParams(text: text, subject: 'Purchase order ${o.displayNumber}'));
         return true;
       },
     );
@@ -280,7 +280,7 @@ class _PurchaseOrderDetailPageState
     }
 
     return AppPage(
-      title: o.number,
+      title: o.displayNumber,
       actions: [
         IconButton(
           key: const Key('po_share'),
@@ -491,8 +491,8 @@ class _ReceiveSheetState extends State<_ReceiveSheet> {
       AppSnackBar.successOn(
           messenger,
           r.order.status == PoStatus.received
-              ? '${r.order.number} fully received'
-              : 'Received against ${r.order.number}');
+              ? '${r.order.displayNumber} fully received'
+              : 'Received against ${r.order.displayNumber}');
       nav.pop(true);
     } catch (e) {
       setState(() {
@@ -516,7 +516,7 @@ class _ReceiveSheetState extends State<_ReceiveSheet> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text('Receive ${widget.order.number}',
+            Text('Receive ${widget.order.displayNumber}',
                 style: theme.textTheme.titleLarge),
             Text('Stock is added and the price paid is recorded.',
                 style: theme.textTheme.bodySmall
@@ -584,7 +584,8 @@ class _EditSheet extends StatefulWidget {
 }
 
 class _EditSheetState extends State<_EditSheet> {
-  late final _number = TextEditingController(text: widget.order.number);
+  late final _number = TextEditingController(
+      text: widget.order.numberPending ? '' : widget.order.number);
   late final _note = TextEditingController(text: widget.order.note);
   late DateTime? _expected = widget.order.expectedOn;
   late final List<PoLine> _lines = List.of(widget.order.lines);
@@ -648,7 +649,11 @@ class _EditSheetState extends State<_EditSheet> {
     final nav = Navigator.of(context);
     try {
       var o = widget.order.copyWith(
-        number: _number.text,
+        // Left blank on a pending order keeps the provisional number, which
+        // the server replaces on sync; a typed number is kept as is.
+        number: _number.text.trim().isEmpty && widget.order.numberPending
+            ? widget.order.number
+            : _number.text,
         note: _note.text.trim(),
         lines: next,
         expectedOn: _expected,
@@ -695,7 +700,12 @@ class _EditSheetState extends State<_EditSheet> {
                   key: const Key('po_number'),
                   controller: _number,
                   textCapitalization: TextCapitalization.characters,
-                  decoration: const InputDecoration(labelText: 'PO number'),
+                  decoration: InputDecoration(
+                    labelText: 'PO number',
+                    helperText: widget.order.numberPending
+                        ? 'Number pending: assigned when it syncs'
+                        : null,
+                  ),
                 ),
               ),
               const SizedBox(width: AppSpacing.md),
