@@ -10,6 +10,7 @@ import '../../infra/repositories/inspection_repository.dart';
 import '../../infra/repositories/inspection_repository_impl.dart';
 import '../controllers/inspection_list_prefs.dart';
 import '../widgets/inspection_filter_presets_bar.dart';
+import '../widgets/finish_sheet.dart';
 import '../controllers/inspection_list_controller.dart';
 import '../inspection_date_filter.dart';
 import '../widgets/inspection_date_filter_bar.dart';
@@ -474,6 +475,7 @@ class _InspectionListPageState
                               ),
                             ),
                           ),
+                        InspectionFinishChip(inspection: ins),
                       ],
                     ),
                     ],

@@ -42,9 +42,15 @@ class _HiveInspectionListPrefs implements InspectionListPrefs {
 final inspectionListPrefsProvider =
     Provider<InspectionListPrefs>((_) => const _HiveInspectionListPrefs());
 
-/// Whether the signed-in role may delete inspections (admin, supervisor).
+/// Who may delete an inspection: admins and dispatchers only (supervisors and
+/// technicians may not). Mirrors the cloud delete policy
+/// (`20261110100000_inspections_delete_policy.sql`).
+bool roleCanDeleteInspection(UserRole? role) =>
+    role == UserRole.admin || role == UserRole.dispatcher;
+
+/// Whether the signed-in role may delete inspections (admin, dispatcher).
 /// Its own provider so tests can override it.
 final inspectionCanDeleteProvider = Provider<bool>((ref) {
   final role = ref.watch(authStateProvider.select((a) => a.currentRole));
-  return role == UserRole.admin || role == UserRole.supervisor;
+  return roleCanDeleteInspection(role);
 });

@@ -14,6 +14,7 @@ import 'package:voltcore/core/theme/status_colors.dart';
 import '../../../schedule/presenter/pages/schedule_task_page.dart';
 import '../../../schedule/presenter/widgets/dialogs/schedule_dialog.dart';
 import '../../domain/entities/inspection_entity.dart';
+import '../widgets/finish_sheet.dart';
 import '../../infra/models/inspection.dart';
 import '../../infra/repositories/inspection_repository_impl.dart';
 import '../../../../shared/widgets/widgets.dart';
@@ -180,6 +181,12 @@ class InspectionDetailPage extends ConsumerWidget {
                           ),
                         ),
                       ],
+                    ),
+                    const SizedBox(height: 12),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: InspectionFinishChip(
+                          inspection: ins.toEntity(), showReasons: true),
                     ),
                     if (ins.siteGrade.isNotEmpty) ...[
                       const SizedBox(height: 16),

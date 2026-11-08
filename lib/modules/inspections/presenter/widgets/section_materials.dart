@@ -11,10 +11,15 @@ class SectionMaterials extends StatefulWidget {
   final InspectionEntity model;
   final ValueChanged<InspectionEntity> onChanged;
 
+  /// Reports the parts list on every edit (before it is saved), for the
+  /// form's "to finish" summary.
+  final ValueChanged<List<MaterialItem>>? onItemsChanged;
+
   const SectionMaterials({
     super.key,
     required this.model,
     required this.onChanged,
+    this.onItemsChanged,
   });
 
   @override
@@ -235,7 +240,10 @@ class _SectionMaterialsState extends State<SectionMaterials> {
             air: m.airFilterDate,
             battery: m.batteryReplaceDate,
           ),
-          onChanged: _mirrorLegacyDates,
+          onChanged: (items) {
+            widget.onItemsChanged?.call(items);
+            _mirrorLegacyDates(items);
+          },
         ),
         const SizedBox(height: 16),
         serviceCard,

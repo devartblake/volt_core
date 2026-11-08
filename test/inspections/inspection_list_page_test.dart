@@ -3,13 +3,22 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:voltcore/modules/inspections/domain/entities/inspection_entity.dart';
 import 'package:voltcore/modules/inspections/domain/inspection_filter_preset.dart';
+import 'package:voltcore/modules/auth/domain/user_role.dart';
+import 'package:voltcore/modules/inspections/domain/inspection_completion.dart';
 import 'package:voltcore/modules/inspections/domain/inspection_unanswered.dart';
+import 'package:voltcore/modules/materials/domain/material_item.dart';
+import 'package:voltcore/modules/materials/infra/materials_repository.dart';
 import 'package:voltcore/modules/inspections/infra/repositories/inspection_repository.dart';
 import 'package:voltcore/modules/inspections/infra/repositories/inspection_repository_impl.dart';
 import 'package:voltcore/modules/inspections/presenter/controllers/inspection_list_prefs.dart';
 import 'package:voltcore/modules/inspections/presenter/controllers/user_profile_controller.dart';
 import 'package:voltcore/modules/inspections/presenter/pages/inspection_list_page.dart';
-import 'package:voltcore/modules/inspections/presenter/widgets/unanswered_sheet.dart';
+import 'package:voltcore/modules/inspections/presenter/widgets/finish_sheet.dart';
+
+class _NoParts extends MaterialsRepository {
+  @override
+  Future<List<MaterialItem>> load(MaterialOwner owner) async => const [];
+}
 
 class _FakeRepo implements InspectionRepository {
   _FakeRepo(this.items);
@@ -52,7 +61,7 @@ Future<void> _pump(
   _FakePrefs prefs, {
   bool canDelete = true,
   double scale = 1.0,
-  Size size = const Size(400, 800),
+  Size size = const Size(400, 1200),
 }) async {
   tester.view.physicalSize = size;
   tester.view.devicePixelRatio = 1;
@@ -62,6 +71,7 @@ Future<void> _pump(
       inspectionRepositoryProvider.overrideWithValue(repo),
       inspectionListPrefsProvider.overrideWithValue(prefs),
       inspectionCanDeleteProvider.overrideWithValue(canDelete),
+      materialsRepositoryProvider.overrideWithValue(_NoParts()),
       currentTenantProvider.overrideWith((ref) =>
           TenantNotifier(availableTenants: const ['T'], initialTenant: 'T')),
     ],
@@ -202,34 +212,84 @@ void main() {
     });
   }
 
-  testWidgets('unanswered bar and sheet at 1.3x', (tester) async {
-    tester.view.physicalSize = const Size(360, 740);
-    tester.view.devicePixelRatio = 1;
-    addTearDown(tester.view.reset);
-    final items = unansweredItems(InspectionEntity.newDraft());
-    String? jumped;
-    await tester.pumpWidget(MaterialApp(
-      builder: (c, child) => MediaQuery(
-        data: MediaQuery.of(c)
-            .copyWith(textScaler: const TextScaler.linear(1.3)),
-        child: child!,
-      ),
-      home: Builder(
-        builder: (ctx) => Scaffold(
-          body: UnansweredBar(
-            count: items.length,
-            onTap: () async => jumped = await showUnansweredSheet(ctx, items),
+  test('delete roles: admin and dispatcher only', () {
+    expect(roleCanDeleteInspection(UserRole.admin), isTrue);
+    expect(roleCanDeleteInspection(UserRole.dispatcher), isTrue);
+    expect(roleCanDeleteInspection(UserRole.supervisor), isFalse);
+    expect(roleCanDeleteInspection(UserRole.tech), isFalse);
+    expect(roleCanDeleteInspection(null), isFalse);
+  });
+
+  testWidgets('rows show a Not finished chip for an unfinished inspection',
+      (tester) async {
+    await _pump(tester, _FakeRepo([_ins('A1', 'Green')]), _FakePrefs());
+    expect(find.text('Not finished'), findsOneWidget);
+    expect(errors, isEmpty);
+  });
+
+  for (final c in {
+    'phone': const Size(360, 740),
+    'tablet': const Size(1024, 768),
+  }.entries) {
+    testWidgets('finish bar and sheet at 1.3x on ${c.key}', (tester) async {
+      tester.view.physicalSize = c.value;
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      final also = unansweredItems(InspectionEntity.newDraft());
+      final completion =
+          InspectionCompletion.of(InspectionEntity.newDraft(), const []);
+      String? jumped;
+      await tester.pumpWidget(MaterialApp(
+        builder: (c, child) => MediaQuery(
+          data: MediaQuery.of(c)
+              .copyWith(textScaler: const TextScaler.linear(1.3)),
+          child: child!,
+        ),
+        home: Builder(
+          builder: (ctx) => Scaffold(
+            body: FinishBar(
+              completion: completion,
+              onTap: () async =>
+                  jumped = await showFinishSheet(ctx, completion, also),
+            ),
           ),
         ),
-      ),
-    ));
-    expect(find.text('${items.length} unanswered'), findsOneWidget);
-    await tester.tap(find.byType(ActionChip));
-    await tester.pumpAndSettle();
-    expect(find.text('Site information'), findsOneWidget);
-    await tester.tap(find.text('Site code'));
-    await tester.pumpAndSettle();
-    expect(jumped, 'siteInfo');
-    expect(errors, isEmpty);
+      ));
+      expect(find.text('Not finished: 6 things left'), findsOneWidget);
+      await tester.tap(find.byType(ActionChip));
+      await tester.pumpAndSettle();
+      expect(find.text('To finish this inspection'), findsOneWidget);
+      final list = find.descendant(
+          of: find.byType(BottomSheet), matching: find.byType(Scrollable));
+      await tester.scrollUntilVisible(
+          find.text('Also missing (does not block finishing)'), 200,
+          scrollable: list.first);
+      await tester.scrollUntilVisible(find.text('Battery'), -200,
+          scrollable: list.first);
+      await tester.tap(find.text('Battery'));
+      await tester.pumpAndSettle();
+      expect(jumped, 'materials');
+      expect(errors, isEmpty);
+    });
+  }
+
+  testWidgets('ready state shows Ready to finish', (tester) async {
+    var e = InspectionEntity.newDraft();
+    final completion = InspectionCompletion.fromCounts(
+        answered: 10, total: 10, items: [
+      for (final s in [
+        MaterialSlot.airFilter,
+        MaterialSlot.fuelFilter,
+        MaterialSlot.lubeFilter,
+        MaterialSlot.coolantFilter,
+        MaterialSlot.battery,
+      ])
+        MaterialItem(id: s.wire, slot: s, partNumber: 'P')
+    ]);
+    expect(e.id, isNotEmpty);
+    await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+            body: FinishBar(completion: completion, onTap: () {}))));
+    expect(find.text('Ready to finish'), findsOneWidget);
   });
 }

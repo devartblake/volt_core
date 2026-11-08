@@ -7,7 +7,10 @@ import '../../../../shared/widgets/widgets.dart';
 import '../../domain/entities/inspection_entity.dart';
 import '../../domain/inspection_unanswered.dart';
 import '../controllers/inspection_form_controller.dart';
-import '../widgets/unanswered_sheet.dart';
+import '../widgets/finish_sheet.dart';
+import '../../domain/inspection_completion.dart';
+import '../../../materials/domain/material_item.dart';
+import '../../../materials/infra/materials_repository.dart';
 
 // Section widgets (now using InspectionEntity)
 import '../widgets/section_site_info.dart';
@@ -49,6 +52,10 @@ class _InspectionFormPageState extends ConsumerState<InspectionFormPage> {
 
   /// Set after a save so the guard doesn't prompt on the way out.
   bool _saved = false;
+
+  /// Parts as currently edited (ahead of the editor's autosave), so the
+  /// finish chip reacts at once. Null until the editor reports a change.
+  List<MaterialItem>? _liveParts;
 
   @override
   void initState() {
@@ -177,6 +184,11 @@ class _InspectionFormPageState extends ConsumerState<InspectionFormPage> {
     }
 
     final unanswered = unansweredItems(inspection);
+    final savedParts = ref
+        .watch(materialItemsProvider(MaterialOwner.inspection(id: inspection.id)))
+        .value;
+    final completion =
+        InspectionCompletion.of(inspection, _liveParts ?? savedParts ?? const []);
     final isEditing = formState.isEditing;
     final title = isEditing ? 'Edit Inspection' : 'New Inspection';
 
@@ -208,7 +220,11 @@ class _InspectionFormPageState extends ConsumerState<InspectionFormPage> {
       ),
       keyed(
         _FormSection.materials,
-        SectionMaterials(model: inspection, onChanged: _onSectionChanged),
+        SectionMaterials(
+          model: inspection,
+          onChanged: _onSectionChanged,
+          onItemsChanged: (items) => setState(() => _liveParts = items),
+        ),
       ),
       keyed(
         _FormSection.signatures,
@@ -258,9 +274,9 @@ class _InspectionFormPageState extends ConsumerState<InspectionFormPage> {
         key: _formKey,
         child: Column(
           children: [
-            UnansweredBar(
-              count: unanswered.length,
-              onTap: () => _showUnansweredSheet(unanswered),
+            FinishBar(
+              completion: completion,
+              onTap: () => _showFinishSheet(completion, unanswered),
             ),
             Expanded(child: LayoutBuilder(
           builder: (ctx, constraints) {
@@ -460,10 +476,11 @@ class _InspectionFormPageState extends ConsumerState<InspectionFormPage> {
     if (target != null) await _scrollToSection(target);
   }
 
-  /// Bottom sheet of the unanswered required items, grouped by section.
-  /// Tapping one jumps to its section.
-  Future<void> _showUnansweredSheet(List<UnansweredItem> items) async {
-    final key = await showUnansweredSheet(context, items);
+  /// Bottom sheet of what is needed to finish, plus the other unanswered
+  /// items. Tapping a row jumps to its section.
+  Future<void> _showFinishSheet(
+      InspectionCompletion completion, List<UnansweredItem> items) async {
+    final key = await showFinishSheet(context, completion, items);
     if (key == null) return;
     final section =
         _FormSection.values.where((s) => s.name == key).firstOrNull;
