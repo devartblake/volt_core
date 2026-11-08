@@ -2,6 +2,7 @@
 
 | Document | What it covers |
 |---|---|
+| [app_tour.md](app_tour.md) | Visual tour of every screen with screenshots (light and dark), what was updated, behind-the-scenes work, and what is still open |
 | [ui_ux_revamp_plan.md](ui_ux_revamp_plan.md) | The UI/UX revamp: audit, phases, what each sprint delivered, what is still open |
 | [materials_and_inventory_design.md](materials_and_inventory_design.md) | Parts, stock, job needs, vendors and prices, purchase orders, truck stock, spreadsheet import, roles, and the SQL migrations to run |
 | [generator_management_research.md](generator_management_research.md) | Features of other generator management systems, and which to borrow |
