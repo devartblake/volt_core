@@ -267,11 +267,24 @@ A screen of every generator and whether it is ready, due soon, needs attention o
 
 ## 12. Analytics graphs
 
+![Analytics: small cards with mini graphs, weekly bars, monthly line and the grade donut](images/analytics-inspections.png)
+
+![Analytics: maintenance, schedule, workload and parts stock graphs](images/analytics-maintenance-schedule.png)
+
+*Screenshots from the test tablet (portrait, light theme).*
+
+
 Home > Analytics keeps its stat cards and adds graphs for the data on the device (`lib/modules/dashboard/presenter/pages/analytics_page.dart`, a thin composition; charts in `presenter/widgets/analytics/`, series builders in `domain/analytics_series.dart`, device reads in `presenter/analytics_providers.dart`).
 
 - Charts: inspections per week (bars, Monday weeks), inspections per month (line), site grades (donut; Green/Amber/Red rows open `/inspections?grade=...`), sites with most red grades (top 5), jobs by status plus open jobs on time vs overdue, maintenance completed per month plus completed vs in progress, technician workload this week (dispatcher and admin only), parts in stock / low / out (admin, supervisor, dispatcher). A technician sees only their own jobs.
 - A period selector (4 weeks / 12 weeks / 6 months / All, `SegmentedButton`, short labels under 600 dp) applies to the time-based charts and is kept for the session (`analyticsPeriodProvider`). Jobs, workload and parts show the current state, not a period.
 - Drawn with `CustomPainter` (bars, line, donut, horizontal bars, stacked bar) and no chart package. Each chart has a title, caption and "N total", a single `Semantics` sentence with the numbers, and a "Not enough data yet" empty state. Bars and line show a value readout (real text) on tap, drag or hover. Colours are `theme.status` and `colorScheme` only; counts are always in text, so colour is never the only signal.
 - Layout: one column on phones, two columns of chart cards from 900 dp of content width. Axis labels thin out instead of overlapping, and the stat grid row height follows the text scale.
-- Tests: `test/dashboard/analytics_series_test.dart` (builders: week/month/year edges, DST, periods, ties, empty input) and `test/dashboard/analytics_page_test.dart` (semantics per chart, empty states, period selector, role gating, tap readout, grade navigation, no overflow at 1.3x text on 360x800, 800x1280 and 1280x800 in light and dark).
+- Card graphs: every small number card has its own mini graph (`presenter/widgets/analytics/analytics_mini_charts.dart`, series in `domain/analytics_mini_series.dart`). `StatCard.tile` has no footer, so the page uses `AnalyticsMiniTile` (same look, graph beside the value; `StatCard` itself is unchanged for the dashboard and readiness). Each card has one `Semantics` label: "label: value. graph words". All-zero data draws a dashed baseline (bars) or the plain track (ring, stacked bar); tiny boxes draw nothing; the value takes at most half the width so 1.3x text does not overflow.
+  - Inspections: Total inspections = weekly bars, this week highlighted (follows the period selector); With deficiencies = ring of deficient share of all inspections; Load tests done = ring of load-tested share; This month = one bar per day of the month (28 to 31) by creation time, today highlighted.
+  - Maintenance: Total jobs = records per month (follows the period); Completed, Open and Needs follow-up = share rings of all jobs; the Maintenance completion card keeps its bar and adds a completed-per-month strip (follows the period) and a card-level `Semantics` label.
+  - Schedule: Upcoming = tasks per day for the next 7 days, today first and highlighted; Overdue = one stacked bar by age (up to 7 days, 8 to 30, 31 or more; a task due earlier today is in the first bucket). Counts use the same rules as the card numbers.
+  - Counts, shares and the current state are all-time or current, not period filtered; only the weekly and monthly strips follow the selector.
+- Fix: "Sites with most red grades" groups site codes trimmed and case-insensitively (`b` and `B` are one site) and shows the first spelling seen.
+- Tests: `test/dashboard/analytics_series_test.dart` (builders: week/month/year edges, DST, periods, ties, empty input) `test/dashboard/analytics_mini_series_test.dart` (daily/next-7-days/overdue-age builders, month lengths 28 to 31, DST) and `test/dashboard/analytics_page_test.dart` (semantics per chart and per number card, empty states, period selector, role gating, tap readout, grade navigation, no overflow at 1.3x text on 360x800, 800x1280 and 1280x800 in light and dark).
 - Not verified on a device. The inspections list takes `?grade=` through `InspectionListPage.filterStatus`; the list page itself was not changed.

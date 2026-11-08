@@ -121,6 +121,13 @@ CSV: header row, every text field quoted, CRLF rows, `yyyy-MM-dd` dates; text st
 
 ## The dashboard
 
+![Generator Fleet Readiness overview: donut, status cards with mini graphs, due-by-week and grade cards, and the horizontal "Needs attention first" row](images/readiness-overview.png)
+
+![Generator Fleet Readiness units list with reasons](images/readiness-units.png)
+
+*Screenshots from the test tablet (portrait, light theme).*
+
+
 Stage 2. Route `/readiness` (`RouteNames.readiness`), tab **Generator Fleet Readiness** in the Home section beside Dashboard and Analytics, visible to every role.
 
 ### Files

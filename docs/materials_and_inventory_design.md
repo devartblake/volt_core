@@ -232,6 +232,11 @@ Files: `sheet_reader.dart` (xlsx and csv reading; `archive` + `xml` packages), `
 
 ## 16. Stock by manufacturer
 
+![Stock grouped by manufacturer with maker chips, location and group controls](images/stock-by-manufacturer.png)
+
+*Stock on the test tablet: the Inventory tabs (Stock, Job Needs, Shortages, Parts Catalog, Orders, Vendors, Movements), group-by control and maker chips.*
+
+
 The Stock page groups parts under headings with a count (`BALDWIN · 23`): **Group by Manufacturer** (default), **Type** (the material slot) or **None**. Spelling variants share one heading ("Donaldson" and "donaldson"), alphabetical, with "No manufacturer" last and parts in part-number order inside each group. A row of maker chips (All makers, Baldwin, Bosch...) filters to one manufacturer and combines with the All / Low / Out filters and the search box. When grouped, the row leaves out what the heading already says. Logic: `groupStock`, `manufacturersOf` in `domain/vendor.dart`. Tests: `test/inventory/vendor_pricing_test.dart` (grouping), `stock_grouping_page_test.dart`.
 
 **Editing a part.** Admins tap a part in Stock to open its page, then **Edit part** (same editor as the catalog: number, name, manufacturer, slot, minimum, alternates, notes, active).

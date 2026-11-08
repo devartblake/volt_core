@@ -522,6 +522,9 @@ does **not** log their own walk-around.
 
 ## Update 2026-11-07: vehicle list, documents tab and PDF
 
+![Vehicle list with status and daily-check chips](images/vehicle-list.png)
+
+
 - **Vehicle list cards** show the status chip and a **Daily check** chip: done
   today, due, or overdue (two or more days since the last check). The rule is
   `dailyCheckState` in `fleet/domain/daily_check_status.dart`; the vehicle detail
