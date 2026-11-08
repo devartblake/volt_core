@@ -25,9 +25,10 @@ Last updated 2026-11-10. This lists what is still open, who owns it, and the dec
 
 | File | What it does | State |
 |---|---|---|
-| `20261110120000_housekeeping_policies_and_indexes.sql` | Restricts who can read vehicle inspections; makes four row-level-security policies evaluate once per query; splits the inventory locations write policy; adds 17 foreign-key indexes | **to run** |
-| `20261110100000_inspections_delete_policy.sql` | Inspection delete in the cloud for admins and dispatchers only (today supervisors can also delete) | pending, written by the finish-rule task if needed |
-| `20261110110000_part_images.sql` | `image_path` on parts, plus any storage bucket step | pending, written by the part-image task |
+| `20261110120000_housekeeping_policies_and_indexes.sql` | Restricts who can read vehicle inspections; makes four row-level-security policies evaluate once per query; splits the inventory locations write policy; adds 17 foreign-key indexes | applied (2026-11-08, verified) |
+| `20261110100000_inspections_delete_policy.sql` | Inspection delete in the cloud for admins and dispatchers only (supervisors could also delete before) | applied (2026-11-08, verified) |
+| `20261110110000_part_images.sql` | `image_path` on parts, no bucket step needed | applied (2026-11-08, verified) |
+| `20261110130000_fk_index_fixes.sql` | Two foreign-key indexes (inventory movements part, purchase order lines part) that the housekeeping file skipped because an index with that name already existed | **to run** |
 
 ## C. Your tasks
 
