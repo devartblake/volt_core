@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/constants/route_paths.dart';
+import '../../../auth/presenter/sign_off_access.dart';
 import '../../../../shared/widgets/widgets.dart';
 import '../../domain/entities/task_schedule_entity.dart';
 import '../../../maintenance/presenter/controllers/maintenance_providers.dart';
@@ -129,7 +130,12 @@ class _TaskDetail extends ConsumerWidget {
                       : 'Assign'),
             ),
           ],
-          if (_canComplete(item.status)) ...[
+          if (!ref.watch(canSignOffProvider) &&
+              (_canComplete(item.status) || _canDelete(item.status))) ...[
+            const SizedBox(height: 12),
+            const SignOffRequiredNotice(),
+          ],
+          if (_canComplete(item.status) && ref.watch(canSignOffProvider)) ...[
             const SizedBox(height: 12),
             FilledButton.icon(
               onPressed: () => _setStatus(context, ref, item, 'completed'),
@@ -153,7 +159,7 @@ class _TaskDetail extends ConsumerWidget {
               label: const Text('Reschedule task'),
             ),
           ],
-          if (_canDelete(item.status)) ...[
+          if (_canDelete(item.status) && ref.watch(canSignOffProvider)) ...[
             const SizedBox(height: 12),
             TextButton.icon(
               onPressed: () => _delete(context, ref, item),

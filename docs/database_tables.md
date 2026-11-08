@@ -24,7 +24,7 @@ What is in the Supabase `public` schema, whether the app uses it, and what to do
 | `schedule_tasks` | 1 | Scheduled visits: title, date and time, status, assignee, link to an inspection or maintenance job | Schedule, dashboard |
 | `fleet_vehicles` | 2 | Vehicles (trucks): designation, plate, VIN, make, model, mileage, assigned driver | Fleet |
 | `tenants` | 1 | Your company record | Everywhere |
-| `tenant_members` | 4 | Who belongs to the company and their role (admin, supervisor, dispatcher, technician) | Sign-in, permissions |
+| `tenant_members` | 4 | Who belongs to the company, their role (admin, supervisor, dispatcher, technician, apprentice) and optional division (`division_id`) | Sign-in, permissions |
 | `user_profiles` | 4 | Display name, email, phone, avatar for each user | Admin, technician names |
 | `tenant_role_assignments` | 3 | History of role changes (who changed whose role, when, why) | Admin |
 | `form_templates` | 2 | Inspection form templates (name, type) | Templates |
@@ -53,6 +53,8 @@ What is in the Supabase `public` schema, whether the app uses it, and what to do
 ## Added by us (2026-11-06 onward)
 
 **Audit log (2026-11-12, migration `20261112100000_audit_log.sql`).** `audit_log` is append-only (a trigger refuses update and delete; only `purge_audit_log()` may remove rows older than 730 days, not scheduled) and readable by company admins only. Rows are written by the `SECURITY DEFINER` trigger function `log_row_change()` on: `inspections` (update, delete; ignores payload-only changes), `maintenance_jobs` (delete), `part_prices`, `vendors`, `inventory_locations`, `tenant_members` (insert, update, delete), `purchase_orders` (update, delete), `inventory_movements` (insert of adjust / count only), `user_profiles` (is_active / email changes), `profile_change_requests` (status change), `vehicle_inspections` (delete). Updates keep only the changed keys; values over 4 KB are stored as `[omitted]`.
+
+**Divisions and the apprentice role (2026-11-13, migrations `20261113100000_apprentice_role.sql` then `20261113110000_divisions.sql`).** The enum `app_role` gains the value `apprentice` (a technician who cannot sign off or delete work; enforced in the app). New table `divisions` (`id`, `tenant_id`, `name` unique per company ignoring case, `sort_order`, `is_active`, timestamps with `set_updated_at`): any company member can read, only admins write. New nullable column `tenant_members.division_id` (references `divisions`, cleared if the division is deleted; a trigger refuses a division from another company) with a partial index. The audit log trigger on `tenant_members` records a division change without modification. The `inventory_movements` insert policy and `is_assigned_technician()` now accept `apprentice` wherever they accept `technician`. See section 24 of `materials_and_inventory_design.md`.
 
 **Job cost functions (migration `20261112110000_job_costs.sql`).** `job_parts_cost(p_job_ref text)` and `job_costs_summary(p_since date)` return the parts cost of a job at the last paid price; admin only. See section 23 of `materials_and_inventory_design.md`.
 

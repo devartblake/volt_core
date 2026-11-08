@@ -56,12 +56,21 @@ Request body (JSON), sent with the signed-in caller's JWT:
   "role": "technician",
   "phone": "+1 555 123 4567",
   "redirectTo": "https://your-app-url/after-invite",
-  "tenantId": "<only needed if the caller administers several companies>"
+  "tenantId": "<only needed if the caller administers several companies>",
+  "divisionId": "<optional id from public.divisions>"
 }
 ```
 
-`role` is one of `technician`, `supervisor`, `dispatcher`, `admin`. `phone`,
-`redirectTo` and `tenantId` are optional.
+`role` is one of `apprentice`, `technician`, `supervisor`, `dispatcher`,
+`admin`. (`apprentice` needs the `20261113100000_apprentice_role.sql` migration
+first.) `phone`, `redirectTo`, `tenantId` and `divisionId` are optional.
+
+`divisionId` must be a uuid. The function looks it up with the service client
+and refuses it (400, "That division is not available.") unless the division
+exists, is active and belongs to the resolved company. When given it is stored
+in `tenant_members.division_id` by the same upsert; when omitted an existing
+member keeps the division they already have. Needs the
+`20261113110000_divisions.sql` migration.
 
 Response: `{ "ok": true, "userId": "...", "invited": true, "role": "technician" }`.
 `invited` is `false` when the person already had an account and was only added

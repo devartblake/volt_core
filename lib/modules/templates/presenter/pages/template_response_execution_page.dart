@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../../../core/services/sync/sync_context.dart';
+import '../../../auth/domain/user_role.dart' show kApprenticeSignOffMessage;
+import '../../../auth/presenter/sign_off_access.dart';
 import '../../../../shared/widgets/app_page.dart';
 import '../../domain/entities/template_entities.dart';
 import '../../infra/repositories/form_response_repository.dart';
@@ -190,6 +192,10 @@ class _TemplateResponseExecutionPageState
     final definition = _definition;
     final userId = ref.read(authStateProvider).userId;
     if (session == null || definition == null) return;
+    if (!ref.read(canSignOffProvider)) {
+      _showMessage(kApprenticeSignOffMessage);
+      return;
+    }
     if (userId == null || userId.isEmpty) {
       _showMessage('Your authenticated user ID is unavailable.');
       return;

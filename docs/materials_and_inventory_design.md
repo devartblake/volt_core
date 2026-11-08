@@ -102,14 +102,14 @@ job_material_lines   id, job_type (inspection | maintenance | work_order), job_i
 
 ## 6. Who can do what
 
-| | Technician | Supervisor | Dispatcher | Admin |
-|---|---|---|---|---|
-| See a generator's profile, job lists, availability | yes | yes | yes | yes |
-| Record / correct materials on their own inspection or maintenance | yes | yes | yes | yes |
-| Edit a generator's profile | propose (needs approval) | yes | yes | yes |
-| Reserve parts for a job | - | yes | yes | yes |
-| Issue / return stock | own jobs | yes | yes | yes |
-| Manage the catalog, receive stock, adjust counts, set minimums | - | - | - | yes |
+| | Apprentice | Technician | Supervisor | Dispatcher | Admin |
+|---|---|---|---|---|---|
+| See a generator's profile, job lists, availability | yes | yes | yes | yes | yes |
+| Record / correct materials on their own inspection or maintenance | yes | yes | yes | yes | yes |
+| Edit a generator's profile | propose (needs approval) | propose (needs approval) | yes | yes | yes |
+| Reserve parts for a job | - | - | yes | yes | yes |
+| Issue / return stock | own jobs | own jobs | yes | yes | yes |
+| Manage the catalog, receive stock, adjust counts, set minimums | - | - | - | - | yes |
 
 "Super admin": no such role exists. **Recommendation:** treat it as *admin* for now; if you run more than one company in the app later, add an `owner` role above admin that spans tenants. This is decision 3 below.
 
@@ -276,17 +276,19 @@ The two "not yet" items from section 13 and three design items that were missing
 
 ## 20. Roles at a glance
 
-| | Technician | Dispatcher | Supervisor | Admin |
-|---|---|---|---|---|
-| Stock, Job Needs, Shortages, Catalog (look) | yes | yes | yes | yes |
-| Reserve / release / issue / return for a job | no | yes | yes | yes |
-| Mark used on their own job | yes | yes | yes | yes |
-| Transfer stock between locations | no | yes | yes | yes |
-| Receive, adjust, count, edit catalog, add trucks | no | no | no | yes |
-| Movements and usage reports | no | no | yes | yes |
-| Vendors, prices, purchase orders, shelf value, cost | no | no | no | yes |
-| Edit a generator's parts profile | propose only | yes | yes | yes |
-| Approve profile change requests | no | yes | yes | yes |
+| | Apprentice | Technician | Dispatcher | Supervisor | Admin |
+|---|---|---|---|---|---|
+| Stock, Job Needs, Shortages, Catalog (look) | yes | yes | yes | yes | yes |
+| Reserve / release / issue / return for a job | no | no | yes | yes | yes |
+| Mark used on their own job | yes | yes | yes | yes | yes |
+| Transfer stock between locations | no | no | yes | yes | yes |
+| Receive, adjust, count, edit catalog, add trucks | no | no | no | no | yes |
+| Movements and usage reports | no | no | no | yes | yes |
+| Vendors, prices, purchase orders, shelf value, cost | no | no | no | no | yes |
+| Edit a generator's parts profile | propose only | propose only | yes | yes | yes |
+| Approve profile change requests | no | no | yes | yes | yes |
+
+An apprentice has exactly a technician's inventory permissions (the column is the same on purpose). What differs is in section 24.
 
 ## 21. Database migrations
 
@@ -301,6 +303,8 @@ Run in the Supabase SQL editor, once each, in this order. Every file is idempote
 | `20261108100000_purchase_orders.sql` | `purchase_orders`, `purchase_order_lines` (admin only) | **to run** |
 | `20261108110000_truck_stock.sql` | location `vehicle_id` / `assigned_user_id`, `transfer` reason, per-location stock view, `used_movement_id` on job lines, technician issue / return policy | **to run before the app that sends `used_movement_id`** |
 | `20261108120000_profile_change_requests.sql` | `profile_change_requests` and its policies | **to run** |
+| `20261113100000_apprentice_role.sql` | adds `apprentice` to the `app_role` enum (no transaction wrapper; run alone) | **to run first** |
+| `20261113110000_divisions.sql` | `divisions`, `tenant_members.division_id`, apprentice in the technician issue / return policy and `is_assigned_technician()` | **to run second, after the file above has finished** |
 
 Known limits: "own truck first" is enforced in the app, not by the database (a technician can write issue / return for any location); removing an item already marked used does not reverse its issue (tap Undo first); a PO cannot have a line added after creation (edit or drop only); PO share is text only; profile approval is two steps (save, then mark approved), so a crash in between leaves the request pending and a second approve closes it as "already applied".
 
@@ -321,3 +325,26 @@ What the parts issued to a job cost, at the **last price paid**. Admin only, lik
   * `job_parts_cost(p_job_ref text) returns table (part_id uuid, part_number text, name text, qty_issued int, unit_cents int, line_cents bigint, priced boolean)`.
   * `job_costs_summary(p_since date default null) returns table (job_ref text, parts int, total_cents bigint, unpriced_parts int)`: one row per job with an issue since the date (all time when null), totals over everything issued to that job, biggest first.
 * **Not done.** No cost on the inspection or maintenance detail pages (their Parts & Materials section is inside the editing form, shared with technicians) and no "By job" list in the usage report. Locations are not distinguished: an issue from a truck counts the same as from the warehouse.
+
+## 24. Roles: apprentice and divisions (2026-11-13)
+
+**Five roles.** Apprentice (new), technician, dispatcher, supervisor, admin. Privilege order, lowest first: apprentice, technician, dispatcher, supervisor, admin (used only to pick the default role when someone holds several).
+
+An **apprentice is a technician who cannot sign off or delete work.** Same screens and routes as a technician, same schedule, same inventory and truck-stock permissions (section 20). They can create and edit drafts and save. The code is `UserRole.apprentice` (`canSignOff` is false) and `canSignOffProvider`; the message shown is "A technician or supervisor needs to sign this off."
+
+| Action | Apprentice | Technician |
+|---|---|---|
+| Create, edit and save inspections, maintenance, jobs, forms (drafts) | yes | yes |
+| Inspection signatures (technician and customer pads) | no, message instead | yes |
+| Maintenance: technician signature, "Job Completed", Complete & Save (apprentice sees Save) | no | yes |
+| Job (work order): Complete | no, message | yes |
+| Schedule task: Mark completed, Delete task permanently | no, message | yes |
+| Fill in a template form: Complete form (locks the response) | no, message | yes |
+| Delete a maintenance record (swipe), delete an inspection (swipe) | no, message | maintenance yes; inspection no (admins and dispatchers only, as before) |
+| Delete reports in the Documents hub | no, message | yes |
+
+This is enforced in the app. The database still treats an apprentice like a technician wherever technicians are allowed (the inventory issue / return policy and `is_assigned_technician()` were widened to include `apprentice`); it does not add a separate "cannot delete" rule.
+
+**Divisions.** A company-defined list (`public.divisions`: name, sort order, active). Any member can read it; only admins change it (Admin settings, then Divisions, or the Divisions button on the Technicians page: add, rename, drag to reorder, switch off). Names are unique per company, ignoring case. Each person may have one division (`tenant_members.division_id`), optional and for any role; admins set it on the Technicians page and in the Invite sheet, and people see their own under Settings, Account. Switching a division off stops offering it but keeps it on people already in it. Deleting a division (SQL only) clears it from its members. The divisions screen needs a connection ("Connect to the internet to manage divisions.").
+
+**Run order.** `20261113100000_apprentice_role.sql` first (enum value only), then `20261113110000_divisions.sql`. Postgres cannot use a new enum value in the transaction that adds it, which is why they are two files. Until they run, the app still works: the team list falls back to no divisions, and choosing Apprentice fails on save with an "invalid input value for enum" error. The `invite-user` function needs a redeploy for `apprentice` and `divisionId`.

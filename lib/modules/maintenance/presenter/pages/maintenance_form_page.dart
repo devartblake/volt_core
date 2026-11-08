@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../app/nav_extensions.dart';
+import '../../../auth/presenter/sign_off_access.dart';
 
 import '../../../../core/services/pdf/pdf_service.dart' show PdfExportResult;
 import '../../../../core/services/photos/photo_attachment.dart';
@@ -323,6 +324,7 @@ class _MaintenanceFormPageState extends ConsumerState<MaintenanceFormPage>
       widget: SectionMaintSignatures(
         model: m,
         onChanged: (_) => _update(() {}),
+        canSignOff: ref.watch(canSignOffProvider),
         issues: MaintenanceValidation.issues(m, revealed: _revealed),
       ),
     ),
@@ -362,7 +364,9 @@ class _MaintenanceFormPageState extends ConsumerState<MaintenanceFormPage>
     // the user chooses below. Saving is never blocked.
     setState(() => _revealed.addAll(MaintenanceStep.values));
     final missing = progress.missingExpected;
-    if (missing.isEmpty) return _save(markCompleted: true);
+    // Apprentices save their work but cannot mark the job completed.
+    final canComplete = ref.read(canSignOffProvider);
+    if (missing.isEmpty) return _save(markCompleted: canComplete);
 
     final go = await showDialog<bool>(
       context: context,
@@ -516,6 +520,7 @@ class _MaintenanceFormPageState extends ConsumerState<MaintenanceFormPage>
           savingLabel: _isGeneratingPdf ? 'Generating PDF...' : 'Saving...',
           onPrevious: () => _goTo(_currentStep - 1),
           onNext: () => _goTo(_currentStep + 1),
+          canComplete: ref.watch(canSignOffProvider),
           onFinish: () => _confirmAndSave(progress),
         ),
       ),
@@ -841,6 +846,7 @@ class _ActionBar extends StatelessWidget {
     required this.onPrevious,
     required this.onNext,
     required this.onFinish,
+    this.canComplete = true,
   });
 
   final int index;
@@ -850,6 +856,9 @@ class _ActionBar extends StatelessWidget {
   final VoidCallback onPrevious;
   final VoidCallback onNext;
   final VoidCallback onFinish;
+
+  /// False for apprentices: the last step offers Save, not Complete & Save.
+  final bool canComplete;
 
   @override
   Widget build(BuildContext context) {
@@ -883,7 +892,7 @@ class _ActionBar extends StatelessWidget {
                         icon: busy
                             ? const LoadingIndicator.button()
                             : const Icon(Icons.check),
-                        label: Text(busy ? savingLabel : 'Complete & Save'),
+                        label: Text(busy ? savingLabel : (canComplete ? 'Complete & Save' : 'Save')),
                       )
                     : FilledButton.icon(
                         onPressed: busy ? null : onNext,

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../auth/presenter/sign_off_access.dart';
 import '../utils/maintenance_pdf_actions.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -569,6 +570,11 @@ class _SwipeToDelete extends ConsumerWidget {
         ),
         child: Icon(Icons.delete_outline, color: colorScheme.onErrorContainer),
       ),
+      confirmDismiss: (_) async {
+        if (ref.read(canSignOffProvider)) return true;
+        showSignOffBlocked(context);
+        return false;
+      },
       onDismissed: (_) async {
         final messenger = ScaffoldMessenger.of(context);
         final controller =

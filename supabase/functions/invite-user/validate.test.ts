@@ -44,7 +44,7 @@ test("displayName 1-80 chars after trim", () => {
 });
 
 test("role must be in the allowed list", () => {
-  for (const role of ["technician", "supervisor", "dispatcher", "admin"]) {
+  for (const role of ["apprentice", "technician", "supervisor", "dispatcher", "admin"]) {
     assert.equal(validateInvite({ ...ok, role }).ok, true);
   }
   for (const role of ["tech", "Admin", "owner", "", null, undefined, 1, ["admin"]]) {
@@ -77,4 +77,22 @@ test("tenantId must be a uuid when present", () => {
   assert.equal(r.ok && r.value.tenantId, id.toLowerCase());
   bad({ ...ok, tenantId: "1; drop" });
   bad({ ...ok, tenantId: 1 });
+});
+
+test("divisionId is optional and must be a uuid when present", () => {
+  const id = "123E4567-E89B-12D3-A456-426614174000";
+  const r = validateInvite({ ...ok, divisionId: id });
+  assert.equal(r.ok && r.value.divisionId, id.toLowerCase());
+  for (const empty of [undefined, null, ""]) {
+    const e = validateInvite({ ...ok, divisionId: empty });
+    assert.equal(e.ok && e.value.divisionId, null);
+  }
+  bad({ ...ok, divisionId: "not-a-uuid" });
+  bad({ ...ok, divisionId: 7 });
+  bad({ ...ok, divisionId: "1; drop table divisions" });
+});
+
+test("apprentice is an allowed role", () => {
+  const r = validateInvite({ ...ok, role: "apprentice" });
+  assert.equal(r.ok && r.value.role, "apprentice");
 });

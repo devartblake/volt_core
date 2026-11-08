@@ -124,7 +124,7 @@ final analyticsOrdersProvider =
   final orders = await ref.watch(workOrderListProvider.future);
   return [
     for (final o in orders)
-      if (auth.currentRole != UserRole.tech || o.assignedToUserId == auth.userId)
+      if (!(auth.currentRole?.isFieldWorker ?? false) || o.assignedToUserId == auth.userId)
         OrderPoint(status: o.status, scheduledFor: o.scheduledFor),
   ];
 });

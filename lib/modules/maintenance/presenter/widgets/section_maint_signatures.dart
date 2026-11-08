@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:signature/signature.dart';
+import '../../../auth/domain/user_role.dart' show kApprenticeSignOffMessage;
+import '../../../auth/presenter/sign_off_access.dart';
 import '../../../schedule/presenter/pages/schedule_task_page.dart';
 import '../../../schedule/presenter/widgets/dialogs/schedule_dialog.dart';
 import '../../../../core/theme/signature_palette.dart';
@@ -22,6 +24,9 @@ class SectionMaintSignatures extends StatefulWidget {
   final ValueChanged<MaintenanceRecord> onChanged;
   final bool readOnly;
 
+  /// False for apprentices: no technician signature and no "Job Completed".
+  final bool canSignOff;
+
   /// Inline "Required to finish" messages to show, by field.
   final Map<MaintenanceField, String> issues;
 
@@ -30,6 +35,7 @@ class SectionMaintSignatures extends StatefulWidget {
     required this.model,
     required this.onChanged,
     this.readOnly = false,
+    this.canSignOff = true,
     this.issues = const {},
   });
 
@@ -330,6 +336,9 @@ class _SectionMaintSignaturesState extends State<SectionMaintSignatures> {
             const SizedBox(height: 20),
 
             // Technician signature section
+            if (!widget.canSignOff)
+              const SignOffRequiredNotice()
+            else
             _SignatureCard(
               title: 'Technician Signature',
               icon: Icons.engineering_outlined,
@@ -432,6 +441,7 @@ class _SectionMaintSignaturesState extends State<SectionMaintSignatures> {
             _ServiceStatusCard(
               model: widget.model,
               readOnly: widget.readOnly,
+              canComplete: widget.canSignOff,
               onChanged: (model) => widget.onChanged(model),
             ),
 
@@ -704,11 +714,13 @@ class _SignatureCard extends StatelessWidget {
 class _ServiceStatusCard extends StatelessWidget {
   final MaintenanceRecord model;
   final bool readOnly;
+  final bool canComplete;
   final ValueChanged<MaintenanceRecord> onChanged;
 
   const _ServiceStatusCard({
     required this.model,
     required this.readOnly,
+    this.canComplete = true,
     required this.onChanged,
   });
 
@@ -732,7 +744,7 @@ class _ServiceStatusCard extends StatelessWidget {
         children: [
           SwitchListTile(
             value: model.completed,
-            onChanged: readOnly
+            onChanged: readOnly || !canComplete
                 ? null
                 : (val) {
               _updateModel(() {
@@ -752,8 +764,10 @@ class _ServiceStatusCard extends StatelessWidget {
                 const Expanded(child: Text('Job Completed')),
               ],
             ),
-            subtitle: const Text(
-              'Mark when all work for this visit is finished',
+            subtitle: Text(
+              canComplete
+                  ? 'Mark when all work for this visit is finished'
+                  : kApprenticeSignOffMessage,
             ),
             contentPadding: const EdgeInsets.symmetric(
               horizontal: 16,

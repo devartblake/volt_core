@@ -9,6 +9,8 @@ Add a line under **Unreleased** with every change worth telling a user about;
 
 ### Added
 
+- New Apprentice role: works like a technician but cannot sign off, complete or delete work (signatures, Job Completed, Complete, Mark completed, deleting records and reports); shows "A technician or supervisor needs to sign this off."
+- Divisions: admins keep a company list (Admin settings, Divisions) and give each person one; shown on Technicians, in the Invite sheet and under Settings, Account
 - Admin audit log: who deleted or changed inspections, prices, vendors, orders, stock adjustments and team roles
 - Admins see the parts cost of each job (at the last price paid) on Job Needs
 - Admins can invite new users by email

@@ -59,6 +59,7 @@ const _allRouteNames = <String>{
   RouteNames.adminSettings,
   RouteNames.adminTechnicians,
   RouteNames.adminAudit,
+  RouteNames.adminDivisions,
   'debug_menu',
   'hive_debug',
   'network_debug',
@@ -149,6 +150,7 @@ void main() {
         RouteNames.adminSettings,
         RouteNames.adminTechnicians,
         RouteNames.adminAudit,
+        RouteNames.adminDivisions,
         RouteNames.tenantsSettings,
         'debug_menu',
         'hive_debug',
@@ -161,6 +163,7 @@ void main() {
           isTrue,
         );
         for (final role in [
+          UserRole.apprentice,
           UserRole.tech,
           UserRole.supervisor,
           UserRole.dispatcher,
@@ -262,6 +265,35 @@ void main() {
           isTrue,
         );
       }
+    });
+  });
+
+  group('apprentice', () {
+    test('reaches exactly the routes a technician reaches', () {
+      for (final name in RouteRoles.configuredRouteNames) {
+        expect(
+          RouteRoles.isAllowedByName(name: name, role: UserRole.apprentice),
+          RouteRoles.isAllowedByName(name: name, role: UserRole.tech),
+          reason: 'apprentice and tech must agree on "$name"',
+        );
+      }
+    });
+
+    test('is listed on every route that lists a technician', () {
+      for (final name in RouteRoles.configuredRouteNames) {
+        final roles = RouteRoles.rolesFor(name);
+        expect(roles.contains(UserRole.apprentice), roles.contains(UserRole.tech),
+            reason: name);
+      }
+    });
+
+    test('is refused on the divisions manager and the other admin routes', () {
+      expect(
+        RouteRoles.isAllowedByName(
+            name: RouteNames.adminDivisions, role: UserRole.apprentice),
+        isFalse,
+      );
+      expect(RouteRoles.rolesFor(RouteNames.adminDivisions), {UserRole.admin});
     });
   });
 }

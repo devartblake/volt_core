@@ -109,7 +109,7 @@ enum DashboardAudience {
   admin;
 
   static DashboardAudience of(UserRole? role) => switch (role) {
-        UserRole.tech => field,
+        UserRole.tech || UserRole.apprentice => field,
         UserRole.dispatcher => dispatch,
         UserRole.supervisor => review,
         UserRole.admin => admin,

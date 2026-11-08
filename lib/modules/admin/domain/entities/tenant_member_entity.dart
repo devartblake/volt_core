@@ -9,6 +9,7 @@ class TenantMemberEntity {
     required this.role,
     required this.isActive,
     this.phone,
+    this.divisionId,
   });
 
   final String tenantId;
@@ -19,9 +20,14 @@ class TenantMemberEntity {
   final UserRole role;
   final bool isActive;
 
+  /// The member's division (`tenant_members.division_id`), if any.
+  final String? divisionId;
+
   TenantMemberEntity copyWith({
     UserRole? role,
     bool? isActive,
+    String? divisionId,
+    bool clearDivision = false,
   }) {
     return TenantMemberEntity(
       tenantId: tenantId,
@@ -31,6 +37,7 @@ class TenantMemberEntity {
       phone: phone,
       role: role ?? this.role,
       isActive: isActive ?? this.isActive,
+      divisionId: clearDivision ? null : (divisionId ?? this.divisionId),
     );
   }
 }

@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:signature/signature.dart';
+import '../../../auth/presenter/sign_off_access.dart';
 import '../../../../core/services/storage/file_storage_service.dart';
 import '../../../schedule/presenter/pages/schedule_task_page.dart';
 import '../../../schedule/presenter/widgets/dialogs/schedule_dialog.dart';
@@ -12,10 +13,14 @@ class SectionSignatures extends StatefulWidget {
   final InspectionEntity model;
   final ValueChanged<InspectionEntity> onChanged;
 
+  /// False for apprentices: the pads are replaced by a short explanation.
+  final bool canSignOff;
+
   const SectionSignatures({
     super.key,
     required this.model,
     required this.onChanged,
+    this.canSignOff = true,
   });
 
   @override
@@ -181,15 +186,19 @@ class _SectionSignaturesState extends State<SectionSignatures> {
                   ),
                 ),
                 const SizedBox(width: 12),
-                Text(
-                  'Signatures',
-                  style: theme.textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
+                Expanded(
+                  child: Text(
+                    'Signatures',
+                    style: theme.textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
               ],
             ),
             const SizedBox(height: 24),
+            if (!widget.canSignOff) const SignOffRequiredNotice(),
+            if (widget.canSignOff) ...[
             LabeledField(
               label: 'Customer Name',
               controller: custNameCtl,
@@ -276,6 +285,7 @@ class _SectionSignaturesState extends State<SectionSignatures> {
                 onPressed: _isSaving ? null : _handleSchedule,
               ),
             ),
+            ],
           ],
         ),
       ),

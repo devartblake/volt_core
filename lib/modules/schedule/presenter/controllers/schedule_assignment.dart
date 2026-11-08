@@ -7,10 +7,10 @@ import '../../infra/repositories/schedule_repository_impl.dart';
 import 'schedule_controller.dart';
 
 /// Dispatchers, supervisors and admins can hand a task to a technician;
-/// technicians cannot.
+/// technicians and apprentices cannot.
 final canAssignScheduleProvider = Provider<bool>((ref) {
   final role = ref.watch(authStateProvider).currentRole;
-  return role != null && !role.isTech;
+  return role != null && !role.isFieldWorker;
 });
 
 /// Saves [task] with [technicianId] as its assignee through the schedule

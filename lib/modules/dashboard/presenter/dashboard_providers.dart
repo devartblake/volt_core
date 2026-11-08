@@ -49,7 +49,7 @@ final dashboardWorkloadProvider =
   }
 
   final orders = await ref.watch(workOrderListProvider.future);
-  final mine = role == UserRole.tech
+  final mine = role.isFieldWorker
       ? orders.where((o) => o.assignedToUserId == auth.userId)
       : orders;
   return WorkOrderWorkload.fromOrders(mine, today: DateTime.now());
@@ -66,7 +66,7 @@ final dashboardTechniciansProvider = FutureProvider.autoDispose<
       names: {for (final t in techs) t.id: t.name},
       roster: [
         for (final t in techs)
-          if (t.isActive && t.role == UserRole.tech) t.id,
+          if (t.isActive && t.role.isFieldWorker) t.id,
       ],
     );
   } catch (_) {

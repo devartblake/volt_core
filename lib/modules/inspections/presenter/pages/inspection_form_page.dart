@@ -8,6 +8,7 @@ import '../../domain/entities/inspection_entity.dart';
 import '../../domain/inspection_unanswered.dart';
 import '../controllers/inspection_form_controller.dart';
 import '../widgets/finish_sheet.dart';
+import '../../../auth/presenter/sign_off_access.dart';
 import '../../domain/inspection_completion.dart';
 import '../../../materials/domain/material_item.dart';
 import '../../../materials/infra/materials_repository.dart';
@@ -228,7 +229,11 @@ class _InspectionFormPageState extends ConsumerState<InspectionFormPage> {
       ),
       keyed(
         _FormSection.signatures,
-        SectionSignatures(model: inspection, onChanged: _onSectionChanged),
+        SectionSignatures(
+          model: inspection,
+          onChanged: _onSectionChanged,
+          canSignOff: ref.watch(canSignOffProvider),
+        ),
       ),
       // Load test section still works off inspection.id (Hive records)
       keyed(

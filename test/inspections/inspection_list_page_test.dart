@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:voltcore/modules/inspections/domain/entities/inspection_entity.dart';
 import 'package:voltcore/modules/inspections/domain/inspection_filter_preset.dart';
 import 'package:voltcore/modules/auth/domain/user_role.dart';
+import 'package:voltcore/modules/auth/presenter/sign_off_access.dart';
 import 'package:voltcore/modules/inspections/domain/inspection_completion.dart';
 import 'package:voltcore/modules/inspections/domain/inspection_unanswered.dart';
 import 'package:voltcore/modules/materials/domain/material_item.dart';
@@ -60,6 +61,7 @@ Future<void> _pump(
   _FakeRepo repo,
   _FakePrefs prefs, {
   bool canDelete = true,
+  bool canSignOff = true,
   double scale = 1.0,
   Size size = const Size(400, 1200),
 }) async {
@@ -71,6 +73,7 @@ Future<void> _pump(
       inspectionRepositoryProvider.overrideWithValue(repo),
       inspectionListPrefsProvider.overrideWithValue(prefs),
       inspectionCanDeleteProvider.overrideWithValue(canDelete),
+      canSignOffProvider.overrideWithValue(canSignOff),
       materialsRepositoryProvider.overrideWithValue(_NoParts()),
       currentTenantProvider.overrideWith((ref) =>
           TenantNotifier(availableTenants: const ['T'], initialTenant: 'T')),
@@ -183,6 +186,25 @@ void main() {
     await tester.pump(const Duration(milliseconds: 500));
     expect(find.textContaining('AAA Street'), findsOneWidget);
     expect(find.text('Undo'), findsNothing);
+  });
+
+  testWidgets('an apprentice swiping to delete is told who can, nothing is deleted',
+      (tester) async {
+    final repo = _FakeRepo([_ins('AAA', 'Green')]);
+    await _pump(tester, repo, _FakePrefs(), canDelete: false, canSignOff: false);
+    await tester.drag(find.textContaining('AAA Street'), const Offset(-500, 0));
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(find.text('A technician or supervisor needs to sign this off.'),
+        findsOneWidget);
+    expect(find.textContaining('AAA Street'), findsOneWidget);
+    expect(repo.deleted, isEmpty);
+  });
+
+  test('the delete rule excludes apprentices and technicians', () {
+    expect(roleCanDeleteInspection(UserRole.apprentice), isFalse);
+    expect(roleCanDeleteInspection(UserRole.tech), isFalse);
+    expect(roleCanDeleteInspection(UserRole.admin), isTrue);
+    expect(roleCanDeleteInspection(UserRole.dispatcher), isTrue);
   });
 
   for (final c in {

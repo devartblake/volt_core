@@ -177,6 +177,37 @@ void main() {
       expect(find.text('No vehicles documents'), findsOneWidget);
     });
 
+    testWidgets('an apprentice cannot delete: message, no dialog, nothing removed',
+        (tester) async {
+      tester.view.physicalSize = const Size(400, 800);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      await tester.pumpWidget(MaterialApp(
+        home: AppShellScope(
+          isCompact: true,
+          drawer: null,
+          child: DocumentLibraryPage(
+            loadDocuments: () async => List.of(store),
+            deleteDocument: (p) async => deleted.add(p),
+            now: () => _now,
+            undoWindow: const Duration(seconds: 2),
+            canDelete: false,
+          ),
+        ),
+      ));
+      await tester.pump();
+      await tester.pump();
+      await tester.tap(find.byTooltip('Document actions').first);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Delete').last);
+      await tester.pumpAndSettle();
+      expect(find.text('A technician or supervisor needs to sign this off.'),
+          findsOneWidget);
+      expect(find.text('Delete report'), findsNothing);
+      await tester.pump(const Duration(seconds: 3));
+      expect(deleted, isEmpty);
+    });
+
     Future<void> deleteFirstRow(WidgetTester tester) async {
       await tester.tap(find.byTooltip('Document actions').first);
       await tester.pumpAndSettle();

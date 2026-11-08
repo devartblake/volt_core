@@ -9,6 +9,7 @@ import '../../../../shared/widgets/action_runner.dart';
 import '../../../../core/services/storage/pdf_library_service.dart';
 import '../../../../core/theme/app_tokens.dart';
 import '../../../../shared/widgets/widgets.dart';
+import '../../../auth/presenter/sign_off_access.dart';
 import '../../domain/document_hub.dart';
 import '../document_actions_provider.dart';
 
@@ -22,7 +23,11 @@ class DocumentLibraryPage extends StatefulWidget {
     this.deleteDocument,
     this.now,
     this.undoWindow = const Duration(seconds: 5),
+    this.canDelete = true,
   });
+
+  /// False for apprentices: Delete explains who can do it instead.
+  final bool canDelete;
 
   /// Test seams. Default to [PdfLibraryService].
   final Future<List<PdfDocumentInfo>> Function()? loadDocuments;
@@ -307,6 +312,7 @@ class _DocumentLibraryPageState extends State<DocumentLibraryPage> {
   }
 
   Future<void> _deleteSelected() async {
+    if (!widget.canDelete) return showSignOffBlocked(context);
     final docs = await _selectedDocs();
     if (!mounted || docs.isEmpty) return;
     final ok = await _confirm(
@@ -321,6 +327,7 @@ class _DocumentLibraryPageState extends State<DocumentLibraryPage> {
   }
 
   Future<void> _confirmDelete(PdfDocumentInfo doc) async {
+    if (!widget.canDelete) return showSignOffBlocked(context);
     final ok = await _confirm(
       title: 'Delete report',
       message: 'Delete "${doc.name}" from this device? '
@@ -375,6 +382,7 @@ class _DocumentLibraryPageState extends State<DocumentLibraryPage> {
   }
 
   Future<void> _clearOld(List<PdfDocumentInfo> all) async {
+    if (!widget.canDelete) return showSignOffBlocked(context);
     final old = documentsOlderThan(all, _now);
     if (old.isEmpty) {
       AppSnackBar.info(context, 'No documents older than 90 days');

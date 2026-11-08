@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../providers/equipment_providers.dart';
+import '../../../auth/presenter/sign_off_access.dart';
 import '../../../../shared/widgets/widgets.dart';
 import '../../../admin/domain/entities/technician_entity.dart';
 import '../../../customers/customer_site_repository.dart';
@@ -134,6 +135,7 @@ class _WorkOrderFormPageState extends ConsumerState<WorkOrderFormPage> {
               _LifecycleActions(
                 order: existing,
                 onTransition: _transition,
+                canSignOff: ref.watch(canSignOffProvider),
               ),
               const SizedBox(height: 24),
               _AuditTimeline(orderId: existing.id),
@@ -183,6 +185,10 @@ class _WorkOrderFormPageState extends ConsumerState<WorkOrderFormPage> {
   }
 
   Future<void> _transition(WorkOrderEntity order, WorkOrderStatus next) async {
+    if (next == WorkOrderStatus.completed && !ref.read(canSignOffProvider)) {
+      showSignOffBlocked(context);
+      return;
+    }
     if (next == WorkOrderStatus.scheduled && order.scheduledFor == null) {
       AppSnackBar.info(context, 'Select a scheduled date before dispatching this job.');
       return;
@@ -286,8 +292,11 @@ class _LifecycleActions extends StatelessWidget {
   const _LifecycleActions({
     required this.order,
     required this.onTransition,
+    this.canSignOff = true,
   });
 
+  /// False for apprentices: "Complete" explains who has to sign the job off.
+  final bool canSignOff;
   final WorkOrderEntity order;
   final Future<void> Function(WorkOrderEntity, WorkOrderStatus) onTransition;
 
@@ -321,6 +330,11 @@ class _LifecycleActions extends StatelessWidget {
                     ),
                 ],
               ),
+              if (!canSignOff && next.contains(WorkOrderStatus.completed))
+                const Padding(
+                  padding: EdgeInsets.only(top: 8),
+                  child: SignOffRequiredNotice(),
+                ),
               if (order.status == WorkOrderStatus.draft &&
                   order.scheduledFor == null)
                 const Padding(

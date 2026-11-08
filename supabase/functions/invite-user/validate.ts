@@ -3,6 +3,7 @@
 // The Dart mirror lives in lib/modules/admin/domain/invite_validator.dart.
 
 export const ALLOWED_ROLES = [
+  "apprentice",
   "technician",
   "supervisor",
   "dispatcher",
@@ -18,6 +19,9 @@ export interface InviteInput {
   phone: string | null;
   redirectTo: string | null;
   tenantId: string | null;
+  /** Optional public.divisions id. The function checks it belongs to the
+   * resolved tenant before using it. */
+  divisionId: string | null;
 }
 
 export type ValidationResult =
@@ -68,7 +72,9 @@ export function validateInvite(body: unknown): ValidationResult {
   }
 
   if (!isInviteRole(b.role)) {
-    return fail("Choose a role: technician, supervisor, dispatcher or admin.");
+    return fail(
+      "Choose a role: apprentice, technician, supervisor, dispatcher or admin.",
+    );
   }
 
   let phone: string | null = null;
@@ -113,8 +119,24 @@ export function validateInvite(body: unknown): ValidationResult {
     tenantId = b.tenantId.toLowerCase();
   }
 
+  let divisionId: string | null = null;
+  if (b.divisionId !== undefined && b.divisionId !== null && b.divisionId !== "") {
+    if (typeof b.divisionId !== "string" || !UUID_RE.test(b.divisionId)) {
+      return fail("Division is not valid.");
+    }
+    divisionId = b.divisionId.toLowerCase();
+  }
+
   return {
     ok: true,
-    value: { email, displayName, role: b.role, phone, redirectTo, tenantId },
+    value: {
+      email,
+      displayName,
+      role: b.role,
+      phone,
+      redirectTo,
+      tenantId,
+      divisionId,
+    },
   };
 }

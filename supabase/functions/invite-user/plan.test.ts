@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
+  divisionUsable,
   emailDomain,
   isRateLimited,
   planMembership,
@@ -92,4 +93,24 @@ test("rateLimitSince is one hour back", () => {
 test("emailDomain never exposes the local part", () => {
   assert.equal(emailDomain("ann@example.com"), "example.com");
   assert.equal(emailDomain("garbage"), "unknown");
+});
+
+test("apprentice plans like any other role", () => {
+  assert.deepEqual(planMembership(null, "apprentice"), {
+    action: "create",
+    previousRole: "apprentice",
+    newRole: "apprentice",
+  });
+  const p = planMembership({ role: "technician", is_active: true }, "apprentice");
+  assert.equal(p.action, "change_role");
+});
+
+test("divisionUsable: must exist, be active and belong to the tenant", () => {
+  const row = { id: "d1", tenant_id: T1, is_active: true };
+  assert.equal(divisionUsable(row, T1), true);
+  assert.equal(divisionUsable(row, T1.toUpperCase()), true);
+  assert.equal(divisionUsable(row, T2), false);
+  assert.equal(divisionUsable({ ...row, is_active: false }, T1), false);
+  assert.equal(divisionUsable(null, T1), false);
+  assert.equal(divisionUsable(undefined, T1), false);
 });

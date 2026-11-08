@@ -141,6 +141,37 @@ class TenantRoleManagementController
     }
   }
 
+  /// Set or clear (null) [member]'s division.
+  Future<bool> setDivision({
+    required TenantMemberEntity member,
+    required String? divisionId,
+  }) async {
+    if (member.divisionId == divisionId) return true;
+    state = state.copyWith(isLoading: true, clearError: true);
+    try {
+      await _repository.setMemberDivision(
+        member: member,
+        divisionId: divisionId,
+      );
+      final updated = state.members
+          .map(
+            (candidate) => candidate.userId == member.userId &&
+                    candidate.tenantId == member.tenantId
+                ? candidate.copyWith(
+                    divisionId: divisionId,
+                    clearDivision: divisionId == null,
+                  )
+                : candidate,
+          )
+          .toList();
+      state = TenantRoleManagementState(members: updated);
+      return true;
+    } catch (error) {
+      state = state.copyWith(isLoading: false, error: error.toString());
+      return false;
+    }
+  }
+
   Future<bool> assignRole({
     required TenantMemberEntity member,
     required UserRole newRole,

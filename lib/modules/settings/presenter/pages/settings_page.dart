@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/app_version.dart';
+import '../../../admin/infra/division_repository.dart';
+import '../../../auth/domain/user_role.dart';
 
 import '../../../../app/nav_style_provider.dart';
 import '../../../../app/route_roles.dart';
@@ -70,6 +72,20 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   title: Text(userProfile.displayName),
                   subtitle: Text(userProfile.email),
                 ),
+                if (auth.currentRole != null) ...[
+                  const Divider(height: 1),
+                  ListTile(
+                    leading: const Icon(Icons.badge_outlined),
+                    title: Text(auth.currentRole!.label),
+                    subtitle: Builder(builder: (context) {
+                      final division =
+                          ref.watch(myDivisionNameProvider).value;
+                      return Text(division == null
+                          ? 'Role'
+                          : 'Role  ·  Division: $division');
+                    }),
+                  ),
+                ],
                 const Divider(height: 1),
                 ListTile(
                   leading: const Icon(Icons.password_outlined),

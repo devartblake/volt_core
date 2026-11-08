@@ -20,6 +20,8 @@ class LoginRolePicker extends StatelessWidget {
 
   static IconData iconFor(UserRole role) {
     switch (role) {
+      case UserRole.apprentice:
+        return Icons.school_outlined;
       case UserRole.tech:
         return Icons.engineering_outlined;
       case UserRole.supervisor:

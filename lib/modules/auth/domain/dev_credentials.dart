@@ -16,7 +16,7 @@ import 'user_role.dart';
 /// One account is enough: `VOLTCORE_DEV_EMAIL` / `VOLTCORE_DEV_PASSWORD`. To
 /// test the different roles, also give a pair per role
 /// (`VOLTCORE_DEV_EMAIL_ADMIN` / `VOLTCORE_DEV_PASSWORD_ADMIN`, and the same for
-/// `_SUPERVISOR`, `_DISPATCHER`, `_TECH`); the role picked on the login page
+/// `_SUPERVISOR`, `_DISPATCHER`, `_TECH`, `_APPRENTICE`); the role picked on the login page
 /// then signs in with that role's own account.
 ///
 /// Because these are baked into the build, use them for debug builds only and
@@ -45,6 +45,10 @@ class DevCredentials {
   static const _emailTech = String.fromEnvironment('VOLTCORE_DEV_EMAIL_TECH');
   static const _passwordTech =
       String.fromEnvironment('VOLTCORE_DEV_PASSWORD_TECH');
+  static const _emailApprentice =
+      String.fromEnvironment('VOLTCORE_DEV_EMAIL_APPRENTICE');
+  static const _passwordApprentice =
+      String.fromEnvironment('VOLTCORE_DEV_PASSWORD_APPRENTICE');
 
   /// The account to sign in with for [role], or null when none is configured.
   static DevCredentials? forRole(UserRole role) => resolve(
@@ -56,12 +60,14 @@ class DevCredentials {
           UserRole.supervisor => _emailSupervisor,
           UserRole.dispatcher => _emailDispatcher,
           UserRole.tech => _emailTech,
+          UserRole.apprentice => _emailApprentice,
         },
         rolePassword: switch (role) {
           UserRole.admin => _passwordAdmin,
           UserRole.supervisor => _passwordSupervisor,
           UserRole.dispatcher => _passwordDispatcher,
           UserRole.tech => _passwordTech,
+          UserRole.apprentice => _passwordApprentice,
         },
       );
 

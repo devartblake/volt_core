@@ -4,7 +4,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/services/connectivity/connectivity_service.dart';
 import '../../../../shared/widgets/app_snack_bar.dart';
 import '../../../auth/domain/user_role.dart';
+import '../../domain/division.dart';
 import '../../domain/invite_validator.dart';
+import '../../infra/division_repository.dart';
 import '../../infra/services/invite_service.dart';
 import '../controllers/tenant_role_management_controller.dart';
 
@@ -17,6 +19,8 @@ final inviteOnlineCheckProvider = Provider<Future<bool> Function()>(
 enum InviteSheetOutcome { done, addExisting }
 
 const Map<UserRole, String> _roleHelp = {
+  UserRole.apprentice:
+      'Works like a technician but cannot sign off or delete work.',
   UserRole.tech:
       'Does the field work: inspections, jobs and their own schedule.',
   UserRole.supervisor:
@@ -59,6 +63,7 @@ class _InviteMemberSheetState extends ConsumerState<InviteMemberSheet> {
   final _email = TextEditingController();
   final _phone = TextEditingController();
   UserRole _role = UserRole.tech;
+  String? _divisionId;
   bool _busy = false;
   String? _error;
 
@@ -82,6 +87,7 @@ class _InviteMemberSheetState extends ConsumerState<InviteMemberSheet> {
       displayName: _name.text.trim(),
       role: _role,
       phone: _phone.text.trim().isEmpty ? null : _phone.text.trim(),
+      divisionId: _divisionId,
     );
 
     setState(() {
@@ -120,6 +126,40 @@ class _InviteMemberSheetState extends ConsumerState<InviteMemberSheet> {
         _error = 'The invitation could not be sent. Try again later.';
       });
     }
+  }
+
+  /// Optional division picker. Only shown when the company has active
+  /// divisions and they could be loaded.
+  List<Widget> _divisionField() {
+    final active = [
+      for (final d in ref.watch(divisionsProvider).value ?? const <Division>[])
+        if (d.isActive) d,
+    ];
+    if (active.isEmpty) return const [];
+    return [
+      DropdownButtonFormField<String?>(
+        key: const Key('invite_division'),
+        initialValue: active.any((d) => d.id == _divisionId) ? _divisionId : null,
+        isExpanded: true,
+        decoration: const InputDecoration(
+          labelText: 'Division (optional)',
+          border: OutlineInputBorder(),
+        ),
+        items: [
+          const DropdownMenuItem<String?>(
+            value: null,
+            child: Text('No division'),
+          ),
+          for (final d in active)
+            DropdownMenuItem<String?>(
+              value: d.id,
+              child: Text(d.name, overflow: TextOverflow.ellipsis),
+            ),
+        ],
+        onChanged: _busy ? null : (v) => setState(() => _divisionId = v),
+      ),
+      const SizedBox(height: 12),
+    ];
   }
 
   @override
@@ -187,6 +227,7 @@ class _InviteMemberSheetState extends ConsumerState<InviteMemberSheet> {
               const SizedBox(height: 6),
               Text(_roleHelp[_role]!, style: theme.textTheme.bodySmall),
               const SizedBox(height: 12),
+              ..._divisionField(),
               TextFormField(
                 controller: _phone,
                 enabled: !_busy,

@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
+import 'package:voltcore/modules/admin/domain/division.dart';
 import 'package:voltcore/modules/admin/domain/entities/admin_dashboard_stats_entity.dart';
+import 'package:voltcore/modules/admin/infra/division_repository.dart';
 import 'package:voltcore/modules/admin/domain/entities/tenant_member_entity.dart';
 import 'package:voltcore/modules/admin/infra/repositories/admin_repository.dart';
 import 'package:voltcore/modules/admin/infra/repositories/admin_repository_impl.dart';
@@ -65,6 +67,7 @@ Future<_FakeRepo> _pump(
   bool online = true,
   Size size = const Size(360, 800),
   double textScale = 1.3,
+  List<Division> divisions = const [],
 }) async {
   tester.view.physicalSize = size;
   tester.view.devicePixelRatio = 1;
@@ -76,6 +79,7 @@ Future<_FakeRepo> _pump(
         _auth(role),
         adminRepositoryProvider.overrideWithValue(repo),
         inviteServiceProvider.overrideWithValue(invite),
+        divisionsProvider.overrideWith((ref) async => divisions),
         inviteOnlineCheckProvider.overrideWithValue(() async => online),
       ],
       child: MaterialApp(
@@ -135,6 +139,57 @@ void main() {
     await _pump(tester, invite: _FakeInvite());
     expect(find.text('Invite'), findsOneWidget);
   });
+
+  testWidgets('no divisions defined: no Division field, request has none',
+      (tester) async {
+    final invite = _FakeInvite();
+    await _pump(tester, invite: invite);
+    await _openSheet(tester);
+    expect(find.byKey(const Key('invite_division')), findsNothing);
+    await _fillAndSend(tester);
+    expect(invite.requests.single.divisionId, isNull);
+    expect(invite.requests.single.toBody().containsKey('divisionId'), isFalse);
+  });
+
+  for (final size in const [Size(360, 800), Size(1280, 800)]) {
+    testWidgets(
+        'Apprentice and a division can be chosen, no overflow at 1.3x on ${size.width.toInt()}px',
+        (tester) async {
+      final invite = _FakeInvite();
+      await _pump(tester,
+          invite: invite,
+          size: size,
+          divisions: const [
+            Division(id: 'd1', name: 'Generators'),
+            Division(id: 'd2', name: 'Legacy', isActive: false),
+          ]);
+      await _openSheet(tester);
+
+      await tester.ensureVisible(find.byType(DropdownButtonFormField<UserRole>));
+      await tester.tap(find.byType(DropdownButtonFormField<UserRole>));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Apprentice').last);
+      await tester.pumpAndSettle();
+      expect(find.textContaining('cannot sign off or delete work'),
+          findsOneWidget);
+
+      final field = find.byKey(const Key('invite_division'));
+      await tester.ensureVisible(field);
+      await tester.tap(field);
+      await tester.pumpAndSettle();
+      // Inactive divisions are not offered.
+      expect(find.text('Legacy'), findsNothing);
+      await tester.tap(find.text('Generators').last);
+      await tester.pumpAndSettle();
+
+      await _fillAndSend(tester);
+      expect(invite.requests.single.role, UserRole.apprentice);
+      expect(invite.requests.single.divisionId, 'd1');
+      expect(invite.requests.single.toBody()['role'], 'apprentice');
+      expect(invite.requests.single.toBody()['divisionId'], 'd1');
+      expect(overflows, isEmpty);
+    });
+  }
 
   testWidgets('offline explains and does not open the sheet', (tester) async {
     await _pump(tester, invite: _FakeInvite(), online: false);

@@ -180,6 +180,8 @@ class AuthRemoteDataSource {
         return UserRole.supervisor;
       case 'dispatcher':
         return UserRole.dispatcher;
+      case 'apprentice':
+        return UserRole.apprentice;
       case 'tech':
       case 'technician':
         return UserRole.tech;

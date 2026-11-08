@@ -115,7 +115,7 @@ class _VehicleInspectionFormPageState
 
     // A dispatcher or manager signing in is most likely the dispatcher signing.
     final role = auth.currentRole;
-    if (role != null && role != UserRole.tech) {
+    if (role != null && !role.isFieldWorker) {
       _dispatcherName.text = auth.displayName ?? '';
     }
     _prefillDriver(vehicle);

@@ -17,24 +17,28 @@ class RouteRoles {
     // ----- Core shell / dashboards -----
     'dashboard': {
       UserRole.tech,
+      UserRole.apprentice,
       UserRole.supervisor,
       UserRole.dispatcher,
       UserRole.admin,
     },
     'tech_dashboard': {
       UserRole.tech,
+      UserRole.apprentice,
       UserRole.supervisor,
       UserRole.dispatcher,
       UserRole.admin,
     },
     'analytics': {
       UserRole.tech,
+      UserRole.apprentice,
       UserRole.supervisor,
       UserRole.dispatcher,
       UserRole.admin,
     },
     'readiness': {
       UserRole.tech,
+      UserRole.apprentice,
       UserRole.supervisor,
       UserRole.dispatcher,
       UserRole.admin,
@@ -44,28 +48,34 @@ class RouteRoles {
     'admin_technicians': {UserRole.admin},
     // The audit log lists who changed or deleted what: admins only.
     'admin_audit': {UserRole.admin},
+    // The company's division list: admins only (reachable from Technicians).
+    'admin_divisions': {UserRole.admin},
 
     // ----- Inspections -----
     'inspections': {
       UserRole.tech,
+      UserRole.apprentice,
       UserRole.supervisor,
       UserRole.dispatcher,
       UserRole.admin,
     },
     'inspection_new': {
       UserRole.tech,
+      UserRole.apprentice,
       UserRole.supervisor,
       UserRole.dispatcher,
       UserRole.admin,
     },
     'inspection_edit': {
       UserRole.tech,
+      UserRole.apprentice,
       UserRole.supervisor,
       UserRole.dispatcher,
       UserRole.admin,
     },
     'inspection_detail': {
       UserRole.tech,
+      UserRole.apprentice,
       UserRole.supervisor,
       UserRole.dispatcher,
       UserRole.admin,
@@ -79,18 +89,21 @@ class RouteRoles {
     // ----- Maintenance -----
     'maintenance': {
       UserRole.tech,
+      UserRole.apprentice,
       UserRole.supervisor,
       UserRole.dispatcher,
       UserRole.admin,
     },
     'maintenance_new': {
       UserRole.tech,
+      UserRole.apprentice,
       UserRole.supervisor,
       UserRole.dispatcher,
       UserRole.admin,
     },
     'maintenance_detail': {
       UserRole.tech,
+      UserRole.apprentice,
       UserRole.supervisor,
       UserRole.dispatcher,
       UserRole.admin,
@@ -104,18 +117,21 @@ class RouteRoles {
     // ----- Work orders -----
     'work_orders': {
       UserRole.tech,
+      UserRole.apprentice,
       UserRole.supervisor,
       UserRole.dispatcher,
       UserRole.admin,
     },
     'work_order_new': {
       UserRole.tech,
+      UserRole.apprentice,
       UserRole.supervisor,
       UserRole.dispatcher,
       UserRole.admin,
     },
     'work_order_edit': {
       UserRole.tech,
+      UserRole.apprentice,
       UserRole.supervisor,
       UserRole.dispatcher,
       UserRole.admin,
@@ -134,6 +150,7 @@ class RouteRoles {
     // registered at all during Phase 3 rollout.
     'template_response': {
       UserRole.tech,
+      UserRole.apprentice,
       UserRole.supervisor,
       UserRole.dispatcher,
       UserRole.admin,
@@ -142,18 +159,21 @@ class RouteRoles {
     // ----- Schedule -----
     'schedule': {
       UserRole.tech,
+      UserRole.apprentice,
       UserRole.supervisor,
       UserRole.dispatcher,
       UserRole.admin,
     },
     'schedule_task': {
       UserRole.tech,
+      UserRole.apprentice,
       UserRole.supervisor,
       UserRole.dispatcher,
       UserRole.admin,
     },
     'schedule_task_detail': {
       UserRole.tech,
+      UserRole.apprentice,
       UserRole.supervisor,
       UserRole.dispatcher,
       UserRole.admin,
@@ -173,12 +193,14 @@ class RouteRoles {
     // which is exactly admin/supervisor/dispatcher.
     'fleet': {
       UserRole.tech,
+      UserRole.apprentice,
       UserRole.supervisor,
       UserRole.dispatcher,
       UserRole.admin,
     },
     'fleet_vehicle_detail': {
       UserRole.tech,
+      UserRole.apprentice,
       UserRole.supervisor,
       UserRole.dispatcher,
       UserRole.admin,
@@ -201,18 +223,21 @@ class RouteRoles {
     // the vehicle list it is built from is already narrowed to theirs.
     'fleet_inspection_log': {
       UserRole.tech,
+      UserRole.apprentice,
       UserRole.supervisor,
       UserRole.dispatcher,
       UserRole.admin,
     },
     'fleet_inspection_new': {
       UserRole.tech,
+      UserRole.apprentice,
       UserRole.supervisor,
       UserRole.dispatcher,
       UserRole.admin,
     },
     'fleet_vehicle_assets': {
       UserRole.tech,
+      UserRole.apprentice,
       UserRole.supervisor,
       UserRole.dispatcher,
       UserRole.admin,
@@ -235,30 +260,35 @@ class RouteRoles {
     // ----- Equipment / Nameplate -----
     'nameplate_list': {
       UserRole.tech,
+      UserRole.apprentice,
       UserRole.supervisor,
       UserRole.dispatcher,
       UserRole.admin,
     },
     'nameplate_intervals': {
       UserRole.tech,
+      UserRole.apprentice,
       UserRole.supervisor,
       UserRole.dispatcher,
       UserRole.admin,
     },
     'equipment_search': {
       UserRole.tech,
+      UserRole.apprentice,
       UserRole.supervisor,
       UserRole.dispatcher,
       UserRole.admin,
     },
     'equipment_history': {
       UserRole.tech,
+      UserRole.apprentice,
       UserRole.supervisor,
       UserRole.dispatcher,
       UserRole.admin,
     },
     'customer_sites': {
       UserRole.tech,
+      UserRole.apprentice,
       UserRole.supervisor,
       UserRole.dispatcher,
       UserRole.admin,
@@ -273,18 +303,21 @@ class RouteRoles {
     // ----- Inventory (everyone can look; only admins change it) -----
     'inventory': {
       UserRole.tech,
+      UserRole.apprentice,
       UserRole.supervisor,
       UserRole.dispatcher,
       UserRole.admin,
     },
     'inventory_needs': {
       UserRole.tech,
+      UserRole.apprentice,
       UserRole.supervisor,
       UserRole.dispatcher,
       UserRole.admin,
     },
     'inventory_shortages': {
       UserRole.tech,
+      UserRole.apprentice,
       UserRole.supervisor,
       UserRole.dispatcher,
       UserRole.admin,
@@ -297,6 +330,7 @@ class RouteRoles {
     'inventory_orders': {UserRole.admin},
     'inventory_catalog': {
       UserRole.tech,
+      UserRole.apprentice,
       UserRole.supervisor,
       UserRole.dispatcher,
       UserRole.admin,
@@ -305,6 +339,7 @@ class RouteRoles {
     // ----- Documents -----
     'documents': {
       UserRole.tech,
+      UserRole.apprentice,
       UserRole.supervisor,
       UserRole.dispatcher,
       UserRole.admin,
@@ -318,12 +353,14 @@ class RouteRoles {
     },
     'settings': {
       UserRole.tech,
+      UserRole.apprentice,
       UserRole.supervisor,
       UserRole.dispatcher,
       UserRole.admin,
     },
     'about': {
       UserRole.tech,
+      UserRole.apprentice,
       UserRole.supervisor,
       UserRole.dispatcher,
       UserRole.admin,

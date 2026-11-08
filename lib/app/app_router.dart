@@ -16,8 +16,10 @@ import 'package:voltcore/modules/readiness/presenter/pages/readiness_page.dart';
 import 'package:voltcore/modules/admin/presenter/pages/admin_dashboard_page.dart';
 import 'package:voltcore/modules/admin/presenter/pages/admin_settings_page.dart';
 import '../modules/admin/presenter/pages/audit_log_page.dart';
+import '../modules/admin/presenter/pages/divisions_page.dart';
 import '../modules/admin/presenter/pages/technicians_page.dart';
 import '../modules/auth/presenter/controllers/auth_controller.dart';
+import '../modules/auth/presenter/sign_off_access.dart';
 import '../modules/dashboard/presenter/pages/tech_dashboard_page.dart';
 import '../modules/documents/presenter/pages/document_library_page.dart';
 import '../modules/inventory/presenter/pages/job_needs_page.dart';
@@ -401,7 +403,11 @@ final goRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: RoutePaths.documents,
         name: RouteNames.documents,
-        builder: (_, __) => const TechShell(child: DocumentLibraryPage()),
+        builder: (_, __) => TechShell(child: Consumer(
+              builder: (_, ref, __) => DocumentLibraryPage(
+                canDelete: ref.watch(canSignOffProvider),
+              ),
+            )),
       ),
       GoRoute(
         path: RoutePaths.selectionManagement,
@@ -442,6 +448,11 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         path: RoutePaths.adminAudit,
         name: RouteNames.adminAudit,
         builder: (_, __) => const AdminShell(child: AuditLogPage()),
+      ),
+      GoRoute(
+        path: RoutePaths.adminDivisions,
+        name: RouteNames.adminDivisions,
+        builder: (_, __) => const AdminShell(child: DivisionsPage()),
       ),
       if (kDebugMode)
         GoRoute(

@@ -11,6 +11,7 @@ class InviteRequest {
     required this.displayName,
     required this.role,
     this.phone,
+    this.divisionId,
   });
 
   final String email;
@@ -18,11 +19,16 @@ class InviteRequest {
   final UserRole role;
   final String? phone;
 
+  /// Optional `public.divisions` id; the function checks it is this company's.
+  final String? divisionId;
+
   Map<String, dynamic> toBody() => {
         'email': email,
         'displayName': displayName,
         'role': role.wire,
         if (phone != null && phone!.isNotEmpty) 'phone': phone,
+        if (divisionId != null && divisionId!.isNotEmpty)
+          'divisionId': divisionId,
       };
 }
 

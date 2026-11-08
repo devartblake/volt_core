@@ -8,13 +8,15 @@
 //   supabase functions deploy invite-user
 //
 // Request JSON body (caller's JWT in the Authorization header):
-//   { email, displayName, role: 'technician'|'supervisor'|'dispatcher'|'admin',
-//     phone?, redirectTo?, tenantId? }
+//   { email, displayName,
+//     role: 'apprentice'|'technician'|'supervisor'|'dispatcher'|'admin',
+//     phone?, redirectTo?, tenantId?, divisionId? }
 // Response: { ok: true, userId, invited: boolean, role }  or  { error }
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders, json } from "./cors.ts";
 import {
+  divisionUsable,
   emailDomain,
   INVITE_REASON,
   isRateLimited,
@@ -119,6 +121,24 @@ Deno.serve(async (req: Request) => {
   const tenant = resolveTenant(callerMemberships, input.tenantId);
   if (!tenant.ok) return json({ error: tenant.message }, tenant.status);
   const tenantId = tenant.tenantId;
+
+  // The division, if any, must be one of THIS company's active divisions.
+  // Checked with the service client; the request is not trusted for it.
+  if (input.divisionId !== null) {
+    const { data: divRows, error: divErr } = await admin
+      .from("divisions")
+      .select("id, tenant_id, is_active")
+      .eq("id", input.divisionId)
+      .limit(1);
+    if (divErr) {
+      console.error("invite-user: division lookup failed", divErr.code);
+      return json({ error: "Could not check the division." }, 500);
+    }
+    const div = divRows && divRows.length > 0 ? divRows[0] : null;
+    if (!divisionUsable(div, tenantId)) {
+      return json({ error: "That division is not available." }, 400);
+    }
+  }
 
   // Rate limit: invites recorded by this caller in the last hour.
   const { count, error: countErr } = await admin
@@ -228,6 +248,8 @@ Deno.serve(async (req: Request) => {
     role: plan.newRole,
     is_active: true,
     updated_at: new Date().toISOString(),
+    // Only sent when chosen, so re-inviting someone never clears their division.
+    ...(input.divisionId !== null ? { division_id: input.divisionId } : {}),
   }, { onConflict: "tenant_id,user_id" });
   if (mErr) {
     console.error("invite-user: membership upsert failed", mErr.code);

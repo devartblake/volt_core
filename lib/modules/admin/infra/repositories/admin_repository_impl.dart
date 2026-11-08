@@ -42,6 +42,18 @@ class AdminRepositoryImpl implements AdminRepository {
   }
 
   @override
+  Future<void> setMemberDivision({
+    required TenantMemberEntity member,
+    required String? divisionId,
+  }) {
+    return _remote.updateTenantMemberDivision(
+      tenantId: member.tenantId,
+      userId: member.userId,
+      divisionId: divisionId,
+    );
+  }
+
+  @override
   Future<TenantUserLookup?> lookupUserByEmail(String email) {
     return _remote.lookupUserByEmail(email);
   }

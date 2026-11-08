@@ -72,6 +72,15 @@ class AdminSettingsPage extends StatelessWidget {
             trailing: const Icon(Icons.chevron_right),
             onTap: () => context.push(RoutePaths.adminTechnicians),
           ),
+          ListTile(
+            leading: const Icon(Icons.account_tree_outlined),
+            title: const Text('Divisions'),
+            subtitle: const Text(
+              'The company divisions people can be placed in.',
+            ),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => context.push(RoutePaths.adminDivisions),
+          ),
         ],
       ),
     );

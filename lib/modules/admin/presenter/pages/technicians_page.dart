@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
+import '../../../../core/constants/route_paths.dart';
 import '../../../../shared/widgets/widgets.dart';
 import '../../../auth/domain/user_role.dart';
 import '../../../auth/presenter/controllers/auth_controller.dart';
+import '../../domain/division.dart';
 import '../../domain/entities/tenant_member_entity.dart';
+import '../../infra/division_repository.dart';
 import '../controllers/tenant_role_management_controller.dart';
 import '../widgets/add_tenant_member_dialog.dart';
 import '../widgets/invite_member_sheet.dart';
@@ -46,6 +50,8 @@ class _TechniciansPageState extends ConsumerState<TechniciansPage> {
     final theme = Theme.of(context);
     final search = _searchController.text.trim().toLowerCase();
 
+    final divisions = ref.watch(divisionsProvider).value ?? const <Division>[];
+
     final members = state.members.where((member) {
       if (_roleFilter != null && member.role != _roleFilter) return false;
       if (search.isEmpty) return true;
@@ -54,12 +60,20 @@ class _TechniciansPageState extends ConsumerState<TechniciansPage> {
         member.email,
         member.phone ?? '',
         member.role.name,
+        member.role.label,
+        divisionNameOf(member.divisionId, divisions) ?? '',
       ].join(' ').toLowerCase().contains(search);
     }).toList();
 
     return AppPage(
       title: 'Technicians',
       actions: [
+        if (auth.isAdmin)
+          IconButton(
+            tooltip: 'Divisions',
+            icon: const Icon(Icons.account_tree_outlined),
+            onPressed: () => context.push(RoutePaths.adminDivisions),
+          ),
         if (auth.isAdmin)
           TextButton.icon(
             onPressed: () => _invite(context),
@@ -113,7 +127,7 @@ class _TechniciansPageState extends ConsumerState<TechniciansPage> {
                     ...UserRole.values.map(
                       (role) => DropdownMenuItem<UserRole?>(
                         value: role,
-                        child: Text(_roleLabel(role)),
+                        child: Text(role.label),
                       ),
                     ),
                   ],
@@ -153,6 +167,7 @@ class _TechniciansPageState extends ConsumerState<TechniciansPage> {
                     itemBuilder: (context, index) => _MemberTile(
                       member: members[index],
                       currentUserId: auth.userId,
+                      divisions: divisions,
                     ),
                   ),
           ),
@@ -170,88 +185,196 @@ class _TechniciansPageState extends ConsumerState<TechniciansPage> {
       );
     }
   }
-
-  String _roleLabel(UserRole role) {
-    switch (role) {
-      case UserRole.tech:
-        return 'Technician';
-      case UserRole.dispatcher:
-        return 'Dispatcher';
-      case UserRole.supervisor:
-        return 'Supervisor';
-      case UserRole.admin:
-        return 'Admin';
-    }
-  }
 }
 
 class _MemberTile extends ConsumerWidget {
-  const _MemberTile({required this.member, required this.currentUserId});
+  const _MemberTile({
+    required this.member,
+    required this.currentUserId,
+    this.divisions = const [],
+  });
 
   final TenantMemberEntity member;
   final String? currentUserId;
+  final List<Division> divisions;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final isSelf = currentUserId == member.userId;
+    final divisionName = divisionNameOf(member.divisionId, divisions);
 
     return Card(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        child: Row(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            CircleAvatar(
-              child: Text(_initials(member.displayName)),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
+            Row(
+              children: [
+                CircleAvatar(
+                  child: Text(_initials(member.displayName)),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Flexible(
-                        child: Text(
-                          member.displayName,
-                          style: theme.textTheme.bodyLarge?.copyWith(
-                            fontWeight: FontWeight.w600,
+                      Row(
+                        children: [
+                          Flexible(
+                            child: Text(
+                              member.displayName,
+                              style: theme.textTheme.bodyLarge?.copyWith(
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
                           ),
-                        ),
+                          if (isSelf) ...[
+                            const SizedBox(width: 8),
+                            const Chip(label: Text('You')),
+                          ],
+                        ],
                       ),
-                      if (isSelf) ...[
-                        const SizedBox(width: 8),
-                        const Chip(label: Text('You')),
-                      ],
+                      if (member.email.isNotEmpty) Text(member.email),
+                      Text(
+                        member.isActive ? 'Active member' : 'Inactive member',
+                        style: theme.textTheme.bodySmall,
+                      ),
                     ],
                   ),
-                  if (member.email.isNotEmpty) Text(member.email),
-                  Text(
-                    member.isActive ? 'Active member' : 'Inactive member',
-                    style: theme.textTheme.bodySmall,
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
-            const SizedBox(width: 12),
-            DropdownButton<UserRole>(
-              value: member.role,
-              items: UserRole.values
-                  .map(
-                    (role) => DropdownMenuItem(
-                      value: role,
-                      child: Text(role.name),
-                    ),
-                  )
-                  .toList(),
-              onChanged: member.isActive
-                  ? (newRole) {
-                      if (newRole == null || newRole == member.role) return;
-                      _confirmRoleChange(context, ref, newRole);
-                    }
-                  : null,
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 4,
+              children: [
+                Chip(
+                  key: Key('role_chip_${member.userId}'),
+                  avatar: const Icon(Icons.badge_outlined, size: 16),
+                  label: Text(member.role.label),
+                ),
+                if (divisionName != null)
+                  Chip(
+                    key: Key('division_chip_${member.userId}'),
+                    avatar: const Icon(Icons.account_tree_outlined, size: 16),
+                    label: Text(divisionName),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final roleField = _roleField(context, ref);
+                final divisionField = _divisionField(context, ref);
+                if (divisionField == null) return roleField;
+                if (constraints.maxWidth < 440) {
+                  return Column(
+                    children: [
+                      roleField,
+                      const SizedBox(height: 12),
+                      divisionField,
+                    ],
+                  );
+                }
+                return Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(child: roleField),
+                    const SizedBox(width: 12),
+                    Expanded(child: divisionField),
+                  ],
+                );
+              },
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _roleField(BuildContext context, WidgetRef ref) {
+    // DropdownButton (controlled), not a form field: cancelling the confirm
+    // dialog must leave the shown role as it was.
+    return InputDecorator(
+      decoration: const InputDecoration(
+        labelText: 'Role',
+        border: OutlineInputBorder(),
+        isDense: true,
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<UserRole>(
+          key: Key('role_dropdown_${member.userId}'),
+          value: member.role,
+          isExpanded: true,
+          isDense: true,
+          items: [
+            for (final role in UserRole.values)
+              DropdownMenuItem(value: role, child: Text(role.label)),
+          ],
+          onChanged: member.isActive
+              ? (newRole) {
+                  if (newRole == null || newRole == member.role) return;
+                  _confirmRoleChange(context, ref, newRole);
+                }
+              : null,
+        ),
+      ),
+    );
+  }
+
+  /// Null when the division list could not be loaded (offline, or the
+  /// divisions migration has not been run), so nothing misleading is shown.
+  Widget? _divisionField(BuildContext context, WidgetRef ref) {
+    final offered = [
+      for (final d in divisions)
+        if (d.isActive || d.id == member.divisionId) d,
+    ];
+    if (divisions.isEmpty && member.divisionId == null) return null;
+    return InputDecorator(
+      decoration: const InputDecoration(
+        labelText: 'Division',
+        border: OutlineInputBorder(),
+        isDense: true,
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String?>(
+      key: Key('division_dropdown_${member.userId}'),
+      value: offered.any((d) => d.id == member.divisionId)
+          ? member.divisionId
+          : null,
+      isExpanded: true,
+      isDense: true,
+      items: [
+        const DropdownMenuItem<String?>(
+          value: null,
+          child: Text('No division'),
+        ),
+        for (final d in offered)
+          DropdownMenuItem<String?>(
+            value: d.id,
+            child: Text(
+              d.isActive ? d.name : '${d.name} (not offered)',
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+      ],
+      onChanged: (value) async {
+        if (value == member.divisionId) return;
+        final ok = await ref
+            .read(tenantRoleManagementControllerProvider.notifier)
+            .setDivision(member: member, divisionId: value);
+        if (!context.mounted || !ok) return;
+        AppSnackBar.success(
+          context,
+          value == null
+              ? '${member.displayName} has no division.'
+              : '${member.displayName} is now in '
+                  '${divisionNameOf(value, divisions) ?? 'the division'}.',
+        );
+      },
         ),
       ),
     );
@@ -272,7 +395,7 @@ class _MemberTile extends ConsumerWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              '${member.displayName}: ${member.role.name} → ${newRole.name}',
+              '${member.displayName}: ${member.role.label} → ${newRole.label}',
             ),
             const SizedBox(height: 16),
             TextField(
@@ -317,7 +440,7 @@ class _MemberTile extends ConsumerWidget {
 
     if (!context.mounted) return;
     if (success) {
-      AppSnackBar.success(context, '${member.displayName} is now ${newRole.name}.');
+      AppSnackBar.success(context, '${member.displayName} is now ${newRole.label}.');
     }
   }
 

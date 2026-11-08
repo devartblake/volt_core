@@ -10,6 +10,7 @@ import '../../infra/repositories/inspection_repository.dart';
 import '../../infra/repositories/inspection_repository_impl.dart';
 import '../controllers/inspection_list_prefs.dart';
 import '../widgets/inspection_filter_presets_bar.dart';
+import '../../../auth/presenter/sign_off_access.dart';
 import '../widgets/finish_sheet.dart';
 import '../controllers/inspection_list_controller.dart';
 import '../inspection_date_filter.dart';
@@ -519,6 +520,8 @@ class _InspectionListPageState
     );
 
     final canDelete = ref.watch(inspectionCanDeleteProvider);
+    // Apprentices get the swipe so they are told why they cannot delete.
+    final apprentice = !ref.watch(canSignOffProvider);
     final scheme = theme.colorScheme;
 
     Widget swipeBg(Alignment align, Color bg, Color fg, IconData icon,
@@ -546,7 +549,7 @@ class _InspectionListPageState
 
     return Dismissible(
       key: ValueKey('inspection-${ins.id}'),
-      direction: canDelete
+      direction: canDelete || apprentice
           ? DismissDirection.horizontal
           : DismissDirection.startToEnd,
       background: swipeBg(Alignment.centerLeft, scheme.secondaryContainer,
@@ -559,6 +562,10 @@ class _InspectionListPageState
         if (direction == DismissDirection.startToEnd) {
           // Quick action: runs, then the row springs back.
           unawaited(scheduleMaintenanceFromInspection(ctx, ref, ins));
+          return false;
+        }
+        if (!canDelete) {
+          showSignOffBlocked(ctx);
           return false;
         }
         return true;

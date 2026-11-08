@@ -57,6 +57,12 @@ void main() {
       expect(visible, isNot(contains(RouteNames.tenantsSettings)));
     });
 
+    test('apprentices see exactly what technicians see', () {
+      expect(_visibleTo(UserRole.apprentice), _visibleTo(UserRole.tech));
+      expect(_visibleTo(UserRole.apprentice),
+          isNot(contains(RouteNames.adminTechnicians)));
+    });
+
     test('technicians keep their day-to-day entries', () {
       final visible = _visibleTo(UserRole.tech);
 

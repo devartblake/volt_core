@@ -115,6 +115,7 @@ class RoutePaths {
   static const String adminSettings = '/admin/settings';
   static const String adminTechnicians = '/admin/technicians';
   static const String adminAudit = '/admin/audit';
+  static const String adminDivisions = '/admin/divisions';
 }
 
 /// Optional: route name constants if you want them too.
@@ -186,4 +187,5 @@ class RouteNames {
   static const String adminSettings = 'admin_settings';
   static const String adminTechnicians = 'admin_technicians';
   static const String adminAudit = 'admin_audit';
+  static const String adminDivisions = 'admin_divisions';
 }

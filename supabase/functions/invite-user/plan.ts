@@ -86,6 +86,25 @@ export function planMembership(
   return { action: "unchanged", previousRole, newRole };
 }
 
+export interface DivisionRow {
+  id: string;
+  tenant_id: string;
+  is_active: boolean;
+}
+
+/**
+ * A division may only be used when it exists, belongs to the resolved tenant
+ * and is still offered. Rows come from a service-client query, so the check is
+ * made here rather than trusted to the request.
+ */
+export function divisionUsable(
+  row: DivisionRow | null | undefined,
+  tenantId: string,
+): boolean {
+  return !!row && row.is_active === true &&
+    row.tenant_id.toLowerCase() === tenantId.toLowerCase();
+}
+
 export function rateLimitSince(now: number): string {
   return new Date(now - RATE_LIMIT_WINDOW_MS).toISOString();
 }

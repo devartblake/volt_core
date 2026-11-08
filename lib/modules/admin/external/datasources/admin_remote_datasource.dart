@@ -27,11 +27,23 @@ class AdminRemoteDatasource {
       throw StateError('No active tenant is configured.');
     }
 
-    final memberRows = (await _client
-            .from(tenantMembersTable)
-            .select('tenant_id,user_id,role,is_active')
-            .eq('tenant_id', tenantId))
-        .cast<Map<String, dynamic>>();
+    List<Map<String, dynamic>> memberRows;
+    try {
+      memberRows = (await _client
+              .from(tenantMembersTable)
+              .select('tenant_id,user_id,role,is_active,division_id')
+              .eq('tenant_id', tenantId))
+          .cast<Map<String, dynamic>>();
+    } on PostgrestException catch (e) {
+      // 42703: undefined column. The divisions migration has not been run
+      // yet; list the team without divisions rather than failing the page.
+      if (e.code != '42703') rethrow;
+      memberRows = (await _client
+              .from(tenantMembersTable)
+              .select('tenant_id,user_id,role,is_active')
+              .eq('tenant_id', tenantId))
+          .cast<Map<String, dynamic>>();
+    }
 
     final userIds = memberRows
         .map((row) => row['user_id']?.toString())
@@ -72,6 +84,9 @@ class AdminRemoteDatasource {
           phone: profile?['phone']?.toString(),
           role: role,
           isActive: row['is_active'] == true,
+          divisionId: (row['division_id']?.toString().isEmpty ?? true)
+              ? null
+              : row['division_id'].toString(),
         ),
       );
     }
@@ -126,6 +141,24 @@ class AdminRemoteDatasource {
           .eq('user_id', userId);
       rethrow;
     }
+  }
+
+  /// Set (or clear, with null) a member's division. Not a role change, so no
+  /// `tenant_role_assignments` row; the audit log trigger on `tenant_members`
+  /// records it.
+  Future<void> updateTenantMemberDivision({
+    required String tenantId,
+    required String userId,
+    required String? divisionId,
+  }) async {
+    await _client
+        .from(tenantMembersTable)
+        .update({
+          'division_id': divisionId,
+          'updated_at': DateTime.now().toUtc().toIso8601String(),
+        })
+        .eq('tenant_id', tenantId)
+        .eq('user_id', userId);
   }
 
   /// Find a registered user by their exact email address.
