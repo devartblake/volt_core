@@ -11,6 +11,7 @@ import '../../domain/analytics_snapshot.dart';
 import '../analytics_providers.dart';
 import '../dashboard_providers.dart';
 import '../widgets/analytics/analytics_chart_card.dart';
+import '../widgets/analytics/analytics_mini_charts.dart';
 import '../widgets/analytics/inspection_charts.dart';
 import '../widgets/analytics/operations_charts.dart';
 
@@ -42,9 +43,11 @@ class AnalyticsPage extends ConsumerWidget {
 
     final orders = ref.watch(analyticsOrdersProvider).value;
     final stock = ref.watch(analyticsStockProvider).value;
-    final techs = access.workload ? ref.watch(dashboardTechniciansProvider).value : null;
+    final techs =
+        access.workload ? ref.watch(dashboardTechniciansProvider).value : null;
 
-    void openGrade(String grade) => context.push('${RoutePaths.inspections}?grade=$grade');
+    void openGrade(String grade) =>
+        context.push('${RoutePaths.inspections}?grade=$grade');
 
     return AppPage(
       title: 'Analytics',
@@ -65,26 +68,39 @@ class AnalyticsPage extends ConsumerWidget {
             _SectionLabel('Inspections', theme: theme),
             _StatGrid(
               children: [
-                StatCard.tile(
+                AnalyticsMiniTile(
                   label: 'Total inspections',
+                  graph: AnalyticsMinis.totalInspections(
+                    theme,
+                    snapshot.inspections,
+                    period,
+                    now,
+                  ),
                   value: '${m.totalInspections}',
                   icon: Icons.fact_check_outlined,
                   color: theme.colorScheme.primary,
                 ),
-                StatCard.tile(
+                AnalyticsMiniTile(
                   label: 'With deficiencies',
+                  graph: AnalyticsMinis.deficiencies(theme, m),
                   value: '${m.deficiencies}',
                   icon: Icons.report_problem_outlined,
                   color: theme.status.warning,
                 ),
-                StatCard.tile(
+                AnalyticsMiniTile(
                   label: 'Load tests done',
+                  graph: AnalyticsMinis.loadTests(theme, m),
                   value: '${m.loadTestsDone}',
                   icon: Icons.speed_outlined,
                   color: theme.colorScheme.tertiary,
                 ),
-                StatCard.tile(
+                AnalyticsMiniTile(
                   label: 'This month',
+                  graph: AnalyticsMinis.thisMonth(
+                    theme,
+                    snapshot.inspections,
+                    now,
+                  ),
                   value: '${m.inspectionsThisMonth}',
                   icon: Icons.calendar_today_outlined,
                   color: theme.colorScheme.secondary,
@@ -92,43 +108,83 @@ class AnalyticsPage extends ConsumerWidget {
               ],
             ),
             const SizedBox(height: 12),
-            _ChartGrid(children: [
-              WeeklyInspectionsChart(
-                  inspections: snapshot.inspections, period: period, now: now),
-              MonthlyInspectionsChart(
-                  inspections: snapshot.inspections, period: period, now: now),
-              GradeSplitChart(
-                split: GradeSplitChart.splitFor(snapshot.inspections, period, now),
-                period: period,
-                onOpenGrade: openGrade,
-              ),
-              TopRedSitesChart(inspections: snapshot.inspections, period: period, now: now),
-            ]),
+            _ChartGrid(
+              children: [
+                WeeklyInspectionsChart(
+                  inspections: snapshot.inspections,
+                  period: period,
+                  now: now,
+                ),
+                MonthlyInspectionsChart(
+                  inspections: snapshot.inspections,
+                  period: period,
+                  now: now,
+                ),
+                GradeSplitChart(
+                  split: GradeSplitChart.splitFor(
+                    snapshot.inspections,
+                    period,
+                    now,
+                  ),
+                  period: period,
+                  onOpenGrade: openGrade,
+                ),
+                TopRedSitesChart(
+                  inspections: snapshot.inspections,
+                  period: period,
+                  now: now,
+                ),
+              ],
+            ),
             const SizedBox(height: 24),
 
             _SectionLabel('Maintenance', theme: theme),
             _StatGrid(
               children: [
-                StatCard.tile(
+                AnalyticsMiniTile(
                   label: 'Total jobs',
+                  graph: AnalyticsMinis.totalMaintenance(
+                    theme,
+                    snapshot.maintenance,
+                    period,
+                    now,
+                  ),
                   value: '${m.totalMaintenance}',
                   icon: Icons.build_outlined,
                   color: theme.colorScheme.primary,
                 ),
-                StatCard.tile(
+                AnalyticsMiniTile(
                   label: 'Completed',
+                  graph: AnalyticsMinis.maintenanceShare(
+                    'completed',
+                    m.maintenanceCompleted,
+                    m.totalMaintenance,
+                    theme.status.success,
+                  ),
                   value: '${m.maintenanceCompleted}',
                   icon: Icons.check_circle_outline,
                   color: theme.status.success,
                 ),
-                StatCard.tile(
+                AnalyticsMiniTile(
                   label: 'Open',
+                  graph: AnalyticsMinis.maintenanceShare(
+                    'are open',
+                    m.maintenanceOpen,
+                    m.totalMaintenance,
+                    theme.colorScheme.secondary,
+                  ),
                   value: '${m.maintenanceOpen}',
                   icon: Icons.pending_actions_outlined,
                   color: theme.colorScheme.secondary,
                 ),
-                StatCard.tile(
+                AnalyticsMiniTile(
                   label: 'Needs follow-up',
+                  graph: AnalyticsMinis.maintenanceShare(
+                    'need follow-up',
+                    m.maintenanceFollowUp,
+                    m.totalMaintenance,
+                    theme.colorScheme.error,
+                  ),
                   value: '${m.maintenanceFollowUp}',
                   icon: Icons.flag_outlined,
                   color: theme.colorScheme.error,
@@ -141,24 +197,38 @@ class AnalyticsPage extends ConsumerWidget {
               done: m.maintenanceCompleted,
               total: m.totalMaintenance,
               theme: theme,
+              strip: AnalyticsMinis.completedPerMonthStrip(
+                theme,
+                snapshot.maintenance,
+                period,
+                now,
+              ),
             ),
             const SizedBox(height: 12),
-            _ChartGrid(children: [
-              MaintenanceChart(records: snapshot.maintenance, period: period, now: now),
-            ]),
+            _ChartGrid(
+              children: [
+                MaintenanceChart(
+                  records: snapshot.maintenance,
+                  period: period,
+                  now: now,
+                ),
+              ],
+            ),
             const SizedBox(height: 24),
 
             _SectionLabel('Schedule', theme: theme),
             _StatGrid(
               children: [
-                StatCard.tile(
+                AnalyticsMiniTile(
                   label: 'Upcoming',
+                  graph: AnalyticsMinis.upcoming(theme, snapshot.tasks, now),
                   value: '${m.upcomingTasks}',
                   icon: Icons.event_available_outlined,
                   color: theme.colorScheme.primary,
                 ),
-                StatCard.tile(
+                AnalyticsMiniTile(
                   label: 'Overdue',
+                  graph: AnalyticsMinis.overdue(theme, snapshot.tasks, now),
                   value: '${m.overdueTasks}',
                   icon: Icons.event_busy_outlined,
                   color: theme.colorScheme.error,
@@ -167,17 +237,19 @@ class AnalyticsPage extends ConsumerWidget {
             ),
             if (orders != null || techs != null || stock != null) ...[
               const SizedBox(height: 12),
-              _ChartGrid(children: [
-                if (orders != null) JobsChart(orders: orders, now: now),
-                if (techs != null)
-                  WorkloadChart(
-                    tasks: snapshot.tasks,
-                    names: techs.names,
-                    roster: techs.roster,
-                    now: now,
-                  ),
-                if (stock != null) InventoryChart(split: stock),
-              ]),
+              _ChartGrid(
+                children: [
+                  if (orders != null) JobsChart(orders: orders, now: now),
+                  if (techs != null)
+                    WorkloadChart(
+                      tasks: snapshot.tasks,
+                      names: techs.names,
+                      roster: techs.roster,
+                      now: now,
+                    ),
+                  if (stock != null) InventoryChart(split: stock),
+                ],
+              ),
             ],
             const SizedBox(height: 24),
           ],
@@ -221,25 +293,27 @@ class _ChartGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(builder: (context, c) {
-      if (c.maxWidth < 900 || children.length < 2) {
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            for (var i = 0; i < children.length; i++) ...[
-              if (i > 0) const SizedBox(height: _gap),
-              children[i],
+    return LayoutBuilder(
+      builder: (context, c) {
+        if (c.maxWidth < 900 || children.length < 2) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              for (var i = 0; i < children.length; i++) ...[
+                if (i > 0) const SizedBox(height: _gap),
+                children[i],
+              ],
             ],
-          ],
+          );
+        }
+        final w = (c.maxWidth - _gap) / 2;
+        return Wrap(
+          spacing: _gap,
+          runSpacing: _gap,
+          children: [for (final ch in children) SizedBox(width: w, child: ch)],
         );
-      }
-      final w = (c.maxWidth - _gap) / 2;
-      return Wrap(
-        spacing: _gap,
-        runSpacing: _gap,
-        children: [for (final ch in children) SizedBox(width: w, child: ch)],
-      );
-    });
+      },
+    );
   }
 }
 
@@ -264,13 +338,13 @@ class _SectionLabel extends StatelessWidget {
   }
 }
 
-
 class _ProgressCard extends StatelessWidget {
   const _ProgressCard({
     required this.label,
     required this.done,
     required this.total,
     required this.theme,
+    required this.strip,
   });
 
   final String label;
@@ -278,57 +352,77 @@ class _ProgressCard extends StatelessWidget {
   final int total;
   final ThemeData theme;
 
+  /// Completed per month, beside the "x of y" line.
+  final MiniGraph strip;
+
   @override
   Widget build(BuildContext context) {
     final ratio = total == 0 ? 0.0 : done / total;
-    return Card(
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: theme.colorScheme.outlineVariant),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Expanded(
-                  child: Text(
-                    label,
-                    style: theme.textTheme.titleSmall
-                        ?.copyWith(fontWeight: FontWeight.w600),
+    return Semantics(
+      container: true,
+      label:
+          '$label: ${(ratio * 100).round()}%, $done of $total completed. '
+          '${strip.semantics}',
+      excludeSemantics: true,
+      child: Card(
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: BorderSide(color: theme.colorScheme.outlineVariant),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Text(
+                      label,
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                   ),
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  '${(ratio * 100).round()}%',
-                  style: theme.textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: theme.colorScheme.primary,
+                  const SizedBox(width: 8),
+                  Text(
+                    '${(ratio * 100).round()}%',
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: theme.colorScheme.primary,
+                    ),
                   ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(6),
+                child: LinearProgressIndicator(
+                  value: ratio,
+                  minHeight: 10,
+                  backgroundColor: theme.colorScheme.surfaceContainerHighest,
                 ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(6),
-              child: LinearProgressIndicator(
-                value: ratio,
-                minHeight: 10,
-                backgroundColor: theme.colorScheme.surfaceContainerHighest,
               ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              '$done of $total completed',
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
+              const SizedBox(height: 6),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Expanded(
+                    child: Text(
+                      '$done of $total completed',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  SizedBox(width: 120, child: strip.widget),
+                ],
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

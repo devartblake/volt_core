@@ -168,12 +168,21 @@ void main() {
 
     test('highest first, ties by name, limited to n', () {
       final r = topN(['b', 'a', 'c', 'c', 'B', 'd', 'e', 'f', 'b'], 3);
-      // b:2 and c:2 tie (name order); a, B, d, e, f have 1 each, 'a' sorts first.
-      expect(r, [const LabelCount('b', 2), const LabelCount('c', 2), const LabelCount('a', 1)]);
+      // b/B/b is one site (3); c has 2; a, d, e, f have 1 each, 'a' sorts first.
+      expect(r, [const LabelCount('b', 3), const LabelCount('c', 2), const LabelCount('a', 1)]);
     });
 
     test('fewer than n returns all', () {
       expect(topN(['x'], 5), [const LabelCount('x', 1)]);
+    });
+
+    test('groups case-insensitively and trimmed, showing the first spelling seen', () {
+      expect(topN(['b', 'B', ' b ', 'a'], 5),
+          [const LabelCount('b', 3), const LabelCount('a', 1)]);
+      expect(topN(['Site_X', 'SITE_X', 'site_x'], 5), [const LabelCount('Site_X', 3)]);
+      // Tie after grouping falls back to name order.
+      expect(topN(['Zed', 'zed', 'Amy', 'AMY'], 5),
+          [const LabelCount('Amy', 2), const LabelCount('Zed', 2)]);
     });
 
     test('trims keys', () {

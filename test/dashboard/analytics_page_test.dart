@@ -1,3 +1,5 @@
+import 'dart:ui' show PictureRecorder;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart' show Override;
@@ -15,6 +17,7 @@ import 'package:voltcore/modules/dashboard/presenter/analytics_providers.dart';
 import 'package:voltcore/modules/dashboard/presenter/dashboard_providers.dart';
 import 'package:voltcore/modules/dashboard/presenter/pages/analytics_page.dart';
 import 'package:voltcore/modules/dashboard/presenter/widgets/analytics/analytics_chart_card.dart';
+import 'package:voltcore/modules/dashboard/presenter/widgets/analytics/analytics_mini_charts.dart';
 import 'package:voltcore/modules/inventory/domain/catalog_part.dart';
 import 'package:voltcore/modules/inventory/domain/stock.dart';
 import 'package:voltcore/modules/inventory/infra/inventory_repository.dart';
@@ -315,6 +318,173 @@ void main() {
       await _settle(tester, 4);
       expect(find.text('inspection list'), findsOneWidget);
       expect(seen, 'red');
+    });
+  });
+
+  group('number cards carry a mini graph', () {
+    // Upcoming: today 16:00 and 10 Nov (inside 7 days), 20 Nov (outside).
+    // Overdue: 7 Nov (1 day), 20 Oct (19 days), 1 Oct (38 days).
+    final sched = AnalyticsSnapshot(tasks: [
+      TaskPoint(when: DateTime(2026, 11, 8, 16), status: 'scheduled'),
+      TaskPoint(when: DateTime(2026, 11, 10), status: 'scheduled'),
+      TaskPoint(when: DateTime(2026, 11, 20), status: 'scheduled'),
+      TaskPoint(when: DateTime(2026, 11, 7), status: 'overdue'),
+      TaskPoint(when: DateTime(2026, 10, 20), status: 'scheduled'),
+      TaskPoint(when: DateTime(2026, 10, 1), status: 'scheduled'),
+    ]);
+
+    Finder tile(String label) =>
+        find.byWidgetPredicate((w) => w is AnalyticsMiniTile && w.label == label);
+    Finder numberIn(String label, String n) =>
+        find.descendant(of: tile(label), matching: find.text(n));
+
+    testWidgets('every card reads its number and its graph', (tester) async {
+      final handle = tester.ensureSemantics();
+      await _pump(tester, snapshot: _full);
+      for (final label in [
+        'Total inspections',
+        'With deficiencies',
+        'Load tests done',
+        'This month',
+        'Total jobs',
+        'Completed',
+        'Open',
+        'Needs follow-up',
+        'Upcoming',
+        'Overdue',
+      ]) {
+        expect(tile(label), findsOneWidget, reason: label);
+      }
+      expect(find.byType(MiniBars), findsNWidgets(5)); // 4 tiles + progress strip
+      expect(find.byType(MiniShareRing), findsNWidgets(5));
+      expect(find.byType(MiniStack), findsOneWidget);
+
+      expect(_sem('Total inspections: 7. Per week, last 12 weeks: 6 inspections, this week 3'),
+          findsOneWidget);
+      expect(_sem('With deficiencies: 0. 0 of 7 inspections (0%) have deficiencies'),
+          findsOneWidget);
+      expect(_sem('Load tests done: 0. 0 of 7 inspections (0%) had a load test'),
+          findsOneWidget);
+      expect(_sem('This month: 3. By day, Nov (30 days): 3 inspections, today 0'),
+          findsOneWidget);
+      expect(_sem('Total jobs: 4. Per month, 6 months: 3 jobs, this month 2'),
+          findsOneWidget);
+      expect(_sem('Completed: 3. 3 of 4 jobs (75%) completed'), findsOneWidget);
+      expect(_sem('Open: 1. 1 of 4 jobs (25%) are open'), findsOneWidget);
+      expect(_sem('Needs follow-up: 0. 0 of 4 jobs (0%) need follow-up'), findsOneWidget);
+      expect(
+          _sem('Maintenance completion: 75%, 3 of 4 completed. '
+              'Completed per month, 6 months: 2, this month 1'),
+          findsOneWidget);
+      expect(_sem('Upcoming: 0. Next 7 days: nothing scheduled'), findsOneWidget);
+      expect(
+          _sem('Overdue: 4. Overdue by age: 4 up to 7 days, 0 8 to 30 days, '
+              '0 31 days or more'),
+          findsOneWidget);
+
+      // The numbers are still on the cards.
+      expect(numberIn('Total inspections', '7'), findsOneWidget);
+      expect(numberIn('This month', '3'), findsOneWidget);
+      expect(numberIn('Completed', '3'), findsOneWidget);
+      expect(numberIn('Overdue', '4'), findsOneWidget);
+      expect(find.text('75%'), findsOneWidget);
+      handle.dispose();
+      expect(_overflows, isEmpty);
+    });
+
+    testWidgets('schedule minis: next 7 days and overdue age buckets', (tester) async {
+      final handle = tester.ensureSemantics();
+      await _pump(tester, snapshot: sched);
+      expect(_sem('Upcoming: 3. Next 7 days: 2 tasks, today 1'), findsOneWidget);
+      expect(
+          _sem('Overdue: 3. Overdue by age: 1 up to 7 days, 1 8 to 30 days, '
+              '1 31 days or more'),
+          findsOneWidget);
+      handle.dispose();
+    });
+
+    testWidgets('all-zero data shows flat tracks, no errors, numbers still shown',
+        (tester) async {
+      final handle = tester.ensureSemantics();
+      await _pump(tester);
+      expect(_sem('Total inspections: 0. Per week, last 12 weeks: no inspections'),
+          findsOneWidget);
+      expect(_sem('With deficiencies: 0. 0 of 0 inspections (0%) have deficiencies'),
+          findsOneWidget);
+      expect(_sem('This month: 0. By day, Nov: no inspections yet'), findsOneWidget);
+      expect(_sem('Total jobs: 0. Per month, 6 months: no jobs'), findsOneWidget);
+      expect(_sem('Completed: 0. 0 of 0 jobs (0%) completed'), findsOneWidget);
+      expect(_sem('Upcoming: 0. Next 7 days: nothing scheduled'), findsOneWidget);
+      expect(_sem('Overdue: 0. None overdue'), findsOneWidget);
+      expect(
+          _sem('Maintenance completion: 0%, 0 of 0 completed. '
+              'Completed per month, 6 months: none'),
+          findsOneWidget);
+      expect(numberIn('Total inspections', '0'), findsOneWidget);
+      handle.dispose();
+      expect(_overflows, isEmpty);
+      expect(tester.takeException(), isNull);
+    });
+
+    test('painters draw all-zero, empty and tiny boxes without throwing', () {
+      void run(CustomPainter p, Size s) {
+        final rec = PictureRecorder();
+        p.paint(Canvas(rec), s);
+        rec.endRecording();
+      }
+
+      const track = Color(0xFFCCCCCC);
+      for (final size in [const Size(80, 28), const Size(3, 3), Size.zero]) {
+        for (final v in [
+          const <int>[],
+          const [0, 0, 0],
+          const [0, 4, 1],
+          const [1, 2],
+        ]) {
+          run(
+              MiniBarsPainter(
+                  values: v, color: Colors.red, trackColor: track, highlight: 9),
+              size);
+          run(MiniBarsPainter(values: v, color: Colors.red, trackColor: track), size);
+        }
+      }
+    });
+
+    testWidgets('period selector changes the period-following minis only', (tester) async {
+      final handle = tester.ensureSemantics();
+      await _pump(tester, snapshot: _full);
+
+      await tester.tap(find.byKey(const Key('period-weeks4')));
+      await _settle(tester, 3);
+      expect(_sem('Total inspections: 7. Per week, last 4 weeks: 4 inspections, this week 3'),
+          findsOneWidget);
+
+      await tester.tap(find.byKey(const Key('period-all')));
+      await _settle(tester, 3);
+      expect(
+          _sem('Total inspections: 7. Per week, up to 43 weeks: 7 inspections, this week 3'),
+          findsOneWidget);
+      expect(_sem('Total jobs: 4. Per month, 11 months: 4 jobs, this month 2'),
+          findsOneWidget);
+      expect(
+          _sem('Maintenance completion: 75%, 3 of 4 completed. '
+              'Completed per month, 11 months: 3, this month 1'),
+          findsOneWidget);
+      // State-based minis are unchanged.
+      expect(_sem('This month: 3. By day, Nov (30 days): 3 inspections, today 0'),
+          findsOneWidget);
+      expect(_sem('Completed: 3. 3 of 4 jobs (75%) completed'), findsOneWidget);
+      expect(_sem('Overdue: 4. Overdue by age: 4 up to 7 days'), findsOneWidget);
+      handle.dispose();
+    });
+
+    testWidgets('role gating is unchanged: number cards show for a technician',
+        (tester) async {
+      await _pump(tester, snapshot: _full, role: UserRole.tech, orders: _orders);
+      expect(tile('Total inspections'), findsOneWidget);
+      expect(tile('Overdue'), findsOneWidget);
+      expect(find.text('Technician workload'), findsNothing);
+      expect(find.text('Parts stock'), findsNothing);
     });
   });
 

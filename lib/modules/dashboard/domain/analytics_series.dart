@@ -229,15 +229,20 @@ GradeSplit gradeSplit(Iterable<String> grades) {
 }
 
 /// The [n] most frequent non-blank keys: highest count first, ties broken by
-/// name (case-insensitive) so the order is stable.
+/// name (case-insensitive) so the order is stable. Keys are grouped trimmed and
+/// case-insensitively ("b", "B" and " b " are one key); the label is the first
+/// spelling seen, trimmed.
 List<LabelCount> topN(Iterable<String> keys, int n) {
+  final labels = <String, String>{};
   final counts = <String, int>{};
   for (final k in keys) {
-    final key = k.trim();
-    if (key.isEmpty) continue;
+    final label = k.trim();
+    if (label.isEmpty) continue;
+    final key = label.toLowerCase();
+    labels.putIfAbsent(key, () => label);
     counts[key] = (counts[key] ?? 0) + 1;
   }
-  final out = [for (final e in counts.entries) LabelCount(e.key, e.value)]
+  final out = [for (final e in counts.entries) LabelCount(labels[e.key]!, e.value)]
     ..sort((a, b) {
       final c = b.count.compareTo(a.count);
       return c != 0 ? c : a.label.toLowerCase().compareTo(b.label.toLowerCase());
