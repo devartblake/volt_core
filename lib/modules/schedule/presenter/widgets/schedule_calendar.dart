@@ -189,7 +189,18 @@ class ScheduleCalendarEnhanced extends StatelessWidget {
       return taskDate.isAfter(tomorrow) && taskDate.isBefore(weekEnd);
     }).toList()..sort((a, b) => a.scheduledDate.compareTo(b.scheduledDate));
 
-    final upcomingCount = todayTasks.length + tomorrowTasks.length + weekTasks.length;
+    // The day picked on the calendar. Past days and days beyond the week are
+    // not in the groups above, so without this a marked day could not be opened.
+    final picked = DateTime(selectedDay.year, selectedDay.month, selectedDay.day);
+    final pickedIsListed = picked.isAtSameMomentAs(today) ||
+        picked.isAtSameMomentAs(tomorrow) ||
+        (picked.isAfter(tomorrow) && picked.isBefore(weekEnd));
+    final pickedTasks = pickedIsListed ? <TaskScheduleEntity>[] : _eventsForDay(picked);
+
+    final upcomingCount = pickedTasks.length +
+        todayTasks.length +
+        tomorrowTasks.length +
+        weekTasks.length;
 
     return Container(
       color: theme.colorScheme.surfaceContainerLow,
@@ -245,6 +256,10 @@ class ScheduleCalendarEnhanced extends StatelessWidget {
                 : ListView(
               padding: const EdgeInsets.all(16),
               children: [
+                if (pickedTasks.isNotEmpty) ...[
+                  _buildTaskGroup(_dayTitle(picked), pickedTasks, theme),
+                  const SizedBox(height: 16),
+                ],
                 if (todayTasks.isNotEmpty) ...[
                   _buildTaskGroup('TODAY', todayTasks, theme),
                   const SizedBox(height: 16),
@@ -262,6 +277,12 @@ class ScheduleCalendarEnhanced extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  static String _dayTitle(DateTime d) {
+    const months = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+    const days = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'];
+    return '${days[d.weekday - 1]}, ${months[d.month - 1]} ${d.day}';
   }
 
   // Task group section
