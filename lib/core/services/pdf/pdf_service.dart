@@ -31,6 +31,8 @@ import '../../../modules/materials/infra/materials_repository.dart';
 import 'pdf_prefs_service.dart';
 import 'vehicle_report_data.dart';
 import 'vehicle_report_pdf.dart';
+import 'readiness_report_pdf.dart';
+import '../../../modules/readiness/domain/readiness_export_data.dart';
 import '../photos/photo_service.dart';
 import '../storage/file_storage_service.dart';
 import '../storage/path_resolver.dart';
@@ -2736,6 +2738,44 @@ class PdfService {
     return _saveAndMaybeEmailPdf(
       bytes: bytes,
       fileName: fileName,
+      prefs: prefs ?? const PdfExportPrefs(emailAllowed: false),
+    );
+  }
+
+  // ---------- Fleet readiness report ----------
+
+  /// Build the Fleet Readiness Report: summary page, 12-week due table, then
+  /// the units grouped by status.
+  Future<Uint8List> buildReadinessPdfBytes(ReadinessExportData data) async {
+    await PdfTemplate.loadFooterArt();
+    final theme = await _loadNotoTheme();
+    final pdf = pw.Document(theme: theme);
+
+    pw.MemoryImage? logo;
+    try {
+      final logoData = await rootBundle.load('assets/images/company_logo.png');
+      logo = pw.MemoryImage(logoData.buffer.asUint8List());
+    } catch (_) {
+      logo = null;
+    }
+
+    ReadinessReportPdf.addTo(pdf, data, logo: logo);
+    return pdf.save();
+  }
+
+  /// Generate the Fleet Readiness Report and store it in the PDF library, under
+  /// `readiness/` (listed in the Documents hub as "Other").
+  Future<PdfExportResult> generateReadinessPdf(
+    ReadinessExportData data, {
+    PdfExportPrefs? prefs,
+  }) async {
+    final bytes = await buildReadinessPdfBytes(data);
+    final stamp = '${_fmtDate(data.asOf)}_'
+        '${data.asOf.hour.toString().padLeft(2, '0')}'
+        '${data.asOf.minute.toString().padLeft(2, '0')}';
+    return _saveAndMaybeEmailPdf(
+      bytes: bytes,
+      fileName: p.join('readiness', 'Fleet_Readiness_Report_$stamp.pdf'),
       prefs: prefs ?? const PdfExportPrefs(emailAllowed: false),
     );
   }

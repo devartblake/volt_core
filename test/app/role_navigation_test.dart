@@ -9,6 +9,7 @@ import 'package:voltcore/modules/auth/domain/user_role.dart';
 const _drawerRouteNames = <String>{
   RouteNames.dashboard,
   RouteNames.analytics,
+  RouteNames.readiness,
   RouteNames.inspections,
   RouteNames.inspectionNew,
   RouteNames.inspectionsPending,

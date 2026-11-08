@@ -10,6 +10,7 @@ const _allRouteNames = <String>{
   RouteNames.dashboard,
   RouteNames.techDashboard,
   RouteNames.analytics,
+  RouteNames.readiness,
   RouteNames.inspections,
   RouteNames.inspectionNew,
   RouteNames.inspectionEdit,

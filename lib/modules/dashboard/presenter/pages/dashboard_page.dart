@@ -13,6 +13,9 @@ import '../../../fleet/infra/repositories/vehicle_inspection_repository.dart';
 import '../../../inspections/presenter/controllers/app_badges_controller.dart';
 import '../../../inventory/presenter/movement_providers.dart' show jobsShortOfPartsProvider;
 import '../../../inspections/presenter/controllers/inspection_list_controller.dart';
+import '../../../readiness/domain/readiness_models.dart' show ReadinessStatus;
+import '../../../readiness/domain/readiness_summary.dart' show ReadinessSummary;
+import '../../../readiness/presenter/readiness_providers.dart';
 import '../../../schedule/domain/entities/task_schedule_entity.dart';
 import '../../../schedule/domain/schedule_view_logic.dart' show unassignedFilter;
 import '../../../schedule/presenter/controllers/schedule_controller.dart';
@@ -151,6 +154,10 @@ class _Body extends ConsumerWidget {
     final workload = ref.watch(dashboardWorkloadProvider).asData?.value;
     final dailyDue = ref.watch(dailyChecksDueProvider).asData?.value;
     final badges = ref.watch(appBadgesProvider);
+    // Technicians are not shown the fleet totals; skip the work for them.
+    final readiness = audience == DashboardAudience.field
+        ? null
+        : ref.watch(readinessSummaryProvider).value;
 
     final attention = buildAttention(AttentionInputs(
       audience: audience,
@@ -162,7 +169,9 @@ class _Body extends ConsumerWidget {
       jobsShortOfParts: audience == DashboardAudience.field
           ? 0
           : ref.watch(jobsShortOfPartsProvider).asData?.value ?? 0,
-      routes: const AttentionRoutes(
+      generatorsNotReady: readiness?.count(ReadinessStatus.notReady) ?? 0,
+      routes: AttentionRoutes(
+        readinessNotReady: '${RoutePaths.readiness}?status=notReady',
         schedule: RoutePaths.schedule,
         jobs: RoutePaths.workOrders,
         inspections: RoutePaths.inspections,
@@ -178,6 +187,7 @@ class _Body extends ConsumerWidget {
       workload: workload,
       dailyDue: dailyDue,
       badges: badges,
+      readiness: readiness,
       inspectionTrend: dailyCounts(
         ref.watch(inspectionListControllerProvider).items.map((i) => i.serviceDate),
         now: DateTime.now(),
@@ -286,6 +296,7 @@ List<_Stat> _stats(
   required WorkOrderWorkload? workload,
   required int? dailyDue,
   required AppBadges badges,
+  ReadinessSummary? readiness,
   List<int>? inspectionTrend,
 }) {
   final theme = Theme.of(context);
@@ -323,6 +334,22 @@ List<_Stat> _stats(
           RoutePaths.workOrders,
         );
 
+  final fleet = readiness == null
+      ? null
+      : _Stat(
+          'Fleet readiness',
+          fleetReadinessValue(readiness.percentReady, readiness.total),
+          Icons.verified_outlined,
+          readiness.total == 0
+              ? scheme.outline
+              : readiness.percentReady >= 80
+                  ? status.success
+                  : readiness.percentReady >= 50
+                      ? status.warning
+                      : scheme.error,
+          RoutePaths.readiness,
+        );
+
   switch (audience) {
     case DashboardAudience.field:
       return [
@@ -351,6 +378,7 @@ List<_Stat> _stats(
             workload.unassigned == 0 ? status.success : status.warning,
             RoutePaths.workOrders,
           ),
+        if (fleet != null) fleet,
       ];
     case DashboardAudience.review:
       return [
@@ -361,6 +389,7 @@ List<_Stat> _stats(
         _Stat('Inspections, 7 days', '$inspections7',
             Icons.fact_check_outlined, status.info, RoutePaths.inspections,
             trend: inspectionTrend),
+        if (fleet != null) fleet,
       ];
     case DashboardAudience.admin:
       return [
@@ -370,6 +399,7 @@ List<_Stat> _stats(
         _Stat('Inspections, 7 days', '$inspections7',
             Icons.fact_check_outlined, scheme.tertiary, RoutePaths.inspections,
             trend: inspectionTrend),
+        if (fleet != null) fleet,
       ];
   }
 }

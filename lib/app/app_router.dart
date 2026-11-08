@@ -11,6 +11,7 @@ import 'package:voltcore/modules/auth/presenter/pages/forbidden_page.dart';
 
 import 'package:voltcore/modules/dashboard/presenter/pages/dashboard_page.dart';
 import 'package:voltcore/modules/dashboard/presenter/pages/analytics_page.dart';
+import 'package:voltcore/modules/readiness/presenter/pages/readiness_page.dart';
 
 import 'package:voltcore/modules/admin/presenter/pages/admin_dashboard_page.dart';
 import 'package:voltcore/modules/admin/presenter/pages/admin_settings_page.dart';
@@ -118,6 +119,11 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         path: RoutePaths.analytics,
         name: RouteNames.analytics,
         builder: (_, __) => const DefaultShell(child: AnalyticsPage()),
+      ),
+      GoRoute(
+        path: RoutePaths.readiness,
+        name: RouteNames.readiness,
+        builder: (_, __) => const DefaultShell(child: ReadinessPage()),
       ),
       GoRoute(
         path: RoutePaths.inspections,

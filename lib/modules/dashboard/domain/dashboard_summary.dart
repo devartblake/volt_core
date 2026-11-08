@@ -157,6 +157,7 @@ class AttentionInputs {
     required this.vehiclesNeedingDailyCheck,
     required this.routes,
     this.jobsShortOfParts = 0,
+    this.generatorsNotReady = 0,
   });
 
   final DashboardAudience audience;
@@ -172,6 +173,10 @@ class AttentionInputs {
   /// Jobs whose parts the warehouse cannot fully cover. Only dispatchers,
   /// supervisors and admins are told.
   final int jobsShortOfParts;
+
+  /// Generators whose fleet-readiness status is "Not ready". Only dispatchers,
+  /// supervisors and admins are told.
+  final int generatorsNotReady;
 }
 
 /// Route paths the attention items link to, passed in so this file stays free
@@ -183,6 +188,7 @@ class AttentionRoutes {
     required this.inspections,
     required this.fleetLog,
     this.shortages = '',
+    this.readinessNotReady = '',
   });
 
   final String schedule;
@@ -192,7 +198,20 @@ class AttentionRoutes {
 
   /// The Shortages page.
   final String shortages;
+
+  /// Fleet readiness with the Not ready filter applied.
+  final String readinessNotReady;
 }
+
+/// The fleet readiness tile value: "87% ready". An empty fleet is "-" (it is
+/// not "100% ready").
+String fleetReadinessValue(double percentReady, int total) =>
+    total == 0 ? '-' : '${percentReady.round()}% ready';
+
+/// "Fleet readiness 87% ready", for a tile label or a screen reader.
+String fleetReadinessLabel(double percentReady, int total) => total == 0
+    ? 'Fleet readiness: no generators yet'
+    : 'Fleet readiness ${percentReady.round()}% ready';
 
 String _plural(int n, String one, [String? many]) =>
     '$n ${n == 1 ? one : (many ?? '${one}s')}';
@@ -272,6 +291,19 @@ List<AttentionItem> buildAttention(AttentionInputs i) {
       detail: 'The warehouse cannot cover what they need',
       severity: AttentionSeverity.warning,
       route: i.routes.shortages,
+    ));
+  }
+
+  if (i.audience != DashboardAudience.field &&
+      i.generatorsNotReady > 0 &&
+      i.routes.readinessNotReady.isNotEmpty) {
+    final n = i.generatorsNotReady;
+    items.add(AttentionItem(
+      icon: Icons.power_off_outlined,
+      label: '$n ${n == 1 ? 'generator' : 'generators'} not ready',
+      detail: 'Red grade, long overdue or never inspected',
+      severity: AttentionSeverity.critical,
+      route: i.routes.readinessNotReady,
     ));
   }
 

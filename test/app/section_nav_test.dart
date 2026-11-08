@@ -57,6 +57,7 @@ void main() {
         containsAll([
           RoutePaths.dashboard,
           RoutePaths.analytics,
+          RoutePaths.readiness,
           RoutePaths.inspections,
           RoutePaths.inspectionsPending,
           RoutePaths.workOrders,

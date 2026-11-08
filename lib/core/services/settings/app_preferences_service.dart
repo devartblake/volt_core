@@ -23,6 +23,8 @@ class AppPreferencesService {
   static const _lastSyncedAtKey = 'last_synced_at';
   static const _inspectionFilterPresetsKey = 'inspection_filter_presets';
   static const _inspectionDensityKey = 'inspection_list_density';
+  static const _readinessDueSoonKey = 'readiness_due_soon_days';
+  static const _readinessCriticalKey = 'readiness_critical_overdue_days';
 
   Box<dynamic>? get _boxIfOpen =>
       Hive.isBoxOpen(_boxName) ? Hive.box<dynamic>(_boxName) : null;
@@ -102,6 +104,30 @@ class AppPreferencesService {
   Future<void> setInspectionListDensity(String value) async {
     final box = await _ensureBox();
     await box.put(_inspectionDensityKey, value);
+  }
+
+  /// Fleet readiness: a generator due within this many days is "due soon".
+  /// Default 30. Only an admin should change it (the screen enforces that).
+  int get readinessDueSoonDays {
+    final raw = _boxIfOpen?.get(_readinessDueSoonKey);
+    return raw is int && raw >= 0 ? raw : 30;
+  }
+
+  Future<void> setReadinessDueSoonDays(int value) async {
+    final box = await _ensureBox();
+    await box.put(_readinessDueSoonKey, value);
+  }
+
+  /// Fleet readiness: overdue by more than this many days is "not ready"
+  /// (up to it is "needs attention"). Default 30.
+  int get readinessCriticalOverdueDays {
+    final raw = _boxIfOpen?.get(_readinessCriticalKey);
+    return raw is int && raw >= 0 ? raw : 30;
+  }
+
+  Future<void> setReadinessCriticalOverdueDays(int value) async {
+    final box = await _ensureBox();
+    await box.put(_readinessCriticalKey, value);
   }
 
   /// Time of the last sync run that finished with no failures.

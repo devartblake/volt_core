@@ -33,6 +33,12 @@ class RouteRoles {
       UserRole.dispatcher,
       UserRole.admin,
     },
+    'readiness': {
+      UserRole.tech,
+      UserRole.supervisor,
+      UserRole.dispatcher,
+      UserRole.admin,
+    },
     'admin_dashboard': {UserRole.admin},
     'admin_settings': {UserRole.admin},
     'admin_technicians': {UserRole.admin},

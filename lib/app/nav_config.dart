@@ -94,6 +94,13 @@ const List<NavSection> navSections = [
         routeName: 'analytics',
         description: 'Inspection, maintenance & schedule metrics',
       ),
+      NavItem(
+        'Readiness',
+        Icons.verified_outlined,
+        RoutePaths.readiness,
+        routeName: RouteNames.readiness,
+        description: 'Which generators are ready, due soon or not ready',
+      ),
     ],
   ),
 

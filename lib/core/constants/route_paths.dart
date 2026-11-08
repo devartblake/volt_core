@@ -17,6 +17,9 @@ class RoutePaths {
   // Analytics
   static const String analytics = '/analytics';
 
+  // Fleet readiness: every generator, ready or not
+  static const String readiness = '/readiness';
+
   // Inspections
   static const String inspections = '/inspections';
   static const String inspectionNew = '/inspections/new';
@@ -124,6 +127,7 @@ class RouteNames {
   static const String dashboard = 'dashboard';
   static const String techDashboard = 'tech_dashboard';
   static const String analytics = 'analytics';
+  static const String readiness = 'readiness';
 
   static const String inspections = 'inspections';
   static const String inspectionNew = 'inspection_new';
