@@ -30,11 +30,11 @@ abstract class AdminRepository {
     String? reason,
   });
 
-  /// Set or clear (null) a member's division. Not a role change: no role
-  /// assignment audit row is written.
-  Future<void> setMemberDivision({
+  /// Replace the set of divisions a member belongs to (empty clears them).
+  /// Not a role change: no role assignment audit row is written.
+  Future<void> setMemberDivisions({
     required TenantMemberEntity member,
-    required String? divisionId,
+    required List<String> divisionIds,
   });
 
   /// Find a registered account by exact email, or null when none uses it.

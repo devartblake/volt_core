@@ -75,6 +75,8 @@ enum AuditGroup {
     'tenant_members',
     'user_profiles',
     'profile_change_requests',
+    'member_permission_overrides',
+    'member_divisions',
   });
 
   const AuditGroup(this.label, this.tables);
@@ -104,6 +106,8 @@ String auditTableLabel(String table) => switch (table) {
       'tenant_members' => 'Team',
       'user_profiles' => 'Account',
       'profile_change_requests' => 'Parts profile',
+      'member_permission_overrides' => 'Permission',
+      'member_divisions' => 'Division',
       _ => table.replaceAll('_', ' '),
     };
 

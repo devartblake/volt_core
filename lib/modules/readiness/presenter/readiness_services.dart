@@ -12,6 +12,7 @@ import 'package:printing/printing.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:uuid/uuid.dart';
 
+import '../../permissions/domain/permission.dart';
 import '../../../core/services/pdf/pdf_service.dart';
 import '../../auth/domain/user_role.dart';
 import '../../schedule/domain/entities/task_schedule_entity.dart';
@@ -25,9 +26,7 @@ import '../domain/readiness_models.dart';
 /// Scheduling and bulk actions are for dispatchers, supervisors and admins.
 /// Technicians see the dashboard read-only.
 bool canScheduleReadiness(UserRole? role) =>
-    role == UserRole.dispatcher ||
-    role == UserRole.supervisor ||
-    role == UserRole.admin;
+    Permission.scheduleReadiness.defaultFor(role);
 
 // ---------------------------------------------------------------------------
 // Scheduling

@@ -9,6 +9,7 @@ import '../../domain/invite_validator.dart';
 import '../../infra/division_repository.dart';
 import '../../infra/services/invite_service.dart';
 import '../controllers/tenant_role_management_controller.dart';
+import 'division_picker.dart';
 
 /// Whether the device can reach the network right now. Overridden in tests.
 final inviteOnlineCheckProvider = Provider<Future<bool> Function()>(
@@ -63,7 +64,7 @@ class _InviteMemberSheetState extends ConsumerState<InviteMemberSheet> {
   final _email = TextEditingController();
   final _phone = TextEditingController();
   UserRole _role = UserRole.tech;
-  String? _divisionId;
+  List<String> _divisionIds = const [];
   bool _busy = false;
   String? _error;
 
@@ -87,7 +88,7 @@ class _InviteMemberSheetState extends ConsumerState<InviteMemberSheet> {
       displayName: _name.text.trim(),
       role: _role,
       phone: _phone.text.trim().isEmpty ? null : _phone.text.trim(),
-      divisionId: _divisionId,
+      divisionIds: _divisionIds,
     );
 
     setState(() {
@@ -128,36 +129,44 @@ class _InviteMemberSheetState extends ConsumerState<InviteMemberSheet> {
     }
   }
 
-  /// Optional division picker. Only shown when the company has active
-  /// divisions and they could be loaded.
+  /// Optional multi-select division picker. Only shown when the company has
+  /// active divisions and they could be loaded.
   List<Widget> _divisionField() {
+    final all = ref.watch(divisionsProvider).value ?? const <Division>[];
     final active = [
-      for (final d in ref.watch(divisionsProvider).value ?? const <Division>[])
+      for (final d in all)
         if (d.isActive) d,
     ];
     if (active.isEmpty) return const [];
+    final chosen = [
+      for (final id in _divisionIds)
+        if (active.any((d) => d.id == id)) id,
+    ];
     return [
-      DropdownButtonFormField<String?>(
+      DivisionPickerField(
         key: const Key('invite_division'),
-        initialValue: active.any((d) => d.id == _divisionId) ? _divisionId : null,
-        isExpanded: true,
-        decoration: const InputDecoration(
-          labelText: 'Division (optional)',
-          border: OutlineInputBorder(),
-        ),
-        items: [
-          const DropdownMenuItem<String?>(
-            value: null,
-            child: Text('No division'),
-          ),
-          for (final d in active)
-            DropdownMenuItem<String?>(
-              value: d.id,
-              child: Text(d.name, overflow: TextOverflow.ellipsis),
-            ),
-        ],
-        onChanged: _busy ? null : (v) => setState(() => _divisionId = v),
+        label: 'Divisions (optional)',
+        names: divisionNamesOf(chosen, active),
+        onTap: _busy
+            ? null
+            : () async {
+                final result = await showDivisionPickerSheet(
+                  context,
+                  divisions: active,
+                  selected: chosen,
+                );
+                if (result != null && mounted) {
+                  setState(() => _divisionIds = result);
+                }
+              },
       ),
+      if (chosen.isNotEmpty) ...[
+        const SizedBox(height: 8),
+        DivisionChips(
+          names: divisionNamesOf(chosen, active),
+          keyPrefix: 'invite_division_chip',
+        ),
+      ],
       const SizedBox(height: 12),
     ];
   }

@@ -42,14 +42,14 @@ class AdminRepositoryImpl implements AdminRepository {
   }
 
   @override
-  Future<void> setMemberDivision({
+  Future<void> setMemberDivisions({
     required TenantMemberEntity member,
-    required String? divisionId,
+    required List<String> divisionIds,
   }) {
-    return _remote.updateTenantMemberDivision(
+    return _remote.replaceTenantMemberDivisions(
       tenantId: member.tenantId,
       userId: member.userId,
-      divisionId: divisionId,
+      divisionIds: divisionIds,
     );
   }
 

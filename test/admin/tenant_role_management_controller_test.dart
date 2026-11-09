@@ -296,14 +296,14 @@ class _FakeAdminRepository implements AdminRepository {
     );
   }
 
-  final divisionWrites = <String?>[];
+  final divisionWrites = <List<String>>[];
 
   @override
-  Future<void> setMemberDivision({
+  Future<void> setMemberDivisions({
     required TenantMemberEntity member,
-    required String? divisionId,
+    required List<String> divisionIds,
   }) async {
-    divisionWrites.add(divisionId);
+    divisionWrites.add(divisionIds);
   }
 
   @override

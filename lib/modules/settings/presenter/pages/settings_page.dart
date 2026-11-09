@@ -78,11 +78,13 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                     leading: const Icon(Icons.badge_outlined),
                     title: Text(auth.currentRole!.label),
                     subtitle: Builder(builder: (context) {
-                      final division =
-                          ref.watch(myDivisionNameProvider).value;
-                      return Text(division == null
+                      final divisions =
+                          ref.watch(myDivisionNamesProvider).value ??
+                              const <String>[];
+                      return Text(divisions.isEmpty
                           ? 'Role'
-                          : 'Role  ·  Division: $division');
+                          : 'Role  ·  ${divisions.length == 1 ? 'Division' : 'Divisions'}: '
+                              '${divisions.join(', ')}');
                     }),
                   ),
                 ],

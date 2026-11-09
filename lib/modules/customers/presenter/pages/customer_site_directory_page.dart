@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../auth/domain/user_role.dart';
-import '../../../auth/presenter/controllers/auth_controller.dart';
+import '../../../permissions/domain/permission.dart';
+import '../../../permissions/presenter/permission_providers.dart';
 import '../../../../shared/widgets/lazy_head_list.dart';
 import '../../../../shared/widgets/widgets.dart';
 import '../../customer_site_repository.dart';
@@ -10,13 +10,10 @@ import '../../customer_site_repository.dart';
 class CustomerSiteDirectoryPage extends ConsumerWidget {
   const CustomerSiteDirectoryPage({super.key});
 
-  bool _canManage(UserRole? role) =>
-      role == UserRole.admin || role == UserRole.supervisor || role == UserRole.dispatcher;
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final directory = ref.watch(customerSiteDirectoryProvider);
-    final canManage = _canManage(ref.watch(authStateProvider).currentRole);
+    final canManage = ref.watch(hasPermissionProvider(Permission.manageCustomers));
     return AppPage(
       title: 'Customers & Sites',
       actions: [

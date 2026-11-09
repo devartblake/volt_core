@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../permissions/domain/permission.dart';
+import '../../permissions/presenter/permission_providers.dart';
 import '../../../core/theme/app_tokens.dart';
 import '../../auth/domain/user_role.dart';
-import '../../auth/presenter/controllers/auth_controller.dart';
 import '../domain/material_item.dart';
 import '../domain/material_list.dart';
 import '../infra/materials_repository.dart';
@@ -13,9 +14,7 @@ import 'profile_proposal_sheet.dart';
 /// Who may change a generator's standing parts list. Technicians record what
 /// they find and use on a job, and propose profile changes to a supervisor.
 bool canEditGeneratorProfile(UserRole? role) =>
-    role == UserRole.admin ||
-    role == UserRole.supervisor ||
-    role == UserRole.dispatcher;
+    Permission.editPartsProfiles.defaultFor(role);
 
 /// The Materials block used in the inspection and maintenance forms: a title,
 /// the editor, and a way to open the generator's profile.
@@ -51,8 +50,7 @@ class MaterialsSectionCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
-    final role = ref.watch(authStateProvider).currentRole;
-    final canEdit = canEditGeneratorProfile(role);
+    final canEdit = ref.watch(hasPermissionProvider(Permission.editPartsProfiles));
 
     final key = generatorProfileKey(make: make, model: model, serial: serial);
     final profile = key.isEmpty
@@ -183,7 +181,7 @@ class _ProfileSheet extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    final canEdit = canEditGeneratorProfile(ref.watch(authStateProvider).currentRole);
+    final canEdit = ref.watch(hasPermissionProvider(Permission.editPartsProfiles));
     final key = generatorProfileKey(make: make, model: model, serial: serial);
     final name = [make, model].where((s) => s.trim().isNotEmpty).join(' ');
 

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../permissions/domain/permission.dart';
+import '../../../permissions/presenter/permission_providers.dart';
 import '../../../../core/theme/app_tokens.dart';
 import '../../../../shared/widgets/action_runner.dart';
 import '../../../../shared/widgets/lazy_head_list.dart';
@@ -167,7 +169,7 @@ class _ReadinessPageState extends ConsumerState<ReadinessPage> {
   @override
   Widget build(BuildContext context) {
     final role = ref.watch(authStateProvider).currentRole;
-    final canSchedule = canScheduleReadiness(role);
+    final canSchedule = ref.watch(hasPermissionProvider(Permission.scheduleReadiness));
     final report = ref.watch(readinessReportProvider);
     final filtered = ref.watch(filteredReadinessUnitsProvider).value ?? const [];
     final filter = ref.watch(readinessFilterProvider);

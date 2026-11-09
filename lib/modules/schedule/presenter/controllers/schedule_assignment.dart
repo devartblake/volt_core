@@ -1,17 +1,17 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../auth/domain/user_role.dart';
-import '../../../auth/presenter/controllers/auth_controller.dart';
+import '../../../permissions/domain/permission.dart';
+import '../../../permissions/presenter/permission_providers.dart';
 import '../../domain/entities/task_schedule_entity.dart';
 import '../../infra/repositories/schedule_repository_impl.dart';
 import 'schedule_controller.dart';
 
 /// Dispatchers, supervisors and admins can hand a task to a technician;
-/// technicians and apprentices cannot.
-final canAssignScheduleProvider = Provider<bool>((ref) {
-  final role = ref.watch(authStateProvider).currentRole;
-  return role != null && !role.isFieldWorker;
-});
+/// technicians and apprentices cannot (permission `assign_schedule`, with any
+/// per-person override applied).
+final canAssignScheduleProvider = Provider<bool>(
+  (ref) => ref.watch(hasPermissionProvider(Permission.assignSchedule)),
+);
 
 /// Saves [task] with [technicianId] as its assignee through the schedule
 /// repository (which queues the cloud sync), then refreshes the list and the

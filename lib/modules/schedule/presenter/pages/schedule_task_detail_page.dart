@@ -130,8 +130,9 @@ class _TaskDetail extends ConsumerWidget {
                       : 'Assign'),
             ),
           ],
-          if (!ref.watch(canSignOffProvider) &&
-              (_canComplete(item.status) || _canDelete(item.status))) ...[
+          if ((!ref.watch(canSignOffProvider) && _canComplete(item.status)) ||
+              (!ref.watch(canDeleteRecordsProvider) &&
+                  _canDelete(item.status))) ...[
             const SizedBox(height: 12),
             const SignOffRequiredNotice(),
           ],
@@ -159,7 +160,7 @@ class _TaskDetail extends ConsumerWidget {
               label: const Text('Reschedule task'),
             ),
           ],
-          if (_canDelete(item.status) && ref.watch(canSignOffProvider)) ...[
+          if (_canDelete(item.status) && ref.watch(canDeleteRecordsProvider)) ...[
             const SizedBox(height: 12),
             TextButton.icon(
               onPressed: () => _delete(context, ref, item),

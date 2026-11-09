@@ -19,9 +19,11 @@ export interface InviteInput {
   phone: string | null;
   redirectTo: string | null;
   tenantId: string | null;
-  /** Optional public.divisions id. The function checks it belongs to the
-   * resolved tenant before using it. */
-  divisionId: string | null;
+  /** Optional public.divisions ids (deduplicated, lower case, at most
+   * MAX_DIVISIONS). Built from `divisionIds` plus the older single
+   * `divisionId`. The function checks each belongs to the resolved tenant and
+   * is active before using it. */
+  divisionIds: string[];
 }
 
 export type ValidationResult =
@@ -36,6 +38,7 @@ const UUID_RE =
 export const MAX_EMAIL = 254;
 export const MAX_NAME = 80;
 export const MAX_PHONE = 30;
+export const MAX_DIVISIONS = 10;
 
 function fail(message: string): ValidationResult {
   return { ok: false, message };
@@ -119,12 +122,30 @@ export function validateInvite(body: unknown): ValidationResult {
     tenantId = b.tenantId.toLowerCase();
   }
 
-  let divisionId: string | null = null;
+  const divisionIds: string[] = [];
+  const addDivision = (v: unknown): string | null => {
+    if (typeof v !== "string" || !UUID_RE.test(v)) return "Division is not valid.";
+    const id = v.toLowerCase();
+    if (!divisionIds.includes(id)) divisionIds.push(id);
+    return null;
+  };
+  // Older builds send a single divisionId; still accepted.
   if (b.divisionId !== undefined && b.divisionId !== null && b.divisionId !== "") {
-    if (typeof b.divisionId !== "string" || !UUID_RE.test(b.divisionId)) {
-      return fail("Division is not valid.");
+    const e = addDivision(b.divisionId);
+    if (e) return fail(e);
+  }
+  if (b.divisionIds !== undefined && b.divisionIds !== null) {
+    if (!Array.isArray(b.divisionIds)) return fail("Divisions are not valid.");
+    if (b.divisionIds.length > MAX_DIVISIONS) {
+      return fail(`Choose at most ${MAX_DIVISIONS} divisions.`);
     }
-    divisionId = b.divisionId.toLowerCase();
+    for (const v of b.divisionIds) {
+      const e = addDivision(v);
+      if (e) return fail(e);
+    }
+  }
+  if (divisionIds.length > MAX_DIVISIONS) {
+    return fail(`Choose at most ${MAX_DIVISIONS} divisions.`);
   }
 
   return {
@@ -136,7 +157,7 @@ export function validateInvite(body: unknown): ValidationResult {
       phone,
       redirectTo,
       tenantId,
-      divisionId,
+      divisionIds,
     },
   };
 }

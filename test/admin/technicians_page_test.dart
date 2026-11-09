@@ -29,11 +29,11 @@ class _Repo extends Fake implements AdminRepository {
   Future<List<TenantMemberEntity>> listTenantMembers() async => members;
 
   @override
-  Future<void> setMemberDivision({
+  Future<void> setMemberDivisions({
     required TenantMemberEntity member,
-    required String? divisionId,
+    required List<String> divisionIds,
   }) async {
-    divisionWrites.add('${member.userId}:${divisionId ?? 'none'}');
+    divisionWrites.add('${member.userId}:${divisionIds.join('+')}');
   }
 
   @override
@@ -81,7 +81,7 @@ const _gen = Division(id: 'd1', name: 'Generators', sortOrder: 0);
 const _fire = Division(id: 'd2', name: 'Fire alarm', sortOrder: 1);
 
 TenantMemberEntity _m(String id, String name, UserRole role,
-        {String? division}) =>
+        {List<String> divisions = const []}) =>
     TenantMemberEntity(
       tenantId: 't1',
       userId: id,
@@ -89,7 +89,7 @@ TenantMemberEntity _m(String id, String name, UserRole role,
       email: '$id@example.com',
       role: role,
       isActive: true,
-      divisionId: division,
+      divisionIds: divisions,
     );
 
 Future<_Repo> _pump(
@@ -100,7 +100,9 @@ Future<_Repo> _pump(
   Size size = const Size(360, 800),
   double scale = 1.3,
 }) async {
-  t.view.physicalSize = size;
+  // Tall, so every member card is built (the list is lazy); the width is what
+  // matters for overflow.
+  t.view.physicalSize = Size(size.width, 3200);
   t.view.devicePixelRatio = 1;
   addTearDown(t.view.reset);
   final repo = _Repo(members);
@@ -126,10 +128,10 @@ Future<_Repo> _pump(
 }
 
 final _members = [
-  _m('u1', 'Ann Apprentice', UserRole.apprentice, division: 'd1'),
+  _m('u1', 'Ann Apprentice', UserRole.apprentice, divisions: ['d1']),
   _m('u2', 'Tom Technician', UserRole.tech),
   _m('u3', 'Dana Dispatcher With A Rather Long Name', UserRole.dispatcher,
-      division: 'd2'),
+      divisions: ['d1', 'd2']),
 ];
 
 void main() {
@@ -145,11 +147,14 @@ void main() {
               matching: find.text('Apprentice')),
           findsOneWidget);
       expect(find.descendant(
-              of: find.byKey(const Key('division_chip_u1')),
+              of: find.byKey(const Key('division_chip_u1_0')),
               matching: find.text('Generators')),
           findsOneWidget);
+      // Several divisions: one chip each.
+      expect(find.byKey(const Key('division_chip_u3_0')), findsOneWidget);
+      expect(find.byKey(const Key('division_chip_u3_1')), findsOneWidget);
       // No division: no chip.
-      expect(find.byKey(const Key('division_chip_u2')), findsNothing);
+      expect(find.byKey(const Key('division_chip_u2_0')), findsNothing);
       expect(find.descendant(
               of: find.byKey(const Key('role_chip_u2')),
               matching: find.text('Technician')),
@@ -195,30 +200,75 @@ void main() {
     expect(dropdown.value, UserRole.tech);
   });
 
-  testWidgets('setting a division writes only the division, no role row',
+  Future<void> openPicker(WidgetTester t, String userId) async {
+    await t.ensureVisible(find.byKey(Key('division_picker_$userId')));
+    await t.pumpAndSettle();
+    await t.tap(find.byKey(Key('division_picker_$userId')));
+    await t.pumpAndSettle();
+  }
+
+  testWidgets('choosing several divisions writes the set, no role row',
       (t) async {
     final repo = await _pump(t, members: _members);
-    await t.ensureVisible(find.byKey(const Key('division_dropdown_u2')));
+    await openPicker(t, 'u2');
+    await t.tap(find.byKey(const Key('division_option_d2')));
+    await t.tap(find.byKey(const Key('division_option_d1')));
     await t.pumpAndSettle();
-    await t.tap(find.byKey(const Key('division_dropdown_u2')));
+    await t.tap(find.byKey(const Key('division_picker_done')));
     await t.pumpAndSettle();
-    await t.tap(find.text('Fire alarm').last);
-    await t.pumpAndSettle();
-    expect(repo.divisionWrites, ['u2:d2']);
+    // Admin-arranged order: Generators (d1) before Fire alarm (d2).
+    expect(repo.divisionWrites, ['u2:d1+d2']);
     expect(repo.roleWrites, isEmpty);
-    expect(find.byKey(const Key('division_chip_u2')), findsOneWidget);
+    expect(find.byKey(const Key('division_chip_u2_0')), findsOneWidget);
+    expect(find.byKey(const Key('division_chip_u2_1')), findsOneWidget);
   });
 
-  testWidgets('clearing a division writes null', (t) async {
+  testWidgets('cancelling the picker writes nothing', (t) async {
     final repo = await _pump(t, members: _members);
-    await t.ensureVisible(find.byKey(const Key('division_dropdown_u1')));
+    await openPicker(t, 'u2');
+    await t.tap(find.byKey(const Key('division_option_d2')));
+    await t.tap(find.byKey(const Key('division_picker_cancel')));
     await t.pumpAndSettle();
-    await t.tap(find.byKey(const Key('division_dropdown_u1')));
+    expect(repo.divisionWrites, isEmpty);
+  });
+
+  testWidgets('removing one division keeps the others', (t) async {
+    final repo = await _pump(t, members: _members);
+    await openPicker(t, 'u3');
+    await t.tap(find.byKey(const Key('division_option_d1')));
     await t.pumpAndSettle();
-    await t.tap(find.text('No division').last);
+    await t.tap(find.byKey(const Key('division_picker_done')));
     await t.pumpAndSettle();
-    expect(repo.divisionWrites, ['u1:none']);
-    expect(find.byKey(const Key('division_chip_u1')), findsNothing);
+    expect(repo.divisionWrites, ['u3:d2']);
+    expect(find.byKey(const Key('division_chip_u3_1')), findsNothing);
+  });
+
+  testWidgets('clearing every division writes an empty set', (t) async {
+    final repo = await _pump(t, members: _members);
+    await openPicker(t, 'u1');
+    await t.tap(find.byKey(const Key('division_option_d1')));
+    await t.pumpAndSettle();
+    await t.tap(find.byKey(const Key('division_picker_done')));
+    await t.pumpAndSettle();
+    expect(repo.divisionWrites, ['u1:']);
+    expect(find.byKey(const Key('division_chip_u1_0')), findsNothing);
+  });
+
+  testWidgets('a very long division name wraps/ellipsises without overflow',
+      (t) async {
+    await _pump(t, members: [
+      _m('u1', 'Ann Apprentice', UserRole.apprentice,
+          divisions: ['d1', 'd2', 'd3']),
+    ], divisions: const [
+      _gen,
+      _fire,
+      Division(
+          id: 'd3',
+          name: 'An extremely long division name that goes on and on and on',
+          sortOrder: 2),
+    ]);
+    expect(find.byKey(const Key('division_chip_u1_2')), findsOneWidget);
+    expect(t.takeException(), isNull);
   });
 
   testWidgets('search finds people by division name', (t) async {
@@ -235,22 +285,19 @@ void main() {
         members: [_m('u2', 'Tom Technician', UserRole.tech)],
         divisionsFail: true);
     expect(find.text('Tom Technician'), findsOneWidget);
-    expect(find.byKey(const Key('division_dropdown_u2')), findsNothing);
+    expect(find.byKey(const Key('division_picker_u2')), findsNothing);
     expect(t.takeException(), isNull);
   });
 
   testWidgets('an inactive division stays visible on its members', (t) async {
     await _pump(t, members: [
-      _m('u1', 'Ann Apprentice', UserRole.apprentice, division: 'd9'),
+      _m('u1', 'Ann Apprentice', UserRole.apprentice, divisions: ['d9']),
     ], divisions: const [
       _gen,
       Division(id: 'd9', name: 'Legacy', isActive: false),
     ]);
-    expect(find.byKey(const Key('division_chip_u1')), findsOneWidget);
-    await t.ensureVisible(find.byKey(const Key('division_dropdown_u1')));
-    await t.pumpAndSettle();
-    await t.tap(find.byKey(const Key('division_dropdown_u1')));
-    await t.pumpAndSettle();
+    expect(find.byKey(const Key('division_chip_u1_0')), findsOneWidget);
+    await openPicker(t, 'u1');
     expect(find.text('Legacy (not offered)'), findsWidgets);
   });
 }

@@ -149,29 +149,53 @@ final divisionsProvider = FutureProvider.autoDispose<List<Division>>(
   retry: (_, __) => null,
 );
 
-/// The signed-in user's own division name, or null when none is set or it
-/// cannot be read (offline, signed out, migration not run yet). Never throws:
-/// it only decorates the Settings account card.
-final myDivisionNameProvider = FutureProvider.autoDispose<String?>((ref) async {
+/// The signed-in user's own division names (admin-arranged order), empty when
+/// none are set or they cannot be read (offline, signed out, migration not run
+/// yet). Never throws: it only decorates the Settings account card.
+final myDivisionNamesProvider =
+    FutureProvider.autoDispose<List<String>>((ref) async {
   try {
     final client = Supabase.instance.client;
     final userId = client.auth.currentUser?.id;
     final tenantId = SyncContext.tenantId;
-    if (userId == null || tenantId == null) return null;
-    final row = await client
-        .from('tenant_members')
-        .select('division_id, divisions(name)')
+    if (userId == null || tenantId == null) return const [];
+    final rows = await client
+        .from('member_divisions')
+        .select('division_id, divisions(name, sort_order)')
         .eq('tenant_id', tenantId)
         .eq('user_id', userId)
-        .maybeSingle()
         .timeout(const Duration(seconds: 8));
-    final division = row?['divisions'];
-    if (division is Map) {
-      final name = division['name']?.toString().trim() ?? '';
-      return name.isEmpty ? null : name;
+    var found = _divisionNamesFromRows(rows);
+    if (found.isEmpty) {
+      // Deprecated single column: fallback for people with no rows yet.
+      final row = await client
+          .from('tenant_members')
+          .select('division_id, divisions(name, sort_order)')
+          .eq('tenant_id', tenantId)
+          .eq('user_id', userId)
+          .maybeSingle()
+          .timeout(const Duration(seconds: 8));
+      if (row != null) found = _divisionNamesFromRows([row]);
     }
-    return null;
+    return found;
   } catch (_) {
-    return null;
+    return const [];
   }
 });
+
+List<String> _divisionNamesFromRows(List<dynamic> rows) {
+  final named = <(int, String)>[];
+  for (final r in rows) {
+    final d = r is Map ? r['divisions'] : null;
+    if (d is! Map) continue;
+    final name = d['name']?.toString().trim() ?? '';
+    if (name.isEmpty) continue;
+    final order = d['sort_order'];
+    named.add((order is num ? order.toInt() : 0, name));
+  }
+  named.sort((a, b) {
+    final c = a.$1.compareTo(b.$1);
+    return c != 0 ? c : a.$2.toLowerCase().compareTo(b.$2.toLowerCase());
+  });
+  return [for (final n in named) n.$2];
+}

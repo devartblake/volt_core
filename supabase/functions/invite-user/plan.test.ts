@@ -1,6 +1,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
+  divisionsToAdd,
+  divisionsUsable,
   divisionUsable,
   emailDomain,
   isRateLimited,
@@ -113,4 +115,26 @@ test("divisionUsable: must exist, be active and belong to the tenant", () => {
   assert.equal(divisionUsable({ ...row, is_active: false }, T1), false);
   assert.equal(divisionUsable(null, T1), false);
   assert.equal(divisionUsable(undefined, T1), false);
+});
+
+test("divisionsUsable: every id must exist, be active and be in the tenant", () => {
+  const rows = [
+    { id: "d1", tenant_id: T1, is_active: true },
+    { id: "d2", tenant_id: T1, is_active: true },
+    { id: "d3", tenant_id: T2, is_active: true },
+    { id: "d4", tenant_id: T1, is_active: false },
+  ];
+  assert.equal(divisionsUsable(rows, ["d1", "d2"], T1), true);
+  assert.equal(divisionsUsable(rows, ["D1"], T1), true);
+  assert.equal(divisionsUsable(rows, ["d1", "d3"], T1), false);
+  assert.equal(divisionsUsable(rows, ["d1", "d4"], T1), false);
+  assert.equal(divisionsUsable(rows, ["d1", "missing"], T1), false);
+  assert.equal(divisionsUsable(null, ["d1"], T1), false);
+  assert.equal(divisionsUsable(rows, [], T1), true);
+});
+
+test("divisionsToAdd: invites only add what is missing", () => {
+  assert.deepEqual(divisionsToAdd([], ["a", "b"]), ["a", "b"]);
+  assert.deepEqual(divisionsToAdd(["a"], ["A", "b"]), ["b"]);
+  assert.deepEqual(divisionsToAdd(["a", "b"], ["a"]), []);
 });

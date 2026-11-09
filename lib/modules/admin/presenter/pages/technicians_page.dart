@@ -11,6 +11,7 @@ import '../../domain/entities/tenant_member_entity.dart';
 import '../../infra/division_repository.dart';
 import '../controllers/tenant_role_management_controller.dart';
 import '../widgets/add_tenant_member_dialog.dart';
+import '../widgets/division_picker.dart';
 import '../widgets/invite_member_sheet.dart';
 
 /// Tenant-authoritative team and role management.
@@ -61,7 +62,7 @@ class _TechniciansPageState extends ConsumerState<TechniciansPage> {
         member.phone ?? '',
         member.role.name,
         member.role.label,
-        divisionNameOf(member.divisionId, divisions) ?? '',
+        divisionNamesOf(member.divisionIds, divisions).join(' '),
       ].join(' ').toLowerCase().contains(search);
     }).toList();
 
@@ -202,7 +203,7 @@ class _MemberTile extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final isSelf = currentUserId == member.userId;
-    final divisionName = divisionNameOf(member.divisionId, divisions);
+    final divisionNames = divisionNamesOf(member.divisionIds, divisions);
 
     return Card(
       child: Padding(
@@ -256,11 +257,16 @@ class _MemberTile extends ConsumerWidget {
                   avatar: const Icon(Icons.badge_outlined, size: 16),
                   label: Text(member.role.label),
                 ),
-                if (divisionName != null)
-                  Chip(
-                    key: Key('division_chip_${member.userId}'),
-                    avatar: const Icon(Icons.account_tree_outlined, size: 16),
-                    label: Text(divisionName),
+                for (var i = 0; i < divisionNames.length; i++)
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 260),
+                    child: Chip(
+                      key: Key('division_chip_${member.userId}_$i'),
+                      avatar:
+                          const Icon(Icons.account_tree_outlined, size: 16),
+                      label: Text(divisionNames[i],
+                          overflow: TextOverflow.ellipsis),
+                    ),
                   ),
               ],
             ),
@@ -289,6 +295,19 @@ class _MemberTile extends ConsumerWidget {
                 );
               },
             ),
+            if (ref.watch(authStateProvider).isAdmin) ...[
+              const SizedBox(height: 8),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: TextButton.icon(
+                  key: Key('permissions_button_${member.userId}'),
+                  onPressed: () => context
+                      .push(RoutePaths.adminPermissionsFor(member.userId)),
+                  icon: const Icon(Icons.tune),
+                  label: const Text('Permissions'),
+                ),
+              ),
+            ],
           ],
         ),
       ),
@@ -328,55 +347,31 @@ class _MemberTile extends ConsumerWidget {
   /// Null when the division list could not be loaded (offline, or the
   /// divisions migration has not been run), so nothing misleading is shown.
   Widget? _divisionField(BuildContext context, WidgetRef ref) {
-    final offered = [
-      for (final d in divisions)
-        if (d.isActive || d.id == member.divisionId) d,
-    ];
-    if (divisions.isEmpty && member.divisionId == null) return null;
-    return InputDecorator(
-      decoration: const InputDecoration(
-        labelText: 'Division',
-        border: OutlineInputBorder(),
-        isDense: true,
-      ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<String?>(
-      key: Key('division_dropdown_${member.userId}'),
-      value: offered.any((d) => d.id == member.divisionId)
-          ? member.divisionId
-          : null,
-      isExpanded: true,
-      isDense: true,
-      items: [
-        const DropdownMenuItem<String?>(
-          value: null,
-          child: Text('No division'),
-        ),
-        for (final d in offered)
-          DropdownMenuItem<String?>(
-            value: d.id,
-            child: Text(
-              d.isActive ? d.name : '${d.name} (not offered)',
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-      ],
-      onChanged: (value) async {
-        if (value == member.divisionId) return;
+    if (divisions.isEmpty && member.divisionIds.isEmpty) return null;
+    return DivisionPickerField(
+      key: Key('division_picker_${member.userId}'),
+      label: 'Divisions',
+      names: divisionNamesOf(member.divisionIds, divisions),
+      onTap: () async {
+        final chosen = await showDivisionPickerSheet(
+          context,
+          divisions: divisions,
+          selected: member.divisionIds,
+          title: 'Divisions for ${member.displayName}',
+        );
+        if (chosen == null || !context.mounted) return;
         final ok = await ref
             .read(tenantRoleManagementControllerProvider.notifier)
-            .setDivision(member: member, divisionId: value);
+            .setDivisions(member: member, divisionIds: chosen);
         if (!context.mounted || !ok) return;
+        final names = divisionNamesOf(chosen, divisions);
         AppSnackBar.success(
           context,
-          value == null
-              ? '${member.displayName} has no division.'
-              : '${member.displayName} is now in '
-                  '${divisionNameOf(value, divisions) ?? 'the division'}.',
+          names.isEmpty
+              ? '${member.displayName} has no divisions.'
+              : '${member.displayName} is now in ${names.join(', ')}.',
         );
       },
-        ),
-      ),
     );
   }
 

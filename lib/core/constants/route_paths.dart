@@ -116,6 +116,13 @@ class RoutePaths {
   static const String adminTechnicians = '/admin/technicians';
   static const String adminAudit = '/admin/audit';
   static const String adminDivisions = '/admin/divisions';
+
+  /// `/admin/technicians/:userId/permissions` (see [adminPermissionsFor]).
+  static const String adminPermissions =
+      '/admin/technicians/:userId/permissions';
+
+  static String adminPermissionsFor(String userId) =>
+      '/admin/technicians/${Uri.encodeComponent(userId)}/permissions';
 }
 
 /// Optional: route name constants if you want them too.
@@ -188,4 +195,5 @@ class RouteNames {
   static const String adminTechnicians = 'admin_technicians';
   static const String adminAudit = 'admin_audit';
   static const String adminDivisions = 'admin_divisions';
+  static const String adminPermissions = 'admin_permissions';
 }

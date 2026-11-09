@@ -147,8 +147,9 @@ void main() {
     await _openSheet(tester);
     expect(find.byKey(const Key('invite_division')), findsNothing);
     await _fillAndSend(tester);
-    expect(invite.requests.single.divisionId, isNull);
+    expect(invite.requests.single.divisionIds, isEmpty);
     expect(invite.requests.single.toBody().containsKey('divisionId'), isFalse);
+    expect(invite.requests.single.toBody().containsKey('divisionIds'), isFalse);
   });
 
   for (final size in const [Size(360, 800), Size(1280, 800)]) {
@@ -160,7 +161,8 @@ void main() {
           invite: invite,
           size: size,
           divisions: const [
-            Division(id: 'd1', name: 'Generators'),
+            Division(id: 'd1', name: 'Generators', sortOrder: 0),
+            Division(id: 'd3', name: 'Fire alarm', sortOrder: 1),
             Division(id: 'd2', name: 'Legacy', isActive: false),
           ]);
       await _openSheet(tester);
@@ -179,13 +181,22 @@ void main() {
       await tester.pumpAndSettle();
       // Inactive divisions are not offered.
       expect(find.text('Legacy'), findsNothing);
-      await tester.tap(find.text('Generators').last);
+      // Several divisions can be ticked.
+      await tester.tap(find.byKey(const Key('division_option_d3')));
+      await tester.tap(find.byKey(const Key('division_option_d1')));
       await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('division_picker_done')));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('invite_division_chip_0')), findsOneWidget);
+      expect(find.byKey(const Key('invite_division_chip_1')), findsOneWidget);
 
       await _fillAndSend(tester);
       expect(invite.requests.single.role, UserRole.apprentice);
-      expect(invite.requests.single.divisionId, 'd1');
+      // Admin-arranged order, not tick order.
+      expect(invite.requests.single.divisionIds, ['d1', 'd3']);
       expect(invite.requests.single.toBody()['role'], 'apprentice');
+      expect(invite.requests.single.toBody()['divisionIds'], ['d1', 'd3']);
+      // Older deployed function: the first division as the single form.
       expect(invite.requests.single.toBody()['divisionId'], 'd1');
       expect(overflows, isEmpty);
     });

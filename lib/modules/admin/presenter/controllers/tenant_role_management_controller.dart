@@ -141,26 +141,25 @@ class TenantRoleManagementController
     }
   }
 
-  /// Set or clear (null) [member]'s division.
-  Future<bool> setDivision({
+  /// Replace the set of divisions [member] belongs to (empty clears them).
+  Future<bool> setDivisions({
     required TenantMemberEntity member,
-    required String? divisionId,
+    required List<String> divisionIds,
   }) async {
-    if (member.divisionId == divisionId) return true;
+    final same = member.divisionIds.length == divisionIds.length &&
+        member.divisionIds.toSet().containsAll(divisionIds);
+    if (same) return true;
     state = state.copyWith(isLoading: true, clearError: true);
     try {
-      await _repository.setMemberDivision(
+      await _repository.setMemberDivisions(
         member: member,
-        divisionId: divisionId,
+        divisionIds: divisionIds,
       );
       final updated = state.members
           .map(
             (candidate) => candidate.userId == member.userId &&
                     candidate.tenantId == member.tenantId
-                ? candidate.copyWith(
-                    divisionId: divisionId,
-                    clearDivision: divisionId == null,
-                  )
+                ? candidate.copyWith(divisionIds: divisionIds)
                 : candidate,
           )
           .toList();

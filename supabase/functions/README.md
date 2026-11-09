@@ -57,20 +57,27 @@ Request body (JSON), sent with the signed-in caller's JWT:
   "phone": "+1 555 123 4567",
   "redirectTo": "https://your-app-url/after-invite",
   "tenantId": "<only needed if the caller administers several companies>",
-  "divisionId": "<optional id from public.divisions>"
+  "divisionIds": ["<optional ids from public.divisions, at most 10>"],
+  "divisionId": "<older single form, still accepted>"
 }
 ```
 
 `role` is one of `apprentice`, `technician`, `supervisor`, `dispatcher`,
 `admin`. (`apprentice` needs the `20261113100000_apprentice_role.sql` migration
-first.) `phone`, `redirectTo`, `tenantId` and `divisionId` are optional.
+first.) `phone`, `redirectTo`, `tenantId`, `divisionIds` and `divisionId` are
+optional.
 
-`divisionId` must be a uuid. The function looks it up with the service client
-and refuses it (400, "That division is not available.") unless the division
-exists, is active and belongs to the resolved company. When given it is stored
-in `tenant_members.division_id` by the same upsert; when omitted an existing
-member keeps the division they already have. Needs the
-`20261113110000_divisions.sql` migration.
+`divisionIds` is an array of up to 10 uuids (duplicates are ignored); the older
+single `divisionId` is merged into it. The function looks them up with the
+service client and refuses the request (400, "That division is not available.")
+unless every division exists, is active and belongs to the resolved company.
+An invite only ADDS: missing `public.member_divisions` rows are inserted and
+divisions the member already has are never removed. The first id is also
+written to the deprecated `tenant_members.division_id` for older app builds.
+Needs the `20261113110000_divisions.sql` and `20261114110000_member_divisions.sql`
+migrations. **The repository copy is authoritative; the deployed copy must be
+redeployed to pick up `divisionIds`** (until then the new app still sends the
+first division as `divisionId`, so one division is kept).
 
 Response: `{ "ok": true, "userId": "...", "invited": true, "role": "technician" }`.
 `invited` is `false` when the person already had an account and was only added

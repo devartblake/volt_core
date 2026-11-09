@@ -1,7 +1,8 @@
 /// A company-defined division (for example "Generators" or "Fire alarm").
 ///
-/// Admins keep the list; every user may belong to one division, whatever their
-/// role. Stored in `public.divisions`.
+/// Admins keep the list; every user may belong to any number of divisions,
+/// whatever their role (`public.member_divisions`). Stored in
+/// `public.divisions`.
 class Division {
   const Division({
     required this.id,
@@ -85,3 +86,31 @@ String? divisionNameOf(String? id, Iterable<Division> divisions) {
   }
   return null;
 }
+
+/// Names of the divisions with [ids], in the order of [divisions] (the admin
+/// arranged order). Unknown ids are skipped.
+List<String> divisionNamesOf(Iterable<String> ids, Iterable<Division> divisions) {
+  final wanted = ids.toSet();
+  return [
+    for (final d in sortedDivisions(divisions))
+      if (wanted.contains(d.id)) d.name,
+  ];
+}
+
+/// [ids] without duplicates or blanks, ordered like [divisions] (unknown ids
+/// last, in the order given). The first one is the "primary" written to the
+/// deprecated `tenant_members.division_id`.
+List<String> orderedDivisionIds(
+  Iterable<String> ids,
+  Iterable<Division> divisions,
+) {
+  final wanted = <String>{for (final i in ids) if (i.isNotEmpty) i};
+  final out = <String>[
+    for (final d in sortedDivisions(divisions))
+      if (wanted.remove(d.id)) d.id,
+  ];
+  return [...out, ...wanted];
+}
+
+/// Most divisions one person can be placed in (matches the invite function).
+const int kMaxMemberDivisions = 10;

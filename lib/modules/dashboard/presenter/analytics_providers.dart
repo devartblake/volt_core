@@ -8,6 +8,8 @@ import '../../../core/services/hive/hive_boxes.dart';
 import '../../auth/domain/user_role.dart';
 import '../../auth/presenter/controllers/auth_controller.dart';
 import '../../inspections/infra/models/inspection.dart';
+import '../../permissions/domain/permission.dart';
+import '../../permissions/presenter/permission_providers.dart';
 import '../../inventory/domain/stock.dart';
 import '../../inventory/infra/inventory_repository.dart';
 import '../../maintenance/infra/datasources/hive_boxes_maintenance.dart';
@@ -102,17 +104,23 @@ class AnalyticsAccess {
     if (role == null) return none;
     return AnalyticsAccess(
       workOrders: RouteRoles.isAllowedByName(name: RouteNames.workOrders, role: role),
-      workload: role == UserRole.dispatcher || role == UserRole.admin,
-      inventory: role == UserRole.dispatcher ||
-          role == UserRole.admin ||
-          role == UserRole.supervisor,
+      workload: Permission.viewWorkloadAnalytics.defaultFor(role),
+      inventory: Permission.viewInventoryAnalytics.defaultFor(role),
     );
   }
 }
 
-final analyticsAccessProvider = Provider.autoDispose<AnalyticsAccess>(
-  (ref) => AnalyticsAccess.forRole(ref.watch(authStateProvider).currentRole),
-);
+final analyticsAccessProvider = Provider.autoDispose<AnalyticsAccess>((ref) {
+  final role = ref.watch(authStateProvider).currentRole;
+  final base = AnalyticsAccess.forRole(role);
+  if (role == null) return base;
+  return AnalyticsAccess(
+    workOrders: base.workOrders,
+    workload: ref.watch(hasPermissionProvider(Permission.viewWorkloadAnalytics)),
+    inventory:
+        ref.watch(hasPermissionProvider(Permission.viewInventoryAnalytics)),
+  );
+});
 
 /// Work orders for the status chart; null when the role has none. A technician
 /// sees only the jobs assigned to them, as on the dashboard.

@@ -11,7 +11,7 @@ class InviteRequest {
     required this.displayName,
     required this.role,
     this.phone,
-    this.divisionId,
+    this.divisionIds = const [],
   });
 
   final String email;
@@ -19,16 +19,19 @@ class InviteRequest {
   final UserRole role;
   final String? phone;
 
-  /// Optional `public.divisions` id; the function checks it is this company's.
-  final String? divisionId;
+  /// Optional `public.divisions` ids (at most 10); the function checks each is
+  /// this company's and active.
+  final List<String> divisionIds;
 
   Map<String, dynamic> toBody() => {
         'email': email,
         'displayName': displayName,
         'role': role.wire,
         if (phone != null && phone!.isNotEmpty) 'phone': phone,
-        if (divisionId != null && divisionId!.isNotEmpty)
-          'divisionId': divisionId,
+        if (divisionIds.isNotEmpty) 'divisionIds': divisionIds,
+        // Older deployed copies of the function only know the single form;
+        // sending the first keeps one division working until it is redeployed.
+        if (divisionIds.isNotEmpty) 'divisionId': divisionIds.first,
       };
 }
 

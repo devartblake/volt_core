@@ -305,6 +305,8 @@ Run in the Supabase SQL editor, once each, in this order. Every file is idempote
 | `20261108120000_profile_change_requests.sql` | `profile_change_requests` and its policies | **to run** |
 | `20261113100000_apprentice_role.sql` | adds `apprentice` to the `app_role` enum (no transaction wrapper; run alone) | **to run first** |
 | `20261113110000_divisions.sql` | `divisions`, `tenant_members.division_id`, apprentice in the technician issue / return policy and `is_assigned_technician()` | **to run second, after the file above has finished** |
+| `20261114100000_member_permission_overrides.sql` | `member_permission_overrides` (per-person allow / deny), its audit trigger | **to run third** |
+| `20261114110000_member_divisions.sql` | `member_divisions` (several divisions per person), copies the old single division, audit trigger | **to run fourth (needs `divisions` above)** |
 
 Known limits: "own truck first" is enforced in the app, not by the database (a technician can write issue / return for any location); removing an item already marked used does not reverse its issue (tap Undo first); a PO cannot have a line added after creation (edit or drop only); PO share is text only; profile approval is two steps (save, then mark approved), so a crash in between leaves the request pending and a second approve closes it as "already applied".
 
@@ -345,6 +347,38 @@ An **apprentice is a technician who cannot sign off or delete work.** Same scree
 
 This is enforced in the app. The database still treats an apprentice like a technician wherever technicians are allowed (the inventory issue / return policy and `is_assigned_technician()` were widened to include `apprentice`); it does not add a separate "cannot delete" rule.
 
-**Divisions.** A company-defined list (`public.divisions`: name, sort order, active). Any member can read it; only admins change it (Admin settings, then Divisions, or the Divisions button on the Technicians page: add, rename, drag to reorder, switch off). Names are unique per company, ignoring case. Each person may have one division (`tenant_members.division_id`), optional and for any role; admins set it on the Technicians page and in the Invite sheet, and people see their own under Settings, Account. Switching a division off stops offering it but keeps it on people already in it. Deleting a division (SQL only) clears it from its members. The divisions screen needs a connection ("Connect to the internet to manage divisions.").
+**Divisions.** A company-defined list (`public.divisions`: name, sort order, active). Any member can read it; only admins change it (Admin settings, then Divisions, or the Divisions button on the Technicians page: add, rename, drag to reorder, switch off). Names are unique per company, ignoring case. Each person may belong to **any number of divisions** (`public.member_divisions`, up to 10 per person), optional and for any role; admins pick them on the Technicians page (a checkbox sheet, shown as chips) and in the Invite sheet, and people see all of their own under Settings, Account. The old single column `tenant_members.division_id` is deprecated: it stays so older app builds keep working, the app writes the first chosen division into it, and reads it only for a person with no `member_divisions` rows. Switching a division off stops offering it but keeps it on people already in it. Deleting a division (SQL only) removes it from its members. The divisions screen needs a connection ("Connect to the internet to manage divisions.").
 
 **Run order.** `20261113100000_apprentice_role.sql` first (enum value only), then `20261113110000_divisions.sql`. Postgres cannot use a new enum value in the transaction that adds it, which is why they are two files. Until they run, the app still works: the team list falls back to no divisions, and choosing Apprentice fails on save with an "invalid input value for enum" error. The `invite-user` function needs a redeploy for `apprentice` and `divisionId`.
+
+### 24.1 Per-person permission overrides (2026-11-14)
+
+Admins can change what one person may do on top of their role: Technicians, then the **Permissions** button on a person (route `/admin/technicians/:userId/permissions`, admin only, default-deny). Each permission shows its label, a description, the role default (Yes/No) and three choices: **Role default**, **Allow** (grant) or **Deny** (revoke), plus the resulting value. Changes save at once and need a connection ("Connect to the internet to change permissions."). "Reset all to role default" removes every override of that person.
+
+**This is enforced in the app only.** Database access (row level security) is still decided by the person's role, so an Allow cannot make the database accept a write that the role could not make before (for example a technician allowed "Manage inventory" still cannot write the catalog; the database refuses). A Deny hides or blocks the action in the app. The screen says so: "Overrides change what the app lets this person do. Database access is still set by their role."
+
+**Storage.** `public.member_permission_overrides (tenant_id, user_id, permission, effect 'allow'|'deny', updated_by, created_at, updated_at)`, primary key (tenant_id, user_id, permission). No row means the role default. Admins of the company read and write every row; a member can read only their own. Audited (Permission group on the audit page: "Allowed ... for ...", "Denied ...", "Reset ...").
+
+**In the app.** `Permission` (`lib/modules/permissions/domain/permission.dart`) is the fixed catalogue with stable keys; `hasPermissionProvider` = role default plus the signed-in user's own override rows. The rows are fetched after sign-in and on app start, cached on the device (so it works offline), and refreshed when an admin edits their own. The existing provider names are kept and now read the effective value: `canSignOffProvider`, `canManageInventoryProvider`, `canReserveStockProvider`, `canAssignScheduleProvider`, `inspectionCanDeleteProvider`, `fleetManagerProvider`, `fleetCatalogEditorProvider`, `analyticsAccessProvider`; new: `canDeleteRecordsProvider`.
+
+**Catalogue and role defaults** (with no override, behaviour is exactly what it was before; apprentice = technician except the first two rows):
+
+| Key | What it gates | Apprentice | Technician | Dispatcher | Supervisor | Admin |
+|---|---|---|---|---|---|---|
+| `sign_off_work` | Signatures, Job Completed, Complete (inspections, maintenance, jobs, forms), Mark completed on tasks | no | yes | yes | yes | yes |
+| `delete_records` | Delete maintenance records, schedule tasks, documents | no | yes | yes | yes | yes |
+| `delete_inspections` | Delete inspections (swipe) | no | no | yes | no | yes |
+| `assign_schedule` | Assign / reassign / unassign schedule tasks | no | no | yes | yes | yes |
+| `manage_customers` | Edit customers and sites | no | no | yes | yes | yes |
+| `edit_parts_profiles` | Edit a generator's standing parts list directly | no | no | yes | yes | yes |
+| `manage_inventory` | Receive, adjust, count; catalog, vendors, prices, purchase orders; parts costs | no | no | no | no | yes |
+| `reserve_stock` | Reserve, issue and return stock for a job | no | no | yes | yes | yes |
+| `manage_fleet` | See all vehicles; add, edit, assign vehicles and tools | no | no | yes | yes | yes |
+| `manage_tool_catalog` | Edit the tool catalog | no | no | no | no | yes |
+| `schedule_readiness` | Schedule and bulk actions on generator readiness | no | no | yes | yes | yes |
+| `view_workload_analytics` | Tasks-per-technician chart | no | no | yes | no | yes |
+| `view_inventory_analytics` | Parts-in-stock chart | no | no | yes | yes | yes |
+
+**Not overridable, by design.** Managing users, roles, divisions and permissions, the audit log, admin settings and the readiness thresholds stay admin-role only and are not in the catalogue, so an admin cannot be locked out and a Deny can never remove an admin function. **Route access is still decided by role** (`RouteRoles`): a permission switches actions inside a screen, it does not open or close a whole screen (for example Allow "Manage inventory" on a technician shows the edit buttons on the inventory pages they could already open, but not any new page). Approving profile changes (Parts approvals) and the work-orders chart are route based and are therefore not in the catalogue. The "A technician or supervisor needs to sign this off." message is also shown when a Deny blocks someone from signing off or deleting.
+
+**Run order.** `20261114100000_member_permission_overrides.sql`, then `20261114110000_member_divisions.sql` (after the two 2026-11-13 files). Until the permissions file runs the app behaves as before (a failed read keeps the cache, then role defaults); until the divisions file runs the team list falls back to the old single column. The `invite-user` function needs a redeploy for `divisionIds`.

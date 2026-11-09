@@ -50,6 +50,13 @@ class InviteValidator {
     return null;
   }
 
+  static const int maxDivisions = 10;
+
+  static String? divisions(Iterable<String> ids) => ids.toSet().length >
+          maxDivisions
+      ? 'Choose at most $maxDivisions divisions.'
+      : null;
+
   static String? role(UserRole? value) =>
       value == null ? 'Choose a role.' : null;
 }

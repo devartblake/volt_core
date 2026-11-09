@@ -2,12 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../permissions/domain/permission.dart';
+import '../../../permissions/presenter/permission_providers.dart';
 import '../../../../core/constants/feature_flags.dart';
 import '../../../../core/constants/route_paths.dart';
 import '../../../../core/theme/app_tokens.dart';
 import '../../../../shared/widgets/action_runner.dart';
 import '../../../../shared/widgets/widgets.dart';
-import '../../../auth/presenter/controllers/auth_controller.dart';
 import '../../../inspections/presenter/controllers/inspection_list_controller.dart';
 import '../../../materials/presenter/materials_section_card.dart'
     show showGeneratorPartsProfile;
@@ -47,8 +48,7 @@ class ReadinessUnitDetail extends ConsumerWidget {
     final u = live == null
         ? unit
         : live.firstWhere((x) => x.key == unit.key, orElse: () => unit);
-    final role = ref.watch(authStateProvider).currentRole;
-    final canSchedule = canScheduleReadiness(role);
+    final canSchedule = ref.watch(hasPermissionProvider(Permission.scheduleReadiness));
     final inputs = ref.watch(readinessInputsProvider).value;
     final history = inputs == null
         ? const <ReadinessInspectionRow>[]

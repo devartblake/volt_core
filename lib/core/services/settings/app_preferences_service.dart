@@ -25,6 +25,7 @@ class AppPreferencesService {
   static const _inspectionDensityKey = 'inspection_list_density';
   static const _readinessDueSoonKey = 'readiness_due_soon_days';
   static const _readinessCriticalKey = 'readiness_critical_overdue_days';
+  static const _permissionOverridesPrefix = 'permission_overrides_';
 
   Box<dynamic>? get _boxIfOpen =>
       Hive.isBoxOpen(_boxName) ? Hive.box<dynamic>(_boxName) : null;
@@ -128,6 +129,17 @@ class AppPreferencesService {
   Future<void> setReadinessCriticalOverdueDays(int value) async {
     final box = await _ensureBox();
     await box.put(_readinessCriticalKey, value);
+  }
+
+  /// Cached permission override rows for one signed-in user, so the app can
+  /// apply them offline. [scope] is `tenant:user`. A cache of what the server
+  /// said; the server stays the source of truth and refreshes it.
+  Object? permissionOverridesCache(String scope) =>
+      _boxIfOpen?.get('$_permissionOverridesPrefix$scope');
+
+  Future<void> setPermissionOverridesCache(String scope, Object value) async {
+    final box = await _ensureBox();
+    await box.put('$_permissionOverridesPrefix$scope', value);
   }
 
   /// Time of the last sync run that finished with no failures.

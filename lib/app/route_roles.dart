@@ -50,6 +50,8 @@ class RouteRoles {
     'admin_audit': {UserRole.admin},
     // The company's division list: admins only (reachable from Technicians).
     'admin_divisions': {UserRole.admin},
+    // Per-person permission overrides: admins only, never overridable.
+    'admin_permissions': {UserRole.admin},
 
     // ----- Inspections -----
     'inspections': {

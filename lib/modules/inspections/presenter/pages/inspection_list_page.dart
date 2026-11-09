@@ -521,7 +521,8 @@ class _InspectionListPageState
 
     final canDelete = ref.watch(inspectionCanDeleteProvider);
     // Apprentices get the swipe so they are told why they cannot delete.
-    final apprentice = !ref.watch(canSignOffProvider);
+    final apprentice =
+        !ref.watch(canSignOffProvider) || !ref.watch(canDeleteRecordsProvider);
     final scheme = theme.colorScheme;
 
     Widget swipeBg(Alignment align, Color bg, Color fg, IconData icon,

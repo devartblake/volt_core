@@ -571,7 +571,7 @@ class _SwipeToDelete extends ConsumerWidget {
         child: Icon(Icons.delete_outline, color: colorScheme.onErrorContainer),
       ),
       confirmDismiss: (_) async {
-        if (ref.read(canSignOffProvider)) return true;
+        if (ref.read(canDeleteRecordsProvider)) return true;
         showSignOffBlocked(context);
         return false;
       },

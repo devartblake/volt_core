@@ -79,17 +79,46 @@ test("tenantId must be a uuid when present", () => {
   bad({ ...ok, tenantId: 1 });
 });
 
-test("divisionId is optional and must be a uuid when present", () => {
+test("divisionId (older single form) is optional and must be a uuid", () => {
   const id = "123E4567-E89B-12D3-A456-426614174000";
   const r = validateInvite({ ...ok, divisionId: id });
-  assert.equal(r.ok && r.value.divisionId, id.toLowerCase());
+  assert.deepEqual(r.ok && r.value.divisionIds, [id.toLowerCase()]);
   for (const empty of [undefined, null, ""]) {
     const e = validateInvite({ ...ok, divisionId: empty });
-    assert.equal(e.ok && e.value.divisionId, null);
+    assert.deepEqual(e.ok && e.value.divisionIds, []);
   }
   bad({ ...ok, divisionId: "not-a-uuid" });
   bad({ ...ok, divisionId: 7 });
   bad({ ...ok, divisionId: "1; drop table divisions" });
+});
+
+test("divisionIds: array of uuids, deduplicated, merged with divisionId", () => {
+  const a = "123e4567-e89b-12d3-a456-426614174000";
+  const b = "223e4567-e89b-12d3-a456-426614174000";
+  let r = validateInvite({ ...ok, divisionIds: [a, b.toUpperCase(), a] });
+  assert.deepEqual(r.ok && r.value.divisionIds, [a, b]);
+  r = validateInvite({ ...ok, divisionId: a, divisionIds: [a, b] });
+  assert.deepEqual(r.ok && r.value.divisionIds, [a, b]);
+  for (const empty of [undefined, null, []]) {
+    r = validateInvite({ ...ok, divisionIds: empty });
+    assert.deepEqual(r.ok && r.value.divisionIds, []);
+  }
+});
+
+test("divisionIds: rejects non-arrays, bad entries and more than 10", () => {
+  const a = "123e4567-e89b-12d3-a456-426614174000";
+  bad({ ...ok, divisionIds: a });
+  bad({ ...ok, divisionIds: ["nope"] });
+  bad({ ...ok, divisionIds: [a, 7] });
+  bad({ ...ok, divisionIds: [{}] });
+  const many = Array.from(
+    { length: 11 },
+    (_, i) => `123e4567-e89b-12d3-a456-4266141740${String(i).padStart(2, "0")}`,
+  );
+  bad({ ...ok, divisionIds: many });
+  const ten = many.slice(0, 10);
+  const r = validateInvite({ ...ok, divisionIds: ten });
+  assert.equal(r.ok && r.value.divisionIds.length, 10);
 });
 
 test("apprentice is an allowed role", () => {

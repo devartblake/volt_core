@@ -2,7 +2,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/services/settings/app_preferences_service.dart';
 import '../../../auth/domain/user_role.dart';
-import '../../../auth/presenter/controllers/auth_controller.dart';
+import '../../../permissions/domain/permission.dart';
+import '../../../permissions/presenter/permission_providers.dart';
 import '../../domain/inspection_filter_preset.dart';
 
 /// Where the inspections list keeps its saved filter presets and row density.
@@ -46,11 +47,11 @@ final inspectionListPrefsProvider =
 /// technicians may not). Mirrors the cloud delete policy
 /// (`20261110100000_inspections_delete_policy.sql`).
 bool roleCanDeleteInspection(UserRole? role) =>
-    role == UserRole.admin || role == UserRole.dispatcher;
+    Permission.deleteInspections.defaultFor(role);
 
-/// Whether the signed-in role may delete inspections (admin, dispatcher).
-/// Its own provider so tests can override it.
-final inspectionCanDeleteProvider = Provider<bool>((ref) {
-  final role = ref.watch(authStateProvider.select((a) => a.currentRole));
-  return roleCanDeleteInspection(role);
-});
+/// Whether the signed-in user may delete inspections (permission
+/// `delete_inspections`: admin and dispatcher by default, plus any per-person
+/// override). Its own provider so tests can override it.
+final inspectionCanDeleteProvider = Provider<bool>(
+  (ref) => ref.watch(hasPermissionProvider(Permission.deleteInspections)),
+);

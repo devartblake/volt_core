@@ -17,6 +17,7 @@ import 'package:voltcore/modules/admin/presenter/pages/admin_dashboard_page.dart
 import 'package:voltcore/modules/admin/presenter/pages/admin_settings_page.dart';
 import '../modules/admin/presenter/pages/audit_log_page.dart';
 import '../modules/admin/presenter/pages/divisions_page.dart';
+import '../modules/permissions/presenter/permissions_page.dart';
 import '../modules/admin/presenter/pages/technicians_page.dart';
 import '../modules/auth/presenter/controllers/auth_controller.dart';
 import '../modules/auth/presenter/sign_off_access.dart';
@@ -405,7 +406,7 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         name: RouteNames.documents,
         builder: (_, __) => TechShell(child: Consumer(
               builder: (_, ref, __) => DocumentLibraryPage(
-                canDelete: ref.watch(canSignOffProvider),
+                canDelete: ref.watch(canDeleteRecordsProvider),
               ),
             )),
       ),
@@ -453,6 +454,13 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         path: RoutePaths.adminDivisions,
         name: RouteNames.adminDivisions,
         builder: (_, __) => const AdminShell(child: DivisionsPage()),
+      ),
+      GoRoute(
+        path: RoutePaths.adminPermissions,
+        name: RouteNames.adminPermissions,
+        builder: (_, state) => AdminShell(
+          child: PermissionsPage(userId: state.pathParameters['userId'] ?? ''),
+        ),
       ),
       if (kDebugMode)
         GoRoute(

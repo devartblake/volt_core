@@ -105,6 +105,26 @@ export function divisionUsable(
     row.tenant_id.toLowerCase() === tenantId.toLowerCase();
 }
 
+/**
+ * Every requested division must exist, be active and belong to the resolved
+ * tenant. A missing row (unknown id) fails the whole set.
+ */
+export function divisionsUsable(
+  rows: DivisionRow[] | null | undefined,
+  ids: string[],
+  tenantId: string,
+): boolean {
+  const byId = new Map<string, DivisionRow>();
+  for (const r of rows ?? []) byId.set(r.id.toLowerCase(), r);
+  return ids.every((id) => divisionUsable(byId.get(id.toLowerCase()), tenantId));
+}
+
+/** Invites only add: the wanted ids the member does not already have. */
+export function divisionsToAdd(existing: string[], wanted: string[]): string[] {
+  const have = new Set(existing.map((e) => e.toLowerCase()));
+  return wanted.filter((w) => !have.has(w.toLowerCase()));
+}
+
 export function rateLimitSince(now: number): string {
   return new Date(now - RATE_LIMIT_WINDOW_MS).toISOString();
 }

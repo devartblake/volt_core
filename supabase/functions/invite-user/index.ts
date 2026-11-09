@@ -10,13 +10,15 @@
 // Request JSON body (caller's JWT in the Authorization header):
 //   { email, displayName,
 //     role: 'apprentice'|'technician'|'supervisor'|'dispatcher'|'admin',
-//     phone?, redirectTo?, tenantId?, divisionId? }
+//     phone?, redirectTo?, tenantId?,
+//     divisionIds?: uuid[] (max 10), divisionId?: uuid (older single form) }
 // Response: { ok: true, userId, invited: boolean, role }  or  { error }
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders, json } from "./cors.ts";
 import {
-  divisionUsable,
+  divisionsToAdd,
+  divisionsUsable,
   emailDomain,
   INVITE_REASON,
   isRateLimited,
@@ -122,20 +124,18 @@ Deno.serve(async (req: Request) => {
   if (!tenant.ok) return json({ error: tenant.message }, tenant.status);
   const tenantId = tenant.tenantId;
 
-  // The division, if any, must be one of THIS company's active divisions.
+  // Every division, if any, must be one of THIS company's active divisions.
   // Checked with the service client; the request is not trusted for it.
-  if (input.divisionId !== null) {
+  if (input.divisionIds.length > 0) {
     const { data: divRows, error: divErr } = await admin
       .from("divisions")
       .select("id, tenant_id, is_active")
-      .eq("id", input.divisionId)
-      .limit(1);
+      .in("id", input.divisionIds);
     if (divErr) {
       console.error("invite-user: division lookup failed", divErr.code);
-      return json({ error: "Could not check the division." }, 500);
+      return json({ error: "Could not check the divisions." }, 500);
     }
-    const div = divRows && divRows.length > 0 ? divRows[0] : null;
-    if (!divisionUsable(div, tenantId)) {
+    if (!divisionsUsable(divRows, input.divisionIds, tenantId)) {
       return json({ error: "That division is not available." }, 400);
     }
   }
@@ -248,12 +248,46 @@ Deno.serve(async (req: Request) => {
     role: plan.newRole,
     is_active: true,
     updated_at: new Date().toISOString(),
-    // Only sent when chosen, so re-inviting someone never clears their division.
-    ...(input.divisionId !== null ? { division_id: input.divisionId } : {}),
+    // Deprecated single column, kept for older app builds. Only sent when
+    // chosen, so re-inviting someone never clears their divisions.
+    ...(input.divisionIds.length > 0
+      ? { division_id: input.divisionIds[0] }
+      : {}),
   }, { onConflict: "tenant_id,user_id" });
   if (mErr) {
     console.error("invite-user: membership upsert failed", mErr.code);
     return json({ error: "Could not add the member." }, 500);
+  }
+
+  // Divisions: an invite only ADDS (it never removes a division the member
+  // already has). member_divisions is the source of truth.
+  if (input.divisionIds.length > 0) {
+    const { data: haveRows, error: hErr } = await admin
+      .from("member_divisions")
+      .select("division_id")
+      .eq("tenant_id", tenantId)
+      .eq("user_id", userId);
+    if (hErr) {
+      console.error("invite-user: member divisions read failed", hErr.code);
+      return json({ error: "Could not save the divisions." }, 500);
+    }
+    const toAdd = divisionsToAdd(
+      (haveRows ?? []).map((r: { division_id: string }) => r.division_id),
+      input.divisionIds,
+    );
+    if (toAdd.length > 0) {
+      const { error: dErr } = await admin.from("member_divisions").insert(
+        toAdd.map((division_id) => ({
+          tenant_id: tenantId,
+          user_id: userId,
+          division_id,
+        })),
+      );
+      if (dErr) {
+        console.error("invite-user: member divisions insert failed", dErr.code);
+        return json({ error: "Could not save the divisions." }, 500);
+      }
+    }
   }
 
   // (f)

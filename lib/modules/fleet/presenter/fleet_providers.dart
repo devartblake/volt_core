@@ -3,8 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/services/storage/pdf_library_service.dart';
 import '../../admin/domain/entities/tenant_member_entity.dart';
 import '../../admin/infra/repositories/admin_repository_impl.dart';
-import '../../auth/domain/user_role.dart';
 import '../../auth/presenter/controllers/auth_controller.dart';
+import '../../permissions/domain/permission.dart';
+import '../../permissions/presenter/permission_providers.dart';
 import '../domain/entities/vehicle_entity.dart';
 import '../domain/entities/vehicle_maintenance_check.dart';
 import '../domain/entities/vehicle_asset_catalog_item.dart';
@@ -19,12 +20,9 @@ import '../infra/repositories/vehicle_repository_impl.dart';
 /// admin/supervisor/dispatcher. Kept as one expression so the client rule and
 /// the SQL rule can be compared at a glance rather than being spelled out at
 /// each call site.
-final fleetManagerProvider = Provider<bool>((ref) {
-  final role = ref.watch(authStateProvider).currentRole;
-  return role == UserRole.admin ||
-      role == UserRole.supervisor ||
-      role == UserRole.dispatcher;
-});
+final fleetManagerProvider = Provider<bool>(
+  (ref) => ref.watch(hasPermissionProvider(Permission.manageFleet)),
+);
 
 /// The vehicles the signed-in user may see.
 ///
@@ -88,9 +86,9 @@ final vehicleChecksProvider =
 /// Admin only, unlike the rest of the fleet: a sloppy catalog is exactly what
 /// splitting catalog from assignment exists to prevent, and the migration gates
 /// vehicle_asset_catalog writes on has_tenant_role(..., ['admin']).
-final fleetCatalogEditorProvider = Provider<bool>((ref) {
-  return ref.watch(authStateProvider).currentRole == UserRole.admin;
-});
+final fleetCatalogEditorProvider = Provider<bool>(
+  (ref) => ref.watch(hasPermissionProvider(Permission.manageToolCatalog)),
+);
 
 /// The tool catalog. Active entries only — a deactivated tool should not be
 /// offered when assigning.

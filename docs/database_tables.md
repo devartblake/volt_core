@@ -2,7 +2,7 @@
 
 What is in the Supabase `public` schema, whether the app uses it, and what to do about the older tables. Checked 2026-11-08 against the live project (row counts at that time) and a search of the app code for each table name.
 
-**44 tables.** Every table has Row Level Security on, and every table is scoped to a company (`tenant_id`) except the user tables noted below.
+**46 tables.** Every table has Row Level Security on, and every table is scoped to a company (`tenant_id`) except the user tables noted below.
 
 ## Summary
 
@@ -10,7 +10,7 @@ What is in the Supabase `public` schema, whether the app uses it, and what to do
 |---|---|---|
 | In use, with data | 15 | Keep |
 | In use by the app, empty so far | 12 (including `app_settings`) | Keep (the feature exists; no data entered yet) |
-| Added by us in the last two weeks | 11 | Keep (see the inventory design doc) |
+| Added by us in the last two weeks | 13 | Keep (see the inventory design doc) |
 | **Unused or legacy, all empty** | **6** | See "Older tables" below |
 
 ## In use, with data
@@ -55,6 +55,10 @@ What is in the Supabase `public` schema, whether the app uses it, and what to do
 **Audit log (2026-11-12, migration `20261112100000_audit_log.sql`).** `audit_log` is append-only (a trigger refuses update and delete; only `purge_audit_log()` may remove rows older than 730 days, not scheduled) and readable by company admins only. Rows are written by the `SECURITY DEFINER` trigger function `log_row_change()` on: `inspections` (update, delete; ignores payload-only changes), `maintenance_jobs` (delete), `part_prices`, `vendors`, `inventory_locations`, `tenant_members` (insert, update, delete), `purchase_orders` (update, delete), `inventory_movements` (insert of adjust / count only), `user_profiles` (is_active / email changes), `profile_change_requests` (status change), `vehicle_inspections` (delete). Updates keep only the changed keys; values over 4 KB are stored as `[omitted]`.
 
 **Divisions and the apprentice role (2026-11-13, migrations `20261113100000_apprentice_role.sql` then `20261113110000_divisions.sql`).** The enum `app_role` gains the value `apprentice` (a technician who cannot sign off or delete work; enforced in the app). New table `divisions` (`id`, `tenant_id`, `name` unique per company ignoring case, `sort_order`, `is_active`, timestamps with `set_updated_at`): any company member can read, only admins write. New nullable column `tenant_members.division_id` (references `divisions`, cleared if the division is deleted; a trigger refuses a division from another company) with a partial index. The audit log trigger on `tenant_members` records a division change without modification. The `inventory_movements` insert policy and `is_assigned_technician()` now accept `apprentice` wherever they accept `technician`. See section 24 of `materials_and_inventory_design.md`.
+
+**Permission overrides (2026-11-14, migration `20261114100000_member_permission_overrides.sql`).** `member_permission_overrides` (`tenant_id`, `user_id`, `permission` text key from the app's fixed catalogue, `effect` 'allow' or 'deny', `updated_by`, timestamps with `set_updated_at`), primary key (`tenant_id`, `user_id`, `permission`). Admins of the company can read and write every row; a member can read only their own (`user_id = (select auth.uid())`); nothing else. The app applies it; row level security elsewhere still follows the role. Insert, update and delete are written to `audit_log` by `audit_member_permission_change()` (`audit_log.table_name` has no CHECK, so nothing else changed).
+
+**Several divisions per person (2026-11-14, migration `20261114110000_member_divisions.sql`).** `member_divisions` (`tenant_id`, `user_id`, `division_id` references `divisions` on delete cascade, `created_at`), primary key (`user_id`, `division_id`); a trigger refuses a division from another company. Company members read, admins write. Existing `tenant_members.division_id` values were copied across; that column is now deprecated but kept for older app builds (the app keeps it equal to the first chosen division). Insert and delete are written to `audit_log` by `audit_member_division_change()`.
 
 **Job cost functions (migration `20261112110000_job_costs.sql`).** `job_parts_cost(p_job_ref text)` and `job_costs_summary(p_since date)` return the parts cost of a job at the last paid price; admin only. See section 23 of `materials_and_inventory_design.md`.
 
