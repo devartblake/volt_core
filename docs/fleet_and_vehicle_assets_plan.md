@@ -610,3 +610,36 @@ clauses above the signature line actually achieve.
   SQL for the database. `test/fleet/asset_receipt_test.dart` fails on a
   one-comma difference between them, because two sources of a legal clause is
   one too many.
+## Update 2026-11-07: vehicle list, documents tab and PDF
+
+![Vehicle list with status and daily-check chips](images/vehicle-list.png)
+
+
+- **Vehicle list cards** show the status chip and a **Daily check** chip: done
+  today, due, or overdue (two or more days since the last check). The rule is
+  `dailyCheckState` in `fleet/domain/daily_check_status.dart`; the vehicle detail
+  summary uses the same one. A weekly or monthly walk-around done today also
+  counts.
+- **Vehicle detail** has six tabs: Overview, Inspections, Maintenance, Media,
+  **Documents**, Tools. Documents lists the vehicle's saved PDFs (open and
+  share). Files are matched by the last 8 characters of the vehicle id in the
+  file name (`..._<id8>.pdf`, how `generateVehiclePdf` names them), so PDFs saved
+  under an older naming do not appear.
+- **Vehicle PDF** now includes the latest inspection's **driver and dispatcher
+  signatures** ("Not signed" when missing), the **vehicle photos** and the
+  **latest inspection's photos**, inside the same branded-footer layout. An
+  unreadable image is skipped without failing the report.
+
+## Vehicle inspections sync (2026-11-09)
+
+Daily, weekly and monthly walk-around inspections now sync to Supabase.
+Migration `supabase/migrations/20261109100000_vehicle_inspections.sql` (to run)
+creates `vehicle_inspections` (typed columns plus a `payload jsonb` with the
+full inspection, `set_updated_at` trigger). RLS: any tenant member reads; the
+inspector (`inspector_user_id = auth.uid()`) or an admin, supervisor or
+dispatcher writes. The app side is in `vehicle_inspection_repository.dart`
+(queue on save and delete, backfill of older local records, `refreshFromCloud`)
+and `vehicle_inspection_supabase_mapper.dart`. Rows show a "Not uploaded yet"
+badge until the queue sends them. Photos and signature files upload through the
+same file backup as before; a second device gets the inspection record but the
+signature path inside it points at the first device's file.

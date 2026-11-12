@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../presenter/widgets/utils/form_fields.dart';
 import '../../infra/models/maintenance_record.dart';
+import '../../../../shared/widgets/status_chip.dart';
 
 /// Parts & materials section for the maintenance form.
 ///
@@ -93,7 +94,7 @@ class SectionMaintParts extends StatelessWidget {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    _StatusChip(
+                    StatusChip.colored(
                       label: complete ? 'Complete' : 'In Progress',
                       icon: complete
                           ? Icons.check_circle_outline
@@ -107,7 +108,7 @@ class SectionMaintParts extends StatelessWidget {
                     ),
                     if (readOnly) ...[
                       const SizedBox(height: 8),
-                      _StatusChip(
+                      StatusChip.colored(
                         label: 'Read only',
                         icon: Icons.lock_outline,
                         background: colorScheme.surfaceContainerHighest,
@@ -198,48 +199,6 @@ class SectionMaintParts extends StatelessWidget {
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _StatusChip extends StatelessWidget {
-  final String label;
-  final IconData icon;
-  final Color background;
-  final Color foreground;
-
-  const _StatusChip({
-    required this.label,
-    required this.icon,
-    required this.background,
-    required this.foreground,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: background,
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: background.withValues(alpha: 0.6)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 16, color: foreground),
-          const SizedBox(width: 6),
-          Text(
-            label,
-            style: theme.textTheme.labelSmall?.copyWith(
-              color: foreground,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ],
       ),
     );
   }

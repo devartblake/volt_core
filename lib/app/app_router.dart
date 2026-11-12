@@ -11,13 +11,26 @@ import 'package:voltcore/modules/auth/presenter/pages/forbidden_page.dart';
 
 import 'package:voltcore/modules/dashboard/presenter/pages/dashboard_page.dart';
 import 'package:voltcore/modules/dashboard/presenter/pages/analytics_page.dart';
+import 'package:voltcore/modules/readiness/presenter/pages/readiness_page.dart';
 
 import 'package:voltcore/modules/admin/presenter/pages/admin_dashboard_page.dart';
 import 'package:voltcore/modules/admin/presenter/pages/admin_settings_page.dart';
+import '../modules/admin/presenter/pages/audit_log_page.dart';
+import '../modules/admin/presenter/pages/divisions_page.dart';
+import '../modules/permissions/presenter/permissions_page.dart';
 import '../modules/admin/presenter/pages/technicians_page.dart';
 import '../modules/auth/presenter/controllers/auth_controller.dart';
+import '../modules/auth/presenter/sign_off_access.dart';
 import '../modules/dashboard/presenter/pages/tech_dashboard_page.dart';
 import '../modules/documents/presenter/pages/document_library_page.dart';
+import '../modules/inventory/presenter/pages/job_needs_page.dart';
+import '../modules/inventory/presenter/pages/movements_page.dart';
+import '../modules/inventory/presenter/pages/parts_catalog_page.dart';
+import '../modules/inventory/presenter/pages/shortages_page.dart';
+import '../modules/inventory/presenter/pages/purchase_orders_page.dart';
+import '../modules/inventory/presenter/pages/vendors_page.dart';
+import '../modules/materials/presenter/pages/profile_approvals_page.dart';
+import '../modules/inventory/presenter/pages/stock_page.dart';
 import '../modules/debug/pages/debug_menu_page.dart';
 import '../modules/debug/pages/hive_debug_page.dart';
 import '../modules/debug/pages/network_debug_page.dart';
@@ -38,6 +51,9 @@ import '../modules/fleet/presenter/pages/vehicle_asset_receipt_page.dart';
 import '../modules/fleet/presenter/pages/vehicle_assets_page.dart';
 import '../modules/fleet/presenter/pages/vehicle_detail_page.dart';
 import '../modules/fleet/presenter/pages/vehicle_form_page.dart';
+import '../modules/fleet/presenter/pages/vehicle_inspection_form_page.dart';
+import '../modules/fleet/presenter/pages/vehicle_inspection_log_page.dart';
+import '../modules/fleet/domain/entities/vehicle_inspection.dart';
 import '../modules/fleet/presenter/pages/vehicle_list_page.dart';
 import '../modules/fleet/presenter/pages/vehicle_maintenance_form_page.dart';
 import '../modules/work_orders/presenter/pages/work_order_form_page.dart';
@@ -110,9 +126,17 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         builder: (_, __) => const DefaultShell(child: AnalyticsPage()),
       ),
       GoRoute(
+        path: RoutePaths.readiness,
+        name: RouteNames.readiness,
+        builder: (_, __) => const DefaultShell(child: ReadinessPage()),
+      ),
+      GoRoute(
         path: RoutePaths.inspections,
         name: RouteNames.inspections,
-        builder: (_, __) => const TechShell(child: InspectionListPage()),
+        builder: (_, state) => TechShell(
+          // `?grade=red` opens the list narrowed to one site grade (Analytics).
+          child: InspectionListPage(filterStatus: state.uri.queryParameters['grade']),
+        ),
         routes: [
           GoRoute(
             path: 'new',
@@ -206,6 +230,12 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         builder: (_, __) => const TechShell(child: VehicleListPage()),
         routes: [
           GoRoute(
+            path: RoutePaths.fleetInspectionLogSub,
+            name: RouteNames.fleetInspectionLog,
+            builder: (_, __) =>
+                const TechShell(child: VehicleInspectionLogPage()),
+          ),
+          GoRoute(
             path: 'catalog',
             name: RouteNames.fleetCatalog,
             builder: (_, __) =>
@@ -236,6 +266,18 @@ final goRouterProvider = Provider<GoRouter>((ref) {
                 builder: (_, state) => TechShell(
                   child: VehicleMaintenanceFormPage(
                     vehicleId: state.pathParameters['id']!,
+                  ),
+                ),
+              ),
+              GoRoute(
+                path: RoutePaths.fleetInspectionNewSub,
+                name: RouteNames.fleetInspectionNew,
+                builder: (_, state) => TechShell(
+                  child: VehicleInspectionFormPage(
+                    vehicleId: state.pathParameters['id']!,
+                    cadence: InspectionCadenceX.fromWire(
+                      state.uri.queryParameters['cadence'],
+                    ),
                   ),
                 ),
               ),
@@ -304,7 +346,9 @@ final goRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: RoutePaths.schedule,
         name: RouteNames.schedule,
-        builder: (_, __) => const TechShell(child: SchedulePage()),
+        builder: (_, state) => TechShell(
+          child: SchedulePage(technician: state.uri.queryParameters['technician']),
+        ),
         routes: [
           GoRoute(
             path: RoutePaths.scheduleTask,
@@ -354,9 +398,53 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         builder: (_, __) => const DefaultShell(child: CustomerSiteDirectoryPage()),
       ),
       GoRoute(
+        path: RoutePaths.materialsApprovals,
+        name: RouteNames.materialsApprovals,
+        builder: (_, __) => const DefaultShell(child: ProfileApprovalsPage()),
+      ),
+      GoRoute(
+        path: RoutePaths.inventory,
+        name: RouteNames.inventory,
+        builder: (_, __) => const TechShell(child: StockPage()),
+      ),
+      GoRoute(
+        path: RoutePaths.inventoryNeeds,
+        name: RouteNames.inventoryNeeds,
+        builder: (_, __) => const TechShell(child: JobNeedsPage()),
+      ),
+      GoRoute(
+        path: RoutePaths.inventoryShortages,
+        name: RouteNames.inventoryShortages,
+        builder: (_, __) => const TechShell(child: ShortagesPage()),
+      ),
+      GoRoute(
+        path: RoutePaths.inventoryOrders,
+        name: RouteNames.inventoryOrders,
+        builder: (_, __) => const TechShell(child: PurchaseOrdersPage()),
+      ),
+      GoRoute(
+        path: RoutePaths.inventoryVendors,
+        name: RouteNames.inventoryVendors,
+        builder: (_, __) => const TechShell(child: VendorsPage()),
+      ),
+      GoRoute(
+        path: RoutePaths.inventoryMovements,
+        name: RouteNames.inventoryMovements,
+        builder: (_, __) => const TechShell(child: MovementsPage()),
+      ),
+      GoRoute(
+        path: RoutePaths.inventoryCatalog,
+        name: RouteNames.inventoryCatalog,
+        builder: (_, __) => const TechShell(child: PartsCatalogPage()),
+      ),
+      GoRoute(
         path: RoutePaths.documents,
         name: RouteNames.documents,
-        builder: (_, __) => const TechShell(child: DocumentLibraryPage()),
+        builder: (_, __) => TechShell(child: Consumer(
+              builder: (_, ref, __) => DocumentLibraryPage(
+                canDelete: ref.watch(canDeleteRecordsProvider),
+              ),
+            )),
       ),
       GoRoute(
         path: RoutePaths.selectionManagement,
@@ -392,6 +480,23 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         path: RoutePaths.adminTechnicians,
         name: RouteNames.adminTechnicians,
         builder: (_, __) => const AdminShell(child: TechniciansPage()),
+      ),
+      GoRoute(
+        path: RoutePaths.adminAudit,
+        name: RouteNames.adminAudit,
+        builder: (_, __) => const AdminShell(child: AuditLogPage()),
+      ),
+      GoRoute(
+        path: RoutePaths.adminDivisions,
+        name: RouteNames.adminDivisions,
+        builder: (_, __) => const AdminShell(child: DivisionsPage()),
+      ),
+      GoRoute(
+        path: RoutePaths.adminPermissions,
+        name: RouteNames.adminPermissions,
+        builder: (_, state) => AdminShell(
+          child: PermissionsPage(userId: state.pathParameters['userId'] ?? ''),
+        ),
       ),
       if (kDebugMode)
         GoRoute(

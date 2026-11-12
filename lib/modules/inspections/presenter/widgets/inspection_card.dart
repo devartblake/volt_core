@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../domain/entities/inspection_entity.dart';
 import '../../../../core/theme/status_colors.dart';
+import '../../../../shared/widgets/status_chip.dart';
 
 class InspectionCard extends StatelessWidget {
   final InspectionEntity inspection;
@@ -66,12 +67,12 @@ class InspectionCard extends StatelessWidget {
                       spacing: 8,
                       runSpacing: 4,
                       children: [
-                        _InfoChip(
+                        InfoChip(
                           icon: Icons.calendar_today,
                           label: dateStr,
                         ),
                         if (inspection.siteCode.isNotEmpty)
-                          _InfoChip(
+                          InfoChip(
                             icon: Icons.location_on_outlined,
                             label: inspection.siteCode,
                           ),
@@ -114,35 +115,3 @@ class InspectionCard extends StatelessWidget {
 
 }
 
-class _InfoChip extends StatelessWidget {
-  final IconData icon;
-  final String label;
-
-  const _InfoChip({
-    required this.icon,
-    required this.label,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(
-          icon,
-          size: 14,
-          color: theme.colorScheme.onSurfaceVariant,
-        ),
-        const SizedBox(width: 4),
-        Text(
-          label,
-          style: theme.textTheme.bodySmall?.copyWith(
-            color: theme.colorScheme.onSurfaceVariant,
-          ),
-        ),
-      ],
-    );
-  }
-}

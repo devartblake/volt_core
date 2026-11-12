@@ -16,6 +16,13 @@
             </list>
           </value>
         </entry>
+        <entry key="android_file_picker">
+          <value>
+            <list>
+              <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/android_file_picker-2.1.1/lib" />
+            </list>
+          </value>
+        </entry>
         <entry key="app_links">
           <value>
             <list>
@@ -47,7 +54,7 @@
         <entry key="archive">
           <value>
             <list>
-              <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/archive-4.0.9/lib" />
+              <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/archive-4.6.0/lib" />
             </list>
           </value>
         </entry>
@@ -205,6 +212,13 @@
             </list>
           </value>
         </entry>
+        <entry key="ffi_leak_tracker">
+          <value>
+            <list>
+              <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/ffi_leak_tracker-0.1.2/lib" />
+            </list>
+          </value>
+        </entry>
         <entry key="file">
           <value>
             <list>
@@ -215,7 +229,35 @@
         <entry key="file_picker">
           <value>
             <list>
-              <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/file_picker-10.3.10/lib" />
+              <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/file_picker-13.1.0/lib" />
+            </list>
+          </value>
+        </entry>
+        <entry key="file_picker_darwin">
+          <value>
+            <list>
+              <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/file_picker_darwin-2.3.2/lib" />
+            </list>
+          </value>
+        </entry>
+        <entry key="file_picker_linux">
+          <value>
+            <list>
+              <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/file_picker_linux-2.0.0/lib" />
+            </list>
+          </value>
+        </entry>
+        <entry key="file_picker_platform_interface">
+          <value>
+            <list>
+              <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/file_picker_platform_interface-4.2.0/lib" />
+            </list>
+          </value>
+        </entry>
+        <entry key="file_picker_web">
+          <value>
+            <list>
+              <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/file_picker_web-4.2.0/lib" />
             </list>
           </value>
         </entry>
@@ -565,7 +607,7 @@
         <entry key="matcher">
           <value>
             <list>
-              <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/matcher-0.12.19/lib" />
+              <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/matcher-0.12.20/lib" />
             </list>
           </value>
         </entry>
@@ -579,7 +621,7 @@
         <entry key="meta">
           <value>
             <list>
-              <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/meta-1.18.0/lib" />
+              <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/meta-1.19.0/lib" />
             </list>
           </value>
         </entry>
@@ -587,6 +629,13 @@
           <value>
             <list>
               <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/mime-2.0.0/lib" />
+            </list>
+          </value>
+        </entry>
+        <entry key="mobile_scanner">
+          <value>
+            <list>
+              <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/mobile_scanner-7.5.0/lib" />
             </list>
           </value>
         </entry>
@@ -622,6 +671,20 @@
           <value>
             <list>
               <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/package_config-2.2.0/lib" />
+            </list>
+          </value>
+        </entry>
+        <entry key="package_info_plus">
+          <value>
+            <list>
+              <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/package_info_plus-10.2.2/lib" />
+            </list>
+          </value>
+        </entry>
+        <entry key="package_info_plus_platform_interface">
+          <value>
+            <list>
+              <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/package_info_plus_platform_interface-4.1.0/lib" />
             </list>
           </value>
         </entry>
@@ -691,7 +754,7 @@
         <entry key="pdf">
           <value>
             <list>
-              <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/pdf-3.13.0/lib" />
+              <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/pdf-3.13.1/lib" />
             </list>
           </value>
         </entry>
@@ -838,14 +901,14 @@
         <entry key="share_plus">
           <value>
             <list>
-              <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/share_plus-10.1.4/lib" />
+              <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/share_plus-13.3.1/lib" />
             </list>
           </value>
         </entry>
         <entry key="share_plus_platform_interface">
           <value>
             <list>
-              <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/share_plus_platform_interface-5.0.2/lib" />
+              <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/share_plus_platform_interface-7.2.0/lib" />
             </list>
           </value>
         </entry>
@@ -1041,21 +1104,21 @@
         <entry key="test">
           <value>
             <list>
-              <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/test-1.31.0/lib" />
+              <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/test-1.31.1/lib" />
             </list>
           </value>
         </entry>
         <entry key="test_api">
           <value>
             <list>
-              <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/test_api-0.7.11/lib" />
+              <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/test_api-0.7.12/lib" />
             </list>
           </value>
         </entry>
         <entry key="test_core">
           <value>
             <list>
-              <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/test_core-0.6.17/lib" />
+              <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/test_core-0.6.18/lib" />
             </list>
           </value>
         </entry>
@@ -1160,7 +1223,7 @@
         <entry key="vector_math">
           <value>
             <list>
-              <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/vector_math-2.2.0/lib" />
+              <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/vector_math-2.4.3/lib" />
             </list>
           </value>
         </entry>
@@ -1209,7 +1272,14 @@
         <entry key="win32">
           <value>
             <list>
-              <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/win32-5.15.0/lib" />
+              <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/win32-6.4.0/lib" />
+            </list>
+          </value>
+        </entry>
+        <entry key="windows_file_picker">
+          <value>
+            <list>
+              <option value="$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/windows_file_picker-2.0.1/lib" />
             </list>
           </value>
         </entry>
@@ -1246,11 +1316,12 @@
     <CLASSES>
       <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/_fe_analyzer_shared-99.0.0/lib" />
       <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/analyzer-12.1.0/lib" />
+      <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/android_file_picker-2.1.1/lib" />
       <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/app_links-7.2.1/lib" />
       <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/app_links_linux-1.0.3/lib" />
       <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/app_links_platform_interface-2.0.4/lib" />
       <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/app_links_web-1.0.4/lib" />
-      <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/archive-4.0.9/lib" />
+      <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/archive-4.6.0/lib" />
       <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/args-2.7.0/lib" />
       <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/async-2.13.1/lib" />
       <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/barcode-2.2.9/lib" />
@@ -1273,8 +1344,13 @@
       <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/equatable-2.1.0/lib" />
       <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/fake_async-1.3.3/lib" />
       <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/ffi-2.2.0/lib" />
+      <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/ffi_leak_tracker-0.1.2/lib" />
       <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/file-7.0.1/lib" />
-      <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/file_picker-10.3.10/lib" />
+      <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/file_picker-13.1.0/lib" />
+      <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/file_picker_darwin-2.3.2/lib" />
+      <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/file_picker_linux-2.0.0/lib" />
+      <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/file_picker_platform_interface-4.2.0/lib" />
+      <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/file_picker_web-4.2.0/lib" />
       <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/file_selector_linux-0.9.4/lib" />
       <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/file_selector_macos-0.9.5/lib" />
       <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/file_selector_platform_interface-2.7.0/lib" />
@@ -1321,15 +1397,18 @@
       <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/lints-5.1.1/lib" />
       <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/listen-1.0.1/lib" />
       <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/logging-1.3.0/lib" />
-      <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/matcher-0.12.19/lib" />
+      <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/matcher-0.12.20/lib" />
       <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/material_color_utilities-0.13.0/lib" />
-      <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/meta-1.18.0/lib" />
+      <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/meta-1.19.0/lib" />
       <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/mime-2.0.0/lib" />
+      <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/mobile_scanner-7.5.0/lib" />
       <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/nm-0.5.0/lib" />
       <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/node_preamble-2.0.2/lib" />
       <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/objective_c-9.5.0/lib" />
       <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/open_filex-4.7.0/lib" />
       <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/package_config-2.2.0/lib" />
+      <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/package_info_plus-10.2.2/lib" />
+      <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/package_info_plus_platform_interface-4.1.0/lib" />
       <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/passkeys_platform_interface-2.9.0/lib" />
       <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/path-1.9.1/lib" />
       <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/path_parsing-1.1.0/lib" />
@@ -1339,7 +1418,7 @@
       <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/path_provider_linux-2.2.2/lib" />
       <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/path_provider_platform_interface-2.1.3/lib" />
       <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/path_provider_windows-2.3.0/lib" />
-      <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/pdf-3.13.0/lib" />
+      <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/pdf-3.13.1/lib" />
       <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/pdf_widget_wrapper-1.0.4/lib" />
       <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/permission_handler-12.0.3/lib" />
       <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/permission_handler_android-13.0.1/lib" />
@@ -1360,8 +1439,8 @@
       <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/realtime_client-2.13.0/lib" />
       <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/record_use-0.6.0/lib" />
       <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/riverpod-3.4.2/lib" />
-      <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/share_plus-10.1.4/lib" />
-      <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/share_plus_platform_interface-5.0.2/lib" />
+      <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/share_plus-13.3.1/lib" />
+      <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/share_plus_platform_interface-7.2.0/lib" />
       <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/shared_preferences-2.5.5/lib" />
       <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/shared_preferences_android-2.4.27/lib" />
       <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/shared_preferences_foundation-2.5.6/lib" />
@@ -1388,9 +1467,9 @@
       <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/supabase_flutter-2.17.2/lib" />
       <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/table_calendar-3.2.1/lib" />
       <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/term_glyph-1.2.2/lib" />
-      <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/test-1.31.0/lib" />
-      <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/test_api-0.7.11/lib" />
-      <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/test_core-0.6.17/lib" />
+      <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/test-1.31.1/lib" />
+      <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/test_api-0.7.12/lib" />
+      <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/test_core-0.6.18/lib" />
       <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/timezone-0.9.4/lib" />
       <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/typed_data-1.4.0/lib" />
       <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/url_launcher-6.3.2/lib" />
@@ -1405,14 +1484,15 @@
       <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/vector_graphics-1.2.3/lib" />
       <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/vector_graphics_codec-1.1.13/lib" />
       <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/vector_graphics_compiler-1.3.0/lib" />
-      <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/vector_math-2.2.0/lib" />
+      <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/vector_math-2.4.3/lib" />
       <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/vm_service-15.3.0/lib" />
       <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/watcher-1.2.1/lib" />
       <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/web-1.1.1/lib" />
       <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/web_socket-1.0.1/lib" />
       <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/web_socket_channel-3.0.3/lib" />
       <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/webkit_inspection_protocol-1.2.1/lib" />
-      <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/win32-5.15.0/lib" />
+      <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/win32-6.4.0/lib" />
+      <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/windows_file_picker-2.0.1/lib" />
       <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/xdg_directories-1.1.0/lib" />
       <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/xml-7.0.1/lib" />
       <root url="file://$USER_HOME$/AppData/Local/Pub/Cache/hosted/pub.dev/yaml-3.1.3/lib" />

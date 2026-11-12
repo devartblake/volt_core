@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:voltcore/modules/materials/domain/material_item.dart';
+import 'package:voltcore/modules/materials/infra/materials_repository.dart';
 import 'package:voltcore/modules/inspections/domain/entities/inspection_entity.dart';
 import 'package:voltcore/modules/inspections/presenter/widgets/section_location_safety.dart';
 import 'package:voltcore/modules/inspections/presenter/widgets/section_materials.dart';
@@ -28,19 +31,38 @@ class _FormState extends State<_Form> {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      home: Scaffold(
-        body: SingleChildScrollView(
-          child: Column(
-            children: [
-              SectionLocationSafety(model: model, onChanged: _onSectionChanged),
-              SectionMaterials(model: model, onChanged: _onSectionChanged),
-            ],
+    return ProviderScope(
+      // The Materials step embeds the parts editor; an empty in-memory store
+      // keeps this test about section state (a Hive write would never
+      // complete on the test clock).
+      overrides: [materialsRepositoryProvider.overrideWithValue(_NoParts())],
+      child: MaterialApp(
+        home: Scaffold(
+          body: SingleChildScrollView(
+            child: Column(
+              children: [
+                SectionLocationSafety(
+                    model: model, onChanged: _onSectionChanged),
+                SectionMaterials(model: model, onChanged: _onSectionChanged),
+              ],
+            ),
           ),
         ),
       ),
     );
   }
+}
+
+class _NoParts extends MaterialsRepository {
+  @override
+  Future<List<MaterialItem>> load(MaterialOwner owner) async => const [];
+
+  @override
+  Future<List<MaterialItem>> save(
+    MaterialOwner owner,
+    List<MaterialItem> items,
+  ) async =>
+      items;
 }
 
 void main() {

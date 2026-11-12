@@ -1,21 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../auth/domain/user_role.dart';
-import '../../../auth/presenter/controllers/auth_controller.dart';
+import '../../../permissions/domain/permission.dart';
+import '../../../permissions/presenter/permission_providers.dart';
+import '../../../../shared/widgets/lazy_head_list.dart';
 import '../../../../shared/widgets/widgets.dart';
 import '../../customer_site_repository.dart';
 
 class CustomerSiteDirectoryPage extends ConsumerWidget {
   const CustomerSiteDirectoryPage({super.key});
 
-  bool _canManage(UserRole? role) =>
-      role == UserRole.admin || role == UserRole.supervisor || role == UserRole.dispatcher;
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final directory = ref.watch(customerSiteDirectoryProvider);
-    final canManage = _canManage(ref.watch(authStateProvider).currentRole);
+    final canManage = ref.watch(hasPermissionProvider(Permission.manageCustomers));
     return AppPage(
       title: 'Customers & Sites',
       actions: [
@@ -49,11 +47,28 @@ class _DirectoryBody extends ConsumerWidget {
     for (final site in data.sites) {
       (sitesByCustomer[site.customerId] ??= []).add(site);
     }
+    final empty = data.customers.isEmpty && data.sites.isEmpty;
+    final unassigned = sitesByCustomer[null] ?? const <SiteRecord>[];
+    // Widgets after the customer cards; cheap objects, built lazily by the list.
+    final tail = <Widget>[
+      if (unassigned.isNotEmpty) ...[
+        const SizedBox(height: 16),
+        Text('Unassigned sites', style: Theme.of(context).textTheme.titleLarge),
+        const SizedBox(height: 8),
+        for (final site in unassigned)
+          _SiteTile(
+            site: site,
+            customerName: 'No customer assigned',
+            canManage: canManage,
+            onEdit: () => _showSiteEditor(context, ref, data, site: site),
+          ),
+      ],
+    ];
     return RefreshIndicator(
       onRefresh: () => ref.refresh(customerSiteDirectoryProvider.future).then<void>((_) {}),
-      child: ListView(
+      child: LazyHeadList(
         padding: const EdgeInsets.all(16),
-        children: [
+        head: [
           Text('Customer & site directory', style: Theme.of(context).textTheme.headlineSmall),
           const SizedBox(height: 6),
           Text(
@@ -79,33 +94,24 @@ class _DirectoryBody extends ConsumerWidget {
               ],
             ),
           if (canManage) const SizedBox(height: 24),
-          if (data.customers.isEmpty && data.sites.isEmpty)
+          if (empty)
             const _EmptyDirectory()
-          else ...[
+          else
             Text('Customers', style: Theme.of(context).textTheme.titleLarge),
-            const SizedBox(height: 8),
-            for (final customer in data.customers)
-              _CustomerCard(
-                customer: customer,
-                sites: sitesByCustomer[customer.id] ?? const [],
-                canManage: canManage,
-                onEdit: () => _showCustomerEditor(context, ref, customer: customer),
-                onEditSite: (site) => _showSiteEditor(context, ref, data, site: site),
-              ),
-            if ((sitesByCustomer[null] ?? const []).isNotEmpty) ...[
-              const SizedBox(height: 16),
-              Text('Unassigned sites', style: Theme.of(context).textTheme.titleLarge),
-              const SizedBox(height: 8),
-              for (final site in sitesByCustomer[null]!)
-                _SiteTile(
-                  site: site,
-                  customerName: 'No customer assigned',
-                  canManage: canManage,
-                  onEdit: () => _showSiteEditor(context, ref, data, site: site),
-                ),
-            ],
-          ],
+          if (!empty) const SizedBox(height: 8),
         ],
+        rowCount: empty ? 0 : data.customers.length + tail.length,
+        rowBuilder: (context, i) {
+          if (i >= data.customers.length) return tail[i - data.customers.length];
+          final customer = data.customers[i];
+          return _CustomerCard(
+            customer: customer,
+            sites: sitesByCustomer[customer.id] ?? const [],
+            canManage: canManage,
+            onEdit: () => _showCustomerEditor(context, ref, customer: customer),
+            onEditSite: (site) => _showSiteEditor(context, ref, data, site: site),
+          );
+        },
       ),
     );
   }
@@ -210,7 +216,7 @@ class _CustomerEditorState extends ConsumerState<_CustomerEditor> {
     try {
       await ref.read(customerSiteRepositoryProvider).saveCustomer(CustomerRecord(id: widget.customer?.id ?? '', name: _name.text, contactName: _contact.text, contactPhone: _phone.text, contactEmail: _email.text, notes: _notes.text, isActive: widget.customer?.isActive ?? true));
       if (mounted) Navigator.pop(context, true);
-    } catch (error) { if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not save customer: $error'))); }
+    } catch (error) { if (mounted) AppSnackBar.error(context, 'Could not save customer: $error'); }
     finally { if (mounted) setState(() => _saving = false); }
   }
 }
@@ -246,7 +252,7 @@ class _SiteEditorState extends ConsumerState<_SiteEditor> {
     try {
       await ref.read(customerSiteRepositoryProvider).saveSite(SiteRecord(id: widget.site?.id ?? '', siteCode: _code.text, address: _address.text, customerId: _customerId, isActive: widget.site?.isActive ?? true));
       if (mounted) Navigator.pop(context, true);
-    } catch (error) { if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not save site: $error'))); }
+    } catch (error) { if (mounted) AppSnackBar.error(context, 'Could not save site: $error'); }
     finally { if (mounted) setState(() => _saving = false); }
   }
 }

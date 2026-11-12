@@ -9,6 +9,7 @@ import '../../../../core/services/pdf/pdf_service.dart';
 import '../../../../core/services/hive/hive_boxes.dart';
 
 import '../../infra/models/inspection.dart';
+import '../../../../shared/widgets/app_snack_bar.dart';
 
 /// Driver responsible for:
 ///  - saving inspection to Hive
@@ -60,11 +61,7 @@ class InspectionExportDriver {
     await _email.sendInspectionPdf(inspection, pdfPath);
 
     if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Saved, PDF generated & emailed.'),
-        ),
-      );
+      AppSnackBar.success(context, 'Saved, PDF generated & emailed.');
     }
   }
 

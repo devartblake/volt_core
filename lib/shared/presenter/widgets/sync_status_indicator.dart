@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/services/sync/sync_service.dart';
+import 'sync_centre_sheet.dart';
 
 /// Compact sync-state chip for app bars.
 ///
 /// Reflects the live [SyncService] status: offline, syncing, pending uploads,
-/// failed uploads, or fully synced. Tapping it triggers a manual drain (and
-/// retries any failed operations).
+/// failed uploads, or fully synced. Tapping it opens the sync centre sheet.
 class SyncStatusIndicator extends StatelessWidget {
   const SyncStatusIndicator({super.key, this.compact = true});
 
@@ -19,7 +19,13 @@ class SyncStatusIndicator extends StatelessWidget {
     return ValueListenableBuilder<SyncStatus>(
       valueListenable: SyncService.instance.status,
       builder: (context, status, _) {
-        final visual = _visualFor(status, Theme.of(context).colorScheme);
+        // The indicator lives in app bars, which are navy in the brand theme (and
+        // a navy-tinted container in dark mode). Draw it in the bar's own
+        // foreground colour so it stays visible on either; the base colour comes
+        // from the surrounding icon theme.
+        final scheme = Theme.of(context).colorScheme;
+        final base = IconTheme.of(context).color ?? scheme.primary;
+        final visual = _visualFor(status, scheme, base);
 
         return Tooltip(
           message: visual.tooltip,
@@ -29,17 +35,18 @@ class SyncStatusIndicator extends StatelessWidget {
             button: true,
             container: true,
             label: 'Sync status: ${visual.tooltip}',
-            hint: status.failed > 0 ? 'Retry failed uploads' : 'Sync now',
+            hint: 'Open sync details',
             child: InkWell(
             borderRadius: BorderRadius.circular(20),
-            onTap: () {
-              if (status.failed > 0) {
-                SyncService.instance.retryFailed();
-              } else {
-                SyncService.instance.sync();
-              }
-            },
-            child: Padding(
+            onTap: () => showSyncCentre(context),
+            // 48 dp minimum: this sits in app bars and is tapped with gloves
+            // and wet hands, and the icon alone is only 18 dp.
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+              child: Center(
+                widthFactor: 1,
+                heightFactor: 1,
+                child: Padding(
               padding: const EdgeInsets.symmetric(
                 horizontal: 8,
                 vertical: 6,
@@ -78,6 +85,8 @@ class SyncStatusIndicator extends StatelessWidget {
                 ],
               ),
             ),
+              ),
+            ),
           ),
           ),
         );
@@ -85,11 +94,14 @@ class SyncStatusIndicator extends StatelessWidget {
     );
   }
 
-  _SyncVisual _visualFor(SyncStatus status, ColorScheme scheme) {
+  _SyncVisual _visualFor(SyncStatus status, ColorScheme scheme, Color base) {
+    // A light base colour means a dark bar: use the light error tint there.
+    final onDarkBar = base.computeLuminance() > 0.5;
+    final errorColor = onDarkBar ? const Color(0xFFFFB4AB) : scheme.error;
     if (status.state == SyncState.offline) {
       return _SyncVisual(
         icon: Icons.cloud_off,
-        color: scheme.outline,
+        color: base.withValues(alpha: 0.72),
         label: 'Offline',
         tooltip: status.hasPendingWork
             ? 'Offline — ${status.pending + status.failed} change(s) will sync when reconnected'
@@ -99,7 +111,7 @@ class SyncStatusIndicator extends StatelessWidget {
     if (status.failed > 0) {
       return _SyncVisual(
         icon: Icons.error_outline,
-        color: scheme.error,
+        color: errorColor,
         label: '${status.failed} failed',
         tooltip: '${status.failed} change(s) failed to sync — tap to retry',
       );
@@ -107,7 +119,7 @@ class SyncStatusIndicator extends StatelessWidget {
     if (status.state == SyncState.syncing) {
       return _SyncVisual(
         icon: Icons.sync,
-        color: scheme.primary,
+        color: base,
         label: 'Syncing…',
         tooltip: 'Syncing ${status.pending} change(s)…',
       );
@@ -115,14 +127,14 @@ class SyncStatusIndicator extends StatelessWidget {
     if (status.pending > 0) {
       return _SyncVisual(
         icon: Icons.cloud_upload_outlined,
-        color: scheme.primary,
+        color: base,
         label: '${status.pending} pending',
         tooltip: '${status.pending} change(s) waiting to sync — tap to sync now',
       );
     }
     return _SyncVisual(
       icon: Icons.cloud_done_outlined,
-      color: scheme.primary,
+      color: base,
       label: 'Synced',
       tooltip: status.lastSyncedAt != null
           ? 'All changes synced'

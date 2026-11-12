@@ -11,6 +11,7 @@ class AdminRemoteDatasource {
   static const String techniciansTable = 'technicians';
   static const String roleAssignmentsTable = 'role_assignments';
   static const String tenantMembersTable = 'tenant_members';
+  static const String memberDivisionsTable = 'member_divisions';
   static const String tenantRoleAssignmentsTable = 'tenant_role_assignments';
   static const String userProfilesTable = 'user_profiles';
   static const String inspectionsTable = 'inspections';
@@ -27,11 +28,43 @@ class AdminRemoteDatasource {
       throw StateError('No active tenant is configured.');
     }
 
-    final memberRows = (await _client
-            .from(tenantMembersTable)
-            .select('tenant_id,user_id,role,is_active')
-            .eq('tenant_id', tenantId))
-        .cast<Map<String, dynamic>>();
+    List<Map<String, dynamic>> memberRows;
+    try {
+      memberRows = (await _client
+              .from(tenantMembersTable)
+              .select('tenant_id,user_id,role,is_active,division_id')
+              .eq('tenant_id', tenantId))
+          .cast<Map<String, dynamic>>();
+    } on PostgrestException catch (e) {
+      // 42703: undefined column. The divisions migration has not been run
+      // yet; list the team without divisions rather than failing the page.
+      if (e.code != '42703') rethrow;
+      memberRows = (await _client
+              .from(tenantMembersTable)
+              .select('tenant_id,user_id,role,is_active')
+              .eq('tenant_id', tenantId))
+          .cast<Map<String, dynamic>>();
+    }
+
+    // member_divisions is the source of truth; a missing table (migration not
+    // run) or any read problem just means "no rows", and the deprecated
+    // tenant_members.division_id is used as the fallback below.
+    final divisionsByUser = <String, List<String>>{};
+    try {
+      final divRows = (await _client
+              .from(memberDivisionsTable)
+              .select('user_id,division_id')
+              .eq('tenant_id', tenantId))
+          .cast<Map<String, dynamic>>();
+      for (final r in divRows) {
+        final u = r['user_id']?.toString() ?? '';
+        final d = r['division_id']?.toString() ?? '';
+        if (u.isEmpty || d.isEmpty) continue;
+        divisionsByUser.putIfAbsent(u, () => []).add(d);
+      }
+    } on PostgrestException {
+      divisionsByUser.clear();
+    }
 
     final userIds = memberRows
         .map((row) => row['user_id']?.toString())
@@ -72,6 +105,10 @@ class AdminRemoteDatasource {
           phone: profile?['phone']?.toString(),
           role: role,
           isActive: row['is_active'] == true,
+          divisionIds: divisionsByUser[userId] ??
+              ((row['division_id']?.toString().isEmpty ?? true)
+                  ? const <String>[]
+                  : [row['division_id'].toString()]),
         ),
       );
     }
@@ -125,6 +162,57 @@ class AdminRemoteDatasource {
           .eq('tenant_id', tenantId)
           .eq('user_id', userId);
       rethrow;
+    }
+  }
+
+  /// Replace the set of divisions a member belongs to: rows in
+  /// `member_divisions` are added and removed so exactly [divisionIds] remain.
+  /// Not a role change, so no `tenant_role_assignments` row; the audit
+  /// triggers on `member_divisions` record each addition and removal.
+  ///
+  /// The deprecated `tenant_members.division_id` is kept equal to the first id
+  /// (or null) so older app builds still show something sensible.
+  Future<void> replaceTenantMemberDivisions({
+    required String tenantId,
+    required String userId,
+    required List<String> divisionIds,
+  }) async {
+    final wanted = divisionIds.toSet();
+    final existingRows = (await _client
+            .from(memberDivisionsTable)
+            .select('division_id')
+            .eq('tenant_id', tenantId)
+            .eq('user_id', userId))
+        .cast<Map<String, dynamic>>();
+    final existing = {
+      for (final r in existingRows) r['division_id'].toString(),
+    };
+
+    final toAdd = wanted.difference(existing);
+    final toRemove = existing.difference(wanted);
+    if (toAdd.isNotEmpty) {
+      await _client.from(memberDivisionsTable).insert([
+        for (final id in toAdd)
+          {'tenant_id': tenantId, 'user_id': userId, 'division_id': id},
+      ]);
+    }
+    if (toRemove.isNotEmpty) {
+      await _client
+          .from(memberDivisionsTable)
+          .delete()
+          .eq('tenant_id', tenantId)
+          .eq('user_id', userId)
+          .inFilter('division_id', toRemove.toList());
+    }
+
+    try {
+      await _client
+          .from(tenantMembersTable)
+          .update({'division_id': divisionIds.isEmpty ? null : divisionIds.first})
+          .eq('tenant_id', tenantId)
+          .eq('user_id', userId);
+    } on PostgrestException {
+      // Only keeps older app builds tidy; the real data is already saved.
     }
   }
 

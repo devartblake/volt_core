@@ -32,6 +32,6 @@ final workOrderEventsProvider =
 final workOrderAssigneesProvider =
     FutureProvider<List<TechnicianEntity>>((ref) async {
   final users = await ref.watch(adminRepositoryProvider).listTechnicians();
-  return users.where((user) => user.isActive && user.role.isTech).toList()
+  return users.where((user) => user.isActive && user.role.isFieldWorker).toList()
     ..sort((a, b) => a.name.compareTo(b.name));
 });

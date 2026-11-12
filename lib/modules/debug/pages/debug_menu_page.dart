@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import '../../../core/app_version.dart';
 
 import '../../../core/services/storage/file_storage_service.dart';
 import '../../../shared/widgets/widgets.dart';
@@ -171,11 +172,7 @@ class DebugMenuPage extends StatelessWidget {
               onTap: () async {
                 final messenger = ScaffoldMessenger.of(context);
                 await FileStorageService.instance.printDebugInfo();
-                messenger.showSnackBar(
-                  const SnackBar(
-                    content: Text('Storage info printed to console'),
-                  ),
-                );
+                AppSnackBar.infoOn(messenger, 'Storage info printed to console');
               },
             ),
           ),
@@ -268,7 +265,7 @@ class DebugMenuPage extends StatelessWidget {
                 ListTile(
                   leading: const Icon(Icons.app_shortcut_outlined),
                   title: const Text('App Version'),
-                  trailing: const Text('1.0.0'),
+                  trailing: const AppVersionText(),
                 ),
               ],
             ),

@@ -164,7 +164,7 @@ class SectionMaintGeneral extends StatelessWidget {
             Column(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                _StatusChip(
+                StatusChip.colored(
                   label: complete ? 'Complete' : 'In Progress',
                   icon: complete ? Icons.check_circle_outline : Icons.pending_outlined,
                   background: complete
@@ -176,7 +176,7 @@ class SectionMaintGeneral extends StatelessWidget {
                 ),
                 if (readOnly) ...[
                   const SizedBox(height: 8),
-                  _StatusChip(
+                  StatusChip.colored(
                     label: 'Read only',
                     icon: Icons.lock_outline,
                     background: colorScheme.surfaceContainerHighest,
@@ -517,47 +517,6 @@ class SectionMaintGeneral extends StatelessWidget {
   }
 }
 
-class _StatusChip extends StatelessWidget {
-  final String label;
-  final IconData icon;
-  final Color background;
-  final Color foreground;
-
-  const _StatusChip({
-    required this.label,
-    required this.icon,
-    required this.background,
-    required this.foreground,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: background,
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: background.withValues(alpha: 0.6)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 16, color: foreground),
-          const SizedBox(width: 6),
-          Text(
-            label,
-            style: theme.textTheme.labelSmall?.copyWith(
-              color: foreground,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
 
 class _HoseRow extends StatelessWidget {
   final String label;

@@ -8,6 +8,7 @@ import 'package:voltcore/core/services/hive/hive_boxes.dart';
 import 'package:voltcore/core/services/pdf/pdf_prefs_service.dart';
 import 'package:voltcore/core/services/pdf/pdf_service.dart';
 import 'package:voltcore/core/services/storage/export_service.dart';
+import 'package:voltcore/core/services/sync/sync_queue.dart';
 import 'package:voltcore/modules/inspections/domain/entities/inspection_entity.dart';
 import 'package:voltcore/modules/inspections/external/drivers/inspection_pdf_driver.dart';
 import 'package:voltcore/modules/inspections/infra/datasources/inspection_local_datasource.dart';
@@ -73,20 +74,39 @@ Future<InspectionEntity?> _awaitSettled(
   );
 }
 
+/// Lets the unawaited background work (the render's follow-up write and the
+/// queued upsert) finish before the next test starts.
+Future<void> _settleBackgroundWrites() async {
+  var last = -1;
+  for (var i = 0; i < 40; i++) {
+    final n = (await SyncQueue.instance.all()).length;
+    if (n == last) return;
+    last = n;
+    await Future<void>.delayed(const Duration(milliseconds: 10));
+  }
+}
+
 void main() {
+  // One temp folder for the whole file. Deleting it between tests raced with
+  // background writes still running from the previous test (a pending render
+  // keeps going after its test ends), which then tried to open
+  // `sync_queue.hive` in a folder that no longer existed and failed whichever
+  // test was running at the time.
   late Directory tempDir;
   late _ControllablePdfDriver driver;
   late InspectionRepositoryImpl repo;
 
-  setUpAll(() {
+  setUpAll(() async {
     Hive.registerAdapter(InspectionAdapter());
     Hive.registerAdapter(NameplateDataAdapter());
-  });
-
-  setUp(() async {
     tempDir = Directory.systemTemp.createTempSync('voltcore_pdf_test');
     Hive.init(tempDir.path);
     HiveBoxes.inspections = await Hive.openBox<Inspection>('inspections');
+  });
+
+  setUp(() async {
+    await HiveBoxes.inspections.clear();
+    await SyncQueue.instance.clear();
 
     driver = _ControllablePdfDriver();
     repo = InspectionRepositoryImpl(
@@ -95,9 +115,16 @@ void main() {
     );
   });
 
-  tearDown(() async {
-    await Hive.deleteFromDisk();
-    if (tempDir.existsSync()) tempDir.deleteSync(recursive: true);
+  tearDown(_settleBackgroundWrites);
+
+  tearDownAll(() async {
+    await _settleBackgroundWrites();
+    await Hive.close();
+    if (tempDir.existsSync()) {
+      try {
+        tempDir.deleteSync(recursive: true);
+      } catch (_) {}
+    }
   });
 
   test('createAndExport returns before the PDF has rendered', () async {

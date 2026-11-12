@@ -43,16 +43,28 @@ secret. All `SMTP_HOST/USER/PASS` keys were removed from the bundled env files.
 
 ## Document library
 
-`DocumentLibraryPage` (route `/documents`, also linked from Settings → Data &
-Sync → Documents) lists every generated PDF from the managed `pdfs/` tree with:
+`DocumentLibraryPage` (route `/documents`, a tab in the Work section and also
+linked from Settings → Data & Sync → Documents) is the one hub for every
+generated PDF in the managed `pdfs/` tree:
 
-- **Search** by filename and **filter** by category (Inspection / Maintenance).
+- **Search** by filename; **type chips** with counts (All, Inspections,
+  Maintenance, Vehicles, Other); **sort** newest, name or size; **date headers**
+  (Today, This week, This month, Older) when sorted newest.
+- **Summary line** ("12 documents, 8.4 MB") and **Clear old files**, which lists
+  how many files are older than 90 days and asks before deleting (no undo).
 - **Open** — in-app viewer (`PdfViewerPage`, rendered with the `printing`
   package) with print + share.
-- **Share** — native share sheet (`share_plus`).
-- **Email** — prompts for a recipient (default `SMTP_TO`) and sends via the
-  server-side `EmailService`.
-- **Delete** — removes the local copy (any existing cloud backup is kept).
+- **Print**, **Share** (native share sheet, `share_plus`) and **Email** — prompts
+  for a recipient (default `SMTP_TO`) and sends via the server-side
+  `EmailService`.
+- **Delete** — asks first, hides the row and shows an **Undo** snackbar; the file
+  is removed when the 5-second window ends (or when you leave the page). Removes
+  the local copy only (any existing cloud backup is kept).
+- **Multi-select** — long-press a row; share or delete several at once.
+
+Logic (filtering, sorting, date grouping, the 90-day rule) is in
+`domain/document_hub.dart`; open/print/share helpers are in
+`presenter/document_actions.dart` and are reused by the vehicle Documents tab.
 
 Enumeration lives in `PdfLibraryService.listDocuments()`, which walks the
 `pdfs/` directory the storage layer already manages — no separate index.

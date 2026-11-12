@@ -2,13 +2,22 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../../../core/app_version.dart';
+import '../../../admin/infra/division_repository.dart';
+import '../../../auth/domain/user_role.dart';
 
+import '../../../../app/nav_style_provider.dart';
 import '../../../../app/route_roles.dart';
 import '../../../../core/constants/route_paths.dart';
 import '../../../../core/services/settings/app_preferences_provider.dart';
 import '../../../../core/services/storage/cache_maintenance_service.dart';
 import '../../../../core/services/storage/user_data_export_service.dart';
+import '../../../../core/services/storage/user_data_exporter_provider.dart';
 import '../../../../core/theme/theme_mode_provider.dart';
+import '../../../../shared/presenter/widgets/pdf_inspection_summary_tile.dart';
+import '../../../../shared/presenter/widgets/pdf_inspection_template_tile.dart';
+import '../../../../shared/presenter/widgets/sync_centre_sheet.dart';
+import '../../../../shared/widgets/action_runner.dart';
 import '../../../../shared/widgets/widgets.dart';
 import '../../../auth/presenter/controllers/auth_controller.dart';
 import '../../../inspections/presenter/controllers/user_profile_controller.dart';
@@ -42,6 +51,64 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          if (userProfile != null) ...[
+            _SectionHeader(
+              icon: Icons.person_outline,
+              title: 'Account',
+              theme: theme,
+            ),
+            _SettingCard(
+              theme: theme,
+              children: [
+                ListTile(
+                  leading: CircleAvatar(
+                    backgroundImage: userProfile.avatarUrl != null
+                        ? NetworkImage(userProfile.avatarUrl!)
+                        : null,
+                    child: userProfile.avatarUrl == null
+                        ? const Icon(Icons.person)
+                        : null,
+                  ),
+                  title: Text(userProfile.displayName),
+                  subtitle: Text(userProfile.email),
+                ),
+                if (auth.currentRole != null) ...[
+                  const Divider(height: 1),
+                  ListTile(
+                    leading: const Icon(Icons.badge_outlined),
+                    title: Text(auth.currentRole!.label),
+                    subtitle: Builder(builder: (context) {
+                      final divisions =
+                          ref.watch(myDivisionNamesProvider).value ??
+                              const <String>[];
+                      return Text(divisions.isEmpty
+                          ? 'Role'
+                          : 'Role  ·  ${divisions.length == 1 ? 'Division' : 'Divisions'}: '
+                              '${divisions.join(', ')}');
+                    }),
+                  ),
+                ],
+                const Divider(height: 1),
+                ListTile(
+                  leading: const Icon(Icons.password_outlined),
+                  title: const Text('Change Password'),
+                  subtitle: const Text('Update your account password securely'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => _showChangePasswordDialog(context),
+                ),
+                const Divider(height: 1),
+                ListTile(
+                  title: Text(
+                    'Sign Out',
+                    style: TextStyle(color: theme.colorScheme.error),
+                  ),
+                  trailing: Icon(Icons.logout, color: theme.colorScheme.error),
+                  onTap: () => _showSignOutDialog(context),
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+          ],
           _SectionHeader(
             icon: Icons.palette_outlined,
             title: 'Appearance',
@@ -56,6 +123,18 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                 value: themeMode == ThemeMode.dark,
                 onChanged: (value) =>
                     ref.read(themeModeProvider.notifier).setDarkMode(value),
+              ),
+              const Divider(height: 1),
+              SwitchListTile(
+                title: const Text('Bottom navigation on tablets'),
+                subtitle: const Text(
+                  'Show the menu as a bar along the bottom instead of the '
+                  'side rail. Phones always have the bottom bar.',
+                ),
+                value: ref.watch(navStyleProvider) == NavStyle.bottom,
+                onChanged: (value) => ref
+                    .read(navStyleProvider.notifier)
+                    .setStyle(value ? NavStyle.bottom : NavStyle.rail),
               ),
               const Divider(height: 1),
               ListTile(
@@ -129,6 +208,16 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               ),
               const Divider(height: 1),
               ListTile(
+                leading: const Icon(Icons.sync),
+                title: const Text('Sync centre'),
+                subtitle: const Text(
+                  'See queued changes, retry failures, sync now',
+                ),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => showSyncCentre(context),
+              ),
+              const Divider(height: 1),
+              ListTile(
                 leading: const Icon(Icons.folder_open_outlined),
                 title: const Text('Documents'),
                 subtitle: const Text('View, share and email generated reports'),
@@ -162,6 +251,20 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                 enabled: !_exporting,
                 onTap: _exporting ? null : _exportInspectionData,
               ),
+            ],
+          ),
+          const SizedBox(height: 24),
+          _SectionHeader(
+            icon: Icons.picture_as_pdf_outlined,
+            title: 'PDF',
+            theme: theme,
+          ),
+          _SettingCard(
+            theme: theme,
+            children: const [
+              PdfInspectionTemplateTile(),
+              Divider(height: 1),
+              PdfInspectionSummaryTile(),
             ],
           ),
           const SizedBox(height: 24),
@@ -206,48 +309,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             ],
           ),
           const SizedBox(height: 24),
-          if (userProfile != null) ...[
-            _SectionHeader(
-              icon: Icons.person_outline,
-              title: 'Account',
-              theme: theme,
-            ),
-            _SettingCard(
-              theme: theme,
-              children: [
-                ListTile(
-                  leading: CircleAvatar(
-                    backgroundImage: userProfile.avatarUrl != null
-                        ? NetworkImage(userProfile.avatarUrl!)
-                        : null,
-                    child: userProfile.avatarUrl == null
-                        ? const Icon(Icons.person)
-                        : null,
-                  ),
-                  title: Text(userProfile.displayName),
-                  subtitle: Text(userProfile.email),
-                ),
-                const Divider(height: 1),
-                ListTile(
-                  leading: const Icon(Icons.password_outlined),
-                  title: const Text('Change Password'),
-                  subtitle: const Text('Update your account password securely'),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () => _showChangePasswordDialog(context),
-                ),
-                const Divider(height: 1),
-                ListTile(
-                  title: Text(
-                    'Sign Out',
-                    style: TextStyle(color: theme.colorScheme.error),
-                  ),
-                  trailing: Icon(Icons.logout, color: theme.colorScheme.error),
-                  onTap: () => _showSignOutDialog(context),
-                ),
-              ],
-            ),
-            const SizedBox(height: 24),
-          ],
           _SectionHeader(
             icon: Icons.info_outline,
             title: 'About',
@@ -265,22 +326,18 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               ListTile(
                 title: const Text('Privacy Policy'),
                 trailing: const Icon(Icons.open_in_new),
-                onTap: () => ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Opening privacy policy...')),
-                ),
+                onTap: () => AppSnackBar.info(context, 'Opening privacy policy...'),
               ),
               const Divider(height: 1),
               ListTile(
                 title: const Text('Terms of Service'),
                 trailing: const Icon(Icons.open_in_new),
-                onTap: () => ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Opening terms of service...')),
-                ),
+                onTap: () => AppSnackBar.info(context, 'Opening terms of service...'),
               ),
               const Divider(height: 1),
               const ListTile(
                 title: Text('Version'),
-                trailing: Text('1.0.0'),
+                trailing: AppVersionText(),
               ),
             ],
           ),
@@ -322,26 +379,29 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   Future<void> _exportInspectionData() async {
     setState(() => _exporting = true);
     try {
-      final result =
-          await UserDataExportService.instance.exportInspectionData();
-      if (!mounted) return;
-      if (result.saved) {
-        final destination = result.destination;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              destination == null || destination.isEmpty
-                  ? 'Inspection data exported successfully.'
-                  : 'Inspection data exported to $destination',
-            ),
-          ),
+      final export = ref.read(userDataExporterProvider);
+      UserDataExportResult? result;
+      // A cancelled save dialog is not an error: runUserAction returns false
+      // for it and shows nothing.
+      await runUserAction(
+        context,
+        label: 'export your data',
+        busyMessage: 'Preparing export…',
+        action: () async {
+          result = await export();
+          return result!.saved;
+        },
+      );
+      final saved = result;
+      if (saved != null && saved.saved && mounted) {
+        final destination = saved.destination;
+        AppSnackBar.success(
+          context,
+          destination == null || destination.isEmpty
+              ? 'Inspection data exported successfully.'
+              : 'Inspection data exported to $destination',
         );
       }
-    } catch (error) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Unable to export data: $error')),
-      );
     } finally {
       if (mounted) setState(() => _exporting = false);
     }
@@ -375,7 +435,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                     autofocus: true,
                     decoration: InputDecoration(
                       labelText: 'New password',
-                      suffixIcon: IconButton(
+                      suffixIcon: IconButton(tooltip: 'Show or hide password', 
                         onPressed: saving
                             ? null
                             : () => setDialogState(
@@ -405,7 +465,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                     enabled: !saving,
                     decoration: InputDecoration(
                       labelText: 'Confirm new password',
-                      suffixIcon: IconButton(
+                      suffixIcon: IconButton(tooltip: 'Show or hide password', 
                         onPressed: saving
                             ? null
                             : () => setDialogState(
@@ -484,15 +544,11 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       await ref.read(authStateProvider.notifier).changePassword(newPassword);
       if (!mounted || !dialogContext.mounted) return;
       Navigator.pop(dialogContext);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Password updated successfully.')),
-      );
+      AppSnackBar.success(context, 'Password updated successfully.');
     } catch (error) {
       if (!mounted || !dialogContext.mounted) return;
       setSaving(false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Unable to update password: $error')),
-      );
+      AppSnackBar.error(context, 'Unable to update password: $error');
     }
   }
 
@@ -516,9 +572,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               final result = await CacheMaintenanceService.instance
                   .clearTemporaryCache();
               if (!context.mounted) return;
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text(result.message)),
-              );
+              AppSnackBar.info(context, result.message);
             },
             child: const Text('Clear'),
           ),

@@ -56,9 +56,7 @@ class _NameplateIntervalsPageState
           final messenger = ScaffoldMessenger.of(context);
           await _saveNameplate();
           if (!mounted) return;
-          messenger.showSnackBar(
-            const SnackBar(content: Text('Saved')),
-          );
+          AppSnackBar.successOn(messenger, 'Saved');
         },
         label: const Text('Save'),
         icon: const Icon(Icons.save),
@@ -74,9 +72,12 @@ class _NameplateIntervalsPageState
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            Text(
               'Nameplate Data',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+              style: Theme.of(context)
+                  .textTheme
+                  .titleMedium
+                  ?.copyWith(fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 8),
             _row2(
@@ -169,10 +170,12 @@ class _NameplateIntervalsPageState
           children: [
             Row(
               children: [
-                const Text(
+                Text(
                   'Test Reading Intervals',
-                  style:
-                  TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+                  style: Theme.of(context)
+                      .textTheme
+                      .titleMedium
+                      ?.copyWith(fontWeight: FontWeight.w600),
                 ),
                 const Spacer(),
                 FilledButton.icon(
@@ -282,11 +285,11 @@ class _NameplateIntervalsPageState
                         DataCell(
                           Row(
                             children: [
-                              IconButton(
+                              IconButton(tooltip: 'Edit', 
                                 icon: const Icon(Icons.edit),
                                 onPressed: () => _editInterval(r),
                               ),
-                              IconButton(
+                              IconButton(tooltip: 'Delete', 
                                 icon: const Icon(Icons.delete_outline),
                                 onPressed: () async {
                                   await HiveBoxes.testIntervals

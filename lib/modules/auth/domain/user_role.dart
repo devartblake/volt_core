@@ -11,6 +11,8 @@
 /// - kRouteRoles in route_roles.dart
 /// - Any UI that shows role labels / dropdowns (e.g. LoginPage)
 enum UserRole {
+  /// A technician who cannot sign off or delete work (see [UserRoleX.canSignOff]).
+  apprentice,
   tech,
   supervisor,
   dispatcher,
@@ -29,26 +31,34 @@ UserRole? highestRole(Iterable<UserRole> roles) {
   return best;
 }
 
+/// Shown wherever an apprentice is blocked from finishing or deleting work.
+const String kApprenticeSignOffMessage =
+    'A technician or supervisor needs to sign this off.';
+
 /// Convenience extension with helpers for display and parsing.
 extension UserRoleX on UserRole {
   /// Relative privilege, used only to pick a default among granted roles.
   /// Higher means more privileged. Not a substitute for per-route RBAC.
   int get privilege {
     switch (this) {
-      case UserRole.tech:
+      case UserRole.apprentice:
         return 0;
-      case UserRole.dispatcher:
+      case UserRole.tech:
         return 1;
-      case UserRole.supervisor:
+      case UserRole.dispatcher:
         return 2;
-      case UserRole.admin:
+      case UserRole.supervisor:
         return 3;
+      case UserRole.admin:
+        return 4;
     }
   }
 
   /// Human-friendly label for UI.
   String get label {
     switch (this) {
+      case UserRole.apprentice:
+        return 'Apprentice';
       case UserRole.tech:
         return 'Technician';
       case UserRole.supervisor:
@@ -74,6 +84,8 @@ extension UserRoleX on UserRole {
   /// text defaulting to `'tech'`, and keeps using [name].
   String get wire {
     switch (this) {
+      case UserRole.apprentice:
+        return 'apprentice';
       case UserRole.tech:
         return 'technician';
       case UserRole.supervisor:
@@ -88,6 +100,7 @@ extension UserRoleX on UserRole {
   /// Short machine-safe code (useful for persistence or logs).
   ///
   /// Example string values:
+  /// - apprentice
   /// - tech
   /// - supervisor
   /// - dispatcher
@@ -96,6 +109,14 @@ extension UserRoleX on UserRole {
 
   /// Simple convenience flags
   bool get isTech => this == UserRole.tech;
+  bool get isApprentice => this == UserRole.apprentice;
+
+  /// True for the roles that do field work: technicians and apprentices.
+  bool get isFieldWorker => isTech || isApprentice;
+
+  /// Apprentices cannot finish, sign off or delete work; every other role can
+  /// (subject to the existing per-action rules).
+  bool get canSignOff => !isApprentice;
   bool get isSupervisor => this == UserRole.supervisor;
   bool get isDispatcher => this == UserRole.dispatcher;
   bool get isAdmin => this == UserRole.admin;
@@ -103,7 +124,7 @@ extension UserRoleX on UserRole {
   /// Parse from a string (e.g. from Hive / Supabase).
   ///
   /// Accepts either:
-  /// - the enum name: "tech", "supervisor", "dispatcher", "admin"
+  /// - the enum name: "apprentice", "tech", "supervisor", "dispatcher", "admin"
   /// - the label: "Technician", "Supervisor", "Dispatcher", "Admin"
   ///
   /// Returns `null` if the value is unknown.
@@ -112,6 +133,8 @@ extension UserRoleX on UserRole {
     final value = raw.trim().toLowerCase();
 
     switch (value) {
+      case 'apprentice':
+        return UserRole.apprentice;
       case 'tech':
       case 'technician':
         return UserRole.tech;

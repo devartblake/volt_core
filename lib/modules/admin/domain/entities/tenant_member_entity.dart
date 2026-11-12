@@ -9,6 +9,7 @@ class TenantMemberEntity {
     required this.role,
     required this.isActive,
     this.phone,
+    this.divisionIds = const [],
   });
 
   final String tenantId;
@@ -19,9 +20,14 @@ class TenantMemberEntity {
   final UserRole role;
   final bool isActive;
 
+  /// The member's divisions (`public.member_divisions`; for a person with no
+  /// rows there, the deprecated `tenant_members.division_id`). May be empty.
+  final List<String> divisionIds;
+
   TenantMemberEntity copyWith({
     UserRole? role,
     bool? isActive,
+    List<String>? divisionIds,
   }) {
     return TenantMemberEntity(
       tenantId: tenantId,
@@ -31,6 +37,7 @@ class TenantMemberEntity {
       phone: phone,
       role: role ?? this.role,
       isActive: isActive ?? this.isActive,
+      divisionIds: divisionIds ?? this.divisionIds,
     );
   }
 }

@@ -1,16 +1,68 @@
 import 'package:flutter/material.dart';
+import '../../../auth/presenter/sign_off_access.dart';
+import '../utils/maintenance_pdf_actions.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../schedule/presenter/pages/schedule_task_page.dart';
 import '../../../schedule/presenter/widgets/dialogs/schedule_dialog.dart';
+import '../../domain/maintenance_list_filter.dart';
+import '../../infra/datasources/maintenance_remote_datasource.dart';
+import '../../infra/mappers/maintenance_supabase_mapper.dart' show kMaintenanceRecordsTable;
+import '../../../../shared/widgets/pending_upload_badge.dart';
 import '../../infra/models/maintenance_record.dart';
+import '../../../../core/theme/app_tokens.dart';
 import '../controllers/maintenance_list_controller.dart';
+import '../controllers/maintenance_list_progress.dart';
 import '../controllers/maintenance_providers.dart';
 import '../../../../shared/widgets/widgets.dart';
 
 class MaintenanceListPage extends ConsumerWidget {
   const MaintenanceListPage({super.key});
+
+  /// Pulls any maintenance records that are in the cloud but not on this
+  /// device (made on another device, or lost to a cache reset). Records
+  /// already here are never overwritten.
+  Future<void> _restoreFromCloud(BuildContext context, WidgetRef ref) async {
+    final messenger = ScaffoldMessenger.of(context);
+    AppSnackBar.infoOn(messenger, 'Checking the cloud for missing records…');
+    try {
+      final remote =
+          await ref.read(maintenanceRemoteDatasourceProvider).listAll();
+      final added =
+          await ref.read(maintenanceRepoProvider).restoreMissing(remote);
+      await ref.read(maintenanceListControllerProvider.notifier).refresh();
+      messenger.hideCurrentSnackBar();
+      if (remote.isEmpty) {
+        // Row-level security returns an empty list, not an error, when the
+        // session is signed out or not a member of the tenant.
+        AppSnackBar.warningOn(
+          messenger,
+          'The cloud returned no records. You may be signed out; sign in '
+          'again and retry.',
+        );
+      } else if (added == 0) {
+        AppSnackBar.infoOn(
+          messenger,
+          'Nothing missing: all ${remote.length} cloud records are already '
+          'on this device.',
+        );
+      } else {
+        AppSnackBar.successOn(
+          messenger,
+          added == 1
+              ? 'Restored 1 record (of ${remote.length} in the cloud).'
+              : 'Restored $added records (of ${remote.length} in the cloud).',
+        );
+      }
+    } catch (e) {
+      messenger.hideCurrentSnackBar();
+      AppSnackBar.errorOn(
+        messenger,
+        'Could not read the cloud: $e',
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -21,7 +73,14 @@ class MaintenanceListPage extends ConsumerWidget {
     final listState = ref.watch(maintenanceListControllerProvider);
 
     return AppPage(
-      title: 'Maintenance Records',
+      title: 'Maintenance',
+      actions: [
+        IconButton(
+          tooltip: 'Restore missing records from the cloud',
+          icon: const Icon(Icons.cloud_download_outlined),
+          onPressed: () => _restoreFromCloud(context, ref),
+        ),
+      ],
       body: Builder(
         builder: (context) {
           // 1) Loading with no data yet
@@ -67,20 +126,42 @@ class MaintenanceListPage extends ConsumerWidget {
           }
 
           // 3) No records
-          final list = listState.records;
-          if (list.isEmpty) {
+          final all = listState.records;
+          if (all.isEmpty) {
             return const _MaintenanceEmpty();
           }
 
-          // 4) Normal list
-          return ListView.builder(
-            padding: const EdgeInsets.all(16),
+          // 4) Normal list, narrowed by the status filter
+          final filter = ref.watch(maintenanceStatusFilterProvider);
+          final list = filterMaintenance(all, filter);
+          final counts =
+              ref.watch(maintenanceListCountsProvider).asData?.value;
+          return Column(
+            children: [
+              _StatusFilterRow(
+                selected: filter,
+                onSelected: (f) => ref
+                    .read(maintenanceStatusFilterProvider.notifier)
+                    .state = f,
+              ),
+              Expanded(
+                child: list.isEmpty
+                    ? _NoMatches(filter: filter)
+                    : ListView.builder(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.lg,
+              AppSpacing.sm,
+              AppSpacing.lg,
+              AppSpacing.lg,
+            ),
             itemCount: list.length,
             itemBuilder: (context, i) {
               final m = list[i]; // m is MaintenanceRecord
               return Padding(
                 padding: const EdgeInsets.only(bottom: 12),
-                child: Card(
+                child: _SwipeToDelete(
+                  record: m,
+                  child: Card(
                   elevation: 0,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(16),
@@ -115,14 +196,38 @@ class MaintenanceListPage extends ConsumerWidget {
                                   crossAxisAlignment:
                                   CrossAxisAlignment.start,
                                   children: [
-                                    Text(
-                                      m.siteCode.isEmpty
-                                          ? 'Maintenance ${m.id}'
-                                          : m.siteCode,
-                                      style: theme.textTheme.titleMedium
-                                          ?.copyWith(
-                                        fontWeight: FontWeight.w600,
-                                      ),
+                                    Wrap(
+                                      spacing: 8,
+                                      crossAxisAlignment:
+                                          WrapCrossAlignment.center,
+                                      children: [
+                                        Text(
+                                          m.siteCode.isEmpty
+                                              ? 'Maintenance ${m.id}'
+                                              : m.siteCode,
+                                          style: theme.textTheme.titleMedium
+                                              ?.copyWith(
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                        if (m.completed)
+                                          const StatusChip(
+                                            label: 'Completed',
+                                            tone: StatusTone.success,
+                                            icon: Icons.check_circle_outline,
+                                          )
+                                        else
+                                          StatusChip(
+                                            label: maintenanceInProgressLabel(
+                                                m, counts?[m.id]),
+                                            tone: StatusTone.warning,
+                                            icon: Icons.timelapse,
+                                          ),
+                                        PendingUploadBadge(
+                                          table: kMaintenanceRecordsTable,
+                                          recordId: m.id,
+                                        ),
+                                      ],
                                     ),
                                     if (_subtitleFor(m).isNotEmpty) ...[
                                       const SizedBox(height: 4),
@@ -146,26 +251,22 @@ class MaintenanceListPage extends ConsumerWidget {
                                   Icons.picture_as_pdf_outlined,
                                 ),
                                 tooltip: 'Export PDF',
-                                onPressed: () async {
-                                  final repo =
-                                  ref.read(maintenanceRepoProvider);
-                                  await repo.exportMaintenancePdf(m);
-
-                                  if (context.mounted) {
-                                    ScaffoldMessenger.of(context)
-                                        .showSnackBar(
-                                      SnackBar(
-                                        content: const Text(
-                                            'PDF export started'),
-                                        behavior: SnackBarBehavior.floating,
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius:
-                                          BorderRadius.circular(8),
-                                        ),
-                                      ),
-                                    );
-                                  }
-                                },
+                                onPressed: () =>
+                                    exportMaintenancePdfWithFeedback(
+                                  context,
+                                  ref.read(maintenanceRepoProvider),
+                                  m,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              IconButton.filledTonal(
+                                icon: const Icon(Icons.print_outlined),
+                                tooltip: 'Print saved PDF',
+                                onPressed: () => printMaintenancePdfWithFeedback(
+                                  context,
+                                  ref.read(maintenanceRepoProvider),
+                                  m,
+                                ),
                               ),
                               const SizedBox(width: 8),
                               // ⭐ NEW: Schedule button
@@ -242,28 +343,9 @@ class MaintenanceListPage extends ConsumerWidget {
                                         .refresh();
 
                                     if (context.mounted) {
-                                      ScaffoldMessenger.of(context)
-                                          .showSnackBar(
-                                        SnackBar(
-                                          content: const Row(
-                                            children: [
-                                              Icon(
-                                                Icons
-                                                    .check_circle_outline,
-                                                color: Colors.white,
-                                              ),
-                                              SizedBox(width: 12),
-                                              Text(
-                                                  'Maintenance record deleted'),
-                                            ],
-                                          ),
-                                          behavior:
-                                          SnackBarBehavior.floating,
-                                          shape: RoundedRectangleBorder(
-                                            borderRadius:
-                                            BorderRadius.circular(8),
-                                          ),
-                                        ),
+                                      AppSnackBar.success(
+                                        context,
+                                        'Maintenance record deleted',
                                       );
                                     }
                                   }
@@ -280,20 +362,23 @@ class MaintenanceListPage extends ConsumerWidget {
                               runSpacing: 8,
                               children: [
                                 if (m.address.isNotEmpty)
-                                  _InfoChip(
+                                  InfoChip(
+                                    filled: true,
                                     icon: Icons.place_outlined,
                                     label: m.address,
                                   ),
                                 if (m.generatorMake.isNotEmpty ||
                                     m.generatorModel.isNotEmpty)
-                                  _InfoChip(
+                                  InfoChip(
+                                    filled: true,
                                     icon: Icons.settings_outlined,
                                     label:
                                     '${m.generatorMake} ${m.generatorModel}'
                                         .trim(),
                                   ),
                                 if (m.dateOfService != null)
-                                  _InfoChip(
+                                  InfoChip(
+                                    filled: true,
                                     icon:
                                     Icons.calendar_today_outlined,
                                     label: m.dateOfService!
@@ -310,8 +395,12 @@ class MaintenanceListPage extends ConsumerWidget {
                     ),
                   ),
                 ),
+                ),
               );
             },
+          ),
+              ),
+            ],
           );
         },
       ),
@@ -350,50 +439,6 @@ class MaintenanceListPage extends ConsumerWidget {
   }
 }
 
-class _InfoChip extends StatelessWidget {
-  final IconData icon;
-  final String label;
-
-  const _InfoChip({
-    required this.icon,
-    required this.label,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            icon,
-            size: 14,
-            color: colorScheme.onSurfaceVariant,
-          ),
-          const SizedBox(width: 6),
-          Flexible(
-            child: Text(
-              label,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: colorScheme.onSurfaceVariant,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
 
 class _MaintenanceEmpty extends StatelessWidget {
   const _MaintenanceEmpty();
@@ -439,6 +484,125 @@ class _MaintenanceEmpty extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+
+/// All / In progress / Completed.
+class _StatusFilterRow extends StatelessWidget {
+  const _StatusFilterRow({required this.selected, required this.onSelected});
+
+  final MaintenanceStatusFilter selected;
+  final ValueChanged<MaintenanceStatusFilter> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.lg,
+        AppSpacing.md,
+        AppSpacing.lg,
+        0,
+      ),
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: Wrap(
+          spacing: AppSpacing.sm,
+          runSpacing: AppSpacing.sm,
+          children: [
+            for (final f in MaintenanceStatusFilter.values)
+              ChoiceChip(
+                label: Text(f.label),
+                selected: f == selected,
+                onSelected: (_) => onSelected(f),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _NoMatches extends StatelessWidget {
+  const _NoMatches({required this.filter});
+
+  final MaintenanceStatusFilter filter;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.huge),
+        child: Text(
+          'No ${filter.label.toLowerCase()} maintenance records.',
+          textAlign: TextAlign.center,
+          style: theme.textTheme.bodyMedium?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Swipe a card left to delete it. There is no confirm dialog because the
+/// snackbar offers Undo, which puts the exact record back.
+class _SwipeToDelete extends ConsumerWidget {
+  const _SwipeToDelete({required this.record, required this.child});
+
+  final MaintenanceRecord record;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Dismissible(
+      key: ValueKey('maintenance-${record.id}'),
+      direction: DismissDirection.endToStart,
+      background: Container(
+        alignment: Alignment.centerRight,
+        padding: const EdgeInsets.only(right: AppSpacing.xxl),
+        decoration: BoxDecoration(
+          color: colorScheme.errorContainer,
+          borderRadius: BorderRadius.circular(AppRadius.card),
+        ),
+        child: Icon(Icons.delete_outline, color: colorScheme.onErrorContainer),
+      ),
+      confirmDismiss: (_) async {
+        if (ref.read(canDeleteRecordsProvider)) return true;
+        showSignOffBlocked(context);
+        return false;
+      },
+      onDismissed: (_) async {
+        final messenger = ScaffoldMessenger.of(context);
+        final controller =
+            ref.read(maintenanceListControllerProvider.notifier);
+        final label = record.siteCode.isEmpty ? 'Record' : record.siteCode;
+        try {
+          await controller.delete(record);
+        } catch (e) {
+          AppSnackBar.errorOn(messenger, 'Could not delete: $e');
+          return;
+        }
+        AppSnackBar.infoOn(
+          messenger,
+          '$label deleted',
+          duration: const Duration(seconds: 6),
+          action: SnackBarAction(
+            label: 'Undo',
+            onPressed: () async {
+              try {
+                await controller.restore(record);
+              } catch (e) {
+                AppSnackBar.errorOn(messenger, 'Could not restore: $e');
+              }
+            },
+          ),
+        );
+      },
+      child: child,
     );
   }
 }

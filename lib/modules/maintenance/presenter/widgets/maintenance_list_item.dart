@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../domain/entities/maintenance_job_entity.dart';
+import '../../../../shared/widgets/status_chip.dart';
+import '../../../../shared/widgets/app_snack_bar.dart';
 
 class MaintenanceListItem extends StatelessWidget {
   final MaintenanceJobEntity job;
@@ -87,12 +89,7 @@ class MaintenanceListItem extends StatelessWidget {
                       onPressed: () async {
                         await onExportPdf?.call();
                         if (!context.mounted) return;
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: const Text('PDF export started'),
-                            behavior: SnackBarBehavior.floating,
-                          ),
-                        );
+                        AppSnackBar.info(context, 'PDF export started');
                       },
                     ),
                     const SizedBox(width: 8),
@@ -134,12 +131,7 @@ class MaintenanceListItem extends StatelessWidget {
                         await onDelete?.call();
 
                         if (!context.mounted) return;
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: const Text('Maintenance record deleted'),
-                            behavior: SnackBarBehavior.floating,
-                          ),
-                        );
+                        AppSnackBar.success(context, 'Maintenance record deleted');
                       },
                     ),
                 ],
@@ -171,11 +163,14 @@ class MaintenanceListItem extends StatelessWidget {
   List<Widget> _metaChips(BuildContext context, MaintenanceJobEntity m) {
     final chips = <Widget>[];
     if (m.address.isNotEmpty) {
-      chips.add(_InfoChip(icon: Icons.place_outlined, label: m.address));
+      chips.add(
+        InfoChip(filled: true, icon: Icons.place_outlined, label: m.address),
+      );
     }
     if (m.requiresFollowUp) {
       chips.add(
-        _InfoChip(
+        InfoChip(
+          filled: true,
           icon: Icons.priority_high,
           label: 'Follow-up required',
           emphasized: true,
@@ -245,51 +240,3 @@ class _CompletedBadge extends StatelessWidget {
   }
 }
 
-class _InfoChip extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final bool emphasized;
-
-  const _InfoChip({
-    required this.icon,
-    required this.label,
-    this.emphasized = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-
-    final bg = emphasized
-        ? colorScheme.primaryContainer.withValues(alpha: 0.5)
-        : colorScheme.surfaceContainerHighest;
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 14, color: colorScheme.onSurfaceVariant),
-          const SizedBox(width: 6),
-          ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 260),
-            child: Text(
-              label,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: colorScheme.onSurfaceVariant,
-                fontWeight: emphasized ? FontWeight.w600 : FontWeight.w500,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}

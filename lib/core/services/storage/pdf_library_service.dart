@@ -7,7 +7,7 @@ import 'file_storage_service.dart';
 import 'web_file_store.dart';
 
 /// Logical grouping for a generated document.
-enum PdfCategory { inspection, maintenance, other }
+enum PdfCategory { inspection, maintenance, vehicle, other }
 
 extension PdfCategoryLabel on PdfCategory {
   String get label {
@@ -16,6 +16,8 @@ extension PdfCategoryLabel on PdfCategory {
         return 'Inspection';
       case PdfCategory.maintenance:
         return 'Maintenance';
+      case PdfCategory.vehicle:
+        return 'Vehicle';
       case PdfCategory.other:
         return 'Other';
     }
@@ -103,6 +105,7 @@ class PdfLibraryService {
 
   PdfCategory _categoryFor(String filePath) {
     final lower = filePath.toLowerCase();
+    if (lower.contains('vehicles')) return PdfCategory.vehicle;
     if (lower.contains('maintenance')) return PdfCategory.maintenance;
     if (lower.contains('inspection')) return PdfCategory.inspection;
     return PdfCategory.other;

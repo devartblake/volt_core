@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../core/app_version.dart';
 import '../../../../shared/widgets/widgets.dart';
 
 /// About page showing app information and credits
@@ -19,19 +20,7 @@ class AboutPage extends ConsumerWidget {
           Center(
             child: Column(
               children: [
-                Container(
-                  width: 120,
-                  height: 120,
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.primaryContainer,
-                    borderRadius: BorderRadius.circular(24),
-                  ),
-                  child: Icon(
-                    Icons.bolt,
-                    size: 64,
-                    color: theme.colorScheme.onPrimaryContainer,
-                  ),
-                ),
+                const AppLogo(size: 120),
                 const SizedBox(height: 16),
                 Text(
                   'Voltcore',
@@ -56,8 +45,8 @@ class AboutPage extends ConsumerWidget {
                     color: theme.colorScheme.surfaceContainerHighest,
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: Text(
-                    'Version 1.0.0',
+                  child: AppVersionText(
+                    prefix: 'Version ',
                     style: theme.textTheme.labelMedium?.copyWith(
                       color: theme.colorScheme.onSurfaceVariant,
                     ),
@@ -189,11 +178,7 @@ class AboutPage extends ConsumerWidget {
                   subtitle: const Text('www.voltcore.app'),
                   trailing: const Icon(Icons.open_in_new),
                   onTap: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Opening website...'),
-                      ),
-                    );
+                    AppSnackBar.info(context, 'Opening website...');
                   },
                 ),
                 const Divider(height: 1),
@@ -206,11 +191,7 @@ class AboutPage extends ConsumerWidget {
                   subtitle: const Text('support@voltcore.app'),
                   trailing: const Icon(Icons.email_outlined),
                   onTap: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Opening email...'),
-                      ),
-                    );
+                    AppSnackBar.info(context, 'Opening email...');
                   },
                 ),
                 const Divider(height: 1),
@@ -222,11 +203,7 @@ class AboutPage extends ConsumerWidget {
                   title: const Text('Privacy Policy'),
                   trailing: const Icon(Icons.open_in_new),
                   onTap: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Opening privacy policy...'),
-                      ),
-                    );
+                    AppSnackBar.info(context, 'Opening privacy policy...');
                   },
                 ),
                 const Divider(height: 1),
@@ -238,11 +215,7 @@ class AboutPage extends ConsumerWidget {
                   title: const Text('Terms of Service'),
                   trailing: const Icon(Icons.open_in_new),
                   onTap: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Opening terms of service...'),
-                      ),
-                    );
+                    AppSnackBar.info(context, 'Opening terms of service...');
                   },
                 ),
               ],
@@ -310,8 +283,17 @@ class AboutPage extends ConsumerWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _InfoRow('App Version', '1.0.0'),
-                      _InfoRow('Build Number', '1'),
+                      Consumer(
+                        builder: (context, ref, _) {
+                          final v = ref.watch(appVersionProvider).value;
+                          return Column(
+                            children: [
+                              _InfoRow('App Version', v?.name ?? '…'),
+                              _InfoRow('Build Number', v?.build ?? '…'),
+                            ],
+                          );
+                        },
+                      ),
                       _InfoRow('Flutter Version', '3.x'),
                       _InfoRow('Platform', 'Multi-platform'),
                       _InfoRow('Last Updated', '2024'),

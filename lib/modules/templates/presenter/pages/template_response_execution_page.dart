@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../../../core/services/sync/sync_context.dart';
+import '../../../auth/domain/user_role.dart' show kApprenticeSignOffMessage;
+import '../../../auth/presenter/sign_off_access.dart';
 import '../../../../shared/widgets/app_page.dart';
 import '../../domain/entities/template_entities.dart';
 import '../../infra/repositories/form_response_repository.dart';
@@ -14,6 +16,7 @@ import '../../infra/services/template_report_storage_service.dart';
 import '../controllers/template_response_session_controller.dart';
 import '../widgets/template_form_renderer.dart';
 import '../../../auth/presenter/controllers/auth_controller.dart';
+import '../../../../shared/widgets/app_snack_bar.dart';
 
 /// Technician-facing runtime for a published, revision-pinned template.
 ///
@@ -189,6 +192,10 @@ class _TemplateResponseExecutionPageState
     final definition = _definition;
     final userId = ref.read(authStateProvider).userId;
     if (session == null || definition == null) return;
+    if (!ref.read(canSignOffProvider)) {
+      _showMessage(kApprenticeSignOffMessage);
+      return;
+    }
     if (userId == null || userId.isEmpty) {
       _showMessage('Your authenticated user ID is unavailable.');
       return;
@@ -227,7 +234,7 @@ class _TemplateResponseExecutionPageState
 
   void _showMessage(String message) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    AppSnackBar.info(context, message);
   }
 
   @override

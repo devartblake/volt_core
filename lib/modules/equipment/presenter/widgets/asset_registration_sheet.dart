@@ -5,6 +5,7 @@ import '../../../../providers/equipment_providers.dart';
 import '../../../customers/customer_site_repository.dart';
 import '../../domain/entities/equipment_entity.dart';
 import '../../infra/repositories/equipment_repository_impl.dart';
+import '../../../../shared/widgets/app_snack_bar.dart';
 
 /// Registers a generic asset before any inspection exists for it.
 ///
@@ -68,14 +69,10 @@ class _AssetRegistrationSheetState
       ref.invalidate(equipmentFacetsProvider);
       if (!mounted) return;
       Navigator.of(context).pop();
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Asset saved and queued for sync.')),
-      );
+      AppSnackBar.success(context, 'Asset saved and queued for sync.');
     } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Could not register asset: $error')),
-      );
+      AppSnackBar.error(context, 'Could not register asset: $error');
     } finally {
       if (mounted) setState(() => _saving = false);
     }

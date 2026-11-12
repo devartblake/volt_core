@@ -31,6 +31,7 @@ class FleetAttentionCard extends ConsumerWidget {
     final scheme = theme.colorScheme;
 
     return Card(
+      margin: const EdgeInsets.only(bottom: 16),
       clipBehavior: Clip.antiAlias,
       color: scheme.errorContainer,
       child: InkWell(

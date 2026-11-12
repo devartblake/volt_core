@@ -46,15 +46,9 @@ class AdminSettingsPage extends StatelessWidget {
                   await preferences.setAdvancedLoggingEnabled(value);
                   if (!context.mounted) return;
                   setState(() {});
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        value
+                  AppSnackBar.info(context, value
                             ? 'Advanced network payload logging enabled.'
-                            : 'Advanced network payload logging disabled.',
-                      ),
-                    ),
-                  );
+                            : 'Advanced network payload logging disabled.',);
                 },
               );
             },
@@ -77,6 +71,15 @@ class AdminSettingsPage extends StatelessWidget {
             ),
             trailing: const Icon(Icons.chevron_right),
             onTap: () => context.push(RoutePaths.adminTechnicians),
+          ),
+          ListTile(
+            leading: const Icon(Icons.account_tree_outlined),
+            title: const Text('Divisions'),
+            subtitle: const Text(
+              'The company divisions people can be placed in.',
+            ),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => context.push(RoutePaths.adminDivisions),
           ),
         ],
       ),
@@ -170,21 +173,11 @@ class AdminSettingsPage extends StatelessWidget {
                           if (!dialogContext.mounted) return;
                           Navigator.pop(dialogContext);
                           if (!context.mounted) return;
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Retention policy saved.'),
-                            ),
-                          );
+                          AppSnackBar.success(context, 'Retention policy saved.');
                         } catch (error) {
                           if (!dialogContext.mounted) return;
                           setState(() => saving = false);
-                          ScaffoldMessenger.of(dialogContext).showSnackBar(
-                            SnackBar(
-                              content: Text(
-                                'Unable to save retention policy: $error',
-                              ),
-                            ),
-                          );
+                          AppSnackBar.error(dialogContext, 'Unable to save retention policy: $error',);
                         }
                       },
                 child: saving
@@ -201,9 +194,7 @@ class AdminSettingsPage extends StatelessWidget {
       );
     } catch (error) {
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Unable to load retention policy: $error')),
-      );
+      AppSnackBar.error(context, 'Unable to load retention policy: $error');
     }
   }
 

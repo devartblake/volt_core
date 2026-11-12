@@ -47,6 +47,10 @@ class MaintenanceFormController
     if (id != null) {
       final existing = _repo.getById(id);
       if (existing != null) {
+        // Records made before the form had a service date: use the day they
+        // were created (what the PDF already printed), so it can be seen and
+        // corrected instead of staying blank. Saved with the next draft/save.
+        existing.dateOfService ??= existing.createdAt;
         state = MaintenanceFormState(
           record: existing,
           isNew: false,
@@ -61,6 +65,22 @@ class MaintenanceFormController
       record: rec,
       isNew: true,
     );
+  }
+
+  /// Persists the record as it stands, locally only (see
+  /// [infra.MaintenanceRepo.saveDraft]). Safe to call often.
+  Future<void> saveDraft() async {
+    final current = state;
+    if (current == null) return;
+    await _repo.saveDraft(current.record);
+  }
+
+  /// Removes a brand-new record the technician never typed into, so opening
+  /// "New record" and backing out leaves nothing behind.
+  Future<void> discardIfNew() async {
+    final current = state;
+    if (current == null || !current.isNew) return;
+    await _repo.delete(current.record.id);
   }
 
   Future<void> save({
@@ -97,8 +117,13 @@ class MaintenanceFormController
 }
 
 /// Provider factory with optional maintenance record id.
+///
+/// `autoDispose` matters: a new record is keyed by a null id, so without it the
+/// first "new" form stays cached and every later "new" form reopens that same
+/// record (and saving would overwrite it and print its PDF). Each visit to the
+/// form now starts from fresh state.
 final maintenanceFormControllerProvider =
-StateNotifierProvider.family<MaintenanceFormController,
+StateNotifierProvider.autoDispose.family<MaintenanceFormController,
     MaintenanceFormState?, String?>(
       (ref, id) {
     final repo = ref.watch(maintenanceRepoProvider);

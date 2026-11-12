@@ -1,8 +1,20 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../core/theme/app_tokens.dart';
 import '../../domain/entities/inspection_entity.dart';
+import '../../domain/inspection_filter_preset.dart';
+import '../../infra/repositories/inspection_repository.dart';
+import '../../infra/repositories/inspection_repository_impl.dart';
+import '../controllers/inspection_list_prefs.dart';
+import '../widgets/inspection_filter_presets_bar.dart';
+import '../../../auth/presenter/sign_off_access.dart';
+import '../widgets/finish_sheet.dart';
 import '../controllers/inspection_list_controller.dart';
+import '../inspection_date_filter.dart';
+import '../widgets/inspection_date_filter_bar.dart';
 import '../controllers/app_badges_controller.dart';
 import '../controllers/user_profile_controller.dart';
 import '../../../../shared/widgets/widgets.dart';
@@ -21,9 +33,46 @@ class InspectionListPage extends ConsumerStatefulWidget {
 
 class _InspectionListPageState
     extends ConsumerState<InspectionListPage> {
+  /// Dates, grade and text the list is narrowed to. Starts on everything.
+  InspectionListFilter _filter = const InspectionListFilter();
+
+  List<InspectionFilterPreset> _saved = const [];
+  InspectionDensity _density = InspectionDensity.comfortable;
+
+  /// How long the Undo snackbar (and the pending soft delete) lasts.
+  static const _undoWindow = Duration(seconds: 6);
+
+  // Swiped away: hidden now, deleted (and the delete queued for sync) when the
+  // undo window ends. Undo just un-hides, so nothing was ever removed or
+  // queued and there is nothing to re-queue.
+  final Map<String, Timer> _pending = {};
+
+  // Held in a field: `ref` is unsafe to use inside dispose().
+  late final InspectionRepository _repo;
+
+  bool get _compact => _density == InspectionDensity.compact;
+
+  @override
+  void dispose() {
+    // Commit anything still inside its undo window.
+    final ids = _pending.keys.toList();
+    for (final t in _pending.values) {
+      t.cancel();
+    }
+    _pending.clear();
+    for (final id in ids) {
+      unawaited(_repo.deleteInspection(id));
+    }
+    super.dispose();
+  }
+
   @override
   void initState() {
     super.initState();
+    _repo = ref.read(inspectionRepositoryProvider);
+    final prefs = ref.read(inspectionListPrefsProvider);
+    _saved = prefs.loadPresets();
+    _density = prefs.loadDensity();
     // Load inspections once when the page mounts
     Future.microtask(() {
       ref
@@ -43,8 +92,10 @@ class _InspectionListPageState
 
     // Apply filter if provided
     final allItems = state.items;
-    final items = widget.filterStatus != null
-        ? allItems.where((i) {
+    final visibleItems =
+        allItems.where((i) => !_pending.containsKey(i.id)).toList();
+    final statusItems = widget.filterStatus != null
+        ? visibleItems.where((i) {
             final status = widget.filterStatus!.toLowerCase();
             // 'pending' = inspections that need attention (Amber/Red grade)
             if (status == 'pending') {
@@ -53,7 +104,37 @@ class _InspectionListPageState
             }
             return i.siteGrade.toLowerCase() == status;
           }).toList()
-        : allItems;
+        : visibleItems;
+
+    // Then the date filter: newest first, under month or day headings.
+    final items = _filter.apply(statusItems);
+    final rows = <Object>[
+      for (final group in _filter.date.group(items)) ...[group, ...group.items],
+    ];
+
+    final header = Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _buildStatsSection(context, theme, badges),
+        InspectionFilterPresetsBar(
+          filter: _filter,
+          onChanged: (f) => setState(() => _filter = f),
+          presets: [...InspectionFilterPreset.builtIns, ..._saved],
+          onSavePreset: _savePreset,
+          onRenamePreset: _renamePreset,
+          onDeletePreset: _deletePreset,
+          density: _density,
+          onDensityChanged: _setDensity,
+        ),
+        InspectionDateFilterBar(
+          filter: _filter.date,
+          shown: items.length,
+          total: statusItems.length,
+          onChanged: (f) =>
+              setState(() => _filter = _filter.copyWith(date: f)),
+        ),
+      ],
+    );
 
     return AppPage(
       title: '',
@@ -71,14 +152,11 @@ class _InspectionListPageState
       ],
       body: Column(
         children: [
-          if (items.isNotEmpty)
-            _buildStatsSection(context, theme, badges),
-
-          if (state.isLoading && items.isEmpty)
+          if (state.isLoading && statusItems.isEmpty)
             const Expanded(
               child: LoadingIndicator(),
             )
-          else if (items.isEmpty)
+          else if (statusItems.isEmpty)
             Expanded(
               child: Center(
                 child: Column(
@@ -117,14 +195,27 @@ class _InspectionListPageState
                 ),
               ),
             )
+          else if (items.isEmpty)
+            Expanded(
+              child: ListView(
+                children: [header, _buildNoResults(theme)],
+              ),
+            )
           else
             Expanded(
               child: ListView.builder(
-                padding: const EdgeInsets.symmetric(
-                    vertical: 8),
-                itemCount: items.length,
-                itemBuilder: (_, i) =>
-                    _modernTile(context, theme, items[i]),
+                padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+                // Row 0 is the stats and filter header, so it scrolls away
+                // instead of eating the screen at large text sizes.
+                itemCount: rows.length + 1,
+                itemBuilder: (_, i) {
+                  if (i == 0) return header;
+                  final row = rows[i - 1];
+                  if (row is InspectionGroup) {
+                    return _groupHeader(theme, row);
+                  }
+                  return _modernTile(context, theme, row as InspectionEntity);
+                },
               ),
             ),
         ],
@@ -134,6 +225,71 @@ class _InspectionListPageState
             context.goNamed('inspection_new'),
         icon: const Icon(Icons.add),
         label: const Text('New Inspection'),
+      ),
+    );
+  }
+
+  // ---------------------------------------------------------------- filter
+
+  Widget _groupHeader(ThemeData theme, InspectionGroup group) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 14, 20, 2),
+      child: Row(
+        children: [
+          Flexible(
+            child: Text(
+              group.title,
+              overflow: TextOverflow.ellipsis,
+              style: theme.textTheme.titleSmall?.copyWith(
+                fontWeight: FontWeight.w700,
+                color: theme.colorScheme.primary,
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            '${group.items.length}',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Divider(color: theme.colorScheme.outlineVariant),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNoResults(ThemeData theme) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.event_busy_outlined,
+              size: 64,
+              color: theme.colorScheme.primary.withValues(alpha: 0.3),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              _filter.grades.isEmpty && _filter.query.trim().isEmpty
+                  ? 'No inspections for ${_filter.date.label}'
+                  : 'No inspections match these filters',
+              style: theme.textTheme.titleMedium,
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 12),
+            FilledButton.tonal(
+              onPressed: () =>
+                  setState(() => _filter = const InspectionListFilter()),
+              child: const Text('Clear filters'),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -158,42 +314,42 @@ class _InspectionListPageState
       child: Row(
         children: [
           Expanded(
-            child: _StatCard(
+            child: StatCard(
+              compact: true,
               icon: Icons.list_alt,
               label: 'Total',
-              count: badges.totalInspections,
+              value: '${badges.totalInspections}',
               color: theme.colorScheme.primary,
-              theme: theme,
             ),
           ),
           const SizedBox(width: 12),
           Expanded(
-            child: _StatCard(
+            child: StatCard(
+              compact: true,
               icon: Icons.pending_actions,
               label: 'Pending',
-              count: badges.pendingInspections,
-              color: Colors.blue,
-              theme: theme,
+              value: '${badges.pendingInspections}',
+              color: theme.status.info,
             ),
           ),
           const SizedBox(width: 12),
           Expanded(
-            child: _StatCard(
+            child: StatCard(
+              compact: true,
               icon: Icons.warning_amber_rounded,
               label: 'Amber',
-              count: badges.amberGradeInspections,
+              value: '${badges.amberGradeInspections}',
               color: theme.status.warning,
-              theme: theme,
             ),
           ),
           const SizedBox(width: 12),
           Expanded(
-            child: _StatCard(
+            child: StatCard(
+              compact: true,
               icon: Icons.error_outline,
               label: 'Red',
-              count: badges.redGradeInspections,
+              value: '${badges.redGradeInspections}',
               color: theme.colorScheme.error,
-              theme: theme,
             ),
           ),
         ],
@@ -215,9 +371,10 @@ class _InspectionListPageState
     final address = ins.displayTitle;
     final siteCode = ins.siteCode;
 
-    return Card(
-      margin: const EdgeInsets.symmetric(
-          horizontal: 16, vertical: 6),
+    final card = Card(
+      margin: EdgeInsets.symmetric(
+          horizontal: AppSpacing.lg,
+          vertical: _compact ? AppSpacing.xs : 6),
       elevation: 0,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
@@ -233,12 +390,12 @@ class _InspectionListPageState
         ),
         borderRadius: BorderRadius.circular(12),
         child: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: EdgeInsets.all(_compact ? AppSpacing.sm : AppSpacing.lg),
           child: Row(
             children: [
               Container(
-                width: 48,
-                height: 48,
+                width: _compact ? 36 : 48,
+                height: _compact ? 36 : 48,
                 decoration: BoxDecoration(
                   color: theme.gradeColor(grade, fallback: theme.colorScheme.primary)
                       .withValues(alpha: 0.1),
@@ -249,7 +406,7 @@ class _InspectionListPageState
                   color: theme.gradeColor(grade, fallback: theme.colorScheme.primary),
                 ),
               ),
-              const SizedBox(width: 16),
+              SizedBox(width: _compact ? AppSpacing.md : AppSpacing.lg),
               Expanded(
                 child: Column(
                   crossAxisAlignment:
@@ -265,22 +422,31 @@ class _InspectionListPageState
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
+                    if (_compact)
+                      Text(
+                        [dateStr, if (siteCode.isNotEmpty) siteCode, if (grade.isNotEmpty) grade]
+                            .join('  ·  '),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      )
+                    else ...[
                     const SizedBox(height: 4),
                     Wrap(
                       spacing: 8,
                       runSpacing: 4,
                       children: [
-                        _InfoChip(
+                        InfoChip(
                           icon: Icons.calendar_today,
                           label: dateStr,
-                          theme: theme,
                         ),
                         if (siteCode.isNotEmpty)
-                          _InfoChip(
+                          InfoChip(
                             icon: Icons
                                 .location_on_outlined,
                             label: siteCode,
-                            theme: theme,
                           ),
                         if (grade.isNotEmpty)
                           Container(
@@ -310,8 +476,10 @@ class _InspectionListPageState
                               ),
                             ),
                           ),
+                        InspectionFinishChip(inspection: ins),
                       ],
                     ),
+                    ],
                   ],
                 ),
               ),
@@ -350,6 +518,132 @@ class _InspectionListPageState
         ),
       ),
     );
+
+    final canDelete = ref.watch(inspectionCanDeleteProvider);
+    // Apprentices get the swipe so they are told why they cannot delete.
+    final apprentice =
+        !ref.watch(canSignOffProvider) || !ref.watch(canDeleteRecordsProvider);
+    final scheme = theme.colorScheme;
+
+    Widget swipeBg(Alignment align, Color bg, Color fg, IconData icon,
+            String label) =>
+        Container(
+          alignment: align,
+          margin: EdgeInsets.symmetric(
+              horizontal: AppSpacing.lg,
+              vertical: _compact ? AppSpacing.xs : 6),
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xxl),
+          decoration: BoxDecoration(
+            color: bg,
+            borderRadius: BorderRadius.circular(AppRadius.field),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, color: fg),
+              Text(label,
+                  style: theme.textTheme.labelSmall?.copyWith(color: fg)),
+            ],
+          ),
+        );
+
+    return Dismissible(
+      key: ValueKey('inspection-${ins.id}'),
+      direction: canDelete || apprentice
+          ? DismissDirection.horizontal
+          : DismissDirection.startToEnd,
+      background: swipeBg(Alignment.centerLeft, scheme.secondaryContainer,
+          scheme.onSecondaryContainer, Icons.build_circle_outlined,
+          'Schedule maintenance'),
+      secondaryBackground: swipeBg(Alignment.centerRight,
+          scheme.errorContainer, scheme.onErrorContainer,
+          Icons.delete_outline, 'Delete'),
+      confirmDismiss: (direction) async {
+        if (direction == DismissDirection.startToEnd) {
+          // Quick action: runs, then the row springs back.
+          unawaited(scheduleMaintenanceFromInspection(ctx, ref, ins));
+          return false;
+        }
+        if (!canDelete) {
+          showSignOffBlocked(ctx);
+          return false;
+        }
+        return true;
+      },
+      onDismissed: (_) => _softDelete(ins),
+      child: card,
+    );
+  }
+
+  // ------------------------------------------------------ presets / density
+
+  void _savePreset(String name) {
+    final preset = InspectionFilterPreset.fromFilter(
+      id: DateTime.now().microsecondsSinceEpoch.toString(),
+      name: name,
+      filter: _filter,
+    );
+    _persistPresets([..._saved, preset]);
+  }
+
+  void _renamePreset(InspectionFilterPreset p, String name) {
+    _persistPresets([
+      for (final s in _saved) s.id == p.id ? s.copyWith(name: name) : s,
+    ]);
+  }
+
+  void _deletePreset(InspectionFilterPreset p) {
+    _persistPresets([
+      for (final s in _saved)
+        if (s.id != p.id) s,
+    ]);
+  }
+
+  void _persistPresets(List<InspectionFilterPreset> next) {
+    setState(() => _saved = next);
+    unawaited(ref.read(inspectionListPrefsProvider).savePresets(next));
+  }
+
+  void _setDensity(InspectionDensity d) {
+    setState(() => _density = d);
+    unawaited(ref.read(inspectionListPrefsProvider).saveDensity(d));
+  }
+
+  // ----------------------------------------------------------- swipe delete
+
+  /// Hides [ins] now and deletes it for real when the Undo window closes.
+  void _softDelete(InspectionEntity ins) {
+    final messenger = ScaffoldMessenger.of(context);
+    setState(() {
+      _pending[ins.id] = Timer(_undoWindow, () => _commitDelete(ins.id));
+    });
+    AppSnackBar.infoOn(
+      messenger,
+      '${ins.displayTitle} deleted',
+      duration: _undoWindow,
+      action: SnackBarAction(
+        label: 'Undo',
+        onPressed: () {
+          _pending.remove(ins.id)?.cancel();
+          if (mounted) setState(() {});
+        },
+      ),
+    );
+  }
+
+  Future<void> _commitDelete(String id) async {
+    if (_pending.remove(id) == null) return;
+    try {
+      await _repo.deleteInspection(id);
+    } catch (e) {
+      if (mounted) AppSnackBar.error(context, 'Could not delete: $e');
+    }
+    if (mounted) {
+      await ref
+          .read(inspectionListControllerProvider.notifier)
+          .loadInspections();
+    }
   }
 
   Future<void> _selectInspectionToEdit(
@@ -395,109 +689,4 @@ class _InspectionListPageState
 
 enum _InspectionAction { edit, scheduleMaintenance }
 
-class _InfoChip extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final ThemeData theme;
 
-  const _InfoChip({
-    required this.icon,
-    required this.label,
-    required this.theme,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(
-          icon,
-          size: 14,
-          color: theme.colorScheme.onSurfaceVariant,
-        ),
-        const SizedBox(width: 4),
-        Text(
-          label,
-          style: theme.textTheme.bodySmall?.copyWith(
-            color:
-            theme.colorScheme.onSurfaceVariant,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-/// Modern stat card for displaying metrics
-class _StatCard extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final int count;
-  final Color color;
-  final ThemeData theme;
-
-  const _StatCard({
-    required this.icon,
-    required this.label,
-    required this.count,
-    required this.color,
-    required this.theme,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(
-          horizontal: 12, vertical: 16),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: theme.colorScheme.outlineVariant,
-          width: 1,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: theme.shadowColor.withValues(alpha: 0.05),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.1),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              icon,
-              color: color,
-              size: 20,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            '$count',
-            style: theme.textTheme.titleLarge?.copyWith(
-              fontWeight: FontWeight.bold,
-              color: theme.colorScheme.onSurface,
-            ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            label,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme
-                  .colorScheme.onSurfaceVariant,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}

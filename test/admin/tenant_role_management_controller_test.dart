@@ -194,7 +194,8 @@ void main() {
 
   group('app_role wire format', () {
     test('the technician role is spelled differently in Postgres', () {
-      // public.app_role is ('admin','supervisor','dispatcher','technician').
+      // public.app_role is ('admin','supervisor','dispatcher','technician',
+      // 'apprentice').
       // Writing UserRole.tech.name would send "tech" and fail with
       // 22P02 invalid input value for enum app_role.
       expect(UserRole.tech.name, 'tech');
@@ -202,10 +203,20 @@ void main() {
     });
 
     test('every role has a wire value the database enum accepts', () {
-      const accepted = {'admin', 'supervisor', 'dispatcher', 'technician'};
+      const accepted = {
+        'admin',
+        'supervisor',
+        'dispatcher',
+        'technician',
+        'apprentice',
+      };
       for (final role in UserRole.values) {
         expect(accepted, contains(role.wire), reason: 'role ${role.name}');
       }
+    });
+
+    test('apprentice is written as apprentice', () {
+      expect(UserRole.apprentice.wire, 'apprentice');
     });
 
     test('wire values round-trip back to the same role', () {
@@ -283,6 +294,16 @@ class _FakeAdminRepository implements AdminRepository {
         isActive: true,
       ),
     );
+  }
+
+  final divisionWrites = <List<String>>[];
+
+  @override
+  Future<void> setMemberDivisions({
+    required TenantMemberEntity member,
+    required List<String> divisionIds,
+  }) async {
+    divisionWrites.add(divisionIds);
   }
 
   @override

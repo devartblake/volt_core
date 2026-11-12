@@ -6,6 +6,8 @@ import '../../domain/user_role.dart';
 /// Import this wherever you need a human-readable label.
 String roleLabel(UserRole role) {
   switch (role) {
+    case UserRole.apprentice:
+      return 'Apprentice';
     case UserRole.tech:
       return 'Tech';
     case UserRole.supervisor:

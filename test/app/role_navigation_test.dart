@@ -9,6 +9,7 @@ import 'package:voltcore/modules/auth/domain/user_role.dart';
 const _drawerRouteNames = <String>{
   RouteNames.dashboard,
   RouteNames.analytics,
+  RouteNames.readiness,
   RouteNames.inspections,
   RouteNames.inspectionNew,
   RouteNames.inspectionsPending,
@@ -54,6 +55,12 @@ void main() {
       expect(visible, isNot(contains(RouteNames.adminTechnicians)));
       expect(visible, isNot(contains(RouteNames.adminSettings)));
       expect(visible, isNot(contains(RouteNames.tenantsSettings)));
+    });
+
+    test('apprentices see exactly what technicians see', () {
+      expect(_visibleTo(UserRole.apprentice), _visibleTo(UserRole.tech));
+      expect(_visibleTo(UserRole.apprentice),
+          isNot(contains(RouteNames.adminTechnicians)));
     });
 
     test('technicians keep their day-to-day entries', () {

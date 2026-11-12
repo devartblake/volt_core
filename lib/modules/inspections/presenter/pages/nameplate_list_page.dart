@@ -26,9 +26,9 @@ class NameplateListPage extends ConsumerWidget {
     final inspectionsAsync = ref.watch(nameplateInspectionsProvider);
 
     return AppPage(
-      title: 'Nameplate Data',
+      title: 'Equipment',
       actions: [
-          IconButton(
+          IconButton(tooltip: 'About this screen', 
             icon: const Icon(Icons.info_outline),
             onPressed: () {
               showDialog(

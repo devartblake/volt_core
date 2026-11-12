@@ -17,6 +17,9 @@ class RoutePaths {
   // Analytics
   static const String analytics = '/analytics';
 
+  // Fleet readiness: every generator, ready or not
+  static const String readiness = '/readiness';
+
   // Inspections
   static const String inspections = '/inspections';
   static const String inspectionNew = '/inspections/new';
@@ -71,6 +74,8 @@ class RoutePaths {
   /// ambiguity with the literal-prefixed `new` / `edit` siblings.
   static const String fleetMaintenanceNewSub = 'maintenance/new';
   static const String fleetVehicleAssetsSub = 'assets';
+  static const String fleetInspectionNewSub = 'inspection/new';
+  static const String fleetInspectionLogSub = 'inspection-log';
 
   /// The signed asset receipt. `new` starts one; `:checkId` opens an existing
   /// one to counter-sign or to read.
@@ -84,13 +89,27 @@ class RoutePaths {
   static const String fleetVehicleAssets = '$fleet/detail/:id/assets';
   static const String fleetReceiptNew = '$fleet/detail/:id/receipt/new';
   static const String fleetReceipt = '$fleet/detail/:id/receipt/:checkId';
+
+  /// Takes `?cadence=weekly|monthly`.
+  static const String fleetInspectionNew = '$fleet/detail/:id/inspection/new';
   static const String fleetCatalog = '$fleet/catalog';
+  static const String fleetInspectionLog = '$fleet/inspection-log';
 
   // Customer / service-site directory
   static const String customerSites = '/customers-sites';
 
+  // Parts-profile change requests awaiting approval
+  static const String materialsApprovals = '/parts-approvals';
+
   // Documents
   static const String documents = '/documents';
+  static const String inventory = '/inventory';
+  static const String inventoryCatalog = '$inventory/catalog';
+  static const String inventoryNeeds = '$inventory/needs';
+  static const String inventoryShortages = '$inventory/shortages';
+  static const String inventoryVendors = '$inventory/vendors';
+  static const String inventoryMovements = '$inventory/movements';
+  static const String inventoryOrders = '$inventory/orders';
 
   // Settings & config
   static const String selectionManagement = '/selection-management';
@@ -102,6 +121,15 @@ class RoutePaths {
   static const String adminDashboard = '/admin';
   static const String adminSettings = '/admin/settings';
   static const String adminTechnicians = '/admin/technicians';
+  static const String adminAudit = '/admin/audit';
+  static const String adminDivisions = '/admin/divisions';
+
+  /// `/admin/technicians/:userId/permissions` (see [adminPermissionsFor]).
+  static const String adminPermissions =
+      '/admin/technicians/:userId/permissions';
+
+  static String adminPermissionsFor(String userId) =>
+      '/admin/technicians/${Uri.encodeComponent(userId)}/permissions';
 }
 
 /// Optional: route name constants if you want them too.
@@ -115,6 +143,7 @@ class RouteNames {
   static const String dashboard = 'dashboard';
   static const String techDashboard = 'tech_dashboard';
   static const String analytics = 'analytics';
+  static const String readiness = 'readiness';
 
   static const String inspections = 'inspections';
   static const String inspectionNew = 'inspection_new';
@@ -150,10 +179,20 @@ class RouteNames {
   static const String fleetVehicleAssets = 'fleet_vehicle_assets';
   static const String fleetReceiptNew = 'fleet_receipt_new';
   static const String fleetReceipt = 'fleet_receipt';
+  static const String fleetInspectionNew = 'fleet_inspection_new';
+  static const String fleetInspectionLog = 'fleet_inspection_log';
   static const String fleetCatalog = 'fleet_catalog';
   static const String customerSites = 'customer_sites';
+  static const String materialsApprovals = 'materials_approvals';
 
   static const String documents = 'documents';
+  static const String inventory = 'inventory';
+  static const String inventoryCatalog = 'inventory_catalog';
+  static const String inventoryNeeds = 'inventory_needs';
+  static const String inventoryShortages = 'inventory_shortages';
+  static const String inventoryVendors = 'inventory_vendors';
+  static const String inventoryMovements = 'inventory_movements';
+  static const String inventoryOrders = 'inventory_orders';
 
   static const String selectionManagement = 'selection_management';
   static const String settings = 'settings';
@@ -163,4 +202,7 @@ class RouteNames {
   static const String adminDashboard = 'admin_dashboard';
   static const String adminSettings = 'admin_settings';
   static const String adminTechnicians = 'admin_technicians';
+  static const String adminAudit = 'admin_audit';
+  static const String adminDivisions = 'admin_divisions';
+  static const String adminPermissions = 'admin_permissions';
 }

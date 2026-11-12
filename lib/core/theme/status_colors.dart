@@ -43,13 +43,13 @@ class StatusColors extends ThemeExtension<StatusColors> {
   /// Light-theme values. Deliberately darker than the raw Material swatches so
   /// they pass contrast against light surfaces.
   static const StatusColors light = StatusColors(
-    success: Color(0xFF1B7A3E),
+    success: Color(0xFF15602F),
     onSuccess: Color(0xFFFFFFFF),
     successContainer: Color(0xFFD7F2E1),
-    warning: Color(0xFF9A5B00),
+    warning: Color(0xFF804A00),
     onWarning: Color(0xFFFFFFFF),
     warningContainer: Color(0xFFFFE7C7),
-    info: Color(0xFF1B5E9A),
+    info: Color(0xFF174F82),
     infoContainer: Color(0xFFD6E9FA),
   );
 

@@ -13,7 +13,14 @@ const String kScheduleTasksTable = 'schedule_tasks';
 /// The tenant is stamped from [SyncContext] rather than the entity: tasks are
 /// created locally with an empty `tenantId`, and the server rejects rows whose
 /// tenant doesn't match the caller's membership.
-Map<String, dynamic> scheduleTaskToSupabaseJson(TaskScheduleEntity e) {
+///
+/// A brand-new task with no assignee defaults to the signed-in user
+/// ([defaultAssigneeToCurrentUser]). An existing task with no assignee is sent
+/// as an explicit null so the column is cleared (see "Unassign").
+Map<String, dynamic> scheduleTaskToSupabaseJson(
+  TaskScheduleEntity e, {
+  bool defaultAssigneeToCurrentUser = true,
+}) {
   final tenantId = scheduleTaskTenantId(e);
 
   return {
@@ -30,7 +37,8 @@ Map<String, dynamic> scheduleTaskToSupabaseJson(TaskScheduleEntity e) {
     'site_code': e.siteCode,
     'site_grade': e.siteGrade,
     'address': e.address,
-    'assigned_to_user_id': e.assignedToUserId ?? SyncContext.userId,
+    'assigned_to_user_id': e.assignedToUserId ??
+        (defaultAssigneeToCurrentUser ? SyncContext.userId : null),
     'notes': e.notes,
     'created_at': e.createdAt.toIso8601String(),
     'updated_at': e.updatedAt.toIso8601String(),

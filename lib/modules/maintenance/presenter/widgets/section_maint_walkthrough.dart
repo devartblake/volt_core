@@ -82,11 +82,13 @@ class SectionMaintWalkthrough extends StatelessWidget {
               children: [
                 Icon(Icons.map_outlined, size: 18, color: colorScheme.primary),
                 const SizedBox(width: 8),
-                Text(
-                  'Generator Location',
-                  style: theme.textTheme.labelLarge?.copyWith(
-                    color: colorScheme.primary,
-                    fontWeight: FontWeight.w600,
+                Expanded(
+                  child: Text(
+                    'Generator Location',
+                    style: theme.textTheme.labelLarge?.copyWith(
+                      color: colorScheme.primary,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
               ],
@@ -162,11 +164,13 @@ class SectionMaintWalkthrough extends StatelessWidget {
               children: [
                 Icon(Icons.domain_outlined, size: 18, color: colorScheme.tertiary),
                 const SizedBox(width: 8),
-                Text(
-                  'Enclosure Condition',
-                  style: theme.textTheme.labelLarge?.copyWith(
-                    color: colorScheme.tertiary,
-                    fontWeight: FontWeight.w600,
+                Expanded(
+                  child: Text(
+                    'Enclosure Condition',
+                    style: theme.textTheme.labelLarge?.copyWith(
+                      color: colorScheme.tertiary,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
               ],
@@ -243,11 +247,13 @@ class SectionMaintWalkthrough extends StatelessWidget {
                 Icon(Icons.health_and_safety_outlined, size: 18,
                     color: colorScheme.secondary),
                 const SizedBox(width: 8),
-                Text(
-                  'Area Safety Checks',
-                  style: theme.textTheme.labelLarge?.copyWith(
-                    color: colorScheme.secondary,
-                    fontWeight: FontWeight.w600,
+                Expanded(
+                  child: Text(
+                    'Area Safety Checks',
+                    style: theme.textTheme.labelLarge?.copyWith(
+                      color: colorScheme.secondary,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
               ],

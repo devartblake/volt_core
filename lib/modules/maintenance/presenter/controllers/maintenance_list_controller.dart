@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/legacy.dart';
+import '../../domain/maintenance_list_filter.dart';
 import '../../infra/models/maintenance_record.dart';
 import 'maintenance_providers.dart';
 import '../../infra/repositories/maintenance_hive_repository.dart' as legacy;
@@ -19,7 +20,9 @@ class MaintenanceListState {
     this.records = const [],
     this.isLoading = false,
     this.error,
-    this.tab = MaintenanceListTab.active,
+    // Everything by default. It used to be "active" with nothing able to
+    // change it, which hid every completed record from the list.
+    this.tab = MaintenanceListTab.all,
   });
 
   MaintenanceListState copyWith({
@@ -60,6 +63,29 @@ class MaintenanceListController
     }
   }
 
+  /// Removes [record] from the list straight away (a swiped card must leave
+  /// the tree in the same frame), then deletes it from storage.
+  Future<void> delete(MaintenanceRecord record) async {
+    state = state.copyWith(
+      records: [
+        for (final r in state.records)
+          if (r.id != record.id) r,
+      ],
+    );
+    try {
+      await _repo.delete(record.id);
+    } catch (e) {
+      await load();
+      rethrow;
+    }
+  }
+
+  /// Undo for [delete]: puts the record back and reloads.
+  Future<void> restore(MaintenanceRecord record) async {
+    await _repo.restore(record);
+    await load();
+  }
+
   Future<void> refresh() {
     return load();
   }
@@ -93,4 +119,10 @@ StateNotifierProvider<MaintenanceListController, MaintenanceListState>(
     final repo = ref.watch(maintenanceRepoProvider);
     return MaintenanceListController(repo);
   },
+);
+
+/// Which status the maintenance list is showing.
+final maintenanceStatusFilterProvider =
+    StateProvider.autoDispose<MaintenanceStatusFilter>(
+  (ref) => MaintenanceStatusFilter.all,
 );

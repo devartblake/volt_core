@@ -1,20 +1,26 @@
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:signature/signature.dart';
+import '../../../auth/presenter/sign_off_access.dart';
 import '../../../../core/services/storage/file_storage_service.dart';
 import '../../../schedule/presenter/pages/schedule_task_page.dart';
 import '../../../schedule/presenter/widgets/dialogs/schedule_dialog.dart';
 import '../../domain/entities/inspection_entity.dart';
+import '../../../../core/theme/signature_palette.dart';
 import '../../../../shared/widgets/widgets.dart';
 
 class SectionSignatures extends StatefulWidget {
   final InspectionEntity model;
   final ValueChanged<InspectionEntity> onChanged;
 
+  /// False for apprentices: the pads are replaced by a short explanation.
+  final bool canSignOff;
+
   const SectionSignatures({
     super.key,
     required this.model,
     required this.onChanged,
+    this.canSignOff = true,
   });
 
   @override
@@ -24,11 +30,11 @@ class SectionSignatures extends StatefulWidget {
 class _SectionSignaturesState extends State<SectionSignatures> {
   final techCtl = SignatureController(
     penStrokeWidth: 2,
-    penColor: Colors.black,
+    penColor: SignaturePalette.ink,
   );
   final custCtl = SignatureController(
     penStrokeWidth: 2,
-    penColor: Colors.black,
+    penColor: SignaturePalette.ink,
   );
   final custNameCtl = TextEditingController();
 
@@ -180,15 +186,19 @@ class _SectionSignaturesState extends State<SectionSignatures> {
                   ),
                 ),
                 const SizedBox(width: 12),
-                Text(
-                  'Signatures',
-                  style: theme.textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
+                Expanded(
+                  child: Text(
+                    'Signatures',
+                    style: theme.textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
               ],
             ),
             const SizedBox(height: 24),
+            if (!widget.canSignOff) const SignOffRequiredNotice(),
+            if (widget.canSignOff) ...[
             LabeledField(
               label: 'Customer Name',
               controller: custNameCtl,
@@ -275,6 +285,7 @@ class _SectionSignaturesState extends State<SectionSignatures> {
                 onPressed: _isSaving ? null : _handleSchedule,
               ),
             ),
+            ],
           ],
         ),
       ),
@@ -294,14 +305,17 @@ class _SectionSignaturesState extends State<SectionSignatures> {
           children: [
             Icon(icon, size: 20, color: theme.colorScheme.primary),
             const SizedBox(width: 8),
-            Text(
-              label,
-              style: theme.textTheme.titleSmall?.copyWith(
-                fontWeight: FontWeight.w600,
-                color: theme.colorScheme.primary,
+            Expanded(
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: theme.colorScheme.primary,
+                ),
               ),
             ),
-            const Spacer(),
             TextButton.icon(
               icon: const Icon(Icons.clear, size: 18),
               label: const Text('Clear'),
@@ -317,76 +331,13 @@ class _SectionSignaturesState extends State<SectionSignatures> {
           ],
         ),
         const SizedBox(height: 8),
-        Semantics(
-          label: '$label signature pad',
-          hint: 'Draw the signature here',
-          container: true,
-          child: Container(
-          height: 220,
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: theme.colorScheme.outline,
-              width: 2,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.05),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(10),
-            child: Stack(
-              children: [
-                Signature(
-                  controller: controller,
-                  backgroundColor: Colors.white,
-                ),
-                Positioned(
-                  bottom: 8,
-                  left: 0,
-                  right: 0,
-                  child: Center(
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: theme
-                            .colorScheme.surfaceContainerHighest,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.gesture,
-                            size: 14,
-                            color: theme
-                                .colorScheme.onSurfaceVariant,
-                          ),
-                          const SizedBox(width: 6),
-                          Text(
-                            'Sign here',
-                            style:
-                            theme.textTheme.labelSmall?.copyWith(
-                              color: theme
-                                  .colorScheme.onSurfaceVariant,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
+        SignaturePaper(
+          semanticLabel: '$label signature pad',
+          semanticHint: 'Draw the signature here',
+          hint: 'Sign here',
+          child: Signature(
+            controller: controller,
+            backgroundColor: Colors.transparent,
           ),
         ),
       ],

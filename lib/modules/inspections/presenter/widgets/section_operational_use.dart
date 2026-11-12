@@ -116,7 +116,10 @@ class _SectionOperationalUseState extends State<SectionOperationalUse> {
               value: m.notes,
               hint: 'Add any additional observations or notes...',
               prefixIcon: Icons.notes,
-              maxLines: 4,
+              // Grows with the text; the PDF carries every line entered.
+              minLines: 4,
+              maxLines: 20,
+              keyboardType: TextInputType.multiline,
               onChanged: (v) => _update((curr) => curr.copyWith(notes: v)),
             ),
           ],

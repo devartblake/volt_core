@@ -16,6 +16,7 @@ import '../../infra/repositories/template_management_repository.dart';
 import '../../infra/repositories/template_management_repository_impl.dart';
 import '../../infra/services/generator_template_pack_installer.dart';
 import 'template_draft_editor_page.dart';
+import '../../../../shared/widgets/app_snack_bar.dart';
 
 class TemplateManagementPage extends ConsumerStatefulWidget {
   const TemplateManagementPage({super.key});
@@ -233,7 +234,7 @@ class _TemplateManagementPageState extends ConsumerState<TemplateManagementPage>
 
   void _showMessage(String message) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    AppSnackBar.info(context, message);
   }
 
   @override

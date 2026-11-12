@@ -48,22 +48,15 @@ class _HiveDebugPageState extends State<HiveDebugPage> {
       await MaintenanceBoxes.init();
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(deleteData ? 'All data deleted!' : 'Hive reset!'),
-            backgroundColor: Colors.green,
-          ),
+        AppSnackBar.success(
+          context,
+          deleteData ? 'All data deleted!' : 'Hive reset!',
         );
         _refreshStats();
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        AppSnackBar.error(context, 'Error: $e');
       }
     } finally {
       if (mounted) {
@@ -101,11 +94,10 @@ class _HiveDebugPageState extends State<HiveDebugPage> {
 
   void _printDebugInfo() {
     HiveService.printDebugInfo();
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Debug info printed to console'),
-        duration: Duration(seconds: 2),
-      ),
+    AppSnackBar.info(
+      context,
+      'Debug info printed to console',
+      duration: const Duration(seconds: 2),
     );
   }
 

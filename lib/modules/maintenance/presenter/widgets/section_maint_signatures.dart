@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:signature/signature.dart';
+import '../../../auth/domain/user_role.dart' show kApprenticeSignOffMessage;
+import '../../../auth/presenter/sign_off_access.dart';
 import '../../../schedule/presenter/pages/schedule_task_page.dart';
 import '../../../schedule/presenter/widgets/dialogs/schedule_dialog.dart';
+import '../../../../core/theme/signature_palette.dart';
 import '../../../../shared/widgets/widgets.dart';
 import '../../presenter/widgets/utils/form_fields.dart';
 import '../../../../core/services/storage/file_storage_service.dart';
+import '../../domain/maintenance_validation.dart';
 import '../../infra/models/maintenance_record.dart';
 
 /// Modern signatures section with digital signature capture
@@ -20,11 +24,19 @@ class SectionMaintSignatures extends StatefulWidget {
   final ValueChanged<MaintenanceRecord> onChanged;
   final bool readOnly;
 
+  /// False for apprentices: no technician signature and no "Job Completed".
+  final bool canSignOff;
+
+  /// Inline "Required to finish" messages to show, by field.
+  final Map<MaintenanceField, String> issues;
+
   const SectionMaintSignatures({
     super.key,
     required this.model,
     required this.onChanged,
     this.readOnly = false,
+    this.canSignOff = true,
+    this.issues = const {},
   });
 
   @override
@@ -46,14 +58,14 @@ class _SectionMaintSignaturesState extends State<SectionMaintSignatures> {
 
     _technicianController = SignatureController(
       penStrokeWidth: 2,
-      penColor: Colors.black,
-      exportBackgroundColor: Colors.white,
+      penColor: SignaturePalette.ink,
+      exportBackgroundColor: SignaturePalette.paper,
     );
 
     _customerController = SignatureController(
       penStrokeWidth: 2,
-      penColor: Colors.black,
-      exportBackgroundColor: Colors.white,
+      penColor: SignaturePalette.ink,
+      exportBackgroundColor: SignaturePalette.paper,
     );
 
     // Load existing signatures if available
@@ -244,29 +256,11 @@ class _SectionMaintSignaturesState extends State<SectionMaintSignatures> {
   /// Helper: Show snackbar message
   void _showSnackBar(String message, {bool isError = false}) {
     if (!mounted) return;
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            Icon(
-              isError ? Icons.error_outline : Icons.check_circle_outline,
-              color: Colors.white,
-              size: 20,
-            ),
-            const SizedBox(width: 12),
-            Expanded(child: Text(message)),
-          ],
-        ),
-        backgroundColor: isError
-            ? Theme.of(context).colorScheme.error
-            : null,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8),
-        ),
-      ),
-    );
+    if (isError) {
+      AppSnackBar.error(context, message);
+    } else {
+      AppSnackBar.success(context, message);
+    }
   }
 
   /// Schedule maintenance
@@ -342,6 +336,9 @@ class _SectionMaintSignaturesState extends State<SectionMaintSignatures> {
             const SizedBox(height: 20),
 
             // Technician signature section
+            if (!widget.canSignOff)
+              const SignOffRequiredNotice()
+            else
             _SignatureCard(
               title: 'Technician Signature',
               icon: Icons.engineering_outlined,
@@ -352,6 +349,7 @@ class _SectionMaintSignaturesState extends State<SectionMaintSignatures> {
               isSaved: _technicianSignatureSaved,
               isSaving: _isSavingTechnician,
               readOnly: widget.readOnly,
+              nameError: widget.issues[MaintenanceField.technicianSignature],
               nameValue: widget.model.technicianSignatureName,
               dateValue: widget.model.technicianSignatureDate,
               signatureController: _technicianController,
@@ -395,6 +393,7 @@ class _SectionMaintSignaturesState extends State<SectionMaintSignatures> {
               isSaved: _customerSignatureSaved,
               isSaving: _isSavingCustomer,
               readOnly: widget.readOnly,
+              nameError: widget.issues[MaintenanceField.customerSignature],
               nameValue: widget.model.customerSignatureName,
               dateValue: widget.model.customerSignatureDate,
               signatureController: _customerController,
@@ -442,6 +441,7 @@ class _SectionMaintSignaturesState extends State<SectionMaintSignatures> {
             _ServiceStatusCard(
               model: widget.model,
               readOnly: widget.readOnly,
+              canComplete: widget.canSignOff,
               onChanged: (model) => widget.onChanged(model),
             ),
 
@@ -509,6 +509,7 @@ class _SignatureCard extends StatelessWidget {
   final bool isSaving;
   final bool readOnly;
   final String nameValue;
+  final String? nameError;
   final DateTime? dateValue;
   final SignatureController signatureController;
   final Color? savedColor;
@@ -528,6 +529,7 @@ class _SignatureCard extends StatelessWidget {
     required this.isSaving,
     required this.readOnly,
     required this.nameValue,
+    required this.nameError,
     required this.dateValue,
     required this.signatureController,
     required this.onNameChanged,
@@ -611,6 +613,7 @@ class _SignatureCard extends StatelessWidget {
             value: nameValue,
             readOnly: readOnly,
             hint: 'Enter full name',
+            errorText: nameError,
             prefixIcon: Icons.person_outline,
             filled: true,
             onChanged: onNameChanged,
@@ -634,13 +637,14 @@ class _SignatureCard extends StatelessWidget {
           // Signature pad header
           Row(
             children: [
-              Text(
-                'Draw Signature',
-                style: theme.textTheme.labelMedium?.copyWith(
-                  fontWeight: FontWeight.w600,
+              Expanded(
+                child: Text(
+                  'Draw Signature',
+                  style: theme.textTheme.labelMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
-              const Spacer(),
               if (!readOnly)
                 TextButton.icon(
                   onPressed: onClear,
@@ -660,34 +664,13 @@ class _SignatureCard extends StatelessWidget {
           const SizedBox(height: 8),
 
           // Signature pad
-          Semantics(
-            label: '$title signature pad',
-            hint: 'Draw the signature here',
-            container: true,
-            child: Container(
-            height: 220,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: colorScheme.outline.withValues(alpha: 0.5),
-                width: 2,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.05),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(10),
-              child: Signature(
-                controller: signatureController,
-                backgroundColor: Colors.white,
-              ),
-            ),
+          SignaturePaper(
+            semanticLabel: '$title signature pad',
+            semanticHint: 'Draw the signature here',
+            hint: readOnly ? null : 'Sign here',
+            child: Signature(
+              controller: signatureController,
+              backgroundColor: Colors.transparent,
             ),
           ),
           const SizedBox(height: 12),
@@ -731,11 +714,13 @@ class _SignatureCard extends StatelessWidget {
 class _ServiceStatusCard extends StatelessWidget {
   final MaintenanceRecord model;
   final bool readOnly;
+  final bool canComplete;
   final ValueChanged<MaintenanceRecord> onChanged;
 
   const _ServiceStatusCard({
     required this.model,
     required this.readOnly,
+    this.canComplete = true,
     required this.onChanged,
   });
 
@@ -759,7 +744,7 @@ class _ServiceStatusCard extends StatelessWidget {
         children: [
           SwitchListTile(
             value: model.completed,
-            onChanged: readOnly
+            onChanged: readOnly || !canComplete
                 ? null
                 : (val) {
               _updateModel(() {
@@ -776,11 +761,13 @@ class _ServiceStatusCard extends StatelessWidget {
                       : colorScheme.onSurfaceVariant,
                 ),
                 const SizedBox(width: 8),
-                const Text('Job Completed'),
+                const Expanded(child: Text('Job Completed')),
               ],
             ),
-            subtitle: const Text(
-              'Mark when all work for this visit is finished',
+            subtitle: Text(
+              canComplete
+                  ? 'Mark when all work for this visit is finished'
+                  : kApprenticeSignOffMessage,
             ),
             contentPadding: const EdgeInsets.symmetric(
               horizontal: 16,
@@ -810,7 +797,7 @@ class _ServiceStatusCard extends StatelessWidget {
                       : colorScheme.onSurfaceVariant,
                 ),
                 const SizedBox(width: 8),
-                const Text('Requires Follow-up'),
+                const Expanded(child: Text('Requires Follow-up')),
               ],
             ),
             subtitle: const Text(

@@ -62,6 +62,8 @@ class TechnicianModel extends TechnicianEntity {
 
   static UserRole _userRoleFromString(String value) {
     switch (value) {
+      case 'apprentice':
+        return UserRole.apprentice;
       case 'tech':
         return UserRole.tech;
       case 'supervisor':

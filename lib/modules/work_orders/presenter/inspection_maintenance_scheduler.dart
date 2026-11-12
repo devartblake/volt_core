@@ -9,6 +9,7 @@ import '../../inspections/domain/entities/inspection_entity.dart';
 import '../application/inspection_maintenance_handoff.dart';
 import '../infra/repositories/work_order_repository_impl.dart';
 import 'work_order_providers.dart';
+import '../../../shared/widgets/app_snack_bar.dart';
 
 /// Creates a scheduled maintenance work order from inspection evidence and
 /// opens it for dispatch review. Missing directory data never blocks the
@@ -59,18 +60,14 @@ Future<void> scheduleMaintenanceFromInspection(
         );
     ref.invalidate(workOrderListProvider);
     if (!context.mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Maintenance job scheduled.')),
-    );
+    AppSnackBar.info(context, 'Maintenance job scheduled.');
     context.goNamed(
       RouteNames.workOrderEdit,
       pathParameters: {'id': order.id},
     );
   } catch (error) {
     if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Could not schedule maintenance: $error')),
-      );
+      AppSnackBar.error(context, 'Could not schedule maintenance: $error');
     }
   }
 }

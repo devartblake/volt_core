@@ -78,6 +78,8 @@ class TaskScheduleEntity extends Equatable {
     this.notes,
   });
 
+  /// Pass [clearAssignee] to deliberately remove the assignee (a null
+  /// [assignToUserId] means "leave unchanged").
   TaskScheduleEntity copyWith({
     String? id,
     DateTime? scheduledAt,
@@ -87,6 +89,7 @@ class TaskScheduleEntity extends Equatable {
     String? title,
     String? sourceType,
     String? assignToUserId,
+    bool clearAssignee = false,
     String? sourceId,
     String? description,
     String? inspectionId,
@@ -108,7 +111,8 @@ class TaskScheduleEntity extends Equatable {
       inspectionId: inspectionId ?? this.inspectionId,
       sourceType: sourceType ?? this.sourceType,
       sourceId: sourceId ?? this.sourceId,
-      assignedToUserId: assignToUserId ?? assignedToUserId,
+      assignedToUserId:
+          clearAssignee ? null : (assignToUserId ?? assignedToUserId),
       siteCode: siteCode ?? this.siteCode,
       siteGrade: siteGrade ?? this.siteGrade,
       address: address ?? this.address,

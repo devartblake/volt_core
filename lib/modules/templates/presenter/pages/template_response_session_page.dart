@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../../shared/widgets/app_page.dart';
 import '../controllers/template_response_session_controller.dart';
 import '../widgets/template_form_renderer.dart';
+import '../../../../shared/widgets/app_snack_bar.dart';
 
 class TemplateResponseSessionPage extends StatelessWidget {
   const TemplateResponseSessionPage({
@@ -115,13 +116,7 @@ class _SessionBottomBar extends StatelessWidget {
                           );
                           if (!context.mounted) return;
                           if (!result.completed) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(
-                                  '${result.issues.length} field issue(s) must be corrected before completion.',
-                                ),
-                              ),
-                            );
+                            AppSnackBar.info(context, '${result.issues.length} field issue(s) must be corrected before completion.',);
                           }
                         },
                   icon: const Icon(Icons.task_alt),

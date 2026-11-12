@@ -1,15 +1,25 @@
 import 'package:flutter/material.dart';
 import '../../../../shared/widgets/widgets.dart';
+import '../../../materials/domain/material_item.dart';
+import '../../../materials/domain/material_list.dart';
+import '../../../materials/infra/materials_repository.dart';
+import '../../../materials/presenter/materials_editor.dart';
+import '../../../materials/presenter/materials_section_card.dart';
 import '../../domain/entities/inspection_entity.dart';
 
 class SectionMaterials extends StatefulWidget {
   final InspectionEntity model;
   final ValueChanged<InspectionEntity> onChanged;
 
+  /// Reports the parts list on every edit (before it is saved), for the
+  /// form's "to finish" summary.
+  final ValueChanged<List<MaterialItem>>? onItemsChanged;
+
   const SectionMaterials({
     super.key,
     required this.model,
     required this.onChanged,
+    this.onItemsChanged,
   });
 
   @override
@@ -125,8 +135,9 @@ class _SectionMaterialsState extends State<SectionMaterials> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return Card(
+    final serviceCard = Card(
       elevation: 0,
+      margin: EdgeInsets.zero,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
         side: BorderSide(
@@ -156,7 +167,7 @@ class _SectionMaterialsState extends State<SectionMaterials> {
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
-                    'Service / Materials Replaced',
+                    'Service dates',
                     style: theme.textTheme.titleLarge?.copyWith(
                       fontWeight: FontWeight.bold,
                     ),
@@ -181,35 +192,6 @@ class _SectionMaterialsState extends State<SectionMaterials> {
             ),
             const SizedBox(height: 12),
             Text(
-              'Filter Changes',
-              style: theme.textTheme.titleSmall?.copyWith(
-                fontWeight: FontWeight.w600,
-                color: theme.colorScheme.primary,
-              ),
-            ),
-            _modernDateRow(
-              'Oil Filter Change Date',
-              Icons.oil_barrel,
-              m.oilFilterChangeDate,
-                  (curr, v) => curr.copyWith(oilFilterChangeDate: v),
-              theme,
-            ),
-            _modernDateRow(
-              'Fuel Filter Change Date',
-              Icons.filter_alt_outlined,
-              m.fuelFilterDate,
-                  (curr, v) => curr.copyWith(fuelFilterDate: v),
-              theme,
-            ),
-            _modernDateRow(
-              'Air Filter Change Date',
-              Icons.air,
-              m.airFilterDate,
-                  (curr, v) => curr.copyWith(airFilterDate: v),
-              theme,
-            ),
-            const SizedBox(height: 16),
-            Text(
               'Component Replacements',
               style: theme.textTheme.titleSmall?.copyWith(
                 fontWeight: FontWeight.w600,
@@ -223,16 +205,68 @@ class _SectionMaterialsState extends State<SectionMaterials> {
                   (curr, v) => curr.copyWith(coolantFlushDate: v),
               theme,
             ),
-            _modernDateRow(
-              'Battery Replacement Date',
-              Icons.battery_charging_full,
-              m.batteryReplaceDate,
-                  (curr, v) => curr.copyWith(batteryReplaceDate: v),
-              theme,
-            ),
           ],
         ),
       ),
     );
+
+    // The other inspection sections are Cards with their default margin; match
+    // it so these two line up with them.
+    return Padding(
+      padding: const EdgeInsets.all(4),
+      child: Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        MaterialsSectionCard(
+          owner: MaterialOwner.inspection(
+            id: m.id,
+            equipmentKey: generatorProfileKey(
+              make: m.generatorMake,
+              model: m.generatorModel,
+              serial: m.generatorSerial,
+            ),
+          ),
+          mode: MaterialsMode.inspection,
+          make: m.generatorMake,
+          model: m.generatorModel,
+          serial: m.generatorSerial,
+          title: 'Parts & Materials',
+          subtitle: 'What is fitted, and what is due for replacement.',
+          // Inspections made before this step kept only four dates; they are
+          // carried in so they are not lost.
+          seed: () => MaterialListOps.seedFromLegacyDates(
+            oil: m.oilFilterChangeDate,
+            fuel: m.fuelFilterDate,
+            air: m.airFilterDate,
+            battery: m.batteryReplaceDate,
+          ),
+          onChanged: (items) {
+            widget.onItemsChanged?.call(items);
+            _mirrorLegacyDates(items);
+          },
+        ),
+        const SizedBox(height: 16),
+        serviceCard,
+      ],
+    ),
+    );
+  }
+
+  /// The inspection PDF and older records still read four date fields, so they
+  /// are kept in step with the dates on the matching parts.
+  void _mirrorLegacyDates(List<MaterialItem> items) {
+    final d = MaterialListOps.legacyDates(items);
+    if (d.oil == m.oilFilterChangeDate &&
+        d.fuel == m.fuelFilterDate &&
+        d.air == m.airFilterDate &&
+        d.battery == m.batteryReplaceDate) {
+      return;
+    }
+    _update((curr) => curr.copyWith(
+          oilFilterChangeDate: d.oil,
+          fuelFilterDate: d.fuel,
+          airFilterDate: d.air,
+          batteryReplaceDate: d.battery,
+        ));
   }
 }

@@ -46,23 +46,29 @@ class PdfViewerPage extends StatelessWidget {
   }
 
   Future<void> _share(BuildContext context) async {
-    final memoryBytes = bytes;
-    if (memoryBytes != null) {
-      await Printing.sharePdf(bytes: memoryBytes, filename: title);
-      return;
-    }
-
-    final file = File(filePath!);
-    if (!await file.exists()) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('File no longer exists')));
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final memoryBytes = bytes;
+      if (memoryBytes != null) {
+        await Printing.sharePdf(bytes: memoryBytes, filename: title);
+        return;
       }
-      return;
+
+      final file = File(filePath!);
+      if (!await file.exists()) {
+        AppSnackBar.errorOn(messenger, 'File no longer exists');
+        return;
+      }
+      await SharePlus.instance.share(
+        ShareParams(
+          files: [XFile(filePath!, mimeType: 'application/pdf')],
+          subject: title,
+        ),
+      );
+    } catch (e) {
+      debugPrint('[PdfViewerPage] share failed: $e');
+      AppSnackBar.errorOn(
+          messenger, 'Could not share the PDF. Please try again.');
     }
-    await Share.shareXFiles([
-      XFile(filePath!, mimeType: 'application/pdf'),
-    ], subject: title);
   }
 }

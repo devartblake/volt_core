@@ -12,7 +12,7 @@ void main() {
   final manifest =
       File('android/app/src/main/AndroidManifest.xml').readAsStringSync();
   final capture =
-      File('lib/shared/presenter/widgets/photo_attachments_section.dart')
+      File('lib/shared/presenter/widgets/photo_gallery_sheet.dart')
           .readAsStringSync();
 
   bool declares(String permission) =>

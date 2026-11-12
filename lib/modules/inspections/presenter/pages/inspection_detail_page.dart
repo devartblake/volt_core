@@ -14,6 +14,7 @@ import 'package:voltcore/core/theme/status_colors.dart';
 import '../../../schedule/presenter/pages/schedule_task_page.dart';
 import '../../../schedule/presenter/widgets/dialogs/schedule_dialog.dart';
 import '../../domain/entities/inspection_entity.dart';
+import '../widgets/finish_sheet.dart';
 import '../../infra/models/inspection.dart';
 import '../../infra/repositories/inspection_repository_impl.dart';
 import '../../../../shared/widgets/widgets.dart';
@@ -180,6 +181,12 @@ class InspectionDetailPage extends ConsumerWidget {
                           ),
                         ),
                       ],
+                    ),
+                    const SizedBox(height: 12),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: InspectionFinishChip(
+                          inspection: ins.toEntity(), showReasons: true),
                     ),
                     if (ins.siteGrade.isNotEmpty) ...[
                       const SizedBox(height: 16),
@@ -390,7 +397,8 @@ Future<void> _openPdf(
 
   final result = await OpenFilex.open(resolvedPdfPath);
   if (result.type != ResultType.done && context.mounted) {
-    AppSnackBar.error(context, 'Could not open PDF: ${result.message}');
+    debugPrint('[InspectionDetail] open failed: ${result.message}');
+    AppSnackBar.error(context, 'Could not open the PDF. Is a PDF viewer installed?');
   }
 }
 
@@ -453,7 +461,8 @@ class _PdfActionButtonState extends ConsumerState<_PdfActionButton> {
 
     final result = await OpenFilex.open(widget.resolvedPdfPath);
     if (result.type != ResultType.done && mounted) {
-      AppSnackBar.error(context, 'Could not open PDF: ${result.message}');
+      debugPrint('[InspectionDetail] open failed: ${result.message}');
+    AppSnackBar.error(context, 'Could not open the PDF. Is a PDF viewer installed?');
     }
   }
 
@@ -461,7 +470,12 @@ class _PdfActionButtonState extends ConsumerState<_PdfActionButton> {
     setState(() => _generating = true);
     final repo = ref.read(inspectionRepositoryProvider);
 
-    final result = await repo.generatePdf(widget.inspection.toEntity());
+    InspectionEntity? result;
+    try {
+      result = await repo.generatePdf(widget.inspection.toEntity());
+    } catch (e) {
+      debugPrint('[InspectionDetail] generatePdf failed: $e');
+    }
 
     if (!mounted) return;
     setState(() => _generating = false);

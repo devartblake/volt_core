@@ -127,7 +127,7 @@ class _TenantsSettingsPageState extends ConsumerState<TenantsSettingsPage> {
                           await service.setCurrentTenant(tenant);
                           setState(() {});
                         },
-                        trailing: IconButton(
+                        trailing: IconButton(tooltip: 'Delete', 
                           icon: const Icon(Icons.delete_outline),
                           onPressed: () async {
                             final updated = [...tenants]..removeAt(index);

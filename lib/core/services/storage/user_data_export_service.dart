@@ -28,9 +28,10 @@ class UserDataExportService {
     final stamp = DateTime.now().toUtc().toIso8601String().replaceAll(':', '-');
     final fileName = 'voltcore-inspections-$stamp.json';
 
-    final destination = await FilePicker.platform.saveFile(
+    final destination = await FilePicker.saveFile(
       dialogTitle: 'Export Voltcore inspection data',
       fileName: fileName,
+      mimeType: 'application/json',
       type: FileType.custom,
       allowedExtensions: const ['json'],
       bytes: bytes,
@@ -38,7 +39,7 @@ class UserDataExportService {
 
     return UserDataExportResult(
       saved: destination != null,
-      destination: destination,
+      destination: destination?.toString(),
     );
   }
 }

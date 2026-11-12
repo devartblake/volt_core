@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../../core/services/sync/sync_context.dart';
+import '../../domain/session_roles.dart';
 import '../../domain/user_role.dart';
 
 /// Simple DTO representing the authenticated user/session info
@@ -62,17 +63,18 @@ class AuthRemoteDataSource {
         _deriveDisplayName(email);
 
     final granted = await _fetchGrantedRoles(user);
-    final effectiveRole = _resolveRole(
+    final roles = resolveSessionRoles(
       granted: granted,
-      preferredRole: preferredRole,
+      preferred: preferredRole,
+      claimed: _mapRole((user.appMetadata['role'] as String?)?.toLowerCase()),
     );
 
     final result = AuthRemoteUser(
       userId: user.id,
       email: user.email ?? email,
       displayName: fullName,
-      role: effectiveRole,
-      grantedRoles: granted,
+      role: roles.current,
+      grantedRoles: roles.granted,
     );
 
     if (kDebugMode) {
@@ -106,17 +108,20 @@ class AuthRemoteDataSource {
         _deriveDisplayName(email);
 
     final granted = await _fetchGrantedRoles(user);
-    final effectiveRole = _resolveRole(
+    final roles = resolveSessionRoles(
       granted: granted,
-      preferredRole: preferredRole,
+      preferred: preferredRole,
+      claimed: _mapRole((user.appMetadata['role'] as String?)?.toLowerCase()),
+      // The role confirmed at the last online sign-in, kept when offline.
+      cached: preferredRole,
     );
 
     final result = AuthRemoteUser(
       userId: user.id,
       email: email,
       displayName: fullName,
-      role: effectiveRole,
-      grantedRoles: granted,
+      role: roles.current,
+      grantedRoles: roles.granted,
     );
 
     if (kDebugMode) {
@@ -126,7 +131,9 @@ class AuthRemoteDataSource {
     return result;
   }
 
-  Future<Set<UserRole>> _fetchGrantedRoles(User user) async {
+  /// The roles the server says [user] holds, or `null` when the server could
+  /// not be asked (see [resolveSessionRoles]).
+  Future<Set<UserRole>?> _fetchGrantedRoles(User user) async {
     final roles = <UserRole>{};
 
     try {
@@ -151,25 +158,10 @@ class AuthRemoteDataSource {
         debugPrint('[AuthRemoteDataSource] tenant_members role lookup '
             'failed: $e');
       }
-    }
-
-    if (roles.isEmpty) {
-      final claimed = _mapRole((user.appMetadata['role'] as String?)?.toLowerCase());
-      if (claimed != null) roles.add(claimed);
+      return null;
     }
 
     return roles;
-  }
-
-  UserRole _resolveRole({
-    required Set<UserRole> granted,
-    UserRole? preferredRole,
-  }) {
-    if (granted.isEmpty) return UserRole.tech;
-    if (preferredRole != null && granted.contains(preferredRole)) {
-      return preferredRole;
-    }
-    return highestRole(granted) ?? UserRole.tech;
   }
 
   String _deriveDisplayName(String email) {
@@ -188,6 +180,8 @@ class AuthRemoteDataSource {
         return UserRole.supervisor;
       case 'dispatcher':
         return UserRole.dispatcher;
+      case 'apprentice':
+        return UserRole.apprentice;
       case 'tech':
       case 'technician':
         return UserRole.tech;

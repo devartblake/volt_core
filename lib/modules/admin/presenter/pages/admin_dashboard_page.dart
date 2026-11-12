@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+
+import '../../../../core/theme/status_colors.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -26,7 +28,7 @@ class AdminDashboardPage extends ConsumerWidget {
     final stats = state.stats;
 
     return AppPage(
-      title: 'Admin Dashboard',
+      title: 'Admin Overview',
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: ListView(
@@ -69,24 +71,27 @@ class AdminDashboardPage extends ConsumerWidget {
               spacing: 16,
               runSpacing: 16,
               children: [
-                _StatCard(
+                SizedBox(width: 260, child: StatCard(
+                  horizontal: true,
                   label: 'Total Inspections',
                   value: stats?.totalInspections.toString() ?? '—',
                   icon: Icons.fact_check_outlined,
                   color: colorScheme.primary,
-                ),
-                _StatCard(
+                )),
+                SizedBox(width: 260, child: StatCard(
+                  horizontal: true,
                   label: 'Open Maintenance Jobs',
                   value: stats?.openMaintenanceJobs.toString() ?? '—',
                   icon: Icons.build_outlined,
                   color: colorScheme.tertiary,
-                ),
-                _StatCard(
+                )),
+                SizedBox(width: 260, child: StatCard(
+                  horizontal: true,
                   label: 'Active Technicians',
                   value: stats?.activeTechnicians.toString() ?? '—',
                   icon: Icons.engineering_outlined,
                   color: colorScheme.secondary,
-                ),
+                )),
               ],
             ),
             const SizedBox(height: 32),
@@ -96,7 +101,7 @@ class AdminDashboardPage extends ConsumerWidget {
               title: 'Manage Technicians & Roles',
               subtitle:
               'View all technicians, change their roles, and keep your RBAC clean.',
-              color: colorScheme.primaryContainer,
+              color: Theme.of(context).status.success,
               onTap: () {
                 context.go('/admin/technicians');
               },
@@ -108,70 +113,6 @@ class AdminDashboardPage extends ConsumerWidget {
   }
 }
 
-class _StatCard extends StatelessWidget {
-  final String label;
-  final String value;
-  final IconData icon;
-  final Color color;
-
-  const _StatCard({
-    required this.label,
-    required this.value,
-    required this.icon,
-    required this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final textTheme = Theme.of(context).textTheme;
-
-    return SizedBox(
-      width: 260,
-      child: Card(
-        elevation: 1,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.1),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(icon, color: color),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      label,
-                      style: textTheme.bodyMedium?.copyWith(
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      value,
-                      style: textTheme.headlineSmall?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
 
 class _NavCard extends StatelessWidget {
   final IconData icon;
