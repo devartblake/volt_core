@@ -57,6 +57,14 @@
     <key>NSCameraUsageDescription</key>
     <string>Used to capture photos for inspection and maintenance reports.</string>
 
+    <!-- Declared but not yet used: no location package is in pubspec.yaml, so
+         nothing reads a position today. Present so the plist is ready when
+         site check-in lands. Apple rejects a build that asks for location
+         without a visible feature, so wire the feature before shipping an
+         iOS build that requests it. -->
+    <key>NSLocationWhenInUseUsageDescription</key>
+    <string>Used to record where an inspection or vehicle check took place.</string>
+
     <key>LSSupportsOpeningDocumentsInPlace</key>
     <true/>
 

@@ -1,3 +1,4 @@
+import '../../../core/services/permissions/app_permissions.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import '../../widgets/thumbnail_image.dart';
 import 'package:flutter/material.dart';
@@ -110,6 +111,25 @@ class _PhotoGalleryState extends State<_PhotoGallery> {
 
   Future<void> _add(ImageSource source) async {
     if (_busy) return;
+
+    // The manifest declares CAMERA, which means Android now *requires* the
+    // runtime grant before ACTION_IMAGE_CAPTURE will hand a photo back. Ask
+    // first and say why if the technician declines, rather than opening a
+    // picker that fails with a SecurityException.
+    final allowed = source == ImageSource.camera
+        ? await AppPermissions.ensureCamera()
+        : await AppPermissions.ensurePhotoLibrary();
+    if (!allowed) {
+      _snack(
+        source == ImageSource.camera
+            ? 'Camera access is off for this app. Turn it on in Settings to '
+                'take photos.'
+            : 'Photo access is off for this app. Turn it on in Settings to '
+                'attach photos.',
+      );
+      return;
+    }
+
     setState(() => _busy = true);
     try {
       if (source == ImageSource.gallery) {

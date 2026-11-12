@@ -31,6 +31,7 @@ class VehicleRecord {
     this.assignedToUserId,
     this.notes = '',
     this.lastCheckAt,
+    this.depotId,
   });
 
   @HiveField(0)
@@ -68,6 +69,10 @@ class VehicleRecord {
   /// as null on rows written by phase 1 without needing a defaultValue.
   @HiveField(15)
   final DateTime? lastCheckAt;
+
+  /// Phase 4. Null on every row written before depots existed.
+  @HiveField(16)
+  final String? depotId;
 }
 
 class VehicleRecordAdapter extends TypeAdapter<VehicleRecord> {
@@ -97,13 +102,14 @@ class VehicleRecordAdapter extends TypeAdapter<VehicleRecord> {
       createdAt: fields[13] as DateTime,
       updatedAt: fields[14] as DateTime,
       lastCheckAt: fields[15] as DateTime?,
+      depotId: fields[16] as String?,
     );
   }
 
   @override
   void write(BinaryWriter writer, VehicleRecord value) {
     writer
-      ..writeByte(16)
+      ..writeByte(17)
       ..writeByte(0)..write(value.id)
       ..writeByte(1)..write(value.tenantId)
       ..writeByte(2)..write(value.designation)
@@ -119,6 +125,7 @@ class VehicleRecordAdapter extends TypeAdapter<VehicleRecord> {
       ..writeByte(12)..write(value.notes)
       ..writeByte(13)..write(value.createdAt)
       ..writeByte(14)..write(value.updatedAt)
-      ..writeByte(15)..write(value.lastCheckAt);
+      ..writeByte(15)..write(value.lastCheckAt)
+      ..writeByte(16)..write(value.depotId);
   }
 }

@@ -38,6 +38,8 @@ const _allRouteNames = <String>{
   RouteNames.fleetDetail,
   RouteNames.fleetMaintenanceNew,
   RouteNames.fleetVehicleAssets,
+  RouteNames.fleetReceiptNew,
+  RouteNames.fleetReceipt,
   RouteNames.fleetInspectionNew,
   RouteNames.fleetInspectionLog,
   RouteNames.fleetCatalog,

@@ -1,3 +1,4 @@
+import '../../../../core/services/permissions/app_permissions.dart';
 import 'package:flutter/foundation.dart'
     show TargetPlatform, defaultTargetPlatform, kIsWeb;
 import '../../../../shared/widgets/thumbnail_image.dart';
@@ -163,6 +164,11 @@ class _VehicleInspectionFormPageState
     final draft = _draft;
     if (draft == null) return;
     try {
+      // CAMERA is declared in the manifest, so Android requires the runtime
+      // grant before a camera capture.
+      if (_hasCamera && !await AppPermissions.ensureCamera()) {
+        throw StateError('Camera access is off for this app. Turn it on in Settings to take photos.');
+      }
       final picked = await _picker.pickImage(
         source: _hasCamera ? ImageSource.camera : ImageSource.gallery,
         imageQuality: 70,

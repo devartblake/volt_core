@@ -1,3 +1,4 @@
+import '../../../core/services/permissions/app_permissions.dart';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
@@ -118,6 +119,11 @@ class DevicePartImagePicker implements PartImagePicker {
 
   @override
   Future<Uint8List?> pick(PartImageSource source) async {
+    // CAMERA is declared in the manifest, so Android requires the runtime
+    // grant before a camera capture; the caller shows "Could not get that photo."
+    if (source == PartImageSource.camera && !await AppPermissions.ensureCamera()) {
+      throw StateError('Camera access is off for this app.');
+    }
     final picked = await _picker.pickImage(
       source: source == PartImageSource.camera
           ? ImageSource.camera

@@ -1,5 +1,7 @@
 import 'package:uuid/uuid.dart';
 
+import '../../../../core/services/location/site_check_in.dart';
+
 /// Domain entity for a generator inspection.
 ///
 /// This mirrors the key fields from the Hive [Inspection] model,
@@ -101,6 +103,13 @@ class InspectionEntity {
   /// later. Absent key means no conclusion was written for that item.
   final Map<String, String> checklistNotes;
 
+  /// Where the technician was when they checked in, if they did.
+  ///
+  /// Optional throughout: a generator room with no signal is the normal case,
+  /// and an inspection without a fix is still a valid inspection. Never block
+  /// a save on it.
+  final SiteCheckIn? siteCheckIn;
+
   /// When the inspection is scheduled to occur (defaults to [serviceDate]).
   final DateTime scheduledAt;
 
@@ -181,6 +190,7 @@ class InspectionEntity {
     this.customerName = '',
     this.pdfPath = '',
     this.checklistNotes = const {},
+    this.siteCheckIn,
     DateTime? scheduledAt,
     this.nextDueAt,
     this.tenantId = '',
@@ -255,6 +265,8 @@ class InspectionEntity {
     String? customerName,
     String? pdfPath,
     Map<String, String>? checklistNotes,
+    SiteCheckIn? siteCheckIn,
+    bool clearSiteCheckIn = false,
     DateTime? scheduledAt,
     DateTime? nextDueAt,
     String? tenantId,
@@ -335,6 +347,8 @@ class InspectionEntity {
       customerName: customerName ?? this.customerName,
       pdfPath: pdfPath ?? this.pdfPath,
       checklistNotes: checklistNotes ?? this.checklistNotes,
+      siteCheckIn:
+          clearSiteCheckIn ? null : (siteCheckIn ?? this.siteCheckIn),
       scheduledAt: scheduledAt ?? this.scheduledAt,
       nextDueAt: nextDueAt ?? this.nextDueAt,
       tenantId: tenantId ?? this.tenantId,
@@ -413,6 +427,7 @@ class InspectionEntity {
       customerName: '',
       pdfPath: '',
       checklistNotes: const {},
+      siteCheckIn: null,
       // all other fields rely on their default values from the constructor
     );
   }

@@ -9,6 +9,7 @@ import '../../../../core/constants/route_paths.dart';
 import '../../../../core/services/sync/sync_context.dart';
 import '../../../../shared/widgets/widgets.dart';
 import '../../../auth/domain/user_role.dart';
+import '../../domain/entities/fleet_depot.dart';
 import '../../domain/entities/vehicle_entity.dart';
 import '../../infra/repositories/vehicle_repository_impl.dart';
 import '../fleet_providers.dart';
@@ -232,6 +233,15 @@ class _VehicleFormPageState extends ConsumerState<VehicleFormPage> {
                     (curr) => curr.copyWith(status: v ?? curr.status),
                   ),
                 ),
+                _DepotField(
+                  vehicle: vehicle,
+                  onChanged: (depotId) => _update(
+                    (curr) => curr.copyWith(
+                      depotId: depotId,
+                      clearDepot: depotId == null,
+                    ),
+                  ),
+                ),
                 _AssigneeField(
                   vehicle: vehicle,
                   onChanged: (userId) => _update(
@@ -278,6 +288,58 @@ class _VehicleFormPageState extends ConsumerState<VehicleFormPage> {
 /// RLS grants a tech read access to the row whose `assigned_to_user_id` is
 /// theirs, so clearing this takes the vehicle off their device.
 const String _unassigned = '';
+
+/// Where the vehicle lives.
+///
+/// A&S runs one depot, so a required dropdown with a single option would be
+/// pure tap tax: with exactly one, this states it and selects it. The field
+/// only becomes a chooser once there are two, and disappears entirely when
+/// there are none — which is the state of every tenant until somebody runs
+/// the depot seed.
+class _DepotField extends ConsumerWidget {
+  const _DepotField({required this.vehicle, required this.onChanged});
+
+  final VehicleEntity vehicle;
+  final ValueChanged<String?> onChanged;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final depots = ref.watch(fleetDepotsProvider);
+    final list = depots.asData?.value ?? const <FleetDepot>[];
+
+    if (list.isEmpty) return const SizedBox.shrink();
+
+    if (list.length == 1) {
+      final only = list.single;
+      // Selected on the caller's behalf, in a post-frame callback so the
+      // notification does not land during this build.
+      if (vehicle.depotId != only.id) {
+        WidgetsBinding.instance.addPostFrameCallback((_) => onChanged(only.id));
+      }
+      return ListTile(
+        contentPadding: EdgeInsets.zero,
+        leading: const Icon(Icons.warehouse_outlined),
+        title: const Text('Depot'),
+        subtitle: Text(only.name),
+      );
+    }
+
+    return SelectionField<String>(
+      label: 'Depot',
+      value: vehicle.depotId ?? _unassigned,
+      options: <String>[_unassigned, ...list.map((d) => d.id)],
+      labelOf: (id) {
+        if (id == _unassigned) return 'Not recorded';
+        for (final depot in list) {
+          if (depot.id == id) return depot.name;
+        }
+        return 'Unknown depot';
+      },
+      onChanged: (id) =>
+          onChanged(id == null || id == _unassigned ? null : id),
+    );
+  }
+}
 
 class _AssigneeField extends ConsumerWidget {
   const _AssigneeField({required this.vehicle, required this.onChanged});

@@ -15,6 +15,7 @@ import '../../../materials/infra/materials_repository.dart';
 
 // Section widgets (now using InspectionEntity)
 import '../widgets/section_site_info.dart';
+import '../../../../shared/presenter/widgets/site_check_in_tile.dart';
 import '../widgets/section_location_safety.dart';
 import '../widgets/section_fdny_dep.dart';
 import '../widgets/section_operational_use.dart';
@@ -199,6 +200,17 @@ class _InspectionFormPageState extends ConsumerState<InspectionFormPage> {
         KeyedSubtree(key: _sectionKeys[section], child: child);
 
     final children = [
+      // Directly under the site details, because that is what it evidences:
+      // the address typed in above, confirmed by where the technician stood.
+      SiteCheckInTile(
+        checkIn: inspection.siteCheckIn,
+        onChanged: (checkIn) => _onSectionChanged(
+          inspection.copyWith(
+            siteCheckIn: checkIn,
+            clearSiteCheckIn: checkIn == null,
+          ),
+        ),
+      ),
       keyed(
         _FormSection.siteInfo,
         SectionSiteInfo(model: inspection, onChanged: _onSectionChanged),

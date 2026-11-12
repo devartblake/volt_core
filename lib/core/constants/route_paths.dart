@@ -77,11 +77,18 @@ class RoutePaths {
   static const String fleetInspectionNewSub = 'inspection/new';
   static const String fleetInspectionLogSub = 'inspection-log';
 
+  /// The signed asset receipt. `new` starts one; `:checkId` opens an existing
+  /// one to counter-sign or to read.
+  static const String fleetReceiptNewSub = 'receipt/new';
+  static const String fleetReceiptSub = 'receipt/:checkId';
+
   static const String fleetNew = '$fleet/new';
   static const String fleetEdit = '$fleet/edit/:id';
   static const String fleetDetail = '$fleet/detail/:id';
   static const String fleetMaintenanceNew = '$fleet/detail/:id/maintenance/new';
   static const String fleetVehicleAssets = '$fleet/detail/:id/assets';
+  static const String fleetReceiptNew = '$fleet/detail/:id/receipt/new';
+  static const String fleetReceipt = '$fleet/detail/:id/receipt/:checkId';
 
   /// Takes `?cadence=weekly|monthly`.
   static const String fleetInspectionNew = '$fleet/detail/:id/inspection/new';
@@ -170,6 +177,8 @@ class RouteNames {
   static const String fleetDetail = 'fleet_vehicle_detail';
   static const String fleetMaintenanceNew = 'fleet_maintenance_new';
   static const String fleetVehicleAssets = 'fleet_vehicle_assets';
+  static const String fleetReceiptNew = 'fleet_receipt_new';
+  static const String fleetReceipt = 'fleet_receipt';
   static const String fleetInspectionNew = 'fleet_inspection_new';
   static const String fleetInspectionLog = 'fleet_inspection_log';
   static const String fleetCatalog = 'fleet_catalog';

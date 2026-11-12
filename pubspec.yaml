@@ -64,6 +64,7 @@ dependencies:
 
   meta: any
   http: any
+  geolocator: ^14.0.2
   archive: ^4.6.0
   xml: ^7.0.1
   mobile_scanner: ^7.5.0

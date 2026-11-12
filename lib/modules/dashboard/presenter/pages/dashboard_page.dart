@@ -10,6 +10,7 @@ import '../../../../shared/widgets/widgets.dart';
 import '../../../auth/domain/user_role.dart';
 import '../../../auth/presenter/controllers/auth_controller.dart';
 import '../../../fleet/infra/repositories/vehicle_inspection_repository.dart';
+import '../../../fleet/presenter/widgets/fleet_attention_card.dart';
 import '../../../inspections/presenter/controllers/app_badges_controller.dart';
 import '../../../inventory/presenter/movement_providers.dart' show jobsShortOfPartsProvider;
 import '../../../inspections/presenter/controllers/inspection_list_controller.dart';
@@ -229,6 +230,8 @@ class _Body extends ConsumerWidget {
       children: [
         _StatGrid(stats: stats, onOpen: go),
         const SizedBox(height: 20),
+        // Renders nothing unless the fleet actually needs something.
+        const FleetAttentionCard(),
         if (wide)
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,

@@ -9,6 +9,8 @@ import '../../../../core/services/pdf/pdf_service.dart' show PdfExportResult;
 import '../../../../core/services/photos/photo_attachment.dart';
 import '../../../../core/theme/status_colors.dart';
 import '../../../../shared/presenter/widgets/photo_attachments_section.dart';
+import '../../../../shared/presenter/widgets/site_check_in_tile.dart';
+import '../../infra/mappers/maintenance_supabase_mapper.dart';
 import '../../../materials/domain/material_list.dart';
 import '../../../materials/infra/materials_repository.dart';
 import '../../../materials/presenter/materials_editor.dart';
@@ -246,10 +248,23 @@ class _MaintenanceFormPageState extends ConsumerState<MaintenanceFormPage>
   List<_FormSection> _buildSections(MaintenanceRecord m) => [
     _FormSection(
       step: MaintenanceStep.siteInfo,
-      widget: SectionMaintSiteInfo(
-        model: m,
-        onChanged: (_) => _update(() {}),
-        issues: MaintenanceValidation.issues(m, revealed: _revealed),
+      widget: Column(
+        children: [
+          // Same tile the inspection form uses, in the same place: it
+          // evidences the address in the section below it.
+          SiteCheckInTile(
+            checkIn: maintenanceCheckIn(m),
+            onChanged: (checkIn) => _update(
+              () => applyMaintenanceCheckIn(m, checkIn),
+            ),
+          ),
+          const SizedBox(height: 8),
+          SectionMaintSiteInfo(
+            model: m,
+            onChanged: (_) => _update(() {}),
+            issues: MaintenanceValidation.issues(m, revealed: _revealed),
+          ),
+        ],
       ),
     ),
     _FormSection(

@@ -132,6 +132,10 @@ class MaintenanceRecordAdapter extends TypeAdapter<MaintenanceRecord> {
       followUpNotes: fields[114] as String?,
       technicianSignaturePath: fields[115] as String?,
       customerSignaturePath: fields[116] as String?,
+      checkInLatitude: fields[117] as double?,
+      checkInLongitude: fields[118] as double?,
+      checkInAccuracyM: fields[119] as double?,
+      checkInAt: fields[120] as DateTime?,
       createdAt: fields[109] as DateTime?,
       updatedAt: fields[110] as DateTime?,
     );
@@ -140,7 +144,7 @@ class MaintenanceRecordAdapter extends TypeAdapter<MaintenanceRecord> {
   @override
   void write(BinaryWriter writer, MaintenanceRecord obj) {
     writer
-      ..writeByte(117)
+      ..writeByte(121)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -374,7 +378,15 @@ class MaintenanceRecordAdapter extends TypeAdapter<MaintenanceRecord> {
       ..writeByte(115)
       ..write(obj.technicianSignaturePath)
       ..writeByte(116)
-      ..write(obj.customerSignaturePath);
+      ..write(obj.customerSignaturePath)
+      ..writeByte(117)
+      ..write(obj.checkInLatitude)
+      ..writeByte(118)
+      ..write(obj.checkInLongitude)
+      ..writeByte(119)
+      ..write(obj.checkInAccuracyM)
+      ..writeByte(120)
+      ..write(obj.checkInAt);
   }
 
   @override

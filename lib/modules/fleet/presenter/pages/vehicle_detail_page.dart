@@ -1,3 +1,4 @@
+import '../../domain/entities/vehicle_asset_check.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -202,7 +203,11 @@ class _VehicleBody extends ConsumerWidget {
                 ),
               ]),
               // Tools
-              _tab([_AssetsCard(vehicle: vehicle)]),
+              _tab([
+                _AssetsCard(vehicle: vehicle),
+                const SizedBox(height: 8),
+                _ReceiptsCard(vehicle: vehicle),
+              ]),
               // Documents
               _tab([_DocumentsCard(vehicle: vehicle)]),
             ],
@@ -887,3 +892,93 @@ class _DocumentsCard extends ConsumerWidget {
     );
   }
 }
+
+/// Signed asset receipts for this vehicle, and the way to start today's.
+class _ReceiptsCard extends ConsumerWidget {
+  const _ReceiptsCard({required this.vehicle});
+
+  final VehicleEntity vehicle;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final receipts = ref.watch(vehicleReceiptsProvider(vehicle.id));
+
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        children: [
+          ListTile(
+            leading: Icon(
+              Icons.receipt_long_outlined,
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+            title: Text('Asset receipts', style: theme.textTheme.titleSmall),
+            subtitle: Text(
+              receipts.when(
+                loading: () => 'Loading…',
+                error: (_, __) => 'Could not load receipts',
+                data: (list) {
+                  if (list.isEmpty) return 'None signed yet';
+                  final latest = list.first;
+                  return '${list.length} on record · latest '
+                      '${formatShortDate(latest.checkedAt.toLocal())} · '
+                      '${latest.stage.label}';
+                },
+              ),
+              style: theme.textTheme.bodySmall,
+            ),
+          ),
+          for (final receipt
+              in (receipts.asData?.value ?? const <VehicleAssetCheck>[])
+                  .take(3))
+            ListTile(
+              dense: true,
+              leading: Icon(
+                receipt.isCounterSigned
+                    ? Icons.check_circle_outline
+                    : Icons.hourglass_bottom,
+                size: 20,
+                color: receipt.hasMissing
+                    ? theme.colorScheme.error
+                    : theme.colorScheme.onSurfaceVariant,
+              ),
+              title: Text(formatShortDate(receipt.checkedAt.toLocal())),
+              subtitle: Text(
+                [
+                  receipt.stage.label,
+                  if (receipt.operatorName.trim().isNotEmpty)
+                    receipt.operatorName.trim(),
+                  if (receipt.missingCount > 0)
+                    '${receipt.missingCount} missing',
+                ].join('  ·  '),
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: receipt.hasMissing ? theme.colorScheme.error : null,
+                ),
+              ),
+              trailing: const Icon(Icons.chevron_right, size: 20),
+              onTap: () => context.push(
+                RoutePaths.fleetReceipt
+                    .replaceFirst(':id', vehicle.id)
+                    .replaceFirst(':checkId', receipt.id),
+              ),
+            ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: FilledButton.tonalIcon(
+                onPressed: () => context.push(
+                  RoutePaths.fleetReceiptNew.replaceFirst(':id', vehicle.id),
+                ),
+                icon: const Icon(Icons.draw_outlined),
+                label: const Text('New asset receipt'),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
