@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../auth/domain/user_role.dart';
+import '../../auth/presenter/controllers/auth_controller.dart';
 import '../../permissions/domain/permission.dart';
 import '../../permissions/presenter/permission_providers.dart';
 import '../infra/inventory_repository.dart';
@@ -26,6 +27,17 @@ final canReserveStockProvider = Provider<bool>(
 /// overrides).
 final canManageInventoryProvider = Provider<bool>(
   (ref) => ref.watch(hasPermissionProvider(Permission.manageInventory)),
+);
+
+/// Whether the signed-in user may see what a job's parts cost: admins only,
+/// by role. A hard role check (like user and permission management), NOT a
+/// catalogued permission, so a per-person override can neither grant nor
+/// remove it.
+bool canSeeJobCost(UserRole? role) => role == UserRole.admin;
+
+final canSeeJobCostProvider = Provider<bool>(
+  (ref) => canSeeJobCost(
+      ref.watch(authStateProvider.select((a) => a.currentRole))),
 );
 
 /// Pulls the cloud catalog and ledger into the device. Pages invalidate the

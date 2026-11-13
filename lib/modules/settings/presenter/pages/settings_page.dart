@@ -21,6 +21,7 @@ import '../../../../shared/widgets/action_runner.dart';
 import '../../../../shared/widgets/widgets.dart';
 import '../../../auth/presenter/controllers/auth_controller.dart';
 import '../../../inspections/presenter/controllers/user_profile_controller.dart';
+import '../widgets/daily_digest_tile.dart';
 
 class SettingsPage extends ConsumerStatefulWidget {
   const SettingsPage({super.key});
@@ -185,6 +186,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                     .read(appPreferencesProvider.notifier)
                     .setNotificationsEnabled(value),
               ),
+              const DailyDigestTile(),
             ],
           ),
           const SizedBox(height: 24),

@@ -419,9 +419,13 @@ class TechnicianDaysCard extends StatelessWidget {
     super.key,
     required this.days,
     required this.onOpen,
+    this.divisionLabels = const {},
   });
 
   final List<TechnicianDay> days;
+
+  /// Optional division label per user id, shown as a second subtitle line.
+  final Map<String, String> divisionLabels;
 
   /// Opens the schedule (for a technician, or the unassigned pool).
   final ValueChanged<TechnicianDay> onOpen;
@@ -462,14 +466,26 @@ class TechnicianDaysCard extends StatelessWidget {
                     ),
                     title: Text(d.name,
                         maxLines: 1, overflow: TextOverflow.ellipsis),
-                    subtitle: Text(
-                      d.count == 0
-                          ? 'Nothing today'
-                          : d.nextTaskAt == null
-                              ? 'All done'
-                              : 'Next at ${_timeLabel(d.nextTaskAt!)}',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                    subtitle: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          d.count == 0
+                              ? 'Nothing today'
+                              : d.nextTaskAt == null
+                                  ? 'All done'
+                                  : 'Next at ${_timeLabel(d.nextTaskAt!)}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        if ((divisionLabels[d.userId] ?? '').isNotEmpty)
+                          Text(
+                            divisionLabels[d.userId]!,
+                            key: Key('tech_day_divisions_${d.userId}'),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                      ],
                     ),
                     trailing: StatusChip(
                       label: d.count == 1 ? '1 task' : '${d.count} tasks',

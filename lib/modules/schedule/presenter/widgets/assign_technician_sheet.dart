@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/theme/app_tokens.dart';
 import '../../../../shared/widgets/widgets.dart';
+import '../../../admin/infra/division_repository.dart';
 import '../../../dashboard/presenter/dashboard_providers.dart';
 import '../../domain/entities/task_schedule_entity.dart';
 import '../../domain/schedule_view_logic.dart';
@@ -60,6 +61,8 @@ class AssignTechnicianSheet extends ConsumerWidget {
     final theme = Theme.of(context);
     final techs = ref.watch(dashboardTechniciansProvider);
     final current = task.assignedToUserId?.trim();
+    final labels = ref.watch(teamDivisionLabelsProvider).value ??
+        const <String, String>{};
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(
@@ -117,6 +120,12 @@ class AssignTechnicianSheet extends ConsumerWidget {
                             child: Icon(Icons.person_outline)),
                         title: Text(technicianLabel(id, data.names),
                             maxLines: 1, overflow: TextOverflow.ellipsis),
+                        subtitle: (labels[id] ?? '').isEmpty
+                            ? null
+                            : Text(labels[id]!,
+                                key: Key('assign_divisions_$id'),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis),
                         trailing: id == current
                             ? Icon(Icons.check_circle,
                                 color: theme.colorScheme.primary)

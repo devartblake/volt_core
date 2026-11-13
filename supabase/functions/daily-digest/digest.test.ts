@@ -256,3 +256,20 @@ test("digestRecipients: roles, inactive members/profiles, opt-out, dedupe, bad e
     "disp@example.test",
   ]);
 });
+
+test("digestRecipients: only opt-out true excludes; false and null still receive", () => {
+  const members = [
+    { user_id: "a", role: "admin", is_active: true },
+    { user_id: "b", role: "supervisor", is_active: true },
+    { user_id: "c", role: "dispatcher", is_active: true },
+  ];
+  const profiles = [
+    { user_id: "a", email: "a@example.test", daily_digest_opt_out: false },
+    { user_id: "b", email: "b@example.test", daily_digest_opt_out: null },
+    { user_id: "c", email: "c@example.test", daily_digest_opt_out: true },
+  ];
+  assert.deepEqual(digestRecipients(members, profiles), [
+    "a@example.test",
+    "b@example.test",
+  ]);
+});

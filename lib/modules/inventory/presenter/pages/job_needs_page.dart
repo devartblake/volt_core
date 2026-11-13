@@ -83,7 +83,7 @@ class _JobCard extends ConsumerWidget {
     final theme = Theme.of(context);
     final j = job.job;
     // Costs are admin-only data, like prices.
-    final isAdmin = ref.watch(canManageInventoryProvider);
+    final isAdmin = ref.watch(canSeeJobCostProvider);
     final costs = isAdmin ? ref.watch(jobCostsProvider).value : null;
     final cost = costs == null ? null : costs[j.jobRef];
     return Card(

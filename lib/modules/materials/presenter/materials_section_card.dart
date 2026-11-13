@@ -8,6 +8,7 @@ import '../../auth/domain/user_role.dart';
 import '../domain/material_item.dart';
 import '../domain/material_list.dart';
 import '../infra/materials_repository.dart';
+import '../../inventory/presenter/widgets/job_cost_row.dart';
 import 'materials_editor.dart';
 import 'profile_proposal_sheet.dart';
 
@@ -139,6 +140,9 @@ class MaterialsSectionCard extends ConsumerWidget {
               seed: seed,
               onChanged: onChanged,
             ),
+            // Admin-only; empty for everyone else and for generator profiles.
+            if (owner.type != MaterialOwnerType.generator)
+              JobCostRow(jobRef: owner.storeKey),
           ],
         ),
       ),

@@ -42,6 +42,7 @@ All files below have been run and verified unless noted.
 | `20261112100000_audit_log.sql`, `20261112110000_job_costs.sql` | Admin-only audit log with triggers; job parts-cost functions | applied |
 | `20261113100000_apprentice_role.sql`, `20261113110000_divisions.sql` | The `apprentice` role value; divisions table and `division_id` on members | applied and verified |
 | `20261114100000_member_permission_overrides.sql`, `20261114110000_member_divisions.sql` | Per-user permission overrides; several divisions per user | applied (tables confirmed) |
+| `20261115100000_digest_opt_out.sql` | `user_profiles.daily_digest_opt_out` for the Settings "Email me the daily summary" switch (no policy change) | **to run** |
 | `20260825200000_vehicle_asset_checks.sql` | Fleet depots, disclaimers, signed asset receipts and lines, work order links | applied (tables confirmed); seeds run (depot confirmed) |
 
 Edge Functions: `invite-user` (needs redeploy, see A), `retention-cleanup` and `daily-digest` are deployed (dry-run by default, return 401 without credentials). The deployed copies are comment-stripped and import shared code from `./_shared/`; the repo files are authoritative. A command-line deploy would realign them.
@@ -69,11 +70,9 @@ Edge Functions: `invite-user` (needs redeploy, see A), `retention-cleanup` and `
 3. **Remote monitoring**: needs controller data and hardware; not recommended unless customers ask.
 4. **BusyBusy integration**: blocked on section C.
 5. **Push notifications** for missing tools (the app has only in-app alerts today).
-6. **Job cost in reports**: shown on Job Needs for admins; not yet on inspection or maintenance detail pages or in PDFs.
-7. **Division labels** next to technician names in schedule assignment.
-8. **Daily digest opt-out:** a column and a Settings switch (the code already honours `daily_digest_opt_out` if added).
+6. ~~**Job cost in reports**~~ Done: admin-only "Parts cost" row on inspection and maintenance records and on Job Needs. Deliberately not in PDFs (no export options UI, and PDFs are emailed or shared automatically); add an admin-only "Include parts cost" toggle first if wanted.
 
-Done since the last update: Generator Fleet Readiness, analytics graphs, brand theme and logos, versioning, PDF footer, server-assigned PO numbers, atomic profile approval, stale-write guard, audit log, job cost on Job Needs, invite by email (function and Admin screen), retention cleanup and daily digest (deployed, dry-run), apprentice role, divisions, permission overrides, fleet phase 4 (signed asset receipts, site check-in, device permissions).
+Done since the last update: Generator Fleet Readiness, analytics graphs, brand theme and logos, versioning, PDF footer, server-assigned PO numbers, atomic profile approval, stale-write guard, audit log, job cost on Job Needs and on inspection and maintenance records (admin only), invite by email (function and Admin screen), retention cleanup and daily digest (deployed, dry-run), apprentice role, divisions, permission overrides, fleet phase 4 (signed asset receipts, site check-in, device permissions), division labels in schedule assignment, daily digest opt-out (Settings switch; needs the migration below).
 
 ## F. Known gaps in what is built
 
@@ -86,7 +85,7 @@ Done since the last update: Generator Fleet Readiness, analytics graphs, brand t
 | Purchase orders | No adding a line after creation; share is text only, no PDF. A receive done before the order syncs stores the provisional `NEW-xxxx` number in the stock note. |
 | Profile approvals | Approving now needs a connection ("Connect to approve"); rejecting still works offline. |
 | Retention cleanup | Report PDFs are only cleaned while there is a single company (paths carry no company). The app has no "archive" step, so completed jobs count as archived. |
-| Daily digest | Inspections "next due" is estimated as last inspection plus 365 days (the app does not store a due date). No per-user opt-out yet. |
+| Daily digest | Inspections "next due" is estimated as last inspection plus 365 days (the app does not store a due date). |
 | Vehicle inspections | A second device sees the record but its signature and photo file paths point at the first device's files. |
 | Fleet receipts | Disclaimer wording unverified (see A). `pod install` has never run for iOS. Play Store Data Safety needs a location entry. |
 | Admin overview | Shows 29 inspections (records) while lists and Analytics show 25 (one per site). Consider relabelling. |

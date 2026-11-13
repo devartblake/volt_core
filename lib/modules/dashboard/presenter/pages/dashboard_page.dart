@@ -7,6 +7,7 @@ import '../../../../core/constants/route_paths.dart';
 import '../../../../core/theme/app_tokens.dart';
 import '../../../../core/theme/status_colors.dart';
 import '../../../../shared/widgets/widgets.dart';
+import '../../../admin/infra/division_repository.dart';
 import '../../../auth/domain/user_role.dart';
 import '../../../auth/presenter/controllers/auth_controller.dart';
 import '../../../fleet/infra/repositories/vehicle_inspection_repository.dart';
@@ -204,7 +205,10 @@ class _Body extends ConsumerWidget {
     Widget? teamCard;
     if (showTeam) {
       final techs = ref.watch(dashboardTechniciansProvider).asData?.value;
+      final labels = ref.watch(teamDivisionLabelsProvider).asData?.value ??
+          const <String, String>{};
       teamCard = TechnicianDaysCard(
+        divisionLabels: labels,
         days: buildTechnicianDays(
           tasks,
           now: DateTime.now(),

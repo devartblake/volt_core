@@ -217,9 +217,11 @@ Notes:
   `nextDueAt`, so "overdue" is the latest inspection per site plus 365 days
   (the same default as the readiness screen) unless `payload.next_due_at`
   exists, which is read automatically if the app ever stores it.
-- Per-user opt-out: `user_profiles` has no suitable column today. The code
-  already honors `daily_digest_opt_out = true` if that column is added later
-  (follow-up: a migration plus a Settings switch).
+- Per-user opt-out: `user_profiles.daily_digest_opt_out boolean not null
+  default false` (migration `20261115100000_digest_opt_out.sql`). People set it
+  in the app under Settings, Notifications, "Email me the daily summary" (shown
+  to admins, supervisors and dispatchers). The function skips profiles where it
+  is `true`; until the migration is run nobody is opted out.
 
 ### Scheduling (nightly)
 

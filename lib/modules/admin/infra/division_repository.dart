@@ -199,3 +199,67 @@ List<String> _divisionNamesFromRows(List<dynamic> rows) {
   });
   return [for (final n in named) n.$2];
 }
+
+
+/// Division labels for the whole team, by user id, for showing a short
+/// secondary line under a person's name when assigning work, for example
+/// "Generators, Fire alarm". Two company-wide reads (member_divisions, then the
+/// deprecated tenant_members.division_id for people with no rows), never one per
+/// person. Never throws: offline, signed out or migration not run gives an empty
+/// map and the UI shows no label.
+final teamDivisionLabelsProvider =
+    FutureProvider.autoDispose<Map<String, String>>((ref) async {
+  try {
+    final client = Supabase.instance.client;
+    final tenantId = SyncContext.tenantId;
+    if (client.auth.currentUser == null || tenantId == null) return const {};
+    final byUser = <String, List<(int, String)>>{};
+    void add(Object? userId, Object? division) {
+      final u = userId?.toString() ?? '';
+      final d = division is Map ? division : null;
+      final name = d?['name']?.toString().trim() ?? '';
+      if (u.isEmpty || name.isEmpty) return;
+      final order = d?['sort_order'];
+      byUser
+          .putIfAbsent(u, () => [])
+          .add((order is num ? order.toInt() : 0, name));
+    }
+
+    final rows = await client
+        .from('member_divisions')
+        .select('user_id, divisions(name, sort_order)')
+        .eq('tenant_id', tenantId)
+        .timeout(const Duration(seconds: 8));
+    for (final r in rows) {
+      add(r['user_id'], r['divisions']);
+    }
+    try {
+      final legacy = await client
+          .from('tenant_members')
+          .select('user_id, divisions(name, sort_order)')
+          .eq('tenant_id', tenantId)
+          .not('division_id', 'is', null)
+          .timeout(const Duration(seconds: 8));
+      for (final r in legacy) {
+        final u = r['user_id']?.toString() ?? '';
+        if (!byUser.containsKey(u)) add(u, r['divisions']);
+      }
+    } catch (_) {
+      // Older database without the column: member_divisions alone is enough.
+    }
+    return {
+      for (final e in byUser.entries)
+        e.key: (e.value
+              ..sort((a, b) {
+                final c = a.$1.compareTo(b.$1);
+                return c != 0
+                    ? c
+                    : a.$2.toLowerCase().compareTo(b.$2.toLowerCase());
+              }))
+            .map((n) => n.$2)
+            .join(', '),
+    };
+  } catch (_) {
+    return const {};
+  }
+});

@@ -25,7 +25,7 @@ What is in the Supabase `public` schema, whether the app uses it, and what to do
 | `fleet_vehicles` | 2 | Vehicles (trucks): designation, plate, VIN, make, model, mileage, assigned driver | Fleet |
 | `tenants` | 1 | Your company record | Everywhere |
 | `tenant_members` | 4 | Who belongs to the company, their role (admin, supervisor, dispatcher, technician, apprentice) and optional division (`division_id`) | Sign-in, permissions |
-| `user_profiles` | 4 | Display name, email, phone, avatar for each user | Admin, technician names |
+| `user_profiles` | 4 | Display name, email, phone, avatar for each user; `daily_digest_opt_out` (true = skip the daily summary email; added by migration `20261115100000_digest_opt_out.sql`, set from Settings by admins, supervisors and dispatchers) | Admin, technician names |
 | `tenant_role_assignments` | 3 | History of role changes (who changed whose role, when, why) | Admin |
 | `form_templates` | 2 | Inspection form templates (name, type) | Templates |
 | `form_template_revisions` | 2 | Versions of each template (draft / published) | Templates |

@@ -326,7 +326,9 @@ What the parts issued to a job cost, at the **last price paid**. Admin only, lik
 * **On the server (reports).** Migration `20261112110000_job_costs.sql`, both `SECURITY DEFINER`, admin of the caller's company only, executable by `authenticated`:
   * `job_parts_cost(p_job_ref text) returns table (part_id uuid, part_number text, name text, qty_issued int, unit_cents int, line_cents bigint, priced boolean)`.
   * `job_costs_summary(p_since date default null) returns table (job_ref text, parts int, total_cents bigint, unpriced_parts int)`: one row per job with an issue since the date (all time when null), totals over everything issued to that job, biggest first.
-* **Not done.** No cost on the inspection or maintenance detail pages (their Parts & Materials section is inside the editing form, shared with technicians) and no "By job" list in the usage report. Locations are not distinguished: an issue from a truck counts the same as from the warehouse.
+* **Also on the records.** A **Parts cost** row (total, "N parts", "N not priced", tap to expand part number, qty net of returns, unit price, line total) sits under Parts & Materials on inspection and maintenance records (`presenter/widgets/job_cost_row.dart`, shown by `MaterialsSectionCard`), only when the record's `job_ref` has issued parts. **Admin only by role**: `canSeeJobCostProvider` is a hard `role == admin` check, like user and permission management. It is not in the permission catalogue, so the overrides screen can neither grant nor remove it (Job Needs uses the same check; an Allow on Manage inventory no longer shows costs).
+* **PDFs.** No prices in any PDF. The export flow has no options UI and reports are saved, emailed or shared automatically, so nothing admin-only can be gated per export. If wanted later: an admin-only "Include parts cost (internal)" toggle, default off, never applied to the automatic or emailed path.
+* **Not done.** No "By job" list in the usage report. Locations are not distinguished: an issue from a truck counts the same as from the warehouse.
 
 ## 24. Roles: apprentice and divisions (2026-11-13)
 

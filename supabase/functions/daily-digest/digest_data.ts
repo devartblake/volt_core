@@ -260,7 +260,7 @@ export type ProfileRow = {
   user_id: string;
   email?: string | null;
   is_active?: boolean | null;
-  /** Optional future column; honored if the table ever gets it. */
+  /** `daily_digest_opt_out` (migration 20261115100000); true = skip this person. */
   daily_digest_opt_out?: boolean | null;
 };
 

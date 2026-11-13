@@ -61,7 +61,7 @@ Widget _host({required bool admin}) => ProviderScope(
       overrides: [
         inventoryRepositoryProvider.overrideWithValue(_Repo()),
         canReserveStockProvider.overrideWithValue(true),
-        canManageInventoryProvider.overrideWithValue(admin),
+        canSeeJobCostProvider.overrideWithValue(admin),
         jobNeedsProvider.overrideWith((ref) async => _needs()),
         jobCostsProvider.overrideWith((ref) async => _costs),
       ],

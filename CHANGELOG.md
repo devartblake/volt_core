@@ -9,6 +9,9 @@ Add a line under **Unreleased** with every change worth telling a user about;
 
 ### Added
 
+- Admins see a "Parts cost" row (total, parts count, "N not priced", tap for the lines) under Parts & Materials on an inspection or maintenance record once parts have been issued to it. Admin only by role (not a permission override); not added to PDFs
+- Settings, Notifications: admins, supervisors and dispatchers can switch off the daily summary email ("Email me the daily summary"; needs a connection; run `20261115100000_digest_opt_out.sql`)
+- Division names now show under each technician's name in the Assign technician sheet and on the dashboard's "Who is on what today" card
 - Admins can override what one person may do: Technicians, Permissions. Each of 13 permissions (sign off work, delete records, manage inventory, assign schedule and more) is Role default, Allow or Deny; the app enforces it, database access still follows the role
 - A person can belong to more than one division (pick several on Technicians and in the Invite sheet; Settings, Account lists them all)
 - New Apprentice role: works like a technician but cannot sign off, complete or delete work (signatures, Job Completed, Complete, Mark completed, deleting records and reports); shows "A technician or supervisor needs to sign this off."
